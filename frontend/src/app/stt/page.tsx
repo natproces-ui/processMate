@@ -59,6 +59,7 @@ export default function VoiceProcessPage() {
     const [showDiagram, setShowDiagram] = useState(false);
     const [bpmnXml, setBpmnXml] = useState<string>("");
     const [guideOpen, setGuideOpen] = useState(false);
+    const [mounted, setMounted] = useState(false);
 
     const showError = (message: string) => {
         setError(message);
