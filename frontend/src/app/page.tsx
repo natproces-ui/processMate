@@ -1,125 +1,50 @@
 // src/app/page.tsx
+'use client';
+
 import Link from 'next/link';
 
 export default function Home() {
   return (
-    <>
-      <style jsx>{`
-        .nav-link {
-          display: block;
-          padding: 1.25rem;
-          color: white;
-          text-decoration: none;
-          border-radius: 12px;
-          text-align: center;
-          font-size: 1.1rem;
-          font-weight: 600;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .nav-link:hover {
-          transform: translateY(-2px);
-        }
-        
-        .link-clinic {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        
-        .link-clinic:hover {
-          box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
-        }
-        
-        .link-stt {
-          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-          box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
-        }
-        
-        .link-stt:hover {
-          box-shadow: 0 8px 20px rgba(240, 147, 251, 0.5);
-        }
-        
-        .link-scv {
-          background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-          box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
-        }
-        
-        .link-scv:hover {
-          box-shadow: 0 8px 20px rgba(79, 172, 254, 0.5);
-        }
-        
-        .link-new-stt {
-          background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-          box-shadow: 0 4px 12px rgba(67, 233, 123, 0.4);
-        }
-        
-        .link-new-stt:hover {
-          box-shadow: 0 8px 20px rgba(67, 233, 123, 0.5);
-        }
-      `}</style>
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-600 to-purple-900">
+      <div className="bg-white rounded-2xl p-12 shadow-2xl max-w-md w-full">
+        <h1 className="text-4xl font-bold mb-4 text-center bg-gradient-to-r from-purple-600 to-purple-900 bg-clip-text text-transparent">
+          ProcessMate
+        </h1>
 
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      }}>
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '3rem',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-          maxWidth: '500px',
-          width: '100%',
-        }}>
-          <h1 style={{
-            fontSize: '2.5rem',
-            fontWeight: 'bold',
-            marginBottom: '1rem',
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>
-            ProcessMate
-          </h1>
+        <p className="text-center text-slate-500 mb-8 text-lg">
+          Choisissez une application
+        </p>
 
-          <p style={{
-            textAlign: 'center',
-            color: '#64748b',
-            marginBottom: '2rem',
-            fontSize: '1.1rem',
-          }}>
-            Choisissez une application
-          </p>
+        <nav className="flex flex-col gap-4">
+          <Link
+            href="/clinic"
+            className="block px-6 py-5 bg-gradient-to-r from-purple-600 to-purple-800 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-purple-500/50 hover:shadow-xl hover:shadow-purple-500/60 hover:-translate-y-0.5 transition-all duration-200"
+          >
+            🏥 Clinic
+          </Link>
 
-          <nav style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
-          }}>
-            <Link href="/clinic" className="nav-link link-clinic">
-              🏥 Clinic
-            </Link>
+          <Link
+            href="/stt"
+            className="block px-6 py-5 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-pink-500/50 hover:shadow-xl hover:shadow-pink-500/60 hover:-translate-y-0.5 transition-all duration-200"
+          >
+            🎤 STT (Speech to Text)
+          </Link>
 
-            <Link href="/stt" className="nav-link link-stt">
-              🎤 STT (Speech to Text)
-            </Link>
+          <Link
+            href="/scv-test"
+            className="block px-6 py-5 bg-gradient-to-r from-blue-500 to-cyan-400 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/60 hover:-translate-y-0.5 transition-all duration-200"
+          >
+            📊 SCV Test
+          </Link>
 
-            <Link href="/scv-test" className="nav-link link-scv">
-              📊 SCV Test
-            </Link>
-
-            <Link href="/new-stt-test" className="nav-link link-new-stt">
-              🆕 New STT Test
-            </Link>
-          </nav>
-        </div>
+          <Link
+            href="/new-stt-test"
+            className="block px-6 py-5 bg-gradient-to-r from-green-500 to-teal-400 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-green-500/50 hover:shadow-xl hover:shadow-green-500/60 hover:-translate-y-0.5 transition-all duration-200"
+          >
+            🆕 New STT Test
+          </Link>
+        </nav>
       </div>
-    </>
+    </div>
   );
 }
