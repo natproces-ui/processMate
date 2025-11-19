@@ -43,3 +43,4 @@ scripts/
 CLIENT_PRESENTATION.doc
 CLIENT_PRESENTATION.docx
 backend/
+frontend/src/app/api
