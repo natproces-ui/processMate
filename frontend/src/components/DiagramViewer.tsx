@@ -1,4 +1,4 @@
-// src/components/DiagramView.tsx
+// src/components/DiagramViewer.tsx
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -6,6 +6,11 @@ import BpmnViewer from "bpmn-js";
 
 interface DiagramViewProps {
     xml: string;
+}
+
+// Type pour le canvas BPMN
+interface BpmnCanvas {
+    zoom(option: string | number): void;
 }
 
 export default function DiagramView({ xml }: DiagramViewProps) {
@@ -19,7 +24,8 @@ export default function DiagramView({ xml }: DiagramViewProps) {
             });
 
             viewerRef.current.importXML(xml).then(() => {
-                const canvas = viewerRef.current!.get("canvas");
+                // Type assertion pour le canvas
+                const canvas = viewerRef.current!.get("canvas") as BpmnCanvas;
                 canvas.zoom("fit-viewport");
             }).catch((err: any) => {
                 console.error("Erreur lors du rendu du BPMN :", err);

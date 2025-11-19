@@ -51,6 +51,18 @@ export default function EditorView({
         default: CustomNode,
     }), []);
 
+    // Handle node label change from CustomNode
+    const handleNodeLabelChange = useCallback((nodeId: string, newLabel: string) => {
+        setNodes(prevNodes => {
+            const updated = prevNodes.map(n =>
+                n.id === nodeId
+                    ? { ...n, data: { ...n.data, label: newLabel } }
+                    : n
+            );
+            return updated;
+        });
+    }, []);
+
     // Parse DOT to Flow on mount
     useEffect(() => {
         if (dotSource && dotSource !== localDotSource) {
@@ -76,17 +88,16 @@ export default function EditorView({
                 console.error('Error parsing DOT:', error);
             }
         }
-    }, [dotSource]);
+    }, [dotSource, localDotSource, handleNodeLabelChange]);
 
     // Update SVG preview
     const updateSvgPreview = async (dot: string) => {
-        if (!vizInstance || !svgContainerRef.current) return;
+        if (!svgContainerRef.current) return;
 
         try {
-            const svg = await renderDotToSvg(vizInstance, dot);
+            const svg = await renderDotToSvg(dot);
             if (svg && svgContainerRef.current) {
-                svgContainerRef.current.innerHTML = '';
-                svgContainerRef.current.appendChild(svg);
+                svgContainerRef.current.innerHTML = svg;
             }
         } catch (error) {
             console.error('Error rendering SVG:', error);
@@ -102,28 +113,14 @@ export default function EditorView({
         setLocalDotSource(newDot);
         onDotSourceChange(newDot);
         await updateSvgPreview(newDot);
-    }, [nodes, edges, graphAttrs, onDotSourceChange, vizInstance]);
-
-    // Handle node label change from CustomNode
-    const handleNodeLabelChange = useCallback((nodeId: string, newLabel: string) => {
-        setNodes(prevNodes => {
-            const updated = prevNodes.map(n =>
-                n.id === nodeId
-                    ? { ...n, data: { ...n.data, label: newLabel } }
-                    : n
-            );
-            return updated;
-        });
-        // Trigger sync after a short delay
-        setTimeout(syncFlowToDot, 100);
-    }, [syncFlowToDot]);
+    }, [nodes, edges, graphAttrs, onDotSourceChange]);
 
     // Node changes handler
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => {
             const updatedNodes = applyNodeChanges(changes, nodes);
             setNodes(updatedNodes);
-            setTimeout(syncFlowToDot, 300);
+            setTimeout(() => syncFlowToDot(), 300);
         },
         [nodes, syncFlowToDot]
     );
@@ -133,7 +130,7 @@ export default function EditorView({
         (changes: EdgeChange[]) => {
             const updatedEdges = applyEdgeChanges(changes, edges);
             setEdges(updatedEdges);
-            setTimeout(syncFlowToDot, 300);
+            setTimeout(() => syncFlowToDot(), 300);
         },
         [edges, syncFlowToDot]
     );
@@ -150,7 +147,7 @@ export default function EditorView({
                 edges
             );
             setEdges(newEdges);
-            setTimeout(syncFlowToDot, 300);
+            setTimeout(() => syncFlowToDot(), 300);
         },
         [edges, syncFlowToDot]
     );
@@ -189,7 +186,7 @@ export default function EditorView({
                 : prev
         );
 
-        setTimeout(syncFlowToDot, 100);
+        setTimeout(() => syncFlowToDot(), 100);
     }, [syncFlowToDot]);
 
     // Update edge from properties panel
@@ -210,14 +207,14 @@ export default function EditorView({
                 : prev
         );
 
-        setTimeout(syncFlowToDot, 100);
+        setTimeout(() => syncFlowToDot(), 100);
     }, [syncFlowToDot]);
 
     // Auto-layout
     const handleAutoLayout = () => {
         const layouted = autoLayoutNodes(nodes, edges);
         setNodes(layouted);
-        setTimeout(syncFlowToDot, 300);
+        setTimeout(() => syncFlowToDot(), 300);
     };
 
     // Add new node
@@ -235,7 +232,7 @@ export default function EditorView({
             },
         };
         setNodes([...nodes, newNode]);
-        setTimeout(syncFlowToDot, 300);
+        setTimeout(() => syncFlowToDot(), 300);
     };
 
     // Delete selected
@@ -253,7 +250,7 @@ export default function EditorView({
             setNodes(remainingNodes);
             setEdges(remainingEdges);
         }
-        setTimeout(syncFlowToDot, 300);
+        setTimeout(() => syncFlowToDot(), 300);
     };
 
     // Parse code to visual
@@ -285,12 +282,8 @@ export default function EditorView({
     };
 
     const handleDownloadSvg = async () => {
-        if (!vizInstance) {
-            alert('Viz.js non initialisé');
-            return;
-        }
         try {
-            await downloadSvgFromDot(vizInstance, localDotSource, `${currentFileName}_flowchart.svg`);
+            await downloadSvgFromDot(localDotSource, `${currentFileName}_flowchart.svg`);
         } catch (error: any) {
             alert('Erreur lors de l\'export SVG: ' + error.message);
         }

@@ -521,21 +521,21 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
                         <thead style={{ backgroundColor: '#f3f4f6', borderBottom: '1px solid #e5e7eb' }}>
                             <tr>
                                 {[
-                                    { key: 'id', label: '#' },
-                                    { key: 'étape', label: 'Étape' },
-                                    { key: 'typeBpmn', label: 'Type BPMN' },
-                                    { key: 'département', label: 'Département' },
-                                    { key: 'acteur', label: 'Acteur' },
-                                    { key: 'condition', label: 'Condition' },
-                                    { key: 'outputOui', label: 'Output Oui' },
-                                    { key: 'outputNon', label: 'Output Non' },
-                                    { key: 'outil', label: 'Outil' },
-                                    { key: 'actions', label: 'Actions' },
-                                    { key: 'delete', label: '' }
-                                ].map(({ key, label }) => (
+                                    { key: 'id' as keyof TableRow, label: '#', sortable: true },
+                                    { key: 'étape' as keyof TableRow, label: 'Étape', sortable: true },
+                                    { key: 'typeBpmn' as keyof TableRow, label: 'Type BPMN', sortable: true },
+                                    { key: 'département' as keyof TableRow, label: 'Département', sortable: true },
+                                    { key: 'acteur' as keyof TableRow, label: 'Acteur', sortable: true },
+                                    { key: 'condition' as keyof TableRow, label: 'Condition', sortable: true },
+                                    { key: 'outputOui' as keyof TableRow, label: 'Output Oui', sortable: true },
+                                    { key: 'outputNon' as keyof TableRow, label: 'Output Non', sortable: true },
+                                    { key: 'outil' as keyof TableRow, label: 'Outil', sortable: true },
+                                    { key: 'actions' as keyof TableRow, label: 'Actions', sortable: true },
+                                    { key: null, label: '', sortable: false }
+                                ].map(({ key, label, sortable }) => (
                                     <th
-                                        key={key}
-                                        onClick={() => key !== 'delete' && handleSort(key as keyof TableRow)}
+                                        key={key || 'delete'}
+                                        onClick={() => sortable && key && handleSort(key)}
                                         style={{
                                             padding: '0.75rem 1rem',
                                             textAlign: 'left',
@@ -543,13 +543,13 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
                                             fontWeight: '600',
                                             color: '#374151',
                                             textTransform: 'uppercase',
-                                            cursor: key !== 'delete' ? 'pointer' : 'default',
+                                            cursor: sortable ? 'pointer' : 'default',
                                             userSelect: 'none'
                                         }}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             {label}
-                                            {sortConfig?.key === key && key !== 'delete' && (
+                                            {sortable && sortConfig?.key === key && (
                                                 sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                                             )}
                                         </div>

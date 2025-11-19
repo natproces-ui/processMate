@@ -73,6 +73,18 @@ export default function ClinicPage() {
         setActiveTab('simple');
     }, [mode]);
 
+    // Helper function pour déterminer la classe CSS d'une étape
+    const getStepClass = (stepName: 'parsing' | 'generating' | 'analyzing_docs'): string => {
+        if (currentStep === stepName) return 'active';
+
+        const stepOrder: ProcessingStep[] = ['idle', 'parsing', 'generating', 'analyzing_docs', 'completed'];
+        const currentIndex = stepOrder.indexOf(currentStep);
+        const stepIndex = stepOrder.indexOf(stepName);
+
+        if (currentIndex > stepIndex) return 'completed';
+        return '';
+    };
+
     // Handle file selection for flowchart
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -188,12 +200,12 @@ export default function ClinicPage() {
             <div className="container">
                 <header>
                     <h1>Clinic</h1>
-                    <p className="tagline">Rendre visible l'invisible</p>
+                    <p className="tagline">Rendre visible l&apos;invisible</p>
                 </header>
 
                 <div className="main-card">
                     {/* Mode Selector */}
-                    <div className="view-tabs" style={{ marginBottom: '2rem' }}>
+                    <div className="view-tabs mode-selector">
                         <button
                             className={`tab-btn ${mode === 'flowchart' ? 'active' : ''}`}
                             onClick={() => setMode('flowchart')}
@@ -266,7 +278,8 @@ export default function ClinicPage() {
                                     type="file"
                                     accept=".swift,.wl,.txt,.windev"
                                     onChange={handleFileChange}
-                                    style={{ display: 'none' }}
+                                    className="hidden-input"
+                                    aria-label="Sélectionner un fichier WinDev"
                                 />
                             </div>
 
@@ -309,16 +322,16 @@ export default function ClinicPage() {
                                         <div className="upload-hint">ou glissez-déposez vos documents PDF/Word (max 6 fichiers)</div>
                                     </>
                                 ) : (
-                                    <div className="file-info" style={{ flexDirection: 'column', gap: '0.5rem' }}>
+                                    <div className="file-info file-list">
                                         {bpmnFiles.map((f, i) => (
-                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
-                                                <div className="file-icon" style={{ width: '32px', height: '32px' }}>
+                                            <div key={i} className="file-list-item">
+                                                <div className="file-icon file-icon-small">
                                                     <svg viewBox="0 0 24 24" fill="currentColor">
                                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                                         <polyline points="14 2 14 8 20 8" fill="none" stroke="white" strokeWidth="2"></polyline>
                                                     </svg>
                                                 </div>
-                                                <div className="file-details" style={{ flex: 1 }}>
+                                                <div className="file-details file-details-full">
                                                     <div className="file-name">{f.name}</div>
                                                     <div className="file-size">{(f.size / 1024).toFixed(2)} KB</div>
                                                 </div>
@@ -332,7 +345,8 @@ export default function ClinicPage() {
                                     accept=".pdf,.doc,.docx,.txt"
                                     multiple
                                     onChange={handleBpmnFilesChange}
-                                    style={{ display: 'none' }}
+                                    className="hidden-input"
+                                    aria-label="Sélectionner des fichiers pour analyse BPMN"
                                 />
                             </div>
 
@@ -352,25 +366,25 @@ export default function ClinicPage() {
                             <div className="progress-steps">
                                 {mode === 'flowchart' ? (
                                     <>
-                                        <div className={`progress-step ${currentStep === 'parsing' ? 'active' : currentStep === 'generating' || currentStep === 'completed' ? 'completed' : ''}`}>
+                                        <div className={`progress-step ${getStepClass('parsing')}`}>
                                             <div className="step-icon">
-                                                {currentStep === 'generating' || currentStep === 'completed' ? '✓' : '1'}
+                                                {getStepClass('parsing') === 'completed' ? '✓' : '1'}
                                             </div>
                                             <div className="step-text">Analyse du code WinDev...</div>
                                             <div className="step-spinner"></div>
                                         </div>
-                                        <div className={`progress-step ${currentStep === 'generating' ? 'active' : currentStep === 'completed' ? 'completed' : ''}`}>
+                                        <div className={`progress-step ${getStepClass('generating')}`}>
                                             <div className="step-icon">
-                                                {currentStep === 'completed' ? '✓' : '2'}
+                                                {getStepClass('generating') === 'completed' ? '✓' : '2'}
                                             </div>
                                             <div className="step-text">Génération du flowchart...</div>
                                             <div className="step-spinner"></div>
                                         </div>
                                     </>
                                 ) : (
-                                    <div className={`progress-step ${currentStep === 'analyzing_docs' ? 'active' : currentStep === 'completed' ? 'completed' : ''}`}>
+                                    <div className={`progress-step ${getStepClass('analyzing_docs')}`}>
                                         <div className="step-icon">
-                                            {currentStep === 'completed' ? '✓' : '1'}
+                                            {getStepClass('analyzing_docs') === 'completed' ? '✓' : '1'}
                                         </div>
                                         <div className="step-text">Analyse des documents et génération BPMN...</div>
                                         <div className="step-spinner"></div>

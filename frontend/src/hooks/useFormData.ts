@@ -41,7 +41,7 @@ export const useFormData = () => {
             const newSCV = await api.generateFull();
             setMultiData(prev => ({
                 scvList: [...prev.scvList, newSCV],
-                currentIndex: prev.scvList.length // Se positionner sur le nouveau SCV
+                currentIndex: prev.scvList.length
             }));
         } catch (err) {
             console.error('Failed to add new SCV', err);
@@ -52,7 +52,7 @@ export const useFormData = () => {
 
     // Supprimer un SCV
     const deleteSCV = (index: number) => {
-        if (multiData.scvList.length <= 1) return; // Garder au moins un SCV
+        if (multiData.scvList.length <= 1) return;
 
         setMultiData(prev => {
             const newList = prev.scvList.filter((_, i) => i !== index);
@@ -87,31 +87,26 @@ export const useFormData = () => {
         });
     };
 
-    const updateDeposant = (field: string, value: any) => {
+    // CORRECTION ICI : Accepter l'objet complet au lieu de field/value
+    const updateDeposant = (updatedDeposant: any) => {
         if (!currentData) return;
         const updated = {
             ...currentData,
             SCV: {
                 ...currentData.SCV,
-                identifiantDeposant: {
-                    ...currentData.SCV.identifiantDeposant,
-                    [field]: value
-                }
+                identifiantDeposant: updatedDeposant
             }
         };
         updateCurrentSCV(updated);
     };
 
-    const updateContact = (field: string, value: any) => {
+    const updateContact = (updatedContact: any) => {
         if (!currentData) return;
         const updated = {
             ...currentData,
             SCV: {
                 ...currentData.SCV,
-                infosContact: {
-                    ...currentData.SCV.infosContact,
-                    [field]: value
-                }
+                infosContact: updatedContact
             }
         };
         updateCurrentSCV(updated);

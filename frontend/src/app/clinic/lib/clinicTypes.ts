@@ -1,5 +1,6 @@
 // Types et interfaces pour Clinic
 
+// ---- STATISTICS ----
 export interface Statistics {
     total_lines: number;
     statement_count: number;
@@ -12,26 +13,54 @@ export interface Statistics {
     parsed_at: string;
 }
 
+// ---- BUSINESS INFO ----
+export interface BusinessProcedure {
+    name: string;
+    parameters: string[];
+    body_statements: number;
+}
+
+export interface DataStructure {
+    name: string;
+    type: string;
+}
+
 export interface BusinessInfo {
     global_variables: string[];
     functions_called: string[];
-    procedures: Array<{
-        name: string;
-        parameters: string[];
-        body_statements: number;
-    }>;
+    procedures: BusinessProcedure[];
     api_calls: string[];
     business_functions: string[];
-    data_structures: Array<{
-        name: string;
-        type: string;
-    }>;
+    data_structures: DataStructure[];
 }
 
+// ---- PARSED DATA ----
 export interface ParsedData {
     ast: any;
     statistics: Statistics;
     business_info: BusinessInfo;
+}
+
+// ---- BPMN ----
+export interface BPMNActor {
+    id: string;
+    name: string;
+    type: string;
+}
+
+export interface BPMNActivity {
+    id: string;
+    name: string;
+    type: string;
+    actor: string;
+    description: string;
+}
+
+export interface BPMNFlow {
+    id: string;
+    source: string;
+    target: string;
+    condition?: string;
 }
 
 export interface BPMNProcess {
@@ -39,38 +68,33 @@ export interface BPMNProcess {
     name: string;
     description: string;
     category: string;
-    actors: Array<{
-        id: string;
-        name: string;
-        type: string;
-    }>;
-    activities: Array<{
-        id: string;
-        name: string;
-        type: string;
-        actor: string;
-        description: string;
-    }>;
-    flows: Array<{
-        id: string;
-        source: string;
-        target: string;
-        condition?: string;
-    }>;
+    actors: BPMNActor[];
+    activities: BPMNActivity[];
+    flows: BPMNFlow[];
+}
+
+export interface BPMNInsights {
+    total_processes: number;
+    complexity: string;
+    recommendations: string[];
 }
 
 export interface BPMNData {
     processes: BPMNProcess[];
-    insights: {
-        total_processes: number;
-        complexity: string;
-        recommendations: string[];
-    };
+    insights: BPMNInsights;
 }
 
-export type ProcessingStep = 'idle' | 'parsing' | 'generating' | 'analyzing_docs' | 'completed';
+// ---- UI STATES ----
+export type ProcessingStep =
+    | 'idle'
+    | 'parsing'
+    | 'generating'
+    | 'analyzing_docs'
+    | 'completed';
+
 export type Mode = 'flowchart' | 'bpmn';
 
+// ---- FLOWCHART GENERATION PARAMS ----
 export interface GenerateFlowchartParams {
     file: File;
     setCurrentStep: (step: ProcessingStep) => void;
@@ -82,6 +106,7 @@ export interface GenerateFlowchartParams {
     setError: (message: string) => void;
 }
 
+// ---- BPMN GENERATION PARAMS ----
 export interface GenerateBPMNParams {
     files: File[];
     setCurrentStep: (step: ProcessingStep) => void;

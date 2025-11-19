@@ -1,4 +1,4 @@
-// src/app/components/ProcessTable.tsx
+// src/components/ProcessTable.tsx
 "use client";
 import { useState } from "react";
 
@@ -26,9 +26,15 @@ export default function ProcessTable({
         setTimeout(() => setError(null), 3000);
     };
 
-    const handleChange = (index: number, field: keyof ProcessRow, value: string) => {
+    const handleChange = (index: number, field: keyof ProcessRow, value: string | ProcessRow['type']) => {
         const updated = [...data];
-        updated[index][field] = value;
+
+        // Type guard pour s'assurer que value est du bon type
+        if (field === 'type') {
+            updated[index][field] = value as ProcessRow['type'];
+        } else {
+            updated[index][field] = value as any;
+        }
 
         // Validation : S'assurer que step est unique
         if (field === "step") {
@@ -107,6 +113,7 @@ export default function ProcessTable({
                                     className="w-full px-2 py-1 border rounded"
                                     value={row.service}
                                     onChange={(e) => handleChange(i, "service", e.target.value)}
+                                    placeholder="Nom du service"
                                 />
                             </td>
                             <td className="border border-gray-300 p-1">
@@ -114,6 +121,7 @@ export default function ProcessTable({
                                     className="w-full px-2 py-1 border rounded"
                                     value={row.step}
                                     onChange={(e) => handleChange(i, "step", e.target.value)}
+                                    placeholder="Ex: 1.0"
                                 />
                             </td>
                             <td className="border border-gray-300 p-1">
@@ -121,6 +129,7 @@ export default function ProcessTable({
                                     className="w-full px-2 py-1 border rounded"
                                     value={row.task}
                                     onChange={(e) => handleChange(i, "task", e.target.value)}
+                                    placeholder="Description de la tâche"
                                 />
                             </td>
                             <td className="border border-gray-300 p-1">
@@ -128,6 +137,8 @@ export default function ProcessTable({
                                     className="w-full px-2 py-1 border rounded"
                                     value={row.type}
                                     onChange={(e) => handleChange(i, "type", e.target.value as ProcessRow["type"])}
+                                    title="Type de tâche"
+                                    aria-label="Type de tâche"
                                 >
                                     <option value="Séquentielle">Séquentielle</option>
                                     <option value="Conditionnelle">Conditionnelle</option>
@@ -138,6 +149,7 @@ export default function ProcessTable({
                                     className="w-full px-2 py-1 border rounded"
                                     value={row.condition}
                                     onChange={(e) => handleChange(i, "condition", e.target.value)}
+                                    placeholder="Condition si applicable"
                                 />
                             </td>
                             <td className="border border-gray-300 p-1">
@@ -145,6 +157,7 @@ export default function ProcessTable({
                                     className="w-full px-2 py-1 border rounded"
                                     value={row.yes}
                                     onChange={(e) => handleChange(i, "yes", e.target.value)}
+                                    placeholder="Étape suivante"
                                 />
                             </td>
                             <td className="border border-gray-300 p-1">
@@ -152,12 +165,14 @@ export default function ProcessTable({
                                     className="w-full px-2 py-1 border rounded"
                                     value={row.no}
                                     onChange={(e) => handleChange(i, "no", e.target.value)}
+                                    placeholder="Étape alternative"
                                 />
                             </td>
                             <td className="border border-gray-300 p-1 text-center">
                                 <button
                                     className="text-red-500 font-bold hover:text-red-700"
                                     onClick={() => handleDeleteRow(i)}
+                                    title="Supprimer cette ligne"
                                 >
                                     ✕
                                 </button>

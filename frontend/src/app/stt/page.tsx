@@ -475,9 +475,11 @@ export default function VoiceProcessPage() {
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <select
+                                                aria-label="Type BPMN"
                                                 className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-400"
                                                 value={row.typeBpmn}
-                                                onChange={e => handleChange(i, "typeBpmn", e.target.value)}>
+                                                onChange={e => handleChange(i, "typeBpmn", e.target.value)}
+                                            >
                                                 <option value="StartEvent">Start Event</option>
                                                 <option value="Task">Task</option>
                                                 <option value="ExclusiveGateway">Gateway</option>
@@ -538,6 +540,8 @@ export default function VoiceProcessPage() {
                                         </td>
                                         <td className="border border-gray-300 p-1 text-center">
                                             <button
+                                                type="button"
+                                                aria-label="Supprimer cette ligne"
                                                 className="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
                                                 onClick={() => handleDeleteRow(i)}
                                             >
