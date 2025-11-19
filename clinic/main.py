@@ -53,6 +53,11 @@ app.include_router(bpmn.router)
 app.include_router(bpmn_ai.router)
 app.include_router(img_to_bpmn.router)
 
+@app.head("/")
+async def head_root():
+    """Support HEAD pour health check Render"""
+    return JSONResponse(content={}, status_code=200)
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_html():
     """Sert le fichier HTML principal"""
@@ -190,6 +195,11 @@ async def api_root():
             ]
         }
     }
+
+@app.head("/health")
+async def head_health():
+    """Support HEAD pour health check Render"""
+    return JSONResponse(content={}, status_code=200)
 
 @app.get("/health")
 async def health_check():
