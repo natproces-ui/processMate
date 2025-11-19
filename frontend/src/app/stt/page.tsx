@@ -5,6 +5,7 @@ import { generateBPMN, Table1Row } from "@/logic/bpmnGenerator";
 import BPMNViewer from "@/components/BPMNViewer";
 import ImageUploadSection from "@/components/ImgUpload";
 import { FileText, Mic, Square, Sparkles, FileDown, RotateCcw, Trash2, Plus, ChevronDown, ChevronUp, AlertCircle, CheckCircle, Info } from "lucide-react";
+import { API_CONFIG } from "@/lib/api-config";
 
 // ===== DONNÉES PAR DÉFAUT (Processus création compte bancaire) =====
 const defaultData: Table1Row[] = [
@@ -59,7 +60,6 @@ export default function VoiceProcessPage() {
     const [showDiagram, setShowDiagram] = useState(false);
     const [bpmnXml, setBpmnXml] = useState<string>("");
     const [guideOpen, setGuideOpen] = useState(false);
-    const [mounted, setMounted] = useState(false);
 
     const showError = (message: string) => {
         setError(message);
@@ -88,7 +88,9 @@ export default function VoiceProcessPage() {
         setImproving(true);
 
         try {
-            const response = await fetch("http://localhost:8002/api/img-to-bpmn/improve", {
+            const url = API_CONFIG.getFullUrl(API_CONFIG.endpoints.imgToBpmnImprove);
+
+            const response = await fetch(url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -139,7 +141,9 @@ export default function VoiceProcessPage() {
                     formData.append("file", blob, "audio.webm");
 
                     try {
-                        const res = await fetch("http://localhost:8002/api/transcribe", {
+                        const url = API_CONFIG.getFullUrl(API_CONFIG.endpoints.transcribe);
+
+                        const res = await fetch(url, {
                             method: "POST",
                             body: formData
                         });
@@ -279,6 +283,13 @@ export default function VoiceProcessPage() {
                 Votre compagnon pour des formalisations rapides. Remplissez le tableau par <strong>image</strong>, <strong>vocal</strong> ou <strong>manuellement</strong>,
                 puis générez votre diagramme BPMN
             </p>
+
+            {/* INDICATEUR D'ENVIRONNEMENT (dev seulement) */}
+            {API_CONFIG.isDevelopment() && (
+                <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 text-sm rounded">
+                    <strong>Mode développement :</strong> API → {API_CONFIG.baseUrl}
+                </div>
+            )}
 
             {/* NOTIFICATIONS */}
             {error && (
@@ -468,85 +479,85 @@ export default function VoiceProcessPage() {
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-                                                className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-400"
+
+                                                type="text"
                                                 value={row.étape}
-                                                onChange={e => handleChange(i, "étape", e.target.value)}
-                                                placeholder="Nom de l'étape"
+                                                onChange={(e) => handleChange(i, "étape", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <select
-                                                aria-label="Type BPMN"
-                                                className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-400"
                                                 value={row.typeBpmn}
-                                                onChange={e => handleChange(i, "typeBpmn", e.target.value)}
+                                                onChange={(e) => handleChange(i, "typeBpmn", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
                                             >
-                                                <option value="StartEvent">Start Event</option>
+                                                <option value="StartEvent">StartEvent</option>
+                                                <option value="EndEvent">EndEvent</option>
                                                 <option value="Task">Task</option>
-                                                <option value="ExclusiveGateway">Gateway</option>
-                                                <option value="EndEvent">End Event</option>
+                                                <option value="ExclusiveGateway">ExclusiveGateway</option>
                                             </select>
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-                                                className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-400"
+                                                type="text"
                                                 value={row.département}
-                                                onChange={e => handleChange(i, "département", e.target.value)}
-                                                placeholder="Ex: Commercial"
+                                                onChange={(e) => handleChange(i, "département", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-                                                className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-400"
+                                                type="text"
                                                 value={row.acteur}
-                                                onChange={e => handleChange(i, "acteur", e.target.value)}
-                                                placeholder="Ex: Vente"
+                                                onChange={(e) => handleChange(i, "acteur", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-                                                className={`w-full px-2 py-1 border rounded ${row.typeBpmn !== "ExclusiveGateway" ? 'bg-gray-100' : ''
-                                                    }`}
+                                                type="text"
                                                 value={row.condition}
-                                                onChange={e => handleChange(i, "condition", e.target.value)}
-                                                placeholder={row.typeBpmn === "ExclusiveGateway" ? "Question ?" : "—"}
+                                                onChange={(e) => handleChange(i, "condition", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
                                                 disabled={row.typeBpmn !== "ExclusiveGateway"}
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-                                                className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-400"
+                                                type="text"
                                                 value={row.outputOui}
-                                                onChange={e => handleChange(i, "outputOui", e.target.value)}
-                                                placeholder="ID suivant"
+                                                onChange={(e) => handleChange(i, "outputOui", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-                                                className={`w-full px-2 py-1 border rounded ${row.typeBpmn !== "ExclusiveGateway" ? 'bg-gray-100' : ''
-                                                    }`}
+
+                                                type="text"
                                                 value={row.outputNon}
-                                                onChange={e => handleChange(i, "outputNon", e.target.value)}
-                                                placeholder={row.typeBpmn === "ExclusiveGateway" ? "ID alternatif" : "—"}
+                                                onChange={(e) => handleChange(i, "outputNon", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
                                                 disabled={row.typeBpmn !== "ExclusiveGateway"}
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-                                                className="w-full px-2 py-1 border rounded focus:ring-2 focus:ring-blue-400"
+
+                                                type="text"
                                                 value={row.outil}
-                                                onChange={e => handleChange(i, "outil", e.target.value)}
-                                                placeholder="Ex: CRM"
+                                                onChange={(e) => handleChange(i, "outil", e.target.value)}
+                                                className="w-full px-2 py-1 border border-gray-300 rounded"
+
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1 text-center">
                                             <button
-                                                type="button"
-                                                aria-label="Supprimer cette ligne"
-                                                className="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50"
                                                 onClick={() => handleDeleteRow(i)}
+                                                className="text-red-600 hover:text-red-800"
+                                                title="Supprimer la ligne"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-5 h-5 mx-auto" />
                                             </button>
                                         </td>
                                     </tr>
@@ -555,17 +566,57 @@ export default function VoiceProcessPage() {
                         </tbody>
                     </table>
                 </div>
+            </div>
+            {/* BOUTON AJOUTER LIGNE */}
+            <div className="mt-4">
+                <button
 
-                <div className="p-4 bg-gray-50 border-t">
-                    <button
-                        onClick={handleAddRow}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center gap-2"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Ajouter une ligne
-                    </button>
-                </div>
+                    onClick={handleAddRow}
+                    className="px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all flex items-center gap-2"
+                >
+                    <Plus className="w-4 h-4" />
+                    Ajouter une étape
+                </button>
             </div>
         </div>
     );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
