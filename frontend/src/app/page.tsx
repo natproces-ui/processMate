@@ -23,6 +23,12 @@ export default function Home() {
             🏥 Clinic
           </Link>
 
+          <Link
+            href="/stt"
+            className="block px-6 py-5 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-pink-500/50 hover:shadow-xl hover:shadow-pink-500/60 hover:-translate-y-0.5 transition-all duration-200"
+          >
+            Image-to-process
+          </Link>
         </nav>
       </div>
     </div>
