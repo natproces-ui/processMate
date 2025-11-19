@@ -23,26 +23,6 @@ export default function Home() {
             🏥 Clinic
           </Link>
 
-          <Link
-            href="/stt"
-            className="block px-6 py-5 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-pink-500/50 hover:shadow-xl hover:shadow-pink-500/60 hover:-translate-y-0.5 transition-all duration-200"
-          >
-            🎤 STT (Speech to Text)
-          </Link>
-
-          <Link
-            href="/scv-test"
-            className="block px-6 py-5 bg-gradient-to-r from-blue-500 to-cyan-400 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/60 hover:-translate-y-0.5 transition-all duration-200"
-          >
-            📊 SCV Test
-          </Link>
-
-          <Link
-            href="/new-stt-test"
-            className="block px-6 py-5 bg-gradient-to-r from-green-500 to-teal-400 text-white rounded-xl text-center text-lg font-semibold shadow-lg shadow-green-500/50 hover:shadow-xl hover:shadow-green-500/60 hover:-translate-y-0.5 transition-all duration-200"
-          >
-            🆕 New STT Test
-          </Link>
         </nav>
       </div>
     </div>
