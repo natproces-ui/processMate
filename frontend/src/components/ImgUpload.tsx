@@ -1,5 +1,8 @@
+"use client";
+
 import { useState, useRef } from 'react';
 import { Table1Row } from '@/logic/bpmnGenerator';
+import { API_CONFIG } from '@/lib/api-config';   // ✅ IMPORT API-CONFIG
 import {
     Upload,
     Loader2,
@@ -58,7 +61,10 @@ export default function ImageUploadSection({
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('http://localhost:8002/api/img-to-bpmn/analyze', {
+            // ✅ API CONFIG ÉQUIVALENT À localhost OU production automatiquement
+            const url = API_CONFIG.getFullUrl(API_CONFIG.endpoints.imgToBpmn + '/analyze');
+
+            const response = await fetch(url, {
                 method: 'POST',
                 body: formData
             });
@@ -115,6 +121,7 @@ export default function ImageUploadSection({
 
     return (
         <div className="mb-6 bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-lg p-6">
+
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
                 <ImageIcon className="w-7 h-7 text-indigo-700" />
@@ -128,7 +135,7 @@ export default function ImageUploadSection({
                 </div>
             </div>
 
-            {/* Zone d’upload + drag & drop */}
+            {/* Upload zone */}
             <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -165,7 +172,7 @@ export default function ImageUploadSection({
                 )}
             </div>
 
-            {/* Prévisualisation */}
+            {/* Preview */}
             {previewUrl && (
                 <div className="bg-white rounded-lg p-4 border-2 border-indigo-200 mt-4">
                     <div className="flex items-center justify-between mb-2">
@@ -188,7 +195,7 @@ export default function ImageUploadSection({
                 </div>
             )}
 
-            {/* Guide / Instructions */}
+            {/* Guide */}
             <div className="bg-white rounded-lg border-2 border-indigo-100 overflow-hidden mt-4">
                 <button
                     onClick={() => setShowGuide((prev) => !prev)}
