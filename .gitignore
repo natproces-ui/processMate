@@ -1,0 +1,45 @@
+# Secrets
+.env
+.env.local
+.env.production
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+
+# Virtual environment
+.venv/
+venv/
+env/
+clinic/venv/
+clinic/.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+
+# Logs
+*.log
+
+# Flowcharts générés (optionnel)
+clinic/flowcharts/*.png
+clinic/flowcharts/*.dot
+
+parse/
+retro/
+scripts/
+CLIENT_PRESENTATION.doc
+CLIENT_PRESENTATION.docx
+backend/

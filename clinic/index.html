@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinic - Rendre visible l'invisible</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f8f9fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        .tagline {
+            font-size: 18px;
+            color: #6c757d;
+            font-weight: 300;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .step-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            background: #8BC34A;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+
+        .step-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .step-description {
+            color: #6c757d;
+            margin-bottom: 25px;
+            font-size: 15px;
+        }
+
+        .upload-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            position: relative;
+        }
+
+        .upload-zone:hover {
+            border-color: #8BC34A;
+            background: #fff;
+        }
+
+        .upload-zone.dragover {
+            border-color: #8BC34A;
+            background: #e9ecef;
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            opacity: 0.4;
+        }
+
+        .upload-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 32px;
+            background: #8BC34A;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            background: #7CB342;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #adb5bd;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-section {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 15px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #8BC34A;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: #e9ecef;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+
+        .file-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: #6c757d;
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .file-size {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .error-message {
+            padding: 15px;
+            background: #fff5f5;
+            border-left: 3px solid #e74c3c;
+            border-radius: 6px;
+            color: #c0392b;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .success-message {
+            padding: 15px;
+            background: #f0fdf4;
+            border-left: 3px solid #8BC34A;
+            border-radius: 6px;
+            color: #558B2F;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .flowchart-container {
+            margin-top: 20px;
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .view-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: #8BC34A;
+        }
+
+        .tab-btn.active {
+            color: #8BC34A;
+            border-bottom-color: #8BC34A;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .flowchart-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .control-btn {
+            padding: 8px 16px;
+            background: #8BC34A;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #7CB342;
+        }
+
+        .flowchart-viewer {
+            width: 100%;
+            height: 600px;
+            overflow: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            background: #fafafa;
+            position: relative;
+            cursor: grab;
+        }
+
+        .flowchart-viewer:active {
+            cursor: grabbing;
+        }
+
+        .flowchart-viewer img {
+            display: block;
+            transition: transform 0.1s ease-out;
+            transform-origin: 0 0;
+        }
+
+        .zoom-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 600px;
+        }
+
+        .editor-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .code-editor {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            background: #f8f9fa;
+            resize: none;
+            outline: none;
+        }
+
+        .code-editor:focus {
+            border-color: #8BC34A;
+            background: white;
+        }
+
+        .preview-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-viewer {
+            flex: 1;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            background: #fafafa;
+            overflow: auto;
+            padding: 15px;
+        }
+
+        .preview-viewer svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .editor-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .download-btn {
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .download-btn:hover {
+            background: #5a6268;
+        }
+
+        .loader {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9ecef;
+            border-top: 4px solid #8BC34A;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        .loader.show {
+            display: block;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 36px;
+            }
+
+            .step-card {
+                padding: 30px 20px;
+            }
+
+            .flowchart-viewer {
+                height: 400px;
+            }
+
+            .editor-container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .editor-panel,
+            .preview-panel {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Clinic</h1>
+            <p class="tagline">Rendre visible l'invisible</p>
+        </header>
+
+        <div class="steps">
+            <!-- Step 1: Parse WinDev Code -->
+            <div class="step-card">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Parser le code WinDev</div>
+                </div>
+                <p class="step-description">
+                    Uploadez votre fichier contenant du code WinDev pour générer un AST JSON
+                </p>
+
+                <div class="upload-zone" id="uploadZone1">
+                    <div class="upload-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <div class="upload-text">Cliquez pour sélectionner un fichier</div>
+                    <div class="upload-hint">ou glissez-déposez votre fichier .swift, .wl</div>
+                    <input type="file" id="fileInput1" accept=".swift,.wl,.txt,.windev">
+                </div>
+
+                <button class="btn" id="parseBtn" disabled>Analyser le code</button>
+                <div class="loader" id="loader1"></div>
+
+                <div class="error-message" id="error1"></div>
+                <div class="success-message" id="success1"></div>
+
+                <div class="result-section" id="result1">
+                    <div class="result-title">Résultat de l'analyse</div>
+                    <div class="stats" id="stats1"></div>
+                    <button class="btn" id="downloadBtn1">Télécharger le JSON</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Get Flowchart -->
+            <div class="step-card">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Obtenir le flowchart</div>
+                </div>
+                <p class="step-description">
+                    Uploadez votre fichier JSON pour récupérer le flowchart correspondant
+                </p>
+
+                <div class="upload-zone" id="uploadZone2">
+                    <div class="upload-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <div class="upload-text">Cliquez pour sélectionner un fichier JSON</div>
+                    <div class="upload-hint">Fichiers supportés: cpt, gar</div>
+                    <input type="file" id="fileInput2" accept=".json">
+                </div>
+
+                <button class="btn" id="flowchartBtn" disabled>Obtenir le flowchart</button>
+                <div class="loader" id="loader2"></div>
+
+                <div class="error-message" id="error2"></div>
+                <div class="success-message" id="success2"></div>
+
+                <div class="result-section" id="result2">
+                    <div class="result-title">Flowchart</div>
+                    <div class="flowchart-container">
+                        <div class="view-tabs">
+                            <button class="tab-btn active" data-tab="simple">Vue simple</button>
+                            <button class="tab-btn" data-tab="editor">Mode édition</button>
+                        </div>
+
+                        <!-- Vue simple -->
+                        <div class="tab-content active" id="tab-simple">
+                            <div class="flowchart-controls">
+                                <button class="control-btn" id="zoomIn">Zoom +</button>
+                                <button class="control-btn" id="zoomOut">Zoom -</button>
+                                <button class="control-btn" id="resetZoom">Réinitialiser</button>
+                                <button class="control-btn" id="fitScreen">Ajuster à l'écran</button>
+                            </div>
+                            <div class="flowchart-viewer" id="flowchartViewer">
+                                <div class="zoom-info" id="zoomInfo">100%</div>
+                            </div>
+                        </div>
+
+                        <!-- Mode édition -->
+                        <div class="tab-content" id="tab-editor">
+                            <div class="editor-controls">
+                                <button class="control-btn" id="renderDot">Actualiser l'aperçu</button>
+                                <button class="download-btn" id="downloadDot">Télécharger .dot</button>
+                                <button class="download-btn" id="downloadSvg">Exporter en SVG</button>
+                            </div>
+                            <div class="editor-container">
+                                <div class="editor-panel">
+                                    <div class="panel-title">Code source (Graphviz DOT)</div>
+                                    <textarea class="code-editor" id="dotEditor" spellcheck="false"></textarea>
+                                </div>
+                                <div class="preview-panel">
+                                    <div class="panel-title">Aperçu en temps réel</div>
+                                    <div class="preview-viewer" id="previewViewer"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Viz.js pour le rendu Graphviz -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+
+    <script>
+        const API_URL = 'http://localhost:8002';
+
+        // Step 1: Parse WinDev Code
+        const uploadZone1 = document.getElementById('uploadZone1');
+        const fileInput1 = document.getElementById('fileInput1');
+        const parseBtn = document.getElementById('parseBtn');
+        const loader1 = document.getElementById('loader1');
+        const error1 = document.getElementById('error1');
+        const success1 = document.getElementById('success1');
+        const result1 = document.getElementById('result1');
+        const stats1 = document.getElementById('stats1');
+        const downloadBtn1 = document.getElementById('downloadBtn1');
+
+        let parsedData = null;
+
+        uploadZone1.addEventListener('click', () => fileInput1.click());
+
+        uploadZone1.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone1.classList.add('dragover');
+        });
+
+        uploadZone1.addEventListener('dragleave', () => {
+            uploadZone1.classList.remove('dragover');
+        });
+
+        uploadZone1.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone1.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput1.files = e.dataTransfer.files;
+                handleFileSelect1();
+            }
+        });
+
+        fileInput1.addEventListener('change', handleFileSelect1);
+
+        function handleFileSelect1() {
+            if (fileInput1.files.length > 0) {
+                parseBtn.disabled = false;
+                const file = fileInput1.files[0];
+                uploadZone1.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                    </div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024).toFixed(2)} KB</div>
+                    </div>
+                </div>
+            `;
+            }
+        }
+
+        parseBtn.addEventListener('click', async () => {
+            const file = fileInput1.files[0];
+            if (!file) return;
+
+            error1.classList.remove('show');
+            success1.classList.remove('show');
+            result1.classList.remove('show');
+            loader1.classList.add('show');
+            parseBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_URL}/parse`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Erreur lors du parsing');
+                }
+
+                parsedData = data;
+
+                success1.textContent = 'Analyse réussie!';
+                success1.classList.add('show');
+
+                stats1.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">Lignes</div>
+                    <div class="stat-value">${data.statistics.total_lines}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Instructions</div>
+                    <div class="stat-value">${data.statistics.statement_count}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Type</div>
+                    <div class="stat-value">${data.statistics.root_type}</div>
+                </div>
+            `;
+
+                result1.classList.add('show');
+
+            } catch (err) {
+                error1.textContent = err.message;
+                error1.classList.add('show');
+            } finally {
+                loader1.classList.remove('show');
+                parseBtn.disabled = false;
+            }
+        });
+
+        downloadBtn1.addEventListener('click', () => {
+            if (!parsedData) return;
+
+            const jsonStr = JSON.stringify(parsedData.ast, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${parsedData.statistics.filename.split('.')[0]}cpt_ast.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Step 2: Get Flowchart with zoom/pan functionality and editor
+        const uploadZone2 = document.getElementById('uploadZone2');
+        const fileInput2 = document.getElementById('fileInput2');
+        const flowchartBtn = document.getElementById('flowchartBtn');
+        const loader2 = document.getElementById('loader2');
+        const error2 = document.getElementById('error2');
+        const success2 = document.getElementById('success2');
+        const result2 = document.getElementById('result2');
+        const flowchartViewer = document.getElementById('flowchartViewer');
+        const zoomInfo = document.getElementById('zoomInfo');
+        const zoomInBtn = document.getElementById('zoomIn');
+        const zoomOutBtn = document.getElementById('zoomOut');
+        const resetZoomBtn = document.getElementById('resetZoom');
+        const fitScreenBtn = document.getElementById('fitScreen');
+
+        // Editor elements
+        const dotEditor = document.getElementById('dotEditor');
+        const previewViewer = document.getElementById('previewViewer');
+        const renderDotBtn = document.getElementById('renderDot');
+        const downloadDotBtn = document.getElementById('downloadDot');
+        const downloadSvgBtn = document.getElementById('downloadSvg');
+
+        let currentZoom = 1;
+        let currentImage = null;
+        let isPanning = false;
+        let startX, startY, scrollLeft, scrollTop;
+        let currentDotSource = '';
+        let currentFileName = '';
+        let viz = null;
+
+        // Initialize Viz.js
+        async function initViz() {
+            try {
+                viz = new Viz();
+                console.log('Viz.js initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize Viz.js:', error);
+            }
+        }
+
+        initViz();
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById(`tab-${tabName}`).classList.add('active');
+            });
+        });
+
+        uploadZone2.addEventListener('click', () => fileInput2.click());
+
+        uploadZone2.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone2.classList.add('dragover');
+        });
+
+        uploadZone2.addEventListener('dragleave', () => {
+            uploadZone2.classList.remove('dragover');
+        });
+
+        uploadZone2.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone2.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput2.files = e.dataTransfer.files;
+                handleFileSelect2();
+            }
+        });
+
+        fileInput2.addEventListener('change', handleFileSelect2);
+
+        function handleFileSelect2() {
+            if (fileInput2.files.length > 0) {
+                flowchartBtn.disabled = false;
+                const file = fileInput2.files[0];
+                currentFileName = file.name.replace('.json', '');
+                uploadZone2.innerHTML = `
+                <div class="file-info">
+                    <div class="file-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                    </div>
+                    <div class="file-details">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${(file.size / 1024).toFixed(2)} KB</div>
+                    </div>
+                </div>
+            `;
+            }
+        }
+
+        // === CORRECTION CLÉ : Lecture unique du fichier ===
+        flowchartBtn.addEventListener('click', async () => {
+            const file = fileInput2.files[0];
+            if (!file) return;
+
+            error2.classList.remove('show');
+            success2.classList.remove('show');
+            result2.classList.remove('show');
+            loader2.classList.add('show');
+            flowchartBtn.disabled = true;
+
+            try {
+                // Lire le fichier une seule fois
+                const arrayBuffer = await file.arrayBuffer();
+                const fileBlob = new Blob([arrayBuffer], { type: file.type });
+                const fileName = file.name;
+
+                // --- PNG ---
+                const formDataPng = new FormData();
+                formDataPng.append('file', fileBlob, fileName);
+
+                const pngResponse = await fetch(`${API_URL}/get-flowchart`, {
+                    method: 'POST',
+                    body: formDataPng
+                });
+
+                if (!pngResponse.ok) {
+                    const err = await pngResponse.json();
+                    throw new Error(err.detail?.message || 'Fichier non pris en charge');
+                }
+
+                const pngBlob = await pngResponse.blob();
+                const pngImageUrl = URL.createObjectURL(pngBlob);
+
+                // --- DOT (même blob, même nom) ---
+                const formDataDot = new FormData();
+                formDataDot.append('file', fileBlob, fileName);
+
+                const dotResponse = await fetch(`${API_URL}/get-flowchart-editable`, {
+                    method: 'POST',
+                    body: formDataDot
+                });
+
+                let dotText = '';
+                if (dotResponse.ok) {
+                    dotText = await dotResponse.text();
+                    console.log('DOT reçu (longueur):', dotText.length);
+                } else {
+                    const err = await dotResponse.text();
+                    console.error('Erreur DOT:', dotResponse.status, err);
+                    throw new Error(`Erreur DOT ${dotResponse.status}: ${err}`);
+                }
+
+                // --- Affichage PNG ---
+                currentImage = new Image();
+                currentImage.src = pngImageUrl;
+                currentImage.style.transform = `scale(${currentZoom})`;
+                currentImage.onload = () => {
+                    flowchartViewer.innerHTML = '';
+                    flowchartViewer.appendChild(currentImage);
+                    flowchartViewer.appendChild(zoomInfo);
+                };
+
+                // --- Affichage DOT ---
+                if (dotText.trim() && dotText.includes('digraph')) {
+                    currentDotSource = dotText;
+                    dotEditor.value = dotText;
+                    await renderDotPreview(dotText);
+                } else {
+                    dotEditor.value = '// DOT vide ou invalide reçu du serveur';
+                }
+
+                success2.textContent = 'Flowchart généré avec succès!';
+                success2.classList.add('show');
+                result2.classList.add('show');
+
+            } catch (err) {
+                error2.textContent = err.message;
+                error2.classList.add('show');
+                dotEditor.value = `// Erreur: ${err.message}`;
+            } finally {
+                loader2.classList.remove('show');
+                flowchartBtn.disabled = false;
+            }
+        });
+
+        // Zoom controls
+        zoomInBtn.addEventListener('click', () => {
+            currentZoom = Math.min(currentZoom + 0.2, 3);
+            updateZoom();
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            currentZoom = Math.max(currentZoom - 0.2, 0.2);
+            updateZoom();
+        });
+
+        resetZoomBtn.addEventListener('click', () => {
+            currentZoom = 1;
+            updateZoom();
+        });
+
+        fitScreenBtn.addEventListener('click', () => {
+            if (!currentImage) return;
+
+            const viewerWidth = flowchartViewer.clientWidth;
+            const viewerHeight = flowchartViewer.clientHeight;
+            const imageWidth = currentImage.naturalWidth;
+            const imageHeight = currentImage.naturalHeight;
+
+            const scaleX = (viewerWidth - 40) / imageWidth;
+            const scaleY = (viewerHeight - 40) / imageHeight;
+
+            currentZoom = Math.min(scaleX, scaleY);
+            updateZoom();
+        });
+
+        function updateZoom() {
+            if (!currentImage) return;
+            currentImage.style.transform = `scale(${currentZoom})`;
+            zoomInfo.textContent = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        // Pan functionality
+        flowchartViewer.addEventListener('mousedown', (e) => {
+            isPanning = true;
+            startX = e.pageX - flowchartViewer.offsetLeft;
+            startY = e.pageY - flowchartViewer.offsetTop;
+            scrollLeft = flowchartViewer.scrollLeft;
+            scrollTop = flowchartViewer.scrollTop;
+        });
+
+        ['mouseleave', 'mouseup'].forEach(event => {
+            flowchartViewer.addEventListener(event, () => {
+                isPanning = false;
+            });
+        });
+
+        flowchartViewer.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            e.preventDefault();
+            const x = e.pageX - flowchartViewer.offsetLeft;
+            const y = e.pageY - flowchartViewer.offsetTop;
+            const walkX = (x - startX) * 2;
+            const walkY = (y - startY) * 2;
+            flowchartViewer.scrollLeft = scrollLeft - walkX;
+            flowchartViewer.scrollTop = scrollTop - walkY;
+        });
+
+        // Mouse wheel zoom
+        flowchartViewer.addEventListener('wheel', (e) => {
+            if (e.ctrlKey) {
+                e.preventDefault();
+                currentZoom = e.deltaY < 0
+                    ? Math.min(currentZoom + 0.1, 3)
+                    : Math.max(currentZoom - 0.1, 0.2);
+                updateZoom();
+            }
+        });
+
+        // Editor functionality
+        async function renderDotPreview(dotSource) {
+            if (!viz) {
+                previewViewer.innerHTML = '<div style="color: #e74c3c; padding: 20px;">Viz.js non initialisé</div>';
+                return;
+            }
+
+            try {
+                const svg = await viz.renderSVGElement(dotSource);
+                previewViewer.innerHTML = '';
+                previewViewer.appendChild(svg);
+            } catch (error) {
+                previewViewer.innerHTML = `<div style="color: #e74c3c; padding: 20px;">Erreur de rendu: ${error.message}</div>`;
+            }
+        }
+
+        renderDotBtn.addEventListener('click', async () => {
+            const dotSource = dotEditor.value;
+            currentDotSource = dotSource;
+            await renderDotPreview(dotSource);
+        });
+
+        downloadDotBtn.addEventListener('click', () => {
+            const dotSource = dotEditor.value;
+            const blob = new Blob([dotSource], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentFileName}_flowchart.dot`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        downloadSvgBtn.addEventListener('click', async () => {
+            if (!viz) {
+                alert('Viz.js non initialisé');
+                return;
+            }
+
+            try {
+                const dotSource = dotEditor.value;
+                const svg = await viz.renderSVGElement(dotSource);
+                const svgString = new XMLSerializer().serializeToString(svg);
+                const blob = new Blob([svgString], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${currentFileName}_flowchart.svg`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Erreur lors de l\'export SVG: ' + error.message);
+            }
+        });
+    </script>
+</body>
+
+</html>

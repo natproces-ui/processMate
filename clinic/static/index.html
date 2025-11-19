@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinic - Rendre visible l'invisible</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1a5fb4;
+            --primary-dark: #0d47a1;
+            --secondary: #f5f5f5;
+            --text: #212529;
+            --border: #dee2e6;
+            --success: #2b8a3e;
+            --warning: #e67700;
+            --danger: #c92a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .logo i {
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        .tagline {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        main {
+            padding: 3rem 0;
+        }
+
+        .steps-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 992px) {
+            .steps-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .step-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .step-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .step-number {
+            background-color: var(--primary);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .step-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .step-description {
+            color: #495057;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 0.75rem 1rem;
+            background-color: var(--primary);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .file-input-label:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .file-input-label i {
+            margin-right: 8px;
+        }
+
+        .selected-file {
+            margin-top: 0.75rem;
+            padding: 0.5rem;
+            background-color: #e9ecef;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #495057;
+            display: none;
+        }
+
+        .selected-file.show {
+            display: block;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn:disabled {
+            background-color: #adb5bd;
+            cursor: not-allowed;
+        }
+
+        .result-container {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px dashed var(--border);
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .result-container.success {
+            border-color: var(--success);
+            background-color: #ebfbee;
+        }
+
+        .result-container.error {
+            border-color: var(--danger);
+            background-color: #fcebea;
+        }
+
+        .result-container .icon {
+            font-size: 2rem;
+        }
+
+        .result-container.success .icon {
+            color: var(--success);
+        }
+
+        .result-container.error .icon {
+            color: var(--danger);
+        }
+
+        .download-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .download-link:hover {
+            text-decoration: underline;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0 2rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            margin-bottom: 3rem;
+            border-radius: 12px;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: #6c757d;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        footer {
+            background-color: #212529;
+            color: #adb5bd;
+            padding: 2rem 0;
+            margin-top: 4rem;
+            font-size: 0.9rem;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+
+        .loading {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="container header-content">
+            <div>
+                <div class="logo">
+                    <i class="fas fa-clinic-medical"></i>
+                    <div>
+                        <div>Clinic</div>
+                        <div class="tagline">Rendre visible l'invisible</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="hero">
+            <h1>Analyse de processus métier WinDev</h1>
+            <p>Transformez votre code WinDev en diagrammes de flux métier clairs et professionnels en deux étapes
+                simples.</p>
+        </div>
+
+        <div class="steps-container">
+            <!-- ÉTAPE 1 : Upload du code WinDev -->
+            <div class="step-card">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">Charger le code WinDev</h3>
+                </div>
+                <p class="step-description">
+                    Sélectionnez votre fichier source WinDev (.wl, .swift, .txt). L'API analyse le code et génère un AST
+                    structuré.
+                </p>
+
+                <div class="file-input-wrapper">
+                    <input type="file" id="windev-file" class="file-input" accept=".wl,.swift,.txt,.windev">
+                    <label for="windev-file" class="file-input-label">
+                        <i class="fas fa-upload"></i> Sélectionner le fichier WinDev
+                    </label>
+                </div>
+                <div id="windev-filename" class="selected-file"></div>
+
+                <button id="parse-btn" class="btn" disabled>
+                    <i class="fas fa-code"></i> Générer l'AST JSON
+                </button>
+
+                <div class="loading" id="parse-loading">
+                    <div class="spinner"></div>
+                </div>
+
+                <div id="parse-result" class="result-container">
+                    <div class="icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div>Sélectionnez un fichier pour commencer</div>
+                </div>
+            </div>
+
+            <!-- ÉTAPE 2 : Upload du JSON pour le flowchart -->
+            <div class="step-card">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">Obtenir le flowchart métier</h3>
+                </div>
+                <p class="step-description">
+                    Chargez le fichier JSON généré (gar.json ou cpt.json) pour visualiser le diagramme de flux métier
+                    complet.
+                </p>
+
+                <div class="file-input-wrapper">
+                    <input type="file" id="json-file" class="file-input" accept=".json">
+                    <label for="json-file" class="file-input-label">
+                        <i class="fas fa-upload"></i> Sélectionner le fichier JSON
+                    </label>
+                </div>
+                <div id="json-filename" class="selected-file"></div>
+
+                <button id="flowchart-btn" class="btn" disabled>
+                    <i class="fas fa-project-diagram"></i> Générer le flowchart
+                </button>
+
+                <div class="loading" id="flowchart-loading">
+                    <div class="spinner"></div>
+                </div>
+
+                <div id="flowchart-result" class="result-container">
+                    <div class="icon"><i class="fas fa-image"></i></div>
+                    <div>Générez d'abord l'AST, puis chargez le JSON</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container footer-content">
+            <div>© 2025 Clinic. Tous droits réservés.</div>
+            <div>API version 1.0.0</div>
+        </div>
+    </footer>
+
+    <script>
+        // Configuration API
+        const API_BASE = 'http://localhost:8002';
+
+        // Éléments DOM - Étape 1
+        const windevFileInput = document.getElementById('windev-file');
+        const windevFilename = document.getElementById('windev-filename');
+        const parseBtn = document.getElementById('parse-btn');
+        const parseLoading = document.getElementById('parse-loading');
+        const parseResult = document.getElementById('parse-result');
+
+        // Éléments DOM - Étape 2
+        const jsonFileInput = document.getElementById('json-file');
+        const jsonFilename = document.getElementById('json-filename');
+        const flowchartBtn = document.getElementById('flowchart-btn');
+        const flowchartLoading = document.getElementById('flowchart-loading');
+        const flowchartResult = document.getElementById('flowchart-result');
+
+        // Variables d'état
+        let astJsonBlob = null;
+        let flowchartImageUrl = null;
+
+        // === ÉTAPE 1 : Gestion du fichier WinDev ===
+        windevFileInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                windevFilename.textContent = file.name;
+                windevFilename.classList.add('show');
+                parseBtn.disabled = false;
+            } else {
+                windevFilename.classList.remove('show');
+                parseBtn.disabled = true;
+            }
+        });
+
+        parseBtn.addEventListener('click', async function () {
+            const file = windevFileInput.files[0];
+            if (!file) return;
+
+            // UI : chargement
+            parseBtn.disabled = true;
+            parseLoading.classList.add('show');
+            parseResult.className = 'result-container';
+            parseResult.innerHTML = '<div class="spinner"></div><div>Analyse en cours...</div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch(`${API_BASE}/parse`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erreur ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Créer un blob pour téléchargement
+                const jsonStr = JSON.stringify(data.ast, null, 2);
+                astJsonBlob = new Blob([jsonStr], { type: 'application/json' });
+
+                // Nom du fichier
+                const originalName = file.name.split('.').slice(0, -1).join('.');
+                const jsonFileName = `${originalName}_ast.json`;
+
+                // UI : succès
+                parseResult.className = 'result-container success';
+                parseResult.innerHTML = `
+                    <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    <div>AST généré avec succès</div>
+                    <a href="#" id="download-ast" class="download-link">
+                        <i class="fas fa-download"></i> Télécharger ${jsonFileName}
+                    </a>
+                `;
+
+                // Gestion du téléchargement
+                document.getElementById('download-ast').addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const url = URL.createObjectURL(astJsonBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = jsonFileName;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+            } catch (error) {
+                parseResult.className = 'result-container error';
+                parseResult.innerHTML = `
+                    <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div>Erreur lors du parsing</div>
+                    <div style="font-size: 0.85rem; margin-top: 0.5rem;">${error.message}</div>
+                `;
+            } finally {
+                parseLoading.classList.remove('show');
+                parseBtn.disabled = false;
+            }
+        });
+
+        // === ÉTAPE 2 : Gestion du JSON pour flowchart ===
+        jsonFileInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                jsonFilename.textContent = file.name;
+                jsonFilename.classList.add('show');
+                flowchartBtn.disabled = false;
+            } else {
+                jsonFilename.classList.remove('show');
+                flowchartBtn.disabled = true;
+            }
+        });
+
+        flowchartBtn.addEventListener('click', async function () {
+            const file = jsonFileInput.files[0];
+            if (!file) return;
+
+            // Vérifier le nom du fichier
+            const filename = file.name.toLowerCase();
+            if (!filename.includes('gar.json') && !filename.includes('cpt.json')) {
+                flowchartResult.className = 'result-container error';
+                flowchartResult.innerHTML = `
+                    <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div>Fichier non reconnu</div>
+                    <div style="font-size: 0.85rem; margin-top: 0.5rem;">Utilisez gar.json ou cpt.json</div>
+                `;
+                return;
+            }
+
+            // UI : chargement
+            flowchartBtn.disabled = true;
+            flowchartLoading.classList.add('show');
+            flowchartResult.className = 'result-container';
+            flowchartResult.innerHTML = '<div class="spinner"></div><div>Génération du flowchart...</div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch(`${API_BASE}/flowchart`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || `Erreur ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                flowchartImageUrl = URL.createObjectURL(blob);
+
+                // UI : succès
+                flowchartResult.className = 'result-container success';
+                flowchartResult.innerHTML = `
+                    <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    <div>Flowchart généré</div>
+                    <img src="${flowchartImageUrl}" alt="Flowchart" style="max-width: 100%; margin-top: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <a href="#" id="download-flowchart" class="download-link" style="margin-top: 1rem;">
+                        <i class="fas fa-download"></i> Télécharger l'image
+                    </a>
+                `;
+
+                // Gestion du téléchargement
+                document.getElementById('download-flowchart').addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const a = document.createElement('a');
+                    a.href = flowchartImageUrl;
+                    a.download = filename.replace('.json', '_flowchart.png');
+                    a.click();
+                });
+
+            } catch (error) {
+                flowchartResult.className = 'result-container error';
+                flowchartResult.innerHTML = `
+                    <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div>Erreur lors de la génération</div>
+                    <div style="font-size: 0.85rem; margin-top: 0.5rem;">${error.message}</div>
+                `;
+            } finally {
+                flowchartLoading.classList.remove('show');
+                flowchartBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,98 @@
+{
+    "Identifiant_Deposant": [
+        {
+            "idscv": "882596131342467498768843944237",
+            "version": "4",
+            "typePersonne": "VAL",
+            "nom": "SqYrMCwfogkWPnVdGejHbyrwCJhEgYERTwMpwVkx",
+            "prenom": "DkFXZRDzJWiIWPnIrzZHIkIZnhyCASjoYOaBOyeN",
+            "dateNaissance": "20/03/1952",
+            "nationalite": "VAL",
+            "formeJuridique": "VAL",
+            "natureIdentifiantDeposant": "VAL",
+            "numeroIdentifiantDeposant": "VSstUChnLecC9vJgNzLTUzkqJOYk5l",
+            "denominationSociale": "2OfVwanCnwFPm6f783bpPvWoH5g2Jrja5E5y5uKEMoOP4NDAtdjpG6bMwMmxh7SilqVgU1TkyVFAdjEKH6AFqVyMCz0sQjP1eh6E",
+            "nombreComptes": "993",
+            "isDecede": "VAL",
+            "nombreHeritiers": "522"
+        }
+    ],
+    "Infos_Contact": [
+        {
+            "adresse1": "VojYHMA79MyKx1vhNHgLd1vlLlKcKtHW7QWfbw9auB3vs34UCpEma2VwMRhPGsGCfZiyvh6ctz81zZO1l6TojLLMr43E3IjWYpz3U63psXYYomTaKRUJ8QP97iltUuf0lTRjwe6P6i1FB9UusLXbNvvDtQzsw6VMdasLOX1FbxpunzadH1xxqYTjmPGuR6Z5r353XhIT",
+            "adresse2": "vGHLsgm2yY8y4beDAxj21191SsXGaw323qnfindFxKentxD6PankybcX3pI8WiXLMZYp8iok5xLd53TdmGTfoOmX8oKrSFJZKXun3Y1eH7G8wucLjc524LwlvuGL3cg6XsNU5dQdy78PlLY7Fpygsk5RF2QVIoR7CsUOIPX5iadUPTEfQXMHQgyNFUa50tHgSc4GMovY",
+            "codePostal": "m0GhBLGywS",
+            "ville": "VAL",
+            "pays": "VAL",
+            "mobile": "WzPvpln9fnvv2pHguIkC",
+            "fixe": "75yfd1NTT3364mjnYCIw",
+            "email": "Rqm1vYvemq1LeYqignoirWC4xpcrfQdPrs8HHLksuZvo9QCc1y"
+        }
+    ],
+    "Representant_Legal": [
+        {
+            "idscv": "871334585810286355715821307916",
+            "natureIdentifiantDeposantP": "VAL",
+            "numeroIdentifiantDeposantP": "06psjSYXLUIQGJdGNGFY",
+            "nom": "nyAOiGQEztfKeWxsRzvGhHvSpgHlVLqkzXolQgBG",
+            "prenom": "HOSHFNUBgCZtLDeXoegMrBRwicAZRfIIHvKMCEnX",
+            "dateNaissance": "09/11/1973",
+            "nationalite": "IE"
+        }
+    ],
+    "Heritier": [
+        {
+            "idscv": "208035075747406672532466071376",
+            "natureIdentifiantDeposantP": "VAL",
+            "numeroIdentifiantDeposantP": "nCLlNeQq4XT2FMwOTH1e",
+            "nom": "CcxGPQYXCslpUkqVWjmVylDEFfaUWNdhkGaJwPOC",
+            "prenom": "jzgduyAvwdBOAkUUbfYnanjhrPhqDxHxOzBZEhbR",
+            "dateNaissance": "03/05/1984",
+            "nationalite": "MF",
+            "partHeritage": "568"
+        }
+    ],
+    "Representant_Legal_Heritier": [
+        {}
+    ],
+    "Compte": [
+        {
+            "rib": "785776259900134240507952",
+            "natureCompte": "VAL",
+            "nombreCoTitulaires": "3306",
+            "pcec": "VAL",
+            "devise": "VAL",
+            "nomCompte": "BklIThWYvUQreLEkNMzeqZHEVegzjcmOErYtIqvbnGXkMzKPVGAOiSQaalKRPyQPumcDIxlkFXaCSJWQRaNvKxXNyKMnajUKrqsC",
+            "isCarteBancaire": "VAL",
+            "statutCompte": "VAL",
+            "compteNSTP": "VAL",
+            "autreCompteNSTP": "Xj8jmW47omI1QTdsSfATbwGj5nTFkoe8GUF0vuObtxG4ZvAO3NynBmR6lOVTqBR4dkz5pfKjK4OQJj0vSvsi5prGkoItIEjj8XEwxweRI9dWPBiPxpTtiMXZk1GBDwwP3d2TiYsuQ3C6eL4YgIxtgkzG1xakgvmd10rXHZCHLM455fkyvw4fwX9m97jPMBNaHByvbjjBRv8PDWh3R59tIi32doeWBKVK2LVdmMXzJjNwbDR6TZaXDqXuQIVclPfeL0564JpoogyzJIKbK6Q6coWMHHAdlIYgthtnYvuAYW34",
+            "sensSolde": "VAL",
+            "montantTotalSolde": 5142.89,
+            "montantTotalDettes": 5134.15,
+            "montantTotalDebits": 3691.85,
+            "montantTotalAgios": 5594.58,
+            "montantTotalGarantie": 1810.47,
+            "montantTotalInterets": 1500.19
+        }
+    ],
+    "Prelevement": [
+        {
+            "montant": 7078.65,
+            "nature": "VAL",
+            "natureAutre": "FaMRR"
+        }
+    ],
+    "Cotitulaire": [
+        {
+            "idscv": "636050168137376455459706395176",
+            "partCoTitulaire": "36"
+        }
+    ],
+    "Carte_Bancaire": [
+        {
+            "numeroCarte": "3775103416877003",
+            "validite": "24/10/1998"
+        }
+    ]
+}
