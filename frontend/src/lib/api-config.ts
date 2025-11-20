@@ -3,20 +3,19 @@
  * Gère automatiquement l'environnement (dev/production)
  */
 
-// Détection automatique de l'environnement
+// Détection automatique de l'URL backend
 const getApiBaseUrl = (): string => {
-    // En priorité : variable d'environnement explicite
+    // Priorité : variable d'environnement explicite
     if (process.env.NEXT_PUBLIC_API_URL) {
         return process.env.NEXT_PUBLIC_API_URL;
     }
 
-    // Sinon, détection automatique selon l'environnement
+    // Sinon détection automatique
     if (process.env.NODE_ENV === 'production') {
-        // URL de production sur Render
         return 'https://processmate-back.onrender.com';
     }
 
-    // Par défaut : développement local
+    // Par défaut : local
     return 'http://localhost:8002';
 };
 
@@ -26,17 +25,38 @@ export const API_CONFIG = {
     baseUrl: API_BASE_URL,
 
     endpoints: {
-        // Clinic endpoints
-        parse: '/api/parse',
-        parseDownload: '/api/parse/download',
-        generateFlowchart: '/api/generate-flowchart',
-        generateDotOnly: '/api/generate-dot-only',
-        generateBPMN: '/api/generate-bpmn',
+        /* ---------------------- PARSER ---------------------- */
+        parse: '/api/parser/parse',
+        parseText: '/api/parser/parse-text',
+        parseDownload: '/api/parser/parse-download',
+        analyze: '/api/parser/analyze',
 
-        // ProcessMate endpoints
-        transcribe: '/api/transcribe',
-        imgToBpmn: '/api/img-to-bpmn',
+        /* ---------------------- FLOWCHART ---------------------- */
+        generateFlowchart: '/api/flowchart/generate',
+        generateFlowchartFromJson: '/api/flowchart/generate-from-json',
+        generateDotOnly: '/api/flowchart/generate-dot-only',
+        flowchartFormats: '/api/flowchart/formats',
+
+        /* ---------------------- BPMN ---------------------- */
+        generateBPMN: '/api/bpmn/generate',
+        generateBPMNxml: '/api/bpmn/generate-xml',
+        bpmnFormats: '/api/bpmn/formats',
+        bpmnInfo: '/api/bpmn/info',
+
+        /* ---------------------- BPMN AI ---------------------- */
+        bpmnAiEnrichTable: '/api/bpmn-ai/enrich-table',
+        bpmnAiInfo: '/api/bpmn-ai/info',
+
+        /* ---------------------- IMG → BPMN ---------------------- */
+        imgToBpmnAnalyze: '/api/img-to-bpmn/analyze',
         imgToBpmnImprove: '/api/img-to-bpmn/improve',
+        imgToBpmnBatchAnalyze: '/api/img-to-bpmn/batch-analyze',
+        imgToBpmnInfo: '/api/img-to-bpmn/info',
+
+        /* ---------------------- ROOT & HEALTH ---------------------- */
+        apiRoot: '/api',
+        health: '/health',
+        quickStart: '/api/quick-start',
     },
 
     /**
@@ -73,7 +93,7 @@ export const API_CONFIG = {
     }
 };
 
-// Log de l'environnement au chargement (seulement en dev côté client)
+// Log de debug en dev (côté navigateur)
 if (typeof window !== 'undefined' && API_CONFIG.isDevelopment()) {
     console.log('🔧 API Configuration:', API_CONFIG.getEnvironmentInfo());
 }
