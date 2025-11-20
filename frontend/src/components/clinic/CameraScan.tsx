@@ -1,58 +1,66 @@
-import { useState, useRef, useEffect } from 'react';
-import { Camera, X, Check, RotateCw } from 'lucide-react';
+"use client";
 
-interface CameraScanProps {
-    onImageCaptured: (file: File) => void;
+import { useRef, useState, useEffect } from "react";
+import { Table1Row } from "@/logic/bpmnGenerator";
+import { API_CONFIG } from "@/lib/api-config";
+import {
+    Camera,
+    Loader2,
+    Trash2,
+    Image as ImageIcon,
+    Info,
+    ChevronDown,
+    ChevronUp,
+    Scan
+} from "lucide-react";
+
+interface CameraScanSectionProps {
+    onWorkflowExtracted: (workflow: Table1Row[]) => void;
     onError: (message: string) => void;
+    onSuccess: (message: string) => void;
 }
 
-export default function CameraScan({ onImageCaptured, onError }: CameraScanProps) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [stream, setStream] = useState<MediaStream | null>(null);
-    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
+export default function CameraScanSection({
+    onWorkflowExtracted,
+    onError,
+    onSuccess
+}: CameraScanSectionProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Démarrer la caméra
+    const [stream, setStream] = useState<MediaStream | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [capturing, setCapturing] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [showGuide, setShowGuide] = useState(true);
+
+    // --- Start camera ---
     const startCamera = async () => {
         try {
+            setCapturing(true);
             const mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: facingMode,
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                }
+                video: { facingMode: "user" } // Caméra avant du PC
             });
-
             setStream(mediaStream);
             if (videoRef.current) {
                 videoRef.current.srcObject = mediaStream;
+                await videoRef.current.play();
             }
-            setIsOpen(true);
+            setCapturing(false);
         } catch (err) {
             onError("Impossible d'accéder à la caméra. Vérifiez les permissions.");
-            console.error(err);
+            setCapturing(false);
         }
     };
 
-    // Arrêter la caméra
+    // --- Stop camera ---
     const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-        setIsOpen(false);
+        stream?.getTracks().forEach((track) => track.stop());
+        setStream(null);
     };
 
-    // Changer de caméra (avant/arrière)
-    const switchCamera = async () => {
-        stopCamera();
-        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
-        setTimeout(() => startCamera(), 100);
-    };
-
-    // Capturer l'image
-    const captureImage = () => {
+    // --- Capture image ---
+    const capturePhoto = () => {
         if (!videoRef.current || !canvasRef.current) return;
 
         const video = videoRef.current;
@@ -61,102 +69,201 @@ export default function CameraScan({ onImageCaptured, onError }: CameraScanProps
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
         ctx.drawImage(video, 0, 0);
 
-        canvas.toBlob((blob) => {
-            if (blob) {
-                const file = new File([blob], `scan-${Date.now()}.jpg`, { type: 'image/jpeg' });
-                onImageCaptured(file);
-                stopCamera();
-            }
-        }, 'image/jpeg', 0.95);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        setPreviewUrl(dataUrl);
+        stopCamera(); // stop after capture
+        uploadFromDataUrl(dataUrl);
     };
 
-    // Nettoyer au démontage
+    // --- Upload captured image ---
+    const uploadFromDataUrl = async (dataUrl: string) => {
+        setUploading(true);
+        try {
+            // Convert base64 → File
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const url = API_CONFIG.getFullUrl(API_CONFIG.endpoints.imgToBpmn + "/analyze");
+
+            const response = await fetch(url, {
+                method: "POST",
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || "Erreur lors de l'analyse.");
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.workflow) {
+                onWorkflowExtracted(result.workflow);
+                onSuccess(`${result.steps_count} étapes extraites avec succès.`);
+            } else {
+                throw new Error("Réponse invalide du serveur.");
+            }
+        } catch (err: any) {
+            onError(err.message || "Erreur lors de l'analyse de l'image.");
+            setPreviewUrl(null);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleClear = () => {
+        setPreviewUrl(null);
+        stopCamera();
+    };
+
+    const restartScan = () => {
+        setPreviewUrl(null);
+        startCamera();
+    };
+
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
+            stopCamera();
         };
-    }, [stream]);
+    }, []);
 
     return (
-        <>
-            {/* Bouton pour ouvrir la caméra */}
-            <button
-                onClick={startCamera}
-                className="px-6 py-3 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-all flex items-center gap-2"
-            >
-                <Camera className="w-4 h-4" />
-                Scanner un document
-            </button>
+        <div className="mb-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-lg p-6">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+                <Scan className="w-7 h-7 text-blue-700" />
+                <div>
+                    <h2 className="text-xl font-bold text-blue-900">
+                        Scanner avec votre webcam
+                    </h2>
+                    <p className="text-sm text-blue-700">
+                        Utilisez votre caméra avant pour capturer un diagramme de processus.
+                    </p>
+                </div>
+            </div>
 
-            {/* Modal de la caméra */}
-            {isOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-                    <div className="relative w-full max-w-4xl">
-                        {/* En-tête */}
-                        <div className="absolute top-0 left-0 right-0 bg-black bg-opacity-50 p-4 flex justify-between items-center z-10">
-                            <h3 className="text-white font-semibold text-lg">Scanner le document</h3>
-                            <button
-                                onClick={stopCamera}
-                                className="text-white hover:text-red-400 transition-colors"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
+            {/* CAMERA VIEW */}
+            {!previewUrl && (
+                <div className="border-2 border-dashed rounded-lg p-6 transition-all text-center bg-white border-blue-200">
+                    <video
+                        ref={videoRef}
+                        className="w-full max-h-72 rounded-lg bg-black mx-auto"
+                        style={{ transform: 'scaleX(-1)' }} // Miroir pour caméra avant
+                    />
 
-                        {/* Vidéo */}
-                        <div className="relative bg-black rounded-lg overflow-hidden">
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                className="w-full h-auto"
-                            />
-
-                            {/* Grille d'aide */}
-                            <div className="absolute inset-0 pointer-events-none">
-                                <div className="w-full h-full border-2 border-white border-dashed opacity-30 m-4"></div>
-                            </div>
-                        </div>
-
-                        {/* Contrôles */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-6 flex justify-center items-center gap-6">
-                            <button
-                                onClick={switchCamera}
-                                className="p-4 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors"
-                                title="Changer de caméra"
-                            >
-                                <RotateCw className="w-6 h-6" />
-                            </button>
-
-                            <button
-                                onClick={captureImage}
-                                className="p-6 bg-white hover:bg-gray-200 text-gray-900 rounded-full transition-all transform hover:scale-105 shadow-lg"
-                                title="Capturer"
-                            >
-                                <Check className="w-8 h-8" />
-                            </button>
-
-                            <button
-                                onClick={stopCamera}
-                                className="p-4 bg-red-600 hover:bg-red-700 text-white rounded-full transition-colors"
-                                title="Annuler"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Canvas caché pour la capture */}
-                    <canvas ref={canvasRef} className="hidden" />
+                    {!stream ? (
+                        <button
+                            onClick={startCamera}
+                            disabled={capturing}
+                            className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700 disabled:opacity-50 transition-colors mx-auto"
+                        >
+                            {capturing ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Camera className="w-5 h-5" />
+                            )}
+                            {capturing ? 'Initialisation...' : 'Activer la webcam'}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={capturePhoto}
+                            className="mt-4 px-6 py-3 bg-green-600 text-white rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors mx-auto"
+                        >
+                            <Camera className="w-5 h-5" />
+                            Capturer l'image
+                        </button>
+                    )}
                 </div>
             )}
-        </>
+
+            {/* HIDDEN CANVAS FOR CAPTURE */}
+            <canvas ref={canvasRef} className="hidden" />
+
+            {/* PREVIEW */}
+            {previewUrl && (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-lg p-4 border-2 border-blue-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                                <ImageIcon className="w-4 h-4" /> Image capturée
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={restartScan}
+                                    className="flex items-center gap-1 text-blue-600 border border-blue-300 px-3 py-1 rounded-md hover:bg-blue-50 text-sm"
+                                >
+                                    <Camera className="w-4 h-4" />
+                                    Reprendre
+                                </button>
+                                <button
+                                    onClick={handleClear}
+                                    className="flex items-center gap-1 text-red-600 border border-red-300 px-3 py-1 rounded-md hover:bg-red-50 text-sm"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Effacer
+                                </button>
+                            </div>
+                        </div>
+                        <img
+                            src={previewUrl}
+                            alt="Capture"
+                            className="max-w-full max-h-64 rounded-lg shadow-md border-2 border-gray-200 mx-auto"
+                        />
+                    </div>
+
+                    {uploading && (
+                        <div className="flex items-center justify-center gap-2 p-4 bg-blue-50 rounded-lg">
+                            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                            <span className="text-blue-700 font-medium">Analyse en cours...</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Guide */}
+            <div className="bg-white rounded-lg border-2 border-blue-100 overflow-hidden mt-4">
+                <button
+                    onClick={() => setShowGuide((prev) => !prev)}
+                    className="w-full flex justify-between items-center px-4 py-3 bg-blue-50 hover:bg-blue-100 text-blue-900 font-semibold"
+                >
+                    <span className="flex items-center gap-2">
+                        <Info className="w-5 h-5" />
+                        Conseils pour une bonne capture
+                    </span>
+                    {showGuide ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </button>
+
+                {showGuide && (
+                    <div className="p-4 border-t border-blue-100">
+                        <ul className="text-sm text-blue-700 space-y-2">
+                            <li>• Utilisez la caméra avant pour une meilleure visibilité</li>
+                            <li>• Assurez-vous d'un bon éclairage sans reflets</li>
+                            <li>• Maintenez le dispositif stable pendant la capture</li>
+                            <li>• Cadrez bien l'ensemble du diagramme</li>
+                            <li>• Les textes doivent être nets et lisibles</li>
+                            <li>• Évitez les ombres portées sur le document</li>
+                        </ul>
+                    </div>
+                )}
+            </div>
+
+            {/* Message d'information pour les permissions */}
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    <strong>Autorisation requise :</strong> Votre navigateur va demander l'accès à votre caméra. Cliquez sur "Autoriser" pour continuer.
+                </p>
+            </div>
+        </div>
     );
 }

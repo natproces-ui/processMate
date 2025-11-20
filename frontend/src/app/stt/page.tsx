@@ -3,8 +3,12 @@
 import { useState } from "react";
 import { generateBPMN, Table1Row } from "@/logic/bpmnGenerator";
 import BPMNViewer from "@/components/BPMNViewer";
-import ImageUploadSection from "@/components/ImgUpload";
-import { FileText, Mic, Square, Sparkles, FileDown, RotateCcw, Trash2, Plus, ChevronDown, ChevronUp, AlertCircle, CheckCircle, Info } from "lucide-react";
+import ImageUploadSection from "@/components/clinic/ImgUpload";
+import CameraScanSection from "@/components/clinic/CameraScan";
+import {
+    FileText, Mic, Square, Sparkles, FileDown, RotateCcw, Trash2, Plus, ChevronDown, ChevronUp, AlertCircle, CheckCircle, Info, Camera,
+    ImageIcon
+} from "lucide-react";
 import { API_CONFIG } from "@/lib/api-config";
 
 // ===== DONNÉES PAR DÉFAUT (Processus création compte bancaire) =====
@@ -60,6 +64,7 @@ export default function VoiceProcessPage() {
     const [showDiagram, setShowDiagram] = useState(false);
     const [bpmnXml, setBpmnXml] = useState<string>("");
     const [guideOpen, setGuideOpen] = useState(false);
+    const [activeUploadTab, setActiveUploadTab] = useState<'upload' | 'camera'>('upload');
 
     const showError = (message: string) => {
         setError(message);
@@ -308,12 +313,47 @@ export default function VoiceProcessPage() {
                 </div>
             )}
 
-            {/* SECTION IMAGE UPLOAD */}
-            <ImageUploadSection
-                onWorkflowExtracted={handleImageWorkflowExtracted}
-                onError={showError}
-                onSuccess={showSuccess}
-            />
+            {/* SECTION UPLOAD/SCAN AVEC ONGLETS */}
+            <div className="mb-6">
+                {/* Sélecteur d'onglets */}
+                <div className="flex border-b border-gray-200 mb-4">
+                    <button
+                        onClick={() => setActiveUploadTab('upload')}
+                        className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${activeUploadTab === 'upload'
+                            ? 'text-blue-600 border-b-2 border-blue-600'
+                            : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        <ImageIcon className="w-4 h-4" />
+                        Upload d'image
+                    </button>
+                    <button
+                        onClick={() => setActiveUploadTab('camera')}
+                        className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors ${activeUploadTab === 'camera'
+                            ? 'text-blue-600 border-b-2 border-blue-600'
+                            : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                    >
+                        <Camera className="w-4 h-4" />
+                        Scanner avec caméra
+                    </button>
+                </div>
+
+                {/* Contenu des onglets */}
+                {activeUploadTab === 'upload' ? (
+                    <ImageUploadSection
+                        onWorkflowExtracted={handleImageWorkflowExtracted}
+                        onError={showError}
+                        onSuccess={showSuccess}
+                    />
+                ) : (
+                    <CameraScanSection
+                        onWorkflowExtracted={handleImageWorkflowExtracted}
+                        onError={showError}
+                        onSuccess={showSuccess}
+                    />
+                )}
+            </div>
 
             {/* GUIDE BPMN RÉTRACTABLE */}
             <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 rounded overflow-hidden">
