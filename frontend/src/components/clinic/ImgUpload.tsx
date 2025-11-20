@@ -61,8 +61,8 @@ export default function ImageUploadSection({
             const formData = new FormData();
             formData.append('file', file);
 
-            // ✅ API CONFIG ÉQUIVALENT À localhost OU production automatiquement
-            const url = API_CONFIG.getFullUrl(API_CONFIG.endpoints.imgToBpmn + '/analyze');
+            // ✅ Utilisation correcte de l'endpoint défini dans api-config
+            const url = API_CONFIG.getFullUrl(API_CONFIG.endpoints.imgToBpmnAnalyze);
 
             const response = await fetch(url, {
                 method: 'POST',
