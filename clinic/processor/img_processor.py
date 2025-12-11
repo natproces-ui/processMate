@@ -1,7 +1,8 @@
 """
-Processeur d'images avec Gemini 2.0 Flash
+Processeur d'images 
 Extrait les workflows depuis des images et retourne au format Table1Row
 + Amélioration de workflows existants
+VERSION AMÉLIORÉE : Prompt adaptatif avec analyse réflexive
 """
 
 import google.generativeai as genai
@@ -12,6 +13,10 @@ import re
 from typing import Dict, List, Any
 import os
 import logging
+import asyncio
+from functools import partial
+import time  # Pour backoff
+import random  # Pour jitter
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +27,21 @@ class ImageProcessor:
             raise ValueError("GOOGLE_API_KEY non configurée")
         
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash')  # ✅ Correction: flash au lieu de flash-exp
+        
+        self.model = genai.GenerativeModel(
+            'gemini-2.0-flash-live',
+            generation_config={
+                "temperature": 0.1,
+                "top_p": 0.95,
+                "top_k": 40,
+                "max_output_tokens": 16384,
+            }
+        )
+        
+        # Timeout applicatif (via asyncio.wait_for) – up pour vision lourde
+        self.request_timeout = 600  # 10 minutes pour BPMN complexes
+        self.max_retries = 3
+        self.base_backoff = 1  # Start à 1s
     
     async def extract_workflow(self, image_data: bytes, content_type: str) -> Dict[str, Any]:
         """
@@ -38,9 +57,55 @@ class ImageProcessor:
         try:
             image = Image.open(io.BytesIO(image_data))
             
+            # Optimisation : Resize + compression pour accélérer vision (réduit tokens)
+            max_size = 1024
+            if max(image.size) > max_size:
+                image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                # Sauvegarde en mémoire comme JPEG quality 85 (petit boost vitesse)
+                buffer = io.BytesIO()
+                image.save(buffer, format='JPEG', quality=85, optimize=True)
+                image = Image.open(buffer)
+                logger.info(f"Image optimisée: {image.size} px, ~{len(buffer.getvalue())} bytes")
+            
             prompt = self._build_extraction_prompt()
             
-            response = self.model.generate_content([prompt, image])
+            response = None
+            for attempt in range(self.max_retries + 1):
+                try:
+                    # Timeout via asyncio.wait_for (sans request_options – SDK GenAI le gère pas)
+                    response = await asyncio.wait_for(
+                        asyncio.to_thread(
+                            self.model.generate_content,  # Direct, pas de partial avec kwargs invalides
+                            [prompt, image]
+                        ),
+                        timeout=self.request_timeout
+                    )
+                    break  # Succès !
+                    
+                except asyncio.TimeoutError:
+                    error_msg = f"Timeout app après {self.request_timeout}s (tentative {attempt+1}/{self.max_retries+1})."
+                    logger.warning(error_msg)
+                    
+                except Exception as e:
+                    error_msg = str(e)
+                    if "504" in error_msg or "DeadlineExceeded" in error_msg:
+                        error_msg = f"Timeout serveur Gemini (tentative {attempt+1}/{self.max_retries+1})."
+                    else:
+                        # Log full pour debug (ex. quotas, auth)
+                        logger.error(f"Erreur inattendue tentative {attempt+1}: {error_msg}")
+                    logger.warning(error_msg)
+                    
+                if attempt < self.max_retries:
+                    # Exponential backoff + jitter random (évite sync retries)
+                    sleep_time = self.base_backoff * (2 ** attempt) + random.uniform(0, 1)
+                    logger.info(f"Retry après {sleep_time:.1f}s (backoff + jitter)...")
+                    await asyncio.sleep(sleep_time)
+                else:
+                    raise ValueError(
+                        f"Échec après {self.max_retries+1} tentatives: {error_msg}. "
+                        "L'image est trop complexe, quotas free tier capés, ou API surchargée. "
+                        "Vérifiez quotas sur AI Studio et réessayez plus tard."
+                    )
             
             logger.info(f"✓ Réponse Gemini reçue ({len(response.text)} caractères)")
             
@@ -62,7 +127,7 @@ class ImageProcessor:
     
     async def improve_workflow(self, workflow: List[Dict[str, str]]) -> Dict[str, Any]:
         """
-        🆕 Améliore un workflow existant avec Gemini 2.0 Flash
+        🆕 Améliore un workflow existant avec Gemini 2.5 Flash
         
         Args:
             workflow: Tableau Table1Row[] existant
@@ -94,144 +159,831 @@ class ImageProcessor:
             raise ValueError(f"Impossible d'améliorer le workflow: {str(e)}")
     
     def _build_extraction_prompt(self) -> str:
-        """Construit le prompt optimisé pour Gemini - Version universelle"""
-        return """Analyse attentivement cette image de processus métier et extrait TOUTES les étapes du workflow.
+        """Construit le prompt adaptatif renforcé pour Gemini"""
+        return """Tu es un expert en extraction de processus métier depuis des diagrammes BPMN visuels.
 
-🎯 OBJECTIF: Produire un JSON qui remplira un tableau pour générer un BPMN.
+🎯 OBJECTIF: Produire un JSON structuré qui remplira un tableau pour générer un BPMN.
+Ne prends pas trop de tempss à réfléchir, mais sois méthodique et précis.
+ne neglige aucune étape visible.
 
-📊 ÉTAPE 1 : IDENTIFIER LE TYPE DE DIAGRAMME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 PHASE 1 : ANALYSE VISUELLE CRITIQUE (RÉFLEXION INTERNE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Avant de commencer l'extraction, détermine le type de diagramme :
+Avant toute extraction, **analyse méthodiquement** le diagramme :
 
-**TYPE A : DIAGRAMME AVEC SWIMLANES** (bandes horizontales ou verticales)
-- Les acteurs sont dans des en-têtes de lignes/colonnes séparées
-- Exemple : "Client", "Agence", "Back Office International"
-- Les tâches sont positionnées DANS ces bandes
+1️⃣ **STRUCTURE DES SWIMLANES** :
+   - Y a-t-il des bandes horizontales/verticales avec en-têtes ? (swimlanes = acteurs)
+   - Les en-têtes sont-ils en haut, à gauche, ou dans une colonne dédiée ?
+   - Exemples typiques d'en-têtes : "Client", "Agence/Chef de caisse", "CAE/Middle Office BPP", 
+     "Gestionnaire des opérations Back Office International", "Mandataires habilités"
 
-**TYPE B : DIAGRAMME SÉQUENTIEL SANS SWIMLANES**
-- Pas de bandes de séparation visibles
-- Les acteurs sont écrits DANS les rectangles des tâches
-- Exemple : "Engineering Team Lead review", "Editor", "Project Manager review"
-- Flux horizontal ou vertical sans séparation d'acteurs
+2️⃣ **DISTINCTION ACTEURS vs OUTILS (⚠️ CRITIQUE)** :
+   
+   **ACTEURS** = Rôles humains ou organisationnels qui EXÉCUTENT les tâches
+   - Positionnés dans les en-têtes de swimlanes (bandes)
+   - Exemples : "Nov@ OA" n'est JAMAIS un acteur, c'est un outil !
+   - Acteurs valides : "Client", "Gestionnaire", "CAE/Middle Office", "Mandataires habilités"
+   
+   **OUTILS** = Systèmes informatiques UTILISÉS pour réaliser les tâches
+   - Mentionnés À CÔTÉ ou DANS les rectangles/cercles d'étapes
+   - Souvent avec @ ou des icônes : "Nov@ OA", "Nov@ CL", "TI+", "Portal", "CRM", "Email"
+   - Peuvent apparaître en annotations près des formes géométriques
+   
+   ⚠️ **RÈGLE ABSOLUE** :
+   - Si tu vois "Nov@ OA" ou tout autre nom de système PRÈS d'une forme → c'est un OUTIL, pas un acteur
+   - L'acteur est celui dans l'EN-TÊTE de la swimlane où se trouve cette forme
+   - Ne JAMAIS mettre un outil dans le champ "acteur"
 
-📋 FORMAT JSON ATTENDU (STRICT):
+3️⃣ **HIÉRARCHIE DES GROUPEMENTS** :
+   
+   **CAGES/RECTANGLES ENGLOBANTS** = Groupes d'étapes sous un titre commun
+   - Un rectangle avec un titre général contient PLUSIEURS formes à l'intérieur
+   - Exemple : "Identification du souscripteur" n'est PAS une étape unique, mais un TITRE
+     pour plusieurs étapes : "Recherche client", "Entretien", "Définir usage", etc.
+   
+   **RÈGLE** : Si un rectangle contient d'autres formes, c'est un GROUPEMENT, pas une étape
+
+4️⃣ **IDENTIFICATION PRÉCISE DES FORMES BPMN** :
+   
+   **Cercles/ovales** :
+   - Simple (trait fin) = **StartEvent** (début du processus)
+   - Double/épais/rempli = **EndEvent** (fin du processus)
+   - ⚠️ Ne confonds PAS un cercle avec annotation "Nov@ OA" avec un acteur !
+   
+   **Rectangles** :
+   - Coins droits ou arrondis = **Task** (action à réaliser)
+   - Peut contenir du texte OU avoir du texte à côté avec un trait
+   - Si un trait relie un texte à un rectangle peu visible → c'est quand même une Task
+   
+   **Losanges** :
+   - = **ExclusiveGateway** (décision binaire ou multiple)
+   - Doit avoir AU MOINS 2 sorties (Oui/Non, Approuvé/Rejeté, etc.)
+   
+   **Annotations sur flèches** :
+   - Labels comme "Oui", "Non", "Conforme", "Rejeté" → ce sont des CONDITIONS de flux
+   - ⚠️ Ce ne sont PAS des étapes ! Ne crée pas d'entrée JSON pour elles
+
+5️⃣ **FLUX ET GATEWAYS COMPLEXES** :
+   
+   **Gateway avec retour en arrière** :
+   - Un Gateway peut rediriger vers une étape précédente (boucle)
+   - Exemple : "Justificatifs conformes ?" → Non → retour à "Analyser dossier"
+   
+   **Gateway avec jonction (OU logique)** :
+   - Après un Gateway, plusieurs chemins peuvent SE REJOINDRE sur une même étape
+   - Exemple : Gateway → "Oui" → Task A ; Gateway → "Non" → End Event
+   
+   **Séquence Gateway → Gateway** :
+   - Un Gateway peut mener à un autre Gateway
+   - Chaque Gateway doit être une étape distincte avec sa propre condition
+
+6️⃣ **END EVENTS vs TASKS FINALES** :
+   
+   ⚠️ **DISTINCTION CRUCIALE** :
+   - **EndEvent** = Cercle épais/double qui TERMINE le processus (pas de sortie)
+   - **Task finale** = Rectangle qui peut avoir une sortie vers un EndEvent
+   
+   Exemple incorrect : "Surseoir à la demande" → si c'est un cercle épais, c'est un EndEvent
+   Exemple correct : "Transmettre bordereau" (rectangle) → outputOui → EndEvent (cercle)
+   les endevents doivent être palces daans les swimlanes appropriées
+   on n'invante pas de endevent ni de swimlane
+   les endevents ne doivent jamais avoir des acteurs vides
+   les endevents et les taches peuvent avoir les memes  acteurs ou swimlanes  si cest ce que l'on voit sur l'image
+   ne veux pas que ya une regle impose pour un swimlane donnee. tu 
+   tu remplis le json selon ce que tu as vu sur l'image sans casser la structure, les appartenances aux acteurs
+
+   on sait que tu est fort,
+   tu dois pouvoir bien lire et comprendre les elements sur l'images, pouvoir reflechir et extraire tout ce qui est visible pour faire un json parfait
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🖊️ PHASE 1.5 : TRAITEMENT DES DIAGRAMMES MANUSCRITS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ **SI LE DIAGRAMME EST MANUSCRIT** (traits irréguliers, écriture à la main) :
+
+🎯 **OBJECTIF** : Produire UN SEUL FLOW JSON continu, COHÉRENT et PROFESSIONNEL, même si le manuscrit est imparfait.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 MÉTHODOLOGIE EN 4 ÉTAPES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**ÉTAPE 1 : SCANNER ET IDENTIFIER**
+- Repère TOUTES les formes (cercles, rectangles, losanges) sur TOUTE la page
+- Note TOUTES les zones/sections (même avec titres différents)
+- Suis TOUTES les flèches (même imparfaites, en pointillés, courbées)
+
+**ÉTAPE 2 : CORRIGER ET REFORMULER (⚠️ CRITIQUE)**
+
+Les manuscrits contiennent souvent des erreurs. Tu dois les CORRIGER :
+
+✅ **Orthographe et grammaire** :
+- "Controle des docs" → "Contrôle des documents"
+- "Validat" → "Validation"
+- "traitemt ope" → "Traitement opérationnel"
+- "Notife-mail" → "Notification par email"
+- "Aller-Retour client" → "Aller-retour avec le client"
+
+✅ **Verbes à l'infinitif** :
+- "Blocage prov" → "Bloquer provisoirement"
+- "Scan DOCS" → "Scanner les documents"
+- "Validat SWIFT" → "Valider le message SWIFT"
+
+✅ **Textes incomplets ou abrégés** :
+- "docs" → "documents"
+- "prov" → "provisoire/provisoirement"
+- "ope" → "opération/opérationnel"
+- "motif" → "motif de rejet"
+
+✅ **Contextualisation** :
+- Si tu vois "Rejet + motif" → reformule en "Notifier le rejet avec motif"
+- Si tu vois "KO" seul → déduis du contexte : "Validation KO" → étape "Gestion du refus"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 NORMALISATION DES GATEWAYS (⚠️ RÈGLE ABSOLUE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**TOUS les ExclusiveGateway doivent avoir des sorties Oui/Non LOGIQUES**
+
+📌 **CAS 1 : Gateway avec OK/KO**
+```
+Manuscrit :  [Losange] "OK ?" 
+             ↓ OK        ↓ KO
+```
+✅ **Transformation** :
+```json
+{
+  "id": "X",
+  "étape": "Contrôle validé ?",  // ou "Analyse positive ?" selon contexte
+  "typeBpmn": "ExclusiveGateway",
+  "condition": "Contrôle validé ?",
+  "outputOui": "Y",    // → Chemin OK
+  "outputNon": "Z"     // → Chemin KO
+}
+```
+
+📌 **CAS 2 : Gateway avec Succès/Échec**
+```
+Manuscrit :  [Losange] après "Effectuer tâche"
+             ↓ Succès    ↓ Échec
+```
+✅ **Transformation** :
+```json
+{
+  "id": "X",
+  "étape": "Tâche effectuée avec succès ?",
+  "typeBpmn": "ExclusiveGateway",
+  "condition": "Tâche effectuée avec succès ?",
+  "outputOui": "Y",    // → Succès
+  "outputNon": "Z"     // → Échec
+}
+```
+
+📌 **CAS 3 : Gateway avec Conforme/Non conforme**
+```
+Manuscrit :  [Losange] "Conforme ?"
+             ↓ Conforme    ↓ Non conforme
+```
+✅ **Transformation** :
+```json
+{
+  "id": "X",
+  "étape": "Documents conformes ?",
+  "typeBpmn": "ExclusiveGateway",
+  "condition": "Documents conformes ?",
+  "outputOui": "Y",    // → Conforme
+  "outputNon": "Z"     // → Non conforme
+}
+```
+
+📌 **CAS 4 : Gateway avec Oui/Non (déjà bon)**
+```
+Manuscrit :  [Losange] "Validat ?"
+             ↓ Oui      ↓ Non
+```
+✅ **Transformation** :
+```json
+{
+  "id": "X",
+  "étape": "Validation approuvée ?",
+  "typeBpmn": "ExclusiveGateway",
+  "condition": "Validation approuvée ?",
+  "outputOui": "Y",
+  "outputNon": "Z"
+}
+```
+
+📌 **CAS 5 : Gateway implicite (pas de texte clair)**
+```
+Manuscrit :  [Losange] sans texte, après "Analyser dossier"
+             ↓ une flèche    ↓ une flèche
+```
+✅ **Déduction contextuelle** :
+```json
+{
+  "id": "X",
+  "étape": "Dossier validé ?",
+  "typeBpmn": "ExclusiveGateway",
+  "condition": "Dossier validé ?",
+  "outputOui": "Y",
+  "outputNon": "Z"
+}
+```
+
+🚨 **RÈGLE ABSOLUE** : 
+- **JAMAIS** de "OK/KO", "Succès/Échec", "Conforme/Non conforme" dans outputOui/outputNon
+- **TOUJOURS** transformer en question claire avec réponse Oui/Non
+- **TOUJOURS** garder la LOGIQUE : ce qui était "OK" devient outputOui, ce qui était "KO" devient outputNon
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**ÉTAPE 3 : COMPRENDRE LES CONNEXIONS**
+- Les flèches montrent les connexions RÉELLES entre zones
+- Une flèche qui traverse les zones = ces zones sont CONNECTÉES
+- Si Zone A → flèche → Zone B : outputOui de dernière étape de A pointe vers première étape de B
+
+**ÉTAPE 4 : FUSIONNER EN UN SEUL FLOW**
+- **UN SEUL StartEvent** au début du processus global
+- **Toutes les sections sont des BRANCHES** d'un même processus
+- Les branches se rejoignent sur le flux principal via les connexions
+- **Plusieurs EndEvent possibles** selon les issues (succès, rejet, report, etc.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 ERREURS À ÉVITER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ **Copier-coller le texte manuscrit** tel quel (avec fautes, abrévations)
+❌ **Créer plusieurs StartEvent** indépendants (sauf si vraiment séparés)
+❌ **Laisser "OK/KO"** au lieu de "Oui/Non" dans les Gateway
+❌ **Perdre des connexions** entre zones du diagramme
+❌ **Inventer des étapes** qui n'existent pas visuellement
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ BONNES PRATIQUES OBLIGATOIRES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ **Corriger, reformuler, professionnaliser** le texte manuscrit
+✅ **Normaliser TOUS les Gateway** en questions Oui/Non
+✅ **Suivre TOUTES les flèches** pour capturer toutes les connexions
+✅ **Produire UN flow CONTINU et LOGIQUE**
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ EXEMPLE COMPLET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Manuscrit vu** :
+- Cercle : "Présntat en agence"
+- Rectangle : "Scan DOCS" avec "Nova Caisse" à côté
+- Rectangle : "Controle des docs" 
+- Losange : "OK ?" → OK vers "Blocage prov" / KO vers "Validat ?"
+- Losange : "Validat ?" → Oui vers "Aller-Retour client" / Non vers "Rejet + motif"
+
+**JSON corrigé** :
+```json
+{
+  "workflow": [
+    {
+      "id": "1",
+      "étape": "Présentation en agence",
+      "typeBpmn": "StartEvent",
+      "département": "Commercial",
+      "acteur": "Client",
+      "condition": "",
+      "outputOui": "2",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "2",
+      "étape": "Scanner les documents",
+      "typeBpmn": "Task",
+      "département": "Back Office",
+      "acteur": "BOI",
+      "condition": "",
+      "outputOui": "3",
+      "outputNon": "",
+      "outil": "Nova Caisse"
+    },
+    {
+      "id": "3",
+      "étape": "Contrôle des documents",
+      "typeBpmn": "Task",
+      "département": "Back Office",
+      "acteur": "BOI",
+      "condition": "",
+      "outputOui": "4",
+      "outputNon": "",
+      "outil": "Nova BO"
+    },
+    {
+      "id": "4",
+      "étape": "Contrôle validé ?",
+      "typeBpmn": "ExclusiveGateway",
+      "département": "Back Office",
+      "acteur": "BOI",
+      "condition": "Contrôle validé ?",
+      "outputOui": "5",
+      "outputNon": "6",
+      "outil": ""
+    },
+    {
+      "id": "5",
+      "étape": "Bloquer provisoirement",
+      "typeBpmn": "Task",
+      "département": "Back Office",
+      "acteur": "BOI",
+      "condition": "",
+      "outputOui": "6",
+      "outputNon": "",
+      "outil": "BO Main"
+    },
+    {
+      "id": "6",
+      "étape": "Validation approuvée ?",
+      "typeBpmn": "ExclusiveGateway",
+      "département": "Agence",
+      "acteur": "Agence",
+      "condition": "Validation approuvée ?",
+      "outputOui": "7",
+      "outputNon": "8",
+      "outil": ""
+    },
+    {
+      "id": "7",
+      "étape": "Aller-retour avec le client",
+      "typeBpmn": "Task",
+      "département": "Agence",
+      "acteur": "Agence",
+      "condition": "",
+      "outputOui": "9",
+      "outputNon": "",
+      "outil": "Nova Caisse"
+    },
+    {
+      "id": "8",
+      "étape": "Notifier le rejet avec motif",
+      "typeBpmn": "Task",
+      "département": "Back Office",
+      "acteur": "BOI",
+      "condition": "",
+      "outputOui": "10",
+      "outputNon": "",
+      "outil": "Nova BO Main"
+    },
+    {
+      "id": "9",
+      "étape": "Fin du processus (validation)",
+      "typeBpmn": "EndEvent",
+      "département": "Agence",
+      "acteur": "",
+      "condition": "",
+      "outputOui": "",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "10",
+      "étape": "Fin du processus (rejet)",
+      "typeBpmn": "EndEvent",
+      "département": "Back Office",
+      "acteur": "",
+      "condition": "",
+      "outputOui": "",
+      "outputNon": "",
+      "outil": ""
+    }
+  ]
+}
+```
+
+🎯 **VÉRIFICATION FINALE** :
+Avant de retourner le JSON, vérifie :
+✓ Toutes les fautes d'orthographe corrigées ?
+✓ Tous les Gateway ont des conditions en questions Oui/Non ?
+✓ Toutes les connexions (flèches) sont capturées ?
+✓ Le flow est CONTINU, LOGIQUE et fait DU SENS métier ?
+✓ Les acteurs sont dans les swimlanes, pas les outils ?
+
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PHASE 2 : EXTRACTION AU FORMAT JSON STRICT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**FORMAT OBLIGATOIRE** :
 {
   "workflow": [
     {
       "id": "1",
       "étape": "Nom descriptif de l'action",
-      "typeBpmn": "StartEvent",
-      "département": "Service concerné",
-      "acteur": "Rôle responsable",
-      "condition": "",
-      "outputOui": "2",
-      "outputNon": "",
-      "outil": "Système/Application mentionné"
+      "typeBpmn": "StartEvent | Task | ExclusiveGateway | EndEvent",
+      "département": "Service métier déduit",
+      "acteur": "Rôle responsable depuis swimlane",
+      "condition": "Question pour Gateway (sinon vide)",
+      "outputOui": "ID étape suivante",
+      "outputNon": "ID alternatif (Gateway uniquement)",
+      "outil": "Système informatique utilisé (sinon vide)"
     }
   ]
 }
 
-🔤 TYPES BPMN (obligatoire)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RÈGLES D'EXTRACTION RENFORCÉES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-"StartEvent" : Point de départ (cercle simple, ovale, souvent vert)
-"EndEvent" : Point de fin (cercle épais/doublé, ovale, souvent rouge/noir)
-"Task" : Action/activité à réaliser (rectangle)
-"ExclusiveGateway" : Décision (losange), pouvant avoir 2 sorties ou plus
+📌 **EXTRACTION DES ACTEURS (SELON STRUCTURE DÉTECTÉE)** :
 
-⚠️ Important :
-- Seuls les éléments dans des rectangles, cercles, ovales ou losanges sont des étapes
-- Les annotations sur les flèches ne sont pas des étapes, mais des conditions de flux
-- Les éléments flottants non contenus dans une forme BPMN ne sont pas des étapes
-
-🚨 RÈGLES D'EXTRACTION DES ACTEURS (SELON LE TYPE)
-
-📌 **SI TYPE A (AVEC SWIMLANES)** :
-
-✅ **ACTEUR** : Copie EXACTEMENT le texte de la swimlane (bande horizontale/verticale)
-   - Exemple swimlane : "Gestionnaire des opérations Back Office International"
-   - → acteur: "Gestionnaire des opérations Back Office International"
-   - **NE JAMAIS décomposer ou interpréter, COPIE TEL QUEL**
-
-✅ **DÉPARTEMENT** : Déduis le service métier général
-   - Exemples : "Commercial", "Back Office", "IT", "Conformité", "Finance"
-   - Si impossible à déduire → ""
-
-📌 **SI TYPE B (SANS SWIMLANES)** :
-
-✅ **ACTEUR** : Extrait le rôle depuis le texte DANS le rectangle
-   - Exemple dans rectangle : "Engineering Team Lead review"
-   - → étape: "Review" (l'action)
-   - → acteur: "Engineering Team Lead" (le rôle)
+**CAS 1 : DIAGRAMME AVEC SWIMLANES (bandes avec en-têtes)** :
+   ✅ **acteur** = Copie EXACTEMENT le texte de l'en-tête de la swimlane
+      - "Agence/Chef de caisse Super CCO" → acteur: "Agence/Chef de caisse Super CCO"
+      - "CAE/Middle Office BPP" → acteur: "CAE/Middle Office BPP"
+      - "Gestionnaire des opérations Back Office International" → acteur: "Gestionnaire des opérations Back Office International"
+      - **NE JAMAIS raccourcir ou modifier**
    
-   Autre exemple : "Editor"
-   - → étape: "Edit content" (déduis l'action si nécessaire)
-   - → acteur: "Editor"
+   ✅ **département** = Déduis le service métier général depuis l'acteur
+      - "CAE/Middle Office" → département: "Middle Office"
+      - "Agence" → département: "Commercial"
+      - "Gestionnaire Back Office" → département: "Back Office"
+   
+   ⚠️ **ERREUR FRÉQUENTE À ÉVITER** :
+      - Si tu vois "Nov@ OA" écrit PRÈS d'une étape dans la swimlane "Client"
+      - ❌ FAUX : acteur: "Nov@ OA" (c'est un outil !)
+      - ✅ CORRECT : acteur: "Client", outil: "Nov@ OA"
 
-   Autre exemple : "Content approved or rejected"
-   - → étape: "Content approved or rejected"
-   - → acteur: "Content Manager" (déduis si contexte le permet, sinon "")
+**CAS 2 : ACTEURS DANS LES FORMES (sans swimlanes)** :
+   ✅ **acteur** = Extrait le rôle depuis le texte de la forme
+      - "Engineering Team Lead review" → acteur: "Engineering Team Lead", étape: "Review"
+      - "Editor verifies" → acteur: "Editor", étape: "Verify content"
+   
+   ✅ **département** = Déduis depuis le rôle
+      - "Engineering Team Lead" → département: "Engineering"
+      - "Project Manager" → département: "Management"
 
-✅ **DÉPARTEMENT** : Déduis depuis le contexte métier
-   - "Engineering Team Lead" → département: "Engineering"
-   - "Editor" → département: "Content"
-   - "Project Manager" → département: "Management"
-   - Si impossible → ""
+**CAS 3 : AUCUN ACTEUR VISIBLE** :
+   ✅ **acteur** = "" (chaîne vide)
+   ✅ **département** = Déduis du contexte si possible, sinon ""
+   ⚠️ **NE JAMAIS inventer d'acteurs**
 
-🔗 RÈGLES DE CONNEXION
+📌 **EXTRACTION DES OUTILS (⚠️ CRITIQUE)** :
 
-✅ **outputOui** : ID de l'étape suivante dans le flux principal
-✅ **outputNon** : ID de l'étape alternative (uniquement pour ExclusiveGateway)
+**OUTILS MÉTIER COURANTS** :
+   - Systèmes avec @ : "Nov@ OA", "Nov@ CL", "Nov@ Bank"
+   - Applications métier : "TI+", "CRM", "Portal", "SAP", "Swift"
+   - Communication : "Email", "Mail", "Fax"
+   
+**LOCALISATION DES OUTILS** :
+   - Texte À CÔTÉ d'une forme (rectangle, cercle) avec ou sans trait de liaison
+   - Annotation dans ou près d'une étape
+   - Icônes ou logos près des formes
+   
+**NORMALISATION** :
+   - "nov@ oa" → "Nov@ OA"
+   - "crm" → "CRM"
+   - "email" → "Email"
+   
+**RÈGLE** :
+   - Si un outil est mentionné → remplis le champ "outil"
+   - Si rien n'est mentionné → ""
 
-Pour les Gateways :
-- Identifie les labels sur les flèches sortantes ("Approved", "Rejected", "Oui", "Non")
-- Assigne les IDs en conséquence
+📌 **GESTION DES GROUPEMENTS (CAGES)** :
 
-🛠️ OUTILS :
-- Note tout système informatique mentionné (ex: "CRM", "NovaBOC", "TI+", "Email", "Portal")
-- Cherche dans les rectangles ou annotations
-- Si aucun outil visible → ""
+**SI tu détectes un rectangle englobant avec un titre** :
+   1. Le titre n'est PAS une étape
+   2. Extrais CHAQUE forme géométrique À L'INTÉRIEUR comme étape séparée
+   3. Respecte l'ordre visuel des étapes dans le groupe
+   
+   **Exemple** :
+   - Rectangle "Identification du souscripteur" contient :
+     → Task "Recherche client dans Nov@Bank"
+     → Task "Entretien avec le client"
+     → Task "Définir l'usage de la dotation"
+   
+   ✅ Crée 3 entrées JSON distinctes pour ces Tasks
+   ❌ NE crée PAS d'entrée pour "Identification du souscripteur"
 
-⚠️ RÈGLES STRICTES :
-1. Tous les champs doivent être présents (utilise `""` si vide)
-2. IDs séquentiels: "1", "2", "3", "4"...
-3. **JAMAIS de `null`**, toujours des chaînes vides `""`
-4. **Pour ExclusiveGateway**: condition obligatoire, outputOui ET outputNon requis
-5. **Pour Task/StartEvent/EndEvent**: condition = "", outputNon = ""
-6. Fournis **UNIQUEMENT le JSON**, sans markdown ni texte explicatif
-7. Sois **précis** et **littéral** dans l'extraction des noms
+📌 **CONNEXIONS ET FLUX COMPLEXES** :
 
-✅ EXEMPLE TYPE A (AVEC SWIMLANES) :
+**RÈGLES GÉNÉRALES** :
+   - **outputOui** = ID de l'étape suivante dans le flux principal
+   - **outputNon** = ID de l'alternative (UNIQUEMENT pour ExclusiveGateway)
+   
+**POUR LES GATEWAYS** :
+   1. Identifie les labels sur les flèches sortantes :
+      - "Oui"/"Non", "Approved"/"Rejected", "Conforme"/"Non conforme"
+   
+   2. **Flux avec retour en arrière** :
+      - Si "Non" retourne à une étape précédente → outputNon = ID de cette étape
+      - Exemple : Gateway "Conforme ?" (id: "5") → Non → "Analyser dossier" (id: "3")
+        → outputNon: "3"
+   
+   3. **Flux avec jonction (OU)** :
+      - Si plusieurs chemins se rejoignent sur une même étape
+      - Exemple : Gateway1 → Oui → Task A ; Gateway2 → Oui → Task A
+      - Les deux Gateways ont outputOui pointant vers Task A
+   
+   4. **Gateway vers Gateway** :
+      - Chaque Gateway est une étape distincte
+      - outputOui/outputNon peut pointer vers un autre Gateway
+
+**POUR LES END EVENTS** :
+   - outputOui = "" (pas de sortie)
+   - outputNon = ""
+
+📌 **CONDITIONS (pour ExclusiveGateway)** :
+
+**FORMULATION** :
+   - Extrais le texte du losange
+   - Transforme en question si nécessaire
+   - Exemples :
+     * "Dossier conforme" → condition: "Dossier conforme ?"
+     * "Justificatifs OK ?" → condition: "Justificatifs OK ?"
+     * "Approved" → condition: "Content approved ?"
+   
+**SI PAS DE TEXTE CLAIR** :
+   - Déduis depuis le contexte
+   - Exemple : Gateway après "Analyser dossier" → condition: "Analyse positive ?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ RÈGLES STRICTES DE FORMATAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. ✅ Tous les champs OBLIGATOIRES (utilise `""` si vide, JAMAIS `null`)
+2. ✅ IDs séquentiels : "1", "2", "3", "4"... (dans l'ordre du flux)
+3. ✅ Pour **ExclusiveGateway** : 
+   - condition OBLIGATOIRE (non vide)
+   - outputOui ET outputNon REQUIS (sauf si fin de processus)
+4. ✅ Pour **Task/StartEvent/EndEvent** : 
+   - condition = ""
+   - outputNon = ""
+5. ✅ **LITTÉRALITÉ** : Ne traduis pas, ne paraphrase pas les noms
+6. ✅ **EXHAUSTIVITÉ** : Extrais TOUTES les formes géométriques visibles
+7. ✅ **JSON PUR** : Retourne UNIQUEMENT le JSON, sans markdown ```json```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ EXEMPLES COMPLEXES DE RÉFÉRENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**Exemple 1 : Swimlanes + Outils + Gateway avec retour**
 {
   "workflow": [
-    {"id": "1", "étape": "Début du processus", "typeBpmn": "StartEvent", "département": "Commercial", "acteur": "Client", "condition": "", "outputOui": "2", "outputNon": "", "outil": ""},
-    {"id": "2", "étape": "Procéder au contrôle", "typeBpmn": "Task", "département": "Back Office", "acteur": "Gestionnaire des opérations Back Office International", "condition": "", "outputOui": "3", "outputNon": "", "outil": "NovaBOC"},
-    {"id": "3", "étape": "Dossier conforme ?", "typeBpmn": "ExclusiveGateway", "département": "Back Office", "acteur": "Gestionnaire des opérations Back Office International", "condition": "Dossier conforme ?", "outputOui": "4", "outputNon": "2", "outil": ""}
+    {
+      "id": "1",
+      "étape": "Saisie de la demande du crédit d'enlèvement",
+      "typeBpmn": "StartEvent",
+      "département": "Commercial",
+      "acteur": "Agence/Chef de caisse Super CCO",
+      "condition": "",
+      "outputOui": "2",
+      "outputNon": "",
+      "outil": "Nov@ OA"
+    },
+    {
+      "id": "2",
+      "étape": "Validation de la saisie de la demande",
+      "typeBpmn": "Task",
+      "département": "Commercial",
+      "acteur": "Agence/Chef de caisse Super CCO",
+      "condition": "",
+      "outputOui": "3",
+      "outputNon": "",
+      "outil": "Nov@ OA"
+    },
+    {
+      "id": "3",
+      "étape": "Analyse de la demande du crédit d'enlèvement",
+      "typeBpmn": "Task",
+      "département": "Middle Office",
+      "acteur": "CAE/Middle Office BPP",
+      "condition": "",
+      "outputOui": "4",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "4",
+      "étape": "Statuer sur la demande du crédit d'enlèvement",
+      "typeBpmn": "ExclusiveGateway",
+      "département": "Middle Office",
+      "acteur": "CAE/Middle Office BPP",
+      "condition": "Statuer sur la demande du crédit d'enlèvement",
+      "outputOui": "5",
+      "outputNon": "6",
+      "outil": ""
+    },
+    {
+      "id": "5",
+      "étape": "Validation de la saisie de la demande du crédit",
+      "typeBpmn": "Task",
+      "département": "Commercial",
+      "acteur": "Agence/Chef de caisse Super CCO",
+      "condition": "",
+      "outputOui": "7",
+      "outputNon": "",
+      "outil": "Nov@ OA"
+    },
+    {
+      "id": "6",
+      "étape": "Refus de la demande du crédit",
+      "typeBpmn": "Task",
+      "département": "Commercial",
+      "acteur": "Agence/Chef de caisse Super CCO",
+      "condition": "",
+      "outputOui": "8",
+      "outputNon": "",
+      "outil": "Nov@ OA"
+    },
+    {
+      "id": "7",
+      "étape": "Envoyer notification à l'agence",
+      "typeBpmn": "Task",
+      "département": "Back Office",
+      "acteur": "Gestionnaire Back Office",
+      "condition": "",
+      "outputOui": "9",
+      "outputNon": "",
+      "outil": "Email"
+    },
+    {
+      "id": "8",
+      "étape": "Communication du refus au client",
+      "typeBpmn": "Task",
+      "département": "Commercial",
+      "acteur": "Agence/Chef de caisse Super CCO",
+      "condition": "",
+      "outputOui": "10",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "9",
+      "étape": "Signature de la soumission cautionnée",
+      "typeBpmn": "Task",
+      "département": "Legal",
+      "acteur": "Mandataires habilités",
+      "condition": "",
+      "outputOui": "11",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "10",
+      "étape": "Fin du processus (refus)",
+      "typeBpmn": "EndEvent",
+      "département": "Commercial",
+      "acteur": "",
+      "condition": "",
+      "outputOui": "",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "11",
+      "étape": "Fin du processus (accepté)",
+      "typeBpmn": "EndEvent",
+      "département": "Legal",
+      "acteur": "",
+      "condition": "",
+      "outputOui": "",
+      "outputNon": "",
+      "outil": ""
+    }
   ]
 }
 
-✅ EXEMPLE TYPE B (SANS SWIMLANES) :
+**Exemple 2 : Groupement d'étapes dans une cage**
 {
   "workflow": [
-    {"id": "1", "étape": "Gather information", "typeBpmn": "StartEvent", "département": "Content", "acteur": "Writer", "condition": "", "outputOui": "2", "outputNon": "", "outil": ""},
-    {"id": "2", "étape": "Compose first draft", "typeBpmn": "Task", "département": "Content", "acteur": "Writer", "condition": "", "outputOui": "3", "outputNon": "", "outil": ""},
-    {"id": "3", "étape": "Submit draft for review", "typeBpmn": "Task", "département": "Content", "acteur": "Writer", "condition": "", "outputOui": "4", "outputNon": "", "outil": ""},
-    {"id": "4", "étape": "Review", "typeBpmn": "Task", "département": "Engineering", "acteur": "Engineering Team Lead", "condition": "", "outputOui": "5", "outputNon": "", "outil": ""},
-    {"id": "5", "étape": "Edit content", "typeBpmn": "Task", "département": "Content", "acteur": "Editor", "condition": "", "outputOui": "6", "outputNon": "", "outil": ""},
-    {"id": "6", "étape": "Review project", "typeBpmn": "Task", "département": "Management", "acteur": "Project Manager", "condition": "", "outputOui": "7", "outputNon": "", "outil": ""},
-    {"id": "7", "étape": "Incorporate SME feedback", "typeBpmn": "Task", "département": "Content", "acteur": "Writer", "condition": "", "outputOui": "8", "outputNon": "", "outil": ""},
-    {"id": "8", "étape": "Submit final draft", "typeBpmn": "Task", "département": "Content", "acteur": "Writer", "condition": "", "outputOui": "9", "outputNon": "", "outil": ""},
-    {"id": "9", "étape": "Content approved or rejected", "typeBpmn": "ExclusiveGateway", "département": "Management", "acteur": "Content Manager", "condition": "Content approved ?", "outputOui": "10", "outputNon": "7", "outil": ""},
-    {"id": "10", "étape": "Publish content", "typeBpmn": "EndEvent", "département": "Content", "acteur": "Writer", "condition": "", "outputOui": "", "outputNon": "", "outil": ""}
+    {
+      "id": "1",
+      "étape": "Présentation du tiers",
+      "typeBpmn": "StartEvent",
+      "département": "Commercial",
+      "acteur": "Client",
+      "condition": "",
+      "outputOui": "2",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "2",
+      "étape": "Recherche client dans Nov@Bank",
+      "typeBpmn": "Task",
+      "département": "Agence",
+      "acteur": "Nov@ CL",
+      "condition": "",
+      "outputOui": "3",
+      "outputNon": "",
+      "outil": "Nov@Bank"
+    },
+    {
+      "id": "3",
+      "étape": "Client existe ?",
+      "typeBpmn": "ExclusiveGateway",
+      "département": "Agence",
+      "acteur": "Nov@ CL",
+      "condition": "Client existe ?",
+      "outputOui": "5",
+      "outputNon": "4",
+      "outil": ""
+    },
+    {
+      "id": "4",
+      "étape": "Fin du processus",
+      "typeBpmn": "EndEvent",
+      "département": "Agence",
+      "acteur": "",
+      "condition": "",
+      "outputOui": "",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "5",
+      "étape": "Entretien avec le client",
+      "typeBpmn": "Task",
+      "département": "Agence",
+      "acteur": "Nov@ CL",
+      "condition": "",
+      "outputOui": "6",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "6",
+      "étape": "Définir l'usage de la dotation d'études",
+      "typeBpmn": "Task",
+      "département": "Agence",
+      "acteur": "Nov@ CL",
+      "condition": "",
+      "outputOui": "7",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "7",
+      "étape": "Justificatifs conformes ?",
+      "typeBpmn": "ExclusiveGateway",
+      "département": "Back Office",
+      "acteur": "Gestionnaire BOI",
+      "condition": "Justificatifs conformes ?",
+      "outputOui": "8",
+      "outputNon": "9",
+      "outil": ""
+    },
+    {
+      "id": "8",
+      "étape": "Validation du dossier",
+      "typeBpmn": "Task",
+      "département": "Back Office",
+      "acteur": "Gestionnaire BOI",
+      "condition": "",
+      "outputOui": "10",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "9",
+      "étape": "Surseoir à la demande",
+      "typeBpmn": "EndEvent",
+      "département": "Back Office",
+      "acteur": "",
+      "condition": "",
+      "outputOui": "",
+      "outputNon": "",
+      "outil": ""
+    },
+    {
+      "id": "10",
+      "étape": "Fin du processus",
+      "typeBpmn": "EndEvent",
+      "département": "Back Office",
+      "acteur": "",
+      "condition": "",
+      "outputOui": "",
+      "outputNon": "",
+      "outil": ""
+    }
   ]
 }
 
-🎯 DIRECTIVE FINALE :
-1. Regarde l'image et détermine : TYPE A ou TYPE B ?
-2. Applique les règles d'extraction correspondantes
-3. Extrais TOUTES les étapes visibles
-4. Retourne UNIQUEMENT le JSON, rien d'autre
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 DIRECTIVE FINALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⚡ COMMENCE L'ANALYSE MAINTENANT:"""
+1. **Analyse visuelle critique** selon les 6 axes de la Phase 1
+2. **Distingue rigoureusement** :
+   - Acteurs (en-têtes swimlanes) vs Outils (systèmes à côté des formes)
+   - Étapes (formes géométriques) vs Groupements (cages englobantes)
+   - Tasks finales vs EndEvents (cercles épais)
+3. **Extrais exhaustivement** TOUTES les formes géométriques
+4. **Gère les flux complexes** : retours, jonctions, Gateway→Gateway
+5. ** les endevents doivent toujours avoir des acteurs non vides
+6. **Retourne UNIQUEMENT le JSON** sans balises markdown
+
+
+⚡ COMMENCE L'ANALYSE ET L'EXTRACTION MAINTENANT :"""
 
     def _build_improvement_prompt(self, workflow: List[Dict[str, str]]) -> str:
         """

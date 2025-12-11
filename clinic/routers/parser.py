@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 import io
 from parsers.windev_parser import parse_windev_code
+from parsers.cobol_parser import parse_cobol_code
 from config import ALLOWED_EXTENSIONS
 
 router = APIRouter(prefix="/api/parser", tags=["parser"])
@@ -195,6 +196,10 @@ def extract_business_info(ast_dict: dict) -> dict:
     
     return business_info
 
+# ============================================================================
+# ENDPOINTS WINDEV (existants - non modifiés)
+# ============================================================================
+
 @router.post("/parse")
 async def parse_file(file: UploadFile = File(...)):
     """
@@ -377,4 +382,123 @@ async def analyze_code(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de l'analyse: {str(e)}"
+        )
+
+# ============================================================================
+# ENDPOINTS COBOL (nouveaux - ajoutés)
+# ============================================================================
+
+@router.post("/cobol/parse")
+async def parse_cobol_file(file: UploadFile = File(...)):
+    """
+    Parse un fichier COBOL et retourne l'AST JSON structuré
+    
+    - **file**: Fichier contenant du code COBOL (.cob, .cbl, .cobol, .cpy)
+    
+    Returns:
+        JSON contenant l'AST complet du programme COBOL avec :
+        - identification_division (PROGRAM-ID, AUTHOR, etc.)
+        - environment_division (CONFIGURATION, INPUT-OUTPUT)
+        - data_division (FILE, WORKING-STORAGE, LINKAGE)
+        - procedure_division (paragraphes avec statements)
+    """
+    code = await read_file_content(file)
+    
+    try:
+        ast_dict = parse_cobol_code(code)
+        
+        return JSONResponse(
+            content={
+                "success": True,
+                "language": "cobol",
+                "ast": ast_dict
+            },
+            status_code=200
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du parsing COBOL: {str(e)}"
+        )
+
+@router.post("/cobol/parse-text")
+async def parse_cobol_text(request_body: dict):
+    """
+    Parse du code COBOL envoyé directement dans le body de la requête
+    
+    - **code**: String contenant du code COBOL
+    
+    Example:
+    ```json
+    {
+        "code": "IDENTIFICATION DIVISION.\\nPROGRAM-ID. TEST.\\nPROCEDURE DIVISION.\\n0000-START.\\n    DISPLAY 'HELLO'.\\n    STOP RUN."
+    }
+    ```
+    """
+    code = request_body.get("code")
+    
+    if not code:
+        raise HTTPException(
+            status_code=400,
+            detail="Le champ 'code' est requis dans le body"
+        )
+    
+    try:
+        ast_dict = parse_cobol_code(code)
+        
+        return JSONResponse(
+            content={
+                "success": True,
+                "language": "cobol",
+                "ast": ast_dict
+            },
+            status_code=200
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du parsing COBOL: {str(e)}"
+        )
+
+@router.post("/cobol/parse-download")
+async def parse_cobol_and_download(file: UploadFile = File(...)):
+    """
+    Parse un fichier COBOL et retourne le JSON en téléchargement direct
+    
+    - **file**: Fichier contenant du code COBOL
+    
+    Returns:
+        Fichier JSON téléchargeable avec l'AST complet
+    """
+    code = await read_file_content(file)
+    
+    try:
+        ast_dict = parse_cobol_code(code)
+        
+        result = {
+            "language": "cobol",
+            "ast": ast_dict,
+            "generated_at": datetime.now().isoformat()
+        }
+        
+        json_str = json.dumps(result, ensure_ascii=False, indent=2)
+        json_bytes = json_str.encode('utf-8')
+        
+        original_name = file.filename.rsplit(".", 1)[0] if "." in file.filename else file.filename
+        download_filename = f"{original_name}_cobol_ast.json"
+        
+        return StreamingResponse(
+            io.BytesIO(json_bytes),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename={download_filename}"
+            }
+        )
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du parsing COBOL: {str(e)}"
         )

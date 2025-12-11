@@ -71,7 +71,7 @@ export default function Page() {
 
     return (
         <div style={{ padding: 40 }}>
-            <h1>🎤 Enregistreur Vocal – Gemini 2.0 Flash</h1>
+            <h1>🎤 Enregistreur Vocal – Gemini 2.5 Flash</h1>
 
             {!recording ? (
                 <button onClick={startRecording} style={{ marginRight: 10, padding: 10 }}>

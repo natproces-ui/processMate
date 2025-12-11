@@ -1,16 +1,32 @@
-// bpmnGenerator.ts - VERSION OPTIMISÉE avec espacement intelligent
+// bpmnGenerator.ts - VERSION COMPLÈTE AVEC ROUTER INTELLIGENT
+
 import { BPMNLayoutEngine } from './bpmnLayoutEngine';
 import type { Table1Row, NodePosition } from './bpmnLayoutEngine';
+import {
+    DEFAULT_DIMENSIONS,
+    BPMN_ELEMENT_PREFIXES,
+    BPMN_TYPES
+} from './bpmnConstants';
+import {
+    getLaneId,
+    escapeXml,
+    getElementId,
+    getElementIdFromString,
+    formatLaneNameForDisplay,
+    getCenterPosition
+} from './bpmnUtils';
+import { BPMNRouter } from './bpmnRouter';
 
 export { Table1Row };
 
 interface BPMNGeneratorConfig {
-    laneHeight?: number;
+    laneWidth?: number;
     nodeWidth?: number;
     nodeHeight?: number;
-    horizontalSpacing?: number;
+    verticalSpacing?: number;
     gatewaySize?: number;
-    spacingMultiplier?: number; // 🆕 Contrôle de l'étalement (1.0 = compact, 1.5 = étendu, 2.0 = très étendu)
+    spacingMultiplier?: number;
+    showToolsAsAnnotations?: boolean;
 }
 
 export class BPMNGenerator {
@@ -22,22 +38,29 @@ export class BPMNGenerator {
     private gatewaySize: number;
     private nodeWidth: number;
     private nodeHeight: number;
+    private laneWidth: number;
+    private showToolsAsAnnotations: boolean;
+
+    // ✨ AJOUT DU ROUTER
+    private router!: BPMNRouter; // Initialisé dans generate()
+    private routedPaths: Map<string, Array<{ x: number; y: number }>> = new Map();
 
     constructor(config: BPMNGeneratorConfig = {}) {
-        // 🎯 Configuration optimisée pour un bon équilibre
-        this.gatewaySize = config.gatewaySize || 60;
-        this.nodeWidth = config.nodeWidth || 180;
-        this.nodeHeight = config.nodeHeight || 90;
+        this.gatewaySize = config.gatewaySize ?? DEFAULT_DIMENSIONS.GATEWAY_SIZE;
+        this.nodeWidth = config.nodeWidth ?? 280;
+        this.nodeHeight = config.nodeHeight ?? 100;
+        this.laneWidth = config.laneWidth ?? DEFAULT_DIMENSIONS.LANE_WIDTH;
+        this.showToolsAsAnnotations = config.showToolsAsAnnotations ?? true;
 
-        const spacingMultiplier = config.spacingMultiplier || 1.3; // 🆕 30% plus d'espace par défaut
+        const spacingMultiplier = config.spacingMultiplier ?? 0.7;
 
         this.layoutEngine = new BPMNLayoutEngine({
-            laneHeight: config.laneHeight || 350,
+            laneWidth: this.laneWidth,
             nodeWidth: this.nodeWidth,
             nodeHeight: this.nodeHeight,
-            horizontalSpacing: config.horizontalSpacing || 120,
-            compactMode: true, // 🆕 Mode compact activé
-            spacingMultiplier: spacingMultiplier // 🆕 Multiplicateur d'espacement
+            verticalSpacing: config.verticalSpacing ?? 60,
+            compactMode: true,
+            spacingMultiplier: spacingMultiplier
         });
 
         this.positions = new Map();
@@ -53,9 +76,27 @@ export class BPMNGenerator {
         this.acteurs = this.layoutEngine.getActeurs();
         this.buildMaps(data);
 
+        // ✨ INITIALISER LE ROUTER AVEC LE LAYOUT
+        this.router = new BPMNRouter({
+            laneWidth: this.laneWidth,
+            nodeWidth: this.nodeWidth,
+            nodeHeight: this.nodeHeight,
+            gatewaySize: this.gatewaySize,
+            eventSize: DEFAULT_DIMENSIONS.EVENT_SIZE,
+            corridorOffset: 40
+        }, this.layoutEngine); // ← Passer le layout
+
+        // ✨ PHASE DE ROUTAGE INTELLIGENT
+        console.log("\n🎬 PHASE DE ROUTAGE INTELLIGENT");
+        console.log("================================");
+        this.router.extractArrows(data, this.idMap, this.positions);
+        this.routedPaths = this.router.routeAll();
+        this.router.printStats();
+        console.log("✅ Routage terminé !\n");
+
         const lanesXML = this.generateLanes();
         const { tasksXML, flowsXML } = this.generateTasksAndFlows(data);
-        const { shapesXML, edgesXML } = this.generateDiagram(data);
+        const { shapesXML, edgesXML } = this.generateDiagramWithRouter(data);
 
         return this.buildXML(lanesXML, tasksXML, flowsXML, shapesXML, edgesXML);
     }
@@ -76,25 +117,24 @@ export class BPMNGenerator {
     private generateLanes(): string {
         let lanesXML = '';
 
-        this.acteurs.forEach((acteur, index) => {
-            const laneId = this.getLaneId(acteur);
+        this.acteurs.forEach((acteur) => {
+            const laneId = getLaneId(acteur);
             const rows = this.acteurMap.get(acteur)!;
+            const formattedName = formatLaneNameForDisplay(acteur);
 
             let flowNodeRefs = '';
 
             rows.forEach(row => {
-                if (row.typeBpmn === 'StartEvent') {
-                    flowNodeRefs += `        <flowNodeRef>Start_${row.id}</flowNodeRef>\n`;
-                } else if (row.typeBpmn === 'EndEvent') {
-                    flowNodeRefs += `        <flowNodeRef>End_${row.id}</flowNodeRef>\n`;
-                } else if (row.typeBpmn === 'ExclusiveGateway') {
-                    flowNodeRefs += `        <flowNodeRef>Gateway_${row.id}</flowNodeRef>\n`;
-                } else {
-                    flowNodeRefs += `        <flowNodeRef>Task_${row.id}</flowNodeRef>\n`;
+                const elementId = getElementId(row);
+                flowNodeRefs += `        <flowNodeRef>${elementId}</flowNodeRef>\n`;
+
+                if (this.showToolsAsAnnotations && row.outil && row.outil.trim() !== '' &&
+                    row.typeBpmn !== BPMN_TYPES.START_EVENT && row.typeBpmn !== BPMN_TYPES.END_EVENT) {
+                    flowNodeRefs += `        <flowNodeRef>${BPMN_ELEMENT_PREFIXES.ANNOTATION}${row.id}</flowNodeRef>\n`;
                 }
             });
 
-            lanesXML += `      <lane id="${laneId}" name="${this.escapeXml(acteur)}">
+            lanesXML += `      <lane id="${laneId}" name="${escapeXml(formattedName)}">
 ${flowNodeRefs}      </lane>\n`;
         });
 
@@ -106,38 +146,49 @@ ${flowNodeRefs}      </lane>\n`;
         let flowsXML = '';
 
         data.forEach(row => {
-            if (row.typeBpmn === 'StartEvent') {
-                tasksXML += `    <startEvent id="Start_${row.id}" name="${this.escapeXml(row.étape)}" />\n`;
+            const elementId = getElementId(row);
+
+            if (row.typeBpmn === BPMN_TYPES.START_EVENT) {
+                tasksXML += `    <startEvent id="${elementId}" name="${escapeXml(row.étape)}" />\n`;
 
                 if (row.outputOui && row.outputOui.trim() !== '') {
-                    const targetId = this.getElementId(row.outputOui);
-                    flowsXML += `    <sequenceFlow id="Flow_${row.id}_yes" sourceRef="Start_${row.id}" targetRef="${targetId}" />\n`;
+                    const targetId = getElementIdFromString(row.outputOui, this.idMap);
+                    flowsXML += `    <sequenceFlow id="${BPMN_ELEMENT_PREFIXES.FLOW}${row.id}_next" sourceRef="${elementId}" targetRef="${targetId}" />\n`;
                 }
-            } else if (row.typeBpmn === 'EndEvent') {
-                tasksXML += `    <endEvent id="End_${row.id}" name="${this.escapeXml(row.étape)}" />\n`;
-            } else if (row.typeBpmn === 'ExclusiveGateway') {
-                tasksXML += `    <exclusiveGateway id="Gateway_${row.id}" name="${this.escapeXml(row.condition)}" />\n`;
+            } else if (row.typeBpmn === BPMN_TYPES.END_EVENT) {
+                tasksXML += `    <endEvent id="${elementId}" name="${escapeXml(row.étape)}" />\n`;
+            } else if (row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY) {
+                tasksXML += `    <exclusiveGateway id="${elementId}" name="${escapeXml(row.condition)}" />\n`;
 
                 if (row.outputOui && row.outputOui.trim() !== '') {
-                    const yesTarget = this.getElementId(row.outputOui);
-                    flowsXML += `    <sequenceFlow id="Flow_${row.id}_yes" name="Oui" sourceRef="Gateway_${row.id}" targetRef="${yesTarget}" />\n`;
+                    const yesTarget = getElementIdFromString(row.outputOui, this.idMap);
+                    flowsXML += `    <sequenceFlow id="${BPMN_ELEMENT_PREFIXES.FLOW}${row.id}_yes" name="Oui" sourceRef="${elementId}" targetRef="${yesTarget}" />\n`;
                 }
 
                 if (row.outputNon && row.outputNon.trim() !== '') {
-                    const noTarget = this.getElementId(row.outputNon);
-                    flowsXML += `    <sequenceFlow id="Flow_${row.id}_no" name="Non" sourceRef="Gateway_${row.id}" targetRef="${noTarget}" />\n`;
+                    const noTarget = getElementIdFromString(row.outputNon, this.idMap);
+                    flowsXML += `    <sequenceFlow id="${BPMN_ELEMENT_PREFIXES.FLOW}${row.id}_no" name="Non" sourceRef="${elementId}" targetRef="${noTarget}" />\n`;
                 }
             } else {
-                tasksXML += `    <userTask id="Task_${row.id}" name="${this.escapeXml(row.étape)}" />\n`;
+                tasksXML += `    <userTask id="${elementId}" name="${escapeXml(row.étape)}" />\n`;
+
+                if (this.showToolsAsAnnotations && row.outil && row.outil.trim() !== '') {
+                    const annotationId = `${BPMN_ELEMENT_PREFIXES.ANNOTATION}${row.id}`;
+                    tasksXML += `    <textAnnotation id="${annotationId}">
+      <text>🔧 ${escapeXml(row.outil)}</text>
+    </textAnnotation>\n`;
+
+                    flowsXML += `    <association id="${BPMN_ELEMENT_PREFIXES.ASSOCIATION}${row.id}" sourceRef="${elementId}" targetRef="${annotationId}" />\n`;
+                }
 
                 if (row.outputOui && row.outputOui.trim() !== '' && row.outputNon && row.outputNon.trim() !== '') {
-                    const yesTarget = this.getElementId(row.outputOui);
-                    const noTarget = this.getElementId(row.outputNon);
-                    flowsXML += `    <sequenceFlow id="Flow_${row.id}_yes" name="Confirmer" sourceRef="Task_${row.id}" targetRef="${yesTarget}" />\n`;
-                    flowsXML += `    <sequenceFlow id="Flow_${row.id}_no" name="Annuler" sourceRef="Task_${row.id}" targetRef="${noTarget}" />\n`;
+                    const yesTarget = getElementIdFromString(row.outputOui, this.idMap);
+                    const noTarget = getElementIdFromString(row.outputNon, this.idMap);
+                    flowsXML += `    <sequenceFlow id="${BPMN_ELEMENT_PREFIXES.FLOW}${row.id}_yes" name="Confirmer" sourceRef="${elementId}" targetRef="${yesTarget}" />\n`;
+                    flowsXML += `    <sequenceFlow id="${BPMN_ELEMENT_PREFIXES.FLOW}${row.id}_no" name="Annuler" sourceRef="${elementId}" targetRef="${noTarget}" />\n`;
                 } else if (row.outputOui && row.outputOui.trim() !== '') {
-                    const nextTarget = this.getElementId(row.outputOui);
-                    flowsXML += `    <sequenceFlow id="Flow_${row.id}_next" sourceRef="Task_${row.id}" targetRef="${nextTarget}" />\n`;
+                    const nextTarget = getElementIdFromString(row.outputOui, this.idMap);
+                    flowsXML += `    <sequenceFlow id="${BPMN_ELEMENT_PREFIXES.FLOW}${row.id}_next" sourceRef="${elementId}" targetRef="${nextTarget}" />\n`;
                 }
             }
         });
@@ -145,189 +196,155 @@ ${flowNodeRefs}      </lane>\n`;
         return { tasksXML, flowsXML };
     }
 
-    private generateDiagram(data: Table1Row[]): { shapesXML: string, edgesXML: string } {
+    // ✨ NOUVELLE MÉTHODE : Générer le diagramme avec le Router
+    private generateDiagramWithRouter(data: Table1Row[]): { shapesXML: string, edgesXML: string } {
         let shapesXML = '';
         let edgesXML = '';
 
-        const diagramWidth = this.layoutEngine.getDiagramWidth();
-        const laneHeight = 350;
+        const diagramHeight = this.layoutEngine.getDiagramHeight();
+        const lanePaddingTop = 80;
 
+        // Générer les shapes de lanes
         this.acteurs.forEach((acteur, index) => {
-            const laneId = this.getLaneId(acteur);
-            const laneY = index * laneHeight;
+            const laneId = getLaneId(acteur);
+            const laneX = 80 + (index * this.laneWidth);
+            const marginHorizontal = Math.floor(this.laneWidth * 0.05);
+            const marginTop = 15;
 
-            shapesXML += `      <bpmndi:BPMNShape id="${laneId}_di" bpmnElement="${laneId}" isHorizontal="true">
-        <dc:Bounds x="80" y="${laneY}" width="${diagramWidth}" height="${laneHeight}" />
-        <bpmndi:BPMNLabel />
+            shapesXML += `      <bpmndi:BPMNShape id="${laneId}_di" bpmnElement="${laneId}" isHorizontal="false">
+        <dc:Bounds x="${laneX}" y="120" width="${this.laneWidth}" height="${diagramHeight + lanePaddingTop}" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="${laneX + marginHorizontal}" y="${120 + marginTop}" width="${this.laneWidth - (marginHorizontal * 2)}" height="70" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>\n`;
         });
 
+        // Générer les shapes et edges pour chaque élément
         data.forEach(row => {
             const pos = this.positions.get(row.id);
             if (!pos) return;
 
-            if (row.typeBpmn === 'StartEvent') {
-                const eventSize = 42;
-                const x = pos.x - eventSize / 2;
-                const y = pos.y + (this.nodeHeight - eventSize) / 2;
+            const elementId = getElementId(row);
 
-                shapesXML += `      <bpmndi:BPMNShape id="Start_${row.id}_di" bpmnElement="Start_${row.id}">
-        <dc:Bounds x="${x}" y="${y}" width="${eventSize}" height="${eventSize}" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="${x - 30}" y="${y + eventSize + 5}" width="${eventSize + 60}" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>\n`;
-
-                if (row.outputOui && row.outputOui.trim() !== '') {
-                    edgesXML += this.generateEdge(row, `Start_${row.id}`, row.outputOui, 'yes', pos);
-                }
-            } else if (row.typeBpmn === 'EndEvent') {
-                const eventSize = 42;
-                const x = pos.x - eventSize / 2;
-                const y = pos.y + (this.nodeHeight - eventSize) / 2;
-
-                shapesXML += `      <bpmndi:BPMNShape id="End_${row.id}_di" bpmnElement="End_${row.id}">
-        <dc:Bounds x="${x}" y="${y}" width="${eventSize}" height="${eventSize}" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="${x - 30}" y="${y + eventSize + 5}" width="${eventSize + 60}" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>\n`;
-            } else if (row.typeBpmn === 'ExclusiveGateway') {
-                const gwX = pos.x;
-                const gwY = pos.y + (this.nodeHeight - this.gatewaySize) / 2;
-
-                shapesXML += `      <bpmndi:BPMNShape id="Gateway_${row.id}_di" bpmnElement="Gateway_${row.id}" isMarkerVisible="true">
-        <dc:Bounds x="${gwX}" y="${gwY}" width="${this.gatewaySize}" height="${this.gatewaySize}" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="${gwX - 50}" y="${gwY + this.gatewaySize + 5}" width="160" height="40" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>\n`;
-
-                if (row.outputOui && row.outputOui.trim() !== '') {
-                    edgesXML += this.generateEdge(row, `Gateway_${row.id}`, row.outputOui, 'yes', pos);
-                }
-
-                if (row.outputNon && row.outputNon.trim() !== '') {
-                    edgesXML += this.generateEdge(row, `Gateway_${row.id}`, row.outputNon, 'no', pos);
-                }
+            // Générer les shapes
+            if (row.typeBpmn === BPMN_TYPES.START_EVENT || row.typeBpmn === BPMN_TYPES.END_EVENT) {
+                const centerPos = getCenterPosition(pos, this.nodeWidth, DEFAULT_DIMENSIONS.EVENT_SIZE);
+                shapesXML += this.generateEventShape(elementId, centerPos);
+            } else if (row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY) {
+                const centerPos = getCenterPosition(pos, this.nodeWidth, this.gatewaySize);
+                shapesXML += this.generateGatewayShape(elementId, centerPos);
             } else {
-                shapesXML += `      <bpmndi:BPMNShape id="Task_${row.id}_di" bpmnElement="Task_${row.id}">
-        <dc:Bounds x="${pos.x}" y="${pos.y}" width="${this.nodeWidth}" height="${this.nodeHeight}" />
-      </bpmndi:BPMNShape>\n`;
+                shapesXML += this.generateTaskShape(elementId, pos);
 
-                if (row.outputOui && row.outputOui.trim() !== '' && row.outputNon && row.outputNon.trim() !== '') {
-                    edgesXML += this.generateEdge(row, `Task_${row.id}`, row.outputOui, 'yes', pos);
-                    edgesXML += this.generateEdge(row, `Task_${row.id}`, row.outputNon, 'no', pos);
-                } else if (row.outputOui && row.outputOui.trim() !== '') {
-                    edgesXML += this.generateEdge(row, `Task_${row.id}`, row.outputOui, 'next', pos);
+                if (this.showToolsAsAnnotations && row.outil && row.outil.trim() !== '') {
+                    const { annotationXML, associationXML } = this.generateAnnotation(row.id, pos);
+                    shapesXML += annotationXML;
+                    edgesXML += associationXML;
                 }
+            }
+
+            // ✨ GÉNÉRER LES EDGES AVEC LE ROUTER
+            if (row.outputOui && row.outputOui.trim() !== '') {
+                const flowType = row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY ? 'yes' : 'next';
+                edgesXML += this.generateEdgeFromRouter(row.id, flowType);
+            }
+
+            if (row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY &&
+                row.outputNon && row.outputNon.trim() !== '') {
+                edgesXML += this.generateEdgeFromRouter(row.id, 'no');
             }
         });
 
         return { shapesXML, edgesXML };
     }
 
-    private generateEdge(row: Table1Row, sourceRef: string, targetId: string, type: 'yes' | 'no' | 'next', sourcePos: NodePosition): string {
-        const targetRow = this.idMap.get(targetId);
-        const targetPos = this.positions.get(targetId);
+    // ✨ NOUVELLE MÉTHODE : Générer un edge depuis les waypoints du Router
+    private generateEdgeFromRouter(
+        sourceId: string,
+        type: 'yes' | 'no' | 'next'
+    ): string {
+        const arrowId = `${sourceId}_${type}`;
 
-        if (!targetRow || !targetPos) return '';
+        console.log(`\n🔍 Génération edge pour ${arrowId}`);
+        console.log(`   Chemins routés disponibles:`, Array.from(this.routedPaths.keys()));
 
-        const targetElementId = this.getElementId(targetId);
-        const flowId = `Flow_${row.id}_${type}`;
+        const waypoints = this.routedPaths.get(arrowId);
 
-        let sourceX: number, sourceY: number, targetX: number, targetY: number;
-
-        // Calcul des points de connexion SOURCE
-        if (row.typeBpmn === 'StartEvent') {
-            sourceX = sourcePos.x + 21;
-            sourceY = sourcePos.y + this.nodeHeight / 2;
-        } else if (row.typeBpmn === 'ExclusiveGateway') {
-            const gwX = sourcePos.x;
-            const gwY = sourcePos.y + (this.nodeHeight - this.gatewaySize) / 2;
-
-            if (type === 'yes') {
-                sourceX = gwX + this.gatewaySize;
-                sourceY = gwY + this.gatewaySize / 2;
-            } else {
-                sourceX = gwX + this.gatewaySize / 2;
-                sourceY = gwY + this.gatewaySize;
-            }
-        } else {
-            sourceX = sourcePos.x + this.nodeWidth;
-            sourceY = sourcePos.y + this.nodeHeight / 2;
+        if (!waypoints || waypoints.length < 2) {
+            console.error(`❌ PAS DE CHEMIN pour ${arrowId}`);
+            console.error(`   Chemins disponibles:`, Array.from(this.routedPaths.keys()));
+            return '';
         }
 
-        // Calcul des points de connexion TARGET
-        if (targetRow.typeBpmn === 'EndEvent' || targetRow.typeBpmn === 'StartEvent') {
-            targetX = targetPos.x + 21;
-            targetY = targetPos.y + this.nodeHeight / 2;
-        } else if (targetRow.typeBpmn === 'ExclusiveGateway') {
-            const gwX = targetPos.x;
-            const gwY = targetPos.y + (this.nodeHeight - this.gatewaySize) / 2;
-            targetX = gwX;
-            targetY = gwY + this.gatewaySize / 2;
-        } else {
-            targetX = targetPos.x;
-            targetY = targetPos.y + this.nodeHeight / 2;
-        }
+        console.log(`✅ Chemin trouvé pour ${arrowId}: ${waypoints.length} waypoints`);
 
-        const isChangingLane = Math.abs(targetY - sourceY) > 60;
-        const isBackward = targetX < sourceX;
+        const flowId = `${BPMN_ELEMENT_PREFIXES.FLOW}${arrowId}`;
+        console.log(`   FlowID: ${flowId}`);
 
         let edgeXML = `      <bpmndi:BPMNEdge id="${flowId}_di" bpmnElement="${flowId}">\n`;
 
-        if (isBackward && type === 'no') {
-            // Retour en arrière avec arc au-dessus
-            const topY = sourcePos.y - 80;
-            const leftX = targetX - 80;
+        waypoints.forEach((wp, idx) => {
+            console.log(`   Waypoint ${idx}: (${Math.round(wp.x)}, ${Math.round(wp.y)})`);
+            edgeXML += `        <di:waypoint x="${Math.round(wp.x)}" y="${Math.round(wp.y)}" />\n`;
+        });
 
-            edgeXML += `        <di:waypoint x="${sourceX}" y="${sourceY}" />
-        <di:waypoint x="${sourceX}" y="${topY}" />
-        <di:waypoint x="${leftX}" y="${topY}" />
-        <di:waypoint x="${leftX}" y="${targetY}" />
-        <di:waypoint x="${targetX}" y="${targetY}" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="${sourceX - 30}" y="${topY - 20}" width="36" height="18" />
+        if (type === 'yes' || type === 'no') {
+            const midIdx = Math.floor(waypoints.length / 2);
+            const labelPoint = waypoints[midIdx];
+            edgeXML += `        <bpmndi:BPMNLabel>
+          <dc:Bounds x="${Math.round(labelPoint.x + 10)}" y="${Math.round(labelPoint.y - 10)}" width="32" height="18" />
         </bpmndi:BPMNLabel>\n`;
-        } else if (isChangingLane) {
-            // Changement de lane
-            const midX = sourceX + 50;
-            edgeXML += `        <di:waypoint x="${sourceX}" y="${sourceY}" />
-        <di:waypoint x="${midX}" y="${sourceY}" />
-        <di:waypoint x="${midX}" y="${targetY}" />
-        <di:waypoint x="${targetX}" y="${targetY}" />\n`;
-
-            if (type === 'yes' || type === 'no') {
-                edgeXML += `        <bpmndi:BPMNLabel>
-          <dc:Bounds x="${midX + 10}" y="${Math.min(sourceY, targetY) + 30}" width="32" height="18" />
-        </bpmndi:BPMNLabel>\n`;
-            }
-        } else {
-            // Connexion directe
-            edgeXML += `        <di:waypoint x="${sourceX}" y="${sourceY}" />
-        <di:waypoint x="${targetX}" y="${targetY}" />\n`;
-
-            if (type === 'yes' || type === 'no') {
-                edgeXML += `        <bpmndi:BPMNLabel>
-          <dc:Bounds x="${(sourceX + targetX) / 2 - 16}" y="${sourceY - 22}" width="32" height="18" />
-        </bpmndi:BPMNLabel>\n`;
-            }
         }
 
         edgeXML += `      </bpmndi:BPMNEdge>\n`;
-
         return edgeXML;
     }
 
-    private getElementId(id: string): string {
-        const row = this.idMap.get(id);
-        if (!row) return `Task_${id}`;
+    private generateEventShape(elementId: string, pos: { x: number; y: number }): string {
+        const size = DEFAULT_DIMENSIONS.EVENT_SIZE;
+        return `      <bpmndi:BPMNShape id="${elementId}_di" bpmnElement="${elementId}">
+        <dc:Bounds x="${pos.x}" y="${pos.y}" width="${size}" height="${size}" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="${pos.x - 30}" y="${pos.y + size + 5}" width="${size + 60}" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>\n`;
+    }
 
-        if (row.typeBpmn === 'StartEvent') return `Start_${id}`;
-        if (row.typeBpmn === 'EndEvent') return `End_${id}`;
-        if (row.typeBpmn === 'ExclusiveGateway') return `Gateway_${id}`;
-        return `Task_${id}`;
+    private generateGatewayShape(elementId: string, pos: { x: number; y: number }): string {
+        return `      <bpmndi:BPMNShape id="${elementId}_di" bpmnElement="${elementId}" isMarkerVisible="true">
+        <dc:Bounds x="${pos.x}" y="${pos.y}" width="${this.gatewaySize}" height="${this.gatewaySize}" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="${pos.x - 50}" y="${pos.y + this.gatewaySize + 5}" width="170" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>\n`;
+    }
+
+    private generateTaskShape(elementId: string, pos: NodePosition): string {
+        return `      <bpmndi:BPMNShape id="${elementId}_di" bpmnElement="${elementId}">
+        <dc:Bounds x="${pos.x}" y="${pos.y}" width="${this.nodeWidth}" height="${this.nodeHeight}" />
+      </bpmndi:BPMNShape>\n`;
+    }
+
+    private generateAnnotation(rowId: string, pos: NodePosition): { annotationXML: string; associationXML: string } {
+        const annotationId = `${BPMN_ELEMENT_PREFIXES.ANNOTATION}${rowId}`;
+        const annotationX = pos.x + this.nodeWidth + DEFAULT_DIMENSIONS.ANNOTATION_OFFSET;
+        const annotationY = pos.y + (this.nodeHeight - DEFAULT_DIMENSIONS.ANNOTATION_HEIGHT) / 2;
+
+        const annotationXML = `      <bpmndi:BPMNShape id="${annotationId}_di" bpmnElement="${annotationId}">
+        <dc:Bounds x="${annotationX}" y="${annotationY}" width="${DEFAULT_DIMENSIONS.ANNOTATION_WIDTH}" height="${DEFAULT_DIMENSIONS.ANNOTATION_HEIGHT}" />
+      </bpmndi:BPMNShape>\n`;
+
+        const taskRightX = pos.x + this.nodeWidth;
+        const taskCenterY = pos.y + this.nodeHeight / 2;
+        const annotationLeftX = annotationX;
+        const annotationCenterY = annotationY + DEFAULT_DIMENSIONS.ANNOTATION_HEIGHT / 2;
+
+        const associationXML = `      <bpmndi:BPMNEdge id="${BPMN_ELEMENT_PREFIXES.ASSOCIATION}${rowId}_di" bpmnElement="${BPMN_ELEMENT_PREFIXES.ASSOCIATION}${rowId}">
+        <di:waypoint x="${taskRightX}" y="${taskCenterY}" />
+        <di:waypoint x="${annotationLeftX}" y="${annotationCenterY}" />
+      </bpmndi:BPMNEdge>\n`;
+
+        return { annotationXML, associationXML };
     }
 
     private buildXML(lanes: string, tasks: string, flows: string, shapes: string, edges: string): string {
@@ -348,22 +365,9 @@ ${shapes}${edges}    </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </definitions>`;
     }
-
-    private getLaneId(acteur: string): string {
-        return `Lane_${acteur.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '')}`;
-    }
-
-    private escapeXml(text: string): string {
-        if (!text) return '';
-        return text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&apos;');
-    }
 }
 
+// ✅ EXPORT DE LA FONCTION UTILITAIRE (pour garder la compatibilité)
 export function generateBPMN(data: Table1Row[], config?: BPMNGeneratorConfig): string {
     const generator = new BPMNGenerator(config);
     return generator.generate(data);

@@ -26,7 +26,7 @@ class BPMNGenerator:
             api_key: Clé API Google Gemini
         """
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
     
     def analyze_documents(self, files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -208,7 +208,7 @@ Analyse maintenant les documents suivants:
             BPMN au format JSON
         """
         return {
-            "bpmn_version": "2.0",
+            "bpmn_version": "2.5",
             "generated_at": None,  # Sera rempli par le router
             "format": "json",
             **analysis_data

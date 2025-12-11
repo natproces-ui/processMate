@@ -1,228 +1,354 @@
-// bpmnStyles.ts
-// Configuration des couleurs et styles pour les diagrammes BPMN
+// bpmnStyles.ts - Styles BPMN avec hitbox flèches améliorée
 
-export interface ColorScheme {
-  fill: string;
-  stroke: string;
-  strokeWidth?: string;
-}
-
-export const laneColors: ColorScheme[] = [
-  { fill: '#E3F2FD', stroke: '#c3ccd4ff', strokeWidth: '4' },
-  { fill: '#FFF3E0', stroke: '#F57C00', strokeWidth: '4' },
-  { fill: '#F3E5F5', stroke: '#7B1FA2', strokeWidth: '4' },
-  { fill: '#E8F5E9', stroke: '#388E3C', strokeWidth: '4' },
-  { fill: '#FCE4EC', stroke: '#C2185B', strokeWidth: '4' },
-  { fill: '#FFFDE7', stroke: '#F9A825', strokeWidth: '4' },
-];
-
-export const taskColors: Record<string, ColorScheme> = {
-  default: { fill: '#EFF6FF', stroke: '#2563EB' },
-  automatic: { fill: '#FEF9C3', stroke: '#CA8A04' },
-  notification: { fill: '#FCE7F3', stroke: '#DB2777' },
-  receive: { fill: '#E0E7FF', stroke: '#4F46E5' },
-  manual: { fill: '#FED7AA', stroke: '#EA580C' },
-  decision: { fill: '#F3E8FF', stroke: '#9333EA' },
-  script: { fill: '#D1FAE5', stroke: '#059669' },
-};
-
-export const bpmnGlobalStyles = `
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
-  .djs-container .djs-element[data-element-id^="Lane_"] rect:first-child {
-    stroke-width: 4px !important;
-    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.1));
-  }
-  
-  /* ✨ OPTIMISATION MAXIMALE DU TEXTE POUR LISIBILITÉ */
-  .djs-container .djs-element .djs-label text {
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    fill: #111827 !important;
-    white-space: normal !important;
-    word-wrap: break-word !important;
-  }
-  
-  /* Retours à la ligne automatiques dans les tâches */
-  .djs-container .djs-element[data-element-id^="Task_"] .djs-label {
-    white-space: normal !important;
-  }
-  
-  .djs-container .djs-element[data-element-id^="Task_"] .djs-label text {
-    font-size: 13px !important;
-    line-height: 1.4 !important;
-  }
-  
-  /* Texte des tâches avec retour à la ligne */
-  .djs-container .djs-element[data-element-id^="Task_"] text tspan {
-    text-anchor: middle !important;
-  }
-  
-  .djs-container .djs-connection .djs-label text {
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    fill: #2563eb !important;
-    text-shadow: 0 0 3px rgba(255, 255, 255, 0.9);
-  }
-  
-  .djs-container .djs-element[data-element-id^="Lane_"] text {
-    font-size: 16px !important;
-    font-weight: 700 !important;
-    fill: #000000 !important;
-    letter-spacing: 0.5px !important;
-  }
-  
-  .djs-container .djs-element[data-element-id^="Gateway_"] + .djs-label text {
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    fill: #374151 !important;
-  }
-  
-  .djs-container .djs-element[data-element-id^="Task_"] rect {
-    stroke-width: 3px !important;
-    filter: drop-shadow(0 3px 6px rgba(37, 99, 235, 0.2));
-    rx: 6 !important;
-  }
-  
-  .djs-container .djs-element[data-element-id^="Task_"] .djs-label text {
-    fill: #111827 !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-  }
-  
-  .djs-container .djs-element[data-element-id^="Gateway_"] path {
-    stroke: #f59e0b !important;
-    stroke-width: 3px !important;
-    fill: #fffbeb !important;
-    filter: drop-shadow(0 3px 6px rgba(245, 158, 11, 0.25));
-  }
-  
-  .djs-container .djs-element[data-element-id^="Start_"] circle {
-    stroke: #10b981 !important;
-    stroke-width: 3px !important;
-    fill: #d1fae5 !important;
-    filter: drop-shadow(0 3px 6px rgba(16, 185, 129, 0.3));
-  }
-  
-  .djs-container .djs-element[data-element-id^="End_"] circle {
-    stroke: #ef4444 !important;
-    stroke-width: 4px !important;
-    fill: #fee2e2 !important;
-    filter: drop-shadow(0 3px 6px rgba(239, 68, 68, 0.3));
-  }
-  
-  .djs-container .djs-connection path {
-    stroke: #6b7280 !important;
-    stroke-width: 2.5px !important;
-  }
-  
-  .djs-container .djs-connection.selected path {
-    stroke: #2563eb !important;
-    stroke-width: 4px !important;
-  }
-  
-  .djs-container .selected .djs-outline {
-    stroke: #2563eb !important;
-    stroke-width: 4px !important;
-    stroke-dasharray: 10, 5 !important;
-  }
-  
-  .djs-container .djs-element:hover rect,
-  .djs-container .djs-element:hover circle,
-  .djs-container .djs-element:hover path {
-    filter: brightness(1.05) drop-shadow(0 5px 10px rgba(0, 0, 0, 0.2));
-  }
-  
-  .spinner {
-    animation: spin 1s linear infinite;
-  }
+export const BPMN_VIEWER_STYLES = `
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Lanes verticales - SANS FOND */
+    .djs-container .djs-element[data-element-id^="Lane_"] rect:first-child {
+        fill: transparent !important;
+        stroke-width: 4px !important;
+        filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.1));
+    }
+    
+    /* Labels des lanes - EN HAUT, GRAS, 26PX */
+    .djs-container .djs-element[data-element-id^="Lane_"] .djs-label {
+        transform: translateY(0px) !important;
+        white-space: pre-wrap !important;
+        text-align: center !important;
+        line-height: 1.4 !important;
+    }
+    
+    .djs-container .djs-element[data-element-id^="Lane_"] .djs-label text {
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        fill: #ffffff !important;
+    }
+    
+    .djs-container .djs-element[data-element-id^="Lane_"] .djs-label tspan {
+        fill: #ffffff !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Labels des TÂCHES - AUGMENTÉS À 36PX */
+    .djs-container .djs-element[data-element-id^="Task_"] .djs-label text {
+        font-size: 50px !important;
+        font-weight: 700 !important;
+        fill: #111827 !important;
+        line-height: 1.2 !important;
+    }
+    
+    /* Labels des GATEWAYS */
+    .djs-container .djs-element[data-element-id^="Gateway_"] .djs-label text {
+        font-size: 28px !important;
+        font-weight: 600 !important;
+        fill: #111827 !important;
+    }
+    
+    /* Labels des EVENTS */
+    .djs-container .djs-element[data-element-id^="Start_"] .djs-label text,
+    .djs-container .djs-element[data-element-id^="End_"] .djs-label text {
+        font-size: 26px !important;
+        font-weight: 600 !important;
+        fill: #111827 !important;
+    }
+    
+    /* Annotations d'outils - RÉDUITS À 18PX */
+    .djs-container .djs-element[data-element-id^="Annotation_"] rect {
+        fill: transparent !important;
+        stroke: none !important;
+    }
+    
+    .djs-container .djs-element[data-element-id^="Annotation_"] text {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        fill: #F59E0B !important;
+        text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+    }
+    
+    .djs-container .djs-connection[data-element-id^="Association_"] path {
+        stroke: #F59E0B !important;
+        stroke-width: 1.5px !important;
+        stroke-dasharray: 4,2 !important;
+        opacity: 0.5 !important;
+    }
+    
+    /* Tâches */
+    .djs-container .djs-element[data-element-id^="Task_"] rect {
+        stroke-width: 4px !important;
+        filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.25));
+        rx: 8 !important;
+    }
+    
+    /* Gateways */
+    .djs-container .djs-element[data-element-id^="Gateway_"] path {
+        stroke: #f59e0b !important;
+        stroke-width: 4px !important;
+        fill: #fffbeb !important;
+    }
+    
+    /* Events */
+    .djs-container .djs-element[data-element-id^="Start_"] circle {
+        stroke: #10b981 !important;
+        stroke-width: 4px !important;
+        fill: #d1fae5 !important;
+    }
+    
+    .djs-container .djs-element[data-element-id^="End_"] circle {
+        stroke: #ef4444 !important;
+        stroke-width: 5px !important;
+        fill: #fee2e2 !important;
+    }
+    
+    /* Connexions - HITBOX ÉLARGIE */
+    .djs-container .djs-connection path {
+        stroke: #6b7280 !important;
+        stroke-width: 3px !important;
+    }
+    
+    /* Ajouter une hitbox invisible plus large pour faciliter la sélection */
+    .djs-container .djs-connection {
+        pointer-events: visibleStroke !important;
+    }
+    
+    .djs-container .djs-connection path {
+        stroke-linecap: round !important;
+        stroke-linejoin: round !important;
+    }
+    
+    /* Overlay invisible pour élargir la zone de sélection */
+    .djs-container .djs-connection::before {
+        content: '' !important;
+        position: absolute !important;
+        pointer-events: stroke !important;
+    }
+    
+    /* Style des flèches - IMPORTANT */
+    .djs-container svg defs marker {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .djs-container svg defs marker path,
+    .djs-container svg defs marker polygon {
+        fill: #6b7280 !important;
+        stroke: none !important;
+    }
+    
+    /* ============================================
+       MODE VISUALISATION SEULE (non-éditable)
+       ============================================ */
+    
+    .bpmn-view-only .djs-container .djs-context-pad,
+    .bpmn-view-only .djs-container .djs-waypoint-move-preview,
+    .bpmn-view-only .djs-container .djs-waypoint-move-handle,
+    .bpmn-view-only .djs-container .djs-segment-dragger,
+    .bpmn-view-only .djs-container .djs-bendpoint,
+    .bpmn-view-only .djs-container .djs-attach-support,
+    .bpmn-view-only .djs-container .djs-connect-handle,
+    .bpmn-view-only .djs-container .djs-resize-handle {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    .bpmn-view-only .djs-container .djs-connection circle:not([class*="marker"]) {
+        display: none !important;
+    }
+    
+    /* ============================================
+       MODE ÉDITION (éditable)
+       ============================================ */
+    
+    /* Context Pad - visible en mode édition */
+    .bpmn-editable .djs-container .djs-context-pad {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-context-pad .entry {
+        background: white !important;
+        border: 2px solid #3b82f6 !important;
+        border-radius: 4px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-context-pad .entry:hover {
+        background: #eff6ff !important;
+        border-color: #2563eb !important;
+        transform: scale(1.1);
+    }
+    
+    /* Amélioration hover des connexions - PLUS VISIBLE */
+    .bpmn-editable .djs-container .djs-connection path {
+        transition: stroke-width 0.2s ease !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-connection:hover path,
+    .bpmn-editable .djs-container .djs-connection.hover path {
+        stroke-width: 6px !important;
+        stroke: #3b82f6 !important;
+        cursor: pointer !important;
+    }
+    
+    /* Bendpoints - MASQUÉS par défaut, visibles au hover de la connexion */
+    .bpmn-editable .djs-container .djs-bendpoint {
+        display: none !important;
+        fill: #3b82f6 !important;
+        stroke: white !important;
+        stroke-width: 2px !important;
+        cursor: move !important;
+        r: 5 !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-connection:hover .djs-bendpoint,
+    .bpmn-editable .djs-container .djs-connection.selected .djs-bendpoint,
+    .bpmn-editable .djs-container .djs-connection.hover .djs-bendpoint {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-bendpoint:hover {
+        fill: #2563eb !important;
+        stroke-width: 3px !important;
+        r: 7 !important;
+        cursor: grab !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-bendpoint:active {
+        cursor: grabbing !important;
+        fill: #1e40af !important;
+    }
+    
+    /* Connect handles - visibles seulement au hover */
+    .bpmn-editable .djs-container .djs-connect-handle {
+        display: none !important;
+        fill: #10b981 !important;
+        stroke: white !important;
+        stroke-width: 2px !important;
+        cursor: crosshair !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-element:hover .djs-connect-handle,
+    .bpmn-editable .djs-container .djs-element.selected .djs-connect-handle {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-connect-handle:hover {
+        fill: #059669 !important;
+        stroke-width: 3px !important;
+        r: 6 !important;
+    }
+    
+    /* Resize handles - visibles au hover */
+    .bpmn-editable .djs-container .djs-resize-handle {
+        display: none !important;
+        fill: #f59e0b !important;
+        stroke: white !important;
+        stroke-width: 2px !important;
+        cursor: nwse-resize !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-element:hover .djs-resize-handle,
+    .bpmn-editable .djs-container .djs-element.selected .djs-resize-handle {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-resize-handle:hover {
+        fill: #d97706 !important;
+        stroke-width: 3px !important;
+    }
+    
+    /* Waypoint handles - MASQUÉS, visibles au hover de connexion */
+    .bpmn-editable .djs-container .djs-waypoint-move-handle {
+        display: none !important;
+        fill: #8b5cf6 !important;
+        stroke: white !important;
+        stroke-width: 2px !important;
+        cursor: move !important;
+        r: 5 !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-connection:hover .djs-waypoint-move-handle,
+    .bpmn-editable .djs-container .djs-connection.selected .djs-waypoint-move-handle,
+    .bpmn-editable .djs-container .djs-connection.hover .djs-waypoint-move-handle {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-waypoint-move-handle:hover {
+        fill: #7c3aed !important;
+        stroke-width: 3px !important;
+        r: 7 !important;
+        cursor: grab !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-waypoint-move-handle:active {
+        cursor: grabbing !important;
+        fill: #6d28d9 !important;
+    }
+    
+    /* Segment dragger - MASQUÉ, visible au hover */
+    .bpmn-editable .djs-container .djs-segment-dragger {
+        display: none !important;
+        stroke: #3b82f6 !important;
+        stroke-dasharray: 5,5 !important;
+        stroke-width: 2px !important;
+        cursor: move !important;
+        opacity: 0.6 !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-connection:hover .djs-segment-dragger,
+    .bpmn-editable .djs-container .djs-connection.hover .djs-segment-dragger {
+        display: block !important;
+        visibility: visible !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-segment-dragger:hover {
+        stroke-width: 3px !important;
+        opacity: 1 !important;
+        cursor: grab !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-segment-dragger:active {
+        cursor: grabbing !important;
+    }
+    
+    /* Cercles noirs aux extrémités - TOUJOURS MASQUÉS */
+    .bpmn-editable .djs-container .djs-connection circle:not([class*="marker"]) {
+        display: none !important;
+    }
+    
+    /* Sélection */
+    .bpmn-editable .djs-container .djs-element.selected .djs-outline {
+        stroke: #3b82f6 !important;
+        stroke-width: 3px !important;
+        stroke-dasharray: 5,5 !important;
+    }
+    
+    .bpmn-editable .djs-container .djs-connection.selected path {
+        stroke: #3b82f6 !important;
+        stroke-width: 5px !important;
+    }
+    
+    /* Hover */
+    .bpmn-editable .djs-container .djs-element.hover .djs-outline {
+        stroke: #60a5fa !important;
+        stroke-width: 2px !important;
+    }
+    
+    /* Drag feedback */
+    .bpmn-editable .djs-container .djs-dragging .djs-element,
+    .bpmn-editable .djs-container .djs-dragging .djs-connection {
+        opacity: 0.7 !important;
+    }
+    
+    /* Connection preview */
+    .bpmn-editable .djs-container .djs-connection-preview path {
+        stroke: #3b82f6 !important;
+        stroke-dasharray: 5,5 !important;
+        stroke-width: 2px !important;
+    }
+    
+    .spinner { animation: spin 1s linear infinite; }
 `;
-
-/**
- * Détermine la couleur d'une tâche en fonction de son nom
- */
-export function getTaskColorByName(taskName: string): ColorScheme {
-  const name = taskName.toLowerCase();
-
-  if (name.includes('automatique') || name.includes('service') || name.includes('système')) {
-    return taskColors.automatic;
-  } else if (name.includes('envoyer') || name.includes('notifier') || name.includes('email')) {
-    return taskColors.notification;
-  } else if (name.includes('recevoir') || name.includes('attendre')) {
-    return taskColors.receive;
-  } else if (name.includes('manuel') || name.includes('papier')) {
-    return taskColors.manual;
-  } else if (name.includes('règle') || name.includes('décision') || name.includes('calcul')) {
-    return taskColors.decision;
-  } else if (name.includes('script') || name.includes('code')) {
-    return taskColors.script;
-  }
-
-  return taskColors.default;
-}
-
-/**
- * Applique les couleurs aux lanes d'un diagramme BPMN
- */
-export function applyLaneColors(elementRegistry: any): void {
-  try {
-    const allElements = elementRegistry.getAll();
-    const lanes = allElements.filter((e: any) => e.type === 'bpmn:Lane');
-
-    lanes.forEach((element: any, index: number) => {
-      const gfx = elementRegistry.getGraphics(element);
-      if (gfx) {
-        const rect = gfx.querySelector('rect');
-        if (rect) {
-          const colorScheme = laneColors[index % laneColors.length];
-          rect.style.fill = colorScheme.fill;
-          rect.style.fillOpacity = '0.9';
-          rect.style.stroke = colorScheme.stroke;
-          rect.style.strokeWidth = colorScheme.strokeWidth;
-        }
-      }
-    });
-  } catch (error) {
-    console.log('Erreur application des couleurs aux lanes:', error);
-  }
-}
-
-/**
- * Applique les couleurs aux tâches d'un diagramme BPMN
- */
-export function applyTaskColors(elementRegistry: any): void {
-  try {
-    const allElements = elementRegistry.getAll();
-    const tasks = allElements.filter((e: any) =>
-      e.type === 'bpmn:Task' || e.type === 'bpmn:UserTask'
-    );
-
-    tasks.forEach((element: any) => {
-      const gfx = elementRegistry.getGraphics(element);
-      if (gfx) {
-        const rect = gfx.querySelector('rect');
-        if (rect) {
-          const taskName = element.businessObject?.name || '';
-          const color = getTaskColorByName(taskName);
-
-          rect.style.fill = color.fill;
-          rect.style.stroke = color.stroke;
-          rect.style.strokeWidth = '4px';
-        }
-      }
-    });
-  } catch (error) {
-    console.log('Erreur application des couleurs aux tâches:', error);
-  }
-}
-
-/**
- * Applique tous les styles de couleur au diagramme BPMN
- */
-export function applyAllBpmnColors(elementRegistry: any): void {
-  applyLaneColors(elementRegistry);
-  applyTaskColors(elementRegistry);
-}

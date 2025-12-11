@@ -82,7 +82,7 @@ async def analyze_workflow_image(file: UploadFile = File(...)):
 @router.post("/improve")
 async def improve_workflow(request: WorkflowImproveRequest):
     """
-    🆕 Améliore un workflow existant avec Gemini 2.0 Flash
+    🆕 Améliore un workflow existant avec Gemini 2.5 Flash
     
     Args:
         request: { workflow: Table1Row[] }
@@ -217,7 +217,7 @@ async def get_info():
         "module": "Image to BPMN Converter",
         "version": "1.1.0",
         "status": "active",
-        "ai_model": "Gemini 2.0 Flash",
+        "ai_model": "Gemini 2.5 Flash",
         "features": [
             "✅ Analyse d'images de workflows",
             "✅ Extraction automatique des formes BPMN",

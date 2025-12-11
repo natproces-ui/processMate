@@ -45,27 +45,33 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
 
         const processWithAI = async () => {
             try {
-                const result = processDotToTable(dotSource);
+                console.log('📤 Envoi à l\'API pour parsing et enrichissement automatique...');
+                const result = await processDotToTable(dotSource);
 
-                setProcessingWarnings(result.warnings);
+                // Gestion des warnings
+                setProcessingWarnings(result.warnings || []);
 
                 if (!result.success) {
-                    console.error('❌ Erreurs:', result.errors);
+                    const errorMessages = result.errors || ['Erreur inconnue'];
+                    console.error('❌ Erreurs:', errorMessages);
                     setRows([]);
                     setFilteredRows([]);
                 } else {
-                    if (result.warnings.length > 0) {
+                    if (result.warnings && result.warnings.length > 0) {
                         console.warn('⚠️ Avertissements:', result.warnings);
                     }
-                    console.log(`✅ ${result.rows.length} lignes créées`);
+                    console.log(`✅ ${result.rows.length} lignes enrichies automatiquement par Gemini`);
 
-                    // Pas d'enrichissement automatique - juste charger les données
+                    // Données déjà enrichies par l'API
                     setRows(result.rows);
                     setFilteredRows(result.rows);
                 }
 
             } catch (err) {
                 console.error('💥 Erreur:', err);
+                setProcessingWarnings([
+                    `Erreur: ${err instanceof Error ? err.message : 'Erreur inconnue'}`
+                ]);
                 setRows([]);
                 setFilteredRows([]);
             } finally {

@@ -54,12 +54,24 @@ export default function DeposantForm({
         return rep.identifiantRepresentantLegal.idscv !== null;
     };
 
+    const isPP = deposant.typePersonne === 'PP';
+    const isPM = deposant.typePersonne === 'PM';
+
     return (
         <div className="space-y-6">
             {/* Section Déposant */}
             <div>
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">Informations du Déposant</h3>
+                    <div className="flex items-center gap-3">
+                        <h3 className="text-lg font-semibold">Informations du Déposant</h3>
+                        {/* ✅ Badge Type Personne */}
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${isPP
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                            }`}>
+                            {isPP ? '👤 Personne Physique (PP)' : '🏢 Personne Morale (PM)'}
+                        </span>
+                    </div>
                     <button
                         onClick={onRegenerate}
                         className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
@@ -70,7 +82,9 @@ export default function DeposantForm({
 
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Nom</label>
+                        <label className="block text-sm font-medium mb-1">
+                            {isPP ? 'Nom' : 'Dénomination Sociale'}
+                        </label>
                         <input
                             type="text"
                             value={deposant.nom}
@@ -78,24 +92,61 @@ export default function DeposantForm({
                             className="w-full px-3 py-2 border rounded"
                         />
                     </div>
+
+                    {/* ✅ GESTION PRENOM (null pour PM) */}
                     <div>
                         <label className="block text-sm font-medium mb-1">Prénom</label>
-                        <input
-                            type="text"
-                            value={deposant.prenom}
-                            onChange={(e) => updateDeposantField('prenom', e.target.value)}
-                            className="w-full px-3 py-2 border rounded"
-                        />
+                        {isPP ? (
+                            <input
+                                type="text"
+                                value={deposant.prenom || ''}
+                                onChange={(e) => updateDeposantField('prenom', e.target.value)}
+                                className="w-full px-3 py-2 border rounded"
+                            />
+                        ) : (
+                            <input
+                                type="text"
+                                value="N/A (Société)"
+                                disabled
+                                className="w-full px-3 py-2 border rounded bg-gray-100 text-gray-500 italic"
+                            />
+                        )}
                     </div>
+
+                    {/* ✅ GESTION DATE NAISSANCE (null pour PM) */}
                     <div>
                         <label className="block text-sm font-medium mb-1">Date de Naissance</label>
-                        <input
-                            type="text"
-                            value={deposant.dateNaissance}
-                            onChange={(e) => updateDeposantField('dateNaissance', e.target.value)}
-                            className="w-full px-3 py-2 border rounded"
-                        />
+                        {isPP ? (
+                            <input
+                                type="text"
+                                value={deposant.dateNaissance || ''}
+                                onChange={(e) => updateDeposantField('dateNaissance', e.target.value)}
+                                placeholder="DD/MM/YYYY"
+                                className="w-full px-3 py-2 border rounded"
+                            />
+                        ) : (
+                            <input
+                                type="text"
+                                value="N/A (Société)"
+                                disabled
+                                className="w-full px-3 py-2 border rounded bg-gray-100 text-gray-500 italic"
+                            />
+                        )}
                     </div>
+
+                    {/* ✅ AFFICHER FORME JURIDIQUE si PM */}
+                    {isPM && (
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Forme Juridique</label>
+                            <input
+                                type="text"
+                                value={deposant.formeJuridique || ''}
+                                onChange={(e) => updateDeposantField('formeJuridique', e.target.value)}
+                                className="w-full px-3 py-2 border rounded font-semibold"
+                            />
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-sm font-medium mb-1">Nationalité</label>
                         <input
@@ -103,6 +154,7 @@ export default function DeposantForm({
                             value={deposant.nationalite}
                             onChange={(e) => updateDeposantField('nationalite', e.target.value)}
                             className="w-full px-3 py-2 border rounded"
+                            maxLength={2}
                         />
                     </div>
                     <div>
@@ -121,6 +173,50 @@ export default function DeposantForm({
                             value={deposant.numeroIdentifiantDeposant}
                             onChange={(e) => updateDeposantField('numeroIdentifiantDeposant', e.target.value)}
                             className="w-full px-3 py-2 border rounded"
+                        />
+                    </div>
+
+                    {/* Champs de comptage */}
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Statut</label>
+                        <select
+                            value={deposant.isDecede}
+                            onChange={(e) => updateDeposantField('isDecede', e.target.value)}
+                            className="w-full px-3 py-2 border rounded"
+                        >
+                            <option value="O">O - Décédé</option>
+                            <option value="N">N - Vivant</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Nombre d'Héritiers</label>
+                        <input
+                            type="number"
+                            value={deposant.nombreHeritiers}
+                            onChange={(e) => updateDeposantField('nombreHeritiers', parseInt(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border rounded"
+                            min="0"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Nombre de Comptes</label>
+                        <input
+                            type="number"
+                            value={deposant.nombreComptes}
+                            onChange={(e) => updateDeposantField('nombreComptes', parseInt(e.target.value) || 0)}
+                            className="w-full px-3 py-2 border rounded"
+                            min="1"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Version</label>
+                        <input
+                            type="number"
+                            value={deposant.version}
+                            onChange={(e) => updateDeposantField('version', parseInt(e.target.value) || 1)}
+                            className="w-full px-3 py-2 border rounded"
+                            min="1"
+                            max="9"
                         />
                     </div>
                 </div>

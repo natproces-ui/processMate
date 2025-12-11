@@ -10,7 +10,6 @@ from typing import List
 import google.generativeai as genai
 import os
 import json
-
 router = APIRouter(prefix="/api/bpmn-ai", tags=["BPMN AI"])
 
 # Configuration Gemini
@@ -220,7 +219,7 @@ class BPMNAIEnricher:
         genai.configure(api_key=api_key)
         
         self.model = genai.GenerativeModel(
-            model_name='gemini-2.0-flash',
+            model_name='gemini-2.5-flash',
             generation_config={
                 'temperature': 0.1,  # ✅ Très bas pour cohérence maximale
                 'top_p': 0.8,
@@ -370,7 +369,7 @@ async def bpmn_ai_info():
     return {
         "module": "BPMN AI Enricher v3.0 - Enrichissement sur demande",
         "description": "Enrichit les tableaux BPMN existants avec département/acteur/outil",
-        "ai_model": "Google Gemini 2.0 Flash",
+        "ai_model": "Google Gemini 2.5 Flash",
         "capabilities": [
             "🏢 Détection automatique des départements",
             "👤 Identification des acteurs/rôles",

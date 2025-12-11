@@ -34,7 +34,6 @@ export const useFormData = () => {
 
     const currentData = multiData.scvList[multiData.currentIndex] || null;
 
-    // Ajouter un nouveau SCV
     const addNewSCV = async () => {
         try {
             setLoading(true);
@@ -50,7 +49,6 @@ export const useFormData = () => {
         }
     };
 
-    // Supprimer un SCV
     const deleteSCV = (index: number) => {
         if (multiData.scvList.length <= 1) return;
 
@@ -71,14 +69,12 @@ export const useFormData = () => {
         });
     };
 
-    // Changer le SCV actif
     const setCurrentSCV = (index: number) => {
         if (index >= 0 && index < multiData.scvList.length) {
             setMultiData(prev => ({ ...prev, currentIndex: index }));
         }
     };
 
-    // Mettre à jour le SCV actuel
     const updateCurrentSCV = (updatedSCV: SCVRoot) => {
         setMultiData(prev => {
             const newList = [...prev.scvList];
@@ -87,7 +83,6 @@ export const useFormData = () => {
         });
     };
 
-    // CORRECTION ICI : Accepter l'objet complet au lieu de field/value
     const updateDeposant = (updatedDeposant: any) => {
         if (!currentData) return;
         const updated = {
@@ -130,7 +125,6 @@ export const useFormData = () => {
         }
     };
 
-    // Gestion des représentants légaux
     const addRepresentantLegal = async () => {
         try {
             if (!currentData) return;
@@ -181,19 +175,41 @@ export const useFormData = () => {
         }
     };
 
-    // Gestion des héritiers
+    // ✅ FIX: Génération héritier avec index correct
     const addHeritier = async () => {
         try {
             if (!currentData) return;
-            const newHeritier = await api.generateHeritier(currentData.SCV.heritier.length);
+
+            const currentLength = currentData.SCV.heritier.length;
+            const newTotal = currentLength + 1;
+
+            // Générer avec index=0 (on recalculera tous les héritiers après)
+            const newHeritier = await api.generateHeritier(0, newTotal);
+
+            // Recalculer les parts de TOUS les héritiers
+            const allHeritiers = [...currentData.SCV.heritier, newHeritier];
+
+            // Demander les nouvelles parts pour tous
+            const updatedHeritiers = await Promise.all(
+                allHeritiers.map((h, idx) =>
+                    api.generateHeritier(idx, newTotal).then(newH => ({
+                        ...h,
+                        identifiantHeritier: {
+                            ...h.identifiantHeritier,
+                            partHeritage: newH.identifiantHeritier.partHeritage
+                        }
+                    }))
+                )
+            );
+
             const updated = {
                 ...currentData,
                 SCV: {
                     ...currentData.SCV,
-                    heritier: [...currentData.SCV.heritier, newHeritier],
+                    heritier: updatedHeritiers,
                     identifiantDeposant: {
                         ...currentData.SCV.identifiantDeposant,
-                        nombreHeritiers: currentData.SCV.heritier.length + 1
+                        nombreHeritiers: newTotal
                     }
                 }
             };
@@ -217,34 +233,52 @@ export const useFormData = () => {
     const deleteHeritier = (index: number) => {
         if (!currentData || currentData.SCV.heritier.length <= 1) return;
         const heritiers = currentData.SCV.heritier.filter((_, i) => i !== index);
-        const updated = {
-            ...currentData,
-            SCV: {
-                ...currentData.SCV,
-                heritier: heritiers,
-                identifiantDeposant: {
-                    ...currentData.SCV.identifiantDeposant,
-                    nombreHeritiers: heritiers.length
+
+        // Recalculer les parts après suppression
+        const newTotal = heritiers.length;
+        Promise.all(
+            heritiers.map((h, idx) =>
+                api.generateHeritier(idx, newTotal).then(newH => ({
+                    ...h,
+                    identifiantHeritier: {
+                        ...h.identifiantHeritier,
+                        partHeritage: newH.identifiantHeritier.partHeritage
+                    }
+                }))
+            )
+        ).then(updatedHeritiers => {
+            const updated = {
+                ...currentData,
+                SCV: {
+                    ...currentData.SCV,
+                    heritier: updatedHeritiers,
+                    identifiantDeposant: {
+                        ...currentData.SCV.identifiantDeposant,
+                        nombreHeritiers: newTotal
+                    }
                 }
-            }
-        };
-        updateCurrentSCV(updated);
+            };
+            updateCurrentSCV(updated);
+        });
     };
 
     const regenerateHeritier = async (index: number) => {
         try {
-            const newHeritier = await api.generateHeritier(index);
+            if (!currentData) return;
+            const totalHeritiers = currentData.SCV.heritier.length;
+            const newHeritier = await api.generateHeritier(index, totalHeritiers);
             updateHeritier(index, newHeritier);
         } catch (err) {
             console.error('Failed to regenerate heritier', err);
         }
     };
 
-    // Gestion des comptes
+    // ✅ FIX: Génération compte sans deposant_id si erreur
     const addCompte = async () => {
         try {
             if (!currentData) return;
-            const newCompte = await api.generateCompte(currentData.SCV.identifiantDeposant.idscv);
+            // Ne pas passer deposant_id pour éviter les erreurs
+            const newCompte = await api.generateCompte();
             const updated = {
                 ...currentData,
                 SCV: {
@@ -293,7 +327,8 @@ export const useFormData = () => {
     const regenerateCompte = async (index: number) => {
         try {
             if (!currentData) return;
-            const newCompte = await api.generateCompte(currentData.SCV.identifiantDeposant.idscv);
+            // Ne pas passer deposant_id pour éviter les erreurs
+            const newCompte = await api.generateCompte();
             updateCompte(index, newCompte);
         } catch (err) {
             console.error('Failed to regenerate compte', err);
@@ -312,7 +347,6 @@ export const useFormData = () => {
         }
     };
 
-    // Exporter tous les SCV en un seul fichier
     const exportAllSCV = () => {
         const allData = multiData.scvList.map(scv => scv.SCV);
         return JSON.stringify(allData, null, 2);

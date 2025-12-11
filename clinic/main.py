@@ -5,6 +5,7 @@ API FastAPI complète pour la génération de processus BPMN
 - BPMN depuis documents
 - Enrichissement IA
 - Image vers Table1Row[] (nouveau flux simplifié)
+- DOT to Table avec enrichissement Gemini intégré
 """
 
 from fastapi import FastAPI
@@ -14,6 +15,7 @@ from datetime import datetime
 import logging
 import os
 
+
 # Configuration du logging
 logging.basicConfig(
     level=logging.INFO,
@@ -21,8 +23,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 from config import API_CONFIG, CORS_CONFIG, HTML_FILE, IS_PRODUCTION, FRONTEND_URL, GOOGLE_API_KEY
-from routers import parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn
+from routers import parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn, doc_scanner, dot_to_table, cobol_flowchart, mega_routers  # ✅ AJOUTÉ
 
 app = FastAPI(
     title="BPMN Process Generator API",
@@ -49,9 +52,13 @@ async def startup_event():
 # Inclusion des routers
 app.include_router(parser.router)
 app.include_router(windev_flowchart.router)
+app.include_router(cobol_flowchart.router)
 app.include_router(bpmn.router)
 app.include_router(bpmn_ai.router)
 app.include_router(img_to_bpmn.router)
+app.include_router(doc_scanner.router)
+app.include_router(dot_to_table.router)  
+app.include_router(mega_routers.router)  # ✅ AJOUTÉ
 
 @app.head("/")
 async def head_root():
@@ -82,13 +89,49 @@ async def api_root():
         "architecture": {
             "principle": "Le tableau (Table1Row[]) est le point central",
             "workflow": [
-                "1. Remplir le tableau via: Image | Vocal | Manuel | Défaut",
+                "1. Remplir le tableau via: Image | DOT | Vocal | Manuel | Défaut",
                 "2. Valider et éditer le tableau",
                 "3. Générer le BPMN XML",
                 "4. Visualiser avec BPMNViewer"
             ]
         },
         "modules": {
+            "dot_to_table": {  # ✅ AJOUTÉ
+                "status": "✅ Actif",
+                "description": "Conversion DOT → Table enrichie avec Gemini (enrichissement automatique)",
+                "endpoints": {
+                    "convert": {
+                        "method": "POST",
+                        "path": "/api/dot-to-table",
+                        "description": "Upload DOT source → Retourne Table1Row[] enrichi",
+                        "input": {
+                            "dotSource": "string (contenu du fichier .dot)",
+                            "useAI": "boolean (défaut: true)"
+                        },
+                        "output": {
+                            "success": "boolean",
+                            "rows": "Table1Row[]",
+                            "warnings": "string[]",
+                            "metadata": "object"
+                        }
+                    },
+                    "info": {
+                        "method": "GET",
+                        "path": "/api/dot-to-table/info"
+                    }
+                },
+                "ai_model": "Gemini 2.5 Flash Experimental",
+                "features": [
+                    "✅ Parse automatique des fichiers Graphviz .dot",
+                    "✅ Détection des types BPMN (Start, Task, Gateway, End)",
+                    "✅ Enrichissement automatique avec Gemini en UNE SEULE ÉTAPE",
+                    "✅ Identification intelligente des acteurs et départements",
+                    "✅ Détection des outils métier",
+                    "✅ Reformulation en langage métier professionnel",
+                    "✅ Distribution naturelle des acteurs (BPMN multi-lanes)",
+                    "✅ Validation et normalisation des flux"
+                ]
+            },
             "img_to_bpmn": {
                 "status": "🆕 NOUVEAU - Simplifié",
                 "description": "Analyse d'images de workflows → Table1Row[]",
@@ -139,11 +182,27 @@ async def api_root():
                 "description": "Génération BPMN depuis documents",
                 "base_path": "/api/bpmn"
             },
+            "flowchart_cobol": {  # ✅ AJOUTÉ
+                "status": "✅ Actif",
+                "description": "Génération de flowcharts COBOL optimisés",
+                "base_path": "/api/flowchart/cobol"
+            },
             "bpmn_ai": {
                 "status": "Actif",
                 "description": "Enrichissement IA des tableaux BPMN",
                 "base_path": "/api/bpmn-ai"
+            },
+            "doc_scanner": {
+                "status": "Actif",
+                "description": "Scan et extraction de documents",
+                "base_path": "/api/doc-scanner"
+            },
+            "mega": {
+                "status": "Actif",
+                "description": "Gestion des Mega Tables",
+                "base_path": "/api/mega"
             }
+            
         },
         "data_model": {
             "Table1Row": {
@@ -155,10 +214,16 @@ async def api_root():
                 "condition": "string (pour Gateway uniquement)",
                 "outputOui": "string (ID étape suivante)",
                 "outputNon": "string (ID alternatif pour Gateway)",
-                "outil": "string (système/application)"
+                "outil": "string (système/application)",
+                "actions": "string (actions détaillées)"
             }
         },
         "frontend_integration": {
+            "dot_upload": {  # ✅ AJOUTÉ
+                "component": "DOT File Upload",
+                "action": "Upload .dot → Appel /api/dot-to-table → setData(rows)",
+                "result": "Tableau enrichi automatiquement avec Gemini"
+            },
             "image_upload": {
                 "component": "ImageUploadSection",
                 "action": "Upload → Appel /api/img-to-bpmn/analyze → setData(workflow)",
@@ -181,6 +246,13 @@ async def api_root():
             }
         },
         "best_practices": {
+            "dot_files": [  # ✅ AJOUTÉ
+                "Utiliser la syntaxe Graphviz standard (digraph)",
+                "Définir des labels clairs pour les nœuds",
+                "Utiliser shape=diamond pour les décisions",
+                "Utiliser shape=circle pour début/fin",
+                "Étiqueter les arêtes avec 'Oui'/'Non' pour les décisions"
+            ],
             "image_upload": [
                 "Utiliser des captures nettes (PNG recommandé)",
                 "Assurer un bon contraste",
@@ -217,10 +289,11 @@ async def health_check():
             "flowchart_generator": "active",
             "bpmn_generator": "active",
             "bpmn_ai_enricher": "active",
-            "img_to_table_converter": "active ✨"
+            "img_to_table_converter": "active ✨",
+            "dot_to_table_converter": "active ✨"  # ✅ AJOUTÉ
         },
         "ai_capabilities": {
-            "gemini_2_flash": "Analyse d'images de workflows",
+            "gemini_2_flash": "Analyse d'images de workflows + Conversion DOT enrichie",
             "gemini_pro": "Enrichissement et formalisation BPMN"
         }
     }
@@ -233,10 +306,20 @@ async def quick_start_guide():
         "steps": [
             {
                 "step": 1,
-                "title": "Uploader une image de processus",
-                "endpoint": "POST /api/img-to-bpmn/analyze",
-                "method": "FormData avec clé 'file'",
-                "result": "Tableau Table1Row[] rempli automatiquement"
+                "title": "Uploader un fichier source",
+                "options": [
+                    {
+                        "method": "Image de processus",
+                        "endpoint": "POST /api/img-to-bpmn/analyze",
+                        "format": "FormData avec clé 'file'"
+                    },
+                    {
+                        "method": "Fichier .dot (Graphviz)",
+                        "endpoint": "POST /api/dot-to-table",
+                        "format": "JSON avec clé 'dotSource'"
+                    }
+                ],
+                "result": "Tableau Table1Row[] rempli automatiquement avec enrichissement IA"
             },
             {
                 "step": 2,
@@ -261,6 +344,10 @@ async def quick_start_guide():
             "analyze_image": """curl -X POST http://localhost:8002/api/img-to-bpmn/analyze \\
   -F "file=@workflow.png" \\
   -H "Accept: application/json"
+            """,
+            "convert_dot": """curl -X POST http://localhost:8002/api/dot-to-table \\
+  -H "Content-Type: application/json" \\
+  -d '{"dotSource": "digraph G { start -> task1 -> end; }", "useAI": true}'
             """
         }
     }

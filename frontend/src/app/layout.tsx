@@ -44,6 +44,15 @@ export default function RootLayout({
                     </svg>
                     Clinic
                   </Link>
+                  <Link
+                    href="/scv-test"
+                    className="flex items-center gap-2 text-gray-600 hover:text-purple-600 transition-colors font-medium"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12h12M6 16h12M6 8h12" />
+                    </svg>
+                    ScvMaker
+                  </Link>
 
                   <Link
                     href="/stt"

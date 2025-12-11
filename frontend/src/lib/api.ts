@@ -12,7 +12,9 @@ export const api = {
   async generateFull() {
     const res = await fetch(`${API_URL}/generate/full`, { method: 'POST' });
     if (!res.ok) throw new Error('Failed to generate full JSON');
-    return res.json();
+    const json = await res.json();
+    // ✅ Backend retourne {count, data}, on extrait data
+    return json.data || json;  // Fallback si pas de wrapper
   },
 
   async generateDeposant() {
@@ -21,8 +23,12 @@ export const api = {
     return res.json();
   },
 
-  async generateHeritier(index: number = 0) {
-    const res = await fetch(`${API_URL}/generate/heritier?index=${index}`, { method: 'POST' });
+  // ✅ CORRECTION: Ajout du paramètre total
+  async generateHeritier(index: number = 0, total: number = 4) {
+    const res = await fetch(
+      `${API_URL}/generate/heritier?index=${index}&total=${total}`,
+      { method: 'POST' }
+    );
     if (!res.ok) throw new Error('Failed to generate heritier');
     return res.json();
   },

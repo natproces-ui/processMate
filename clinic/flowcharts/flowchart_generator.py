@@ -150,7 +150,7 @@ Réponds UNIQUEMENT avec le code Graphviz complet.
         genai.configure(api_key=api_key)
         
         self.model = genai.GenerativeModel(
-            model_name='gemini-2.0-flash',
+            model_name='gemini-2.5-flash',
             generation_config={
                 'temperature': 0.3,
                 'top_p': 0.9,

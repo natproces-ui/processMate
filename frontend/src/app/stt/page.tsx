@@ -7,11 +7,10 @@ import ImageUploadSection from "@/components/clinic/ImgUpload";
 import CameraScanSection from "@/components/clinic/CameraScan";
 import {
     FileText, Mic, Square, Sparkles, FileDown, RotateCcw, Trash2, Plus, ChevronDown, ChevronUp, AlertCircle, CheckCircle, Info, Camera,
-    ImageIcon
+    ImageIcon, RefreshCw
 } from "lucide-react";
 import { API_CONFIG } from "@/lib/api-config";
 
-// ===== DONNÉES PAR DÉFAUT (Processus création compte bancaire) =====
 const defaultData: Table1Row[] = [
     { id: '1', étape: 'Début du processus', typeBpmn: 'StartEvent', département: 'Front Office', acteur: 'Client', condition: '', outputOui: '2', outputNon: '', outil: 'Portail web' },
     { id: '2', étape: 'Prendre rendez-vous en ligne', typeBpmn: 'Task', département: 'Front Office', acteur: 'Client', condition: '', outputOui: '3', outputNon: '', outil: 'Application mobile / Site' },
@@ -65,6 +64,7 @@ export default function VoiceProcessPage() {
     const [bpmnXml, setBpmnXml] = useState<string>("");
     const [guideOpen, setGuideOpen] = useState(false);
     const [activeUploadTab, setActiveUploadTab] = useState<'upload' | 'camera'>('upload');
+    const [isEditingBpmn, setIsEditingBpmn] = useState(false);
 
     const showError = (message: string) => {
         setError(message);
@@ -76,14 +76,18 @@ export default function VoiceProcessPage() {
         setTimeout(() => setSuccess(null), 4000);
     };
 
-    // ===== GESTION IMAGE =====
     const handleImageWorkflowExtracted = (workflow: Table1Row[]) => {
         setData(workflow);
         setShowDiagram(false);
         setBpmnXml("");
     };
 
-    // ===== AMÉLIORATION IA =====
+    const handleBpmnUpdate = (updatedXml: string) => {
+        setBpmnXml(updatedXml);
+        setIsEditingBpmn(true);
+        showSuccess("Diagramme BPMN mis à jour avec succès !");
+    };
+
     const handleImproveWorkflow = async () => {
         if (data.length === 0) {
             showError("Le tableau est vide, rien à améliorer");
@@ -113,7 +117,6 @@ export default function VoiceProcessPage() {
             setShowDiagram(false);
             setBpmnXml("");
 
-            // Affichage des améliorations
             const improvements = result.metadata?.improvements;
             if (improvements) {
                 const msg = `Workflow amélioré ! ${improvements.steps_reformulated || 0} étape(s) reformulée(s), ${improvements.actors_clarified || 0} acteur(s) clarifié(s), ${improvements.tools_identified || 0} outil(s) identifié(s)`;
@@ -129,7 +132,6 @@ export default function VoiceProcessPage() {
         }
     };
 
-    // ===== GESTION VOCAL =====
     const toggleRecording = async () => {
         if (!recording) {
             try {
@@ -201,12 +203,12 @@ export default function VoiceProcessPage() {
         }
     };
 
-    // ===== GESTION BPMN =====
     const handleGenerateBPMN = () => {
         try {
             const xml = generateBPMN(data);
             setBpmnXml(xml);
             setShowDiagram(true);
+            setIsEditingBpmn(false);
             showSuccess("Diagramme BPMN généré avec succès !");
         } catch (err: any) {
             showError(err.message || "Erreur lors de la génération du BPMN");
@@ -234,6 +236,7 @@ export default function VoiceProcessPage() {
             setData(defaultData);
             setShowDiagram(false);
             setBpmnXml("");
+            setIsEditingBpmn(false);
             showSuccess("Tableau réinitialisé au processus par défaut");
         }
     };
@@ -243,11 +246,11 @@ export default function VoiceProcessPage() {
             setData([]);
             setShowDiagram(false);
             setBpmnXml("");
+            setIsEditingBpmn(false);
             showSuccess("Tableau vidé");
         }
     };
 
-    // ===== GESTION TABLEAU =====
     const handleChange = (index: number, field: keyof Table1Row, value: string) => {
         const updated = [...data];
         if (field === "typeBpmn") {
@@ -289,14 +292,12 @@ export default function VoiceProcessPage() {
                 puis générez votre diagramme BPMN
             </p>
 
-            {/* INDICATEUR D'ENVIRONNEMENT (dev seulement) */}
             {API_CONFIG.isDevelopment() && (
                 <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 text-sm rounded">
                     <strong>Mode développement :</strong> API → {API_CONFIG.baseUrl}
                 </div>
             )}
 
-            {/* NOTIFICATIONS */}
             {error && (
                 <div className="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -313,9 +314,7 @@ export default function VoiceProcessPage() {
                 </div>
             )}
 
-            {/* SECTION UPLOAD/SCAN AVEC ONGLETS */}
             <div className="mb-6">
-                {/* Sélecteur d'onglets */}
                 <div className="flex border-b border-gray-200 mb-4">
                     <button
                         onClick={() => setActiveUploadTab('upload')}
@@ -339,7 +338,6 @@ export default function VoiceProcessPage() {
                     </button>
                 </div>
 
-                {/* Contenu des onglets */}
                 {activeUploadTab === 'upload' ? (
                     <ImageUploadSection
                         onWorkflowExtracted={handleImageWorkflowExtracted}
@@ -355,7 +353,6 @@ export default function VoiceProcessPage() {
                 )}
             </div>
 
-            {/* GUIDE BPMN RÉTRACTABLE */}
             <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 rounded overflow-hidden">
                 <button
                     onClick={() => setGuideOpen(!guideOpen)}
@@ -380,13 +377,11 @@ export default function VoiceProcessPage() {
                             <li><strong>ExclusiveGateway</strong> : Point de décision (remplir la condition)</li>
                             <li><strong>Si Oui/Si Non</strong> : Utilisez les IDs d'étapes pour connecter les étapes</li>
                             <li><strong>Acteur</strong> : Définit les swimlanes (Client, Vente, KYC, etc.)</li>
-                            <li><strong>Améliorer avec IA</strong> : Gemini reformule et optimise votre processus</li>
                         </ul>
                     </div>
                 )}
             </div>
 
-            {/* ACTIONS PRINCIPALES */}
             <div className="mb-6 flex gap-4 flex-wrap">
                 <button
                     onClick={toggleRecording}
@@ -414,25 +409,28 @@ export default function VoiceProcessPage() {
                 </button>
 
                 <button
-                    onClick={handleImproveWorkflow}
-                    disabled={data.length === 0 || improving}
-                    className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${improving
-                        ? "bg-yellow-400 text-gray-800 cursor-wait animate-pulse"
-                        : "bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600"
-                        } disabled:bg-gray-400 disabled:cursor-not-allowed`}
-                >
-                    <Sparkles className="w-4 h-4" />
-                    {improving ? "Amélioration en cours..." : "Améliorer avec IA"}
-                </button>
-
-                <button
                     onClick={handleGenerateBPMN}
                     disabled={data.length === 0}
                     className="px-6 py-3 rounded-lg bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                 >
                     <FileText className="w-4 h-4" />
-                    Générer le BPMN
+                    {isEditingBpmn ? "Régénérer BPMN" : "Générer le BPMN"}
                 </button>
+
+                {showDiagram && bpmnXml && isEditingBpmn && (
+                    <button
+                        onClick={() => {
+                            if (confirm("⚠️ Régénérer le diagramme depuis le tableau ?\n\nToutes les modifications visuelles du diagramme seront perdues.")) {
+                                handleGenerateBPMN();
+                            }
+                        }}
+                        className="px-6 py-3 rounded-lg bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-all flex items-center gap-2"
+                        title="Régénérer depuis les données du tableau"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        Sync tableau → BPMN
+                    </button>
+                )}
 
                 {bpmnXml && (
                     <button
@@ -461,7 +459,22 @@ export default function VoiceProcessPage() {
                 </button>
             </div>
 
-            {/* DIAGRAMME BPMN */}
+            {isEditingBpmn && showDiagram && (
+                <div className="mb-4 p-4 bg-amber-50 border-l-4 border-amber-500 text-amber-800 rounded">
+                    <div className="flex items-start gap-3">
+                        <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <strong>Attention :</strong> Le diagramme a été modifié visuellement.
+                            Les modifications ne sont pas reflétées dans le tableau ci-dessous.
+                            <br />
+                            <span className="text-sm mt-1 block">
+                                💡 Utilisez "Sync tableau → BPMN" pour régénérer depuis le tableau.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showDiagram && bpmnXml && (
                 <div className="mb-6">
                     <BPMNViewer
@@ -469,11 +482,12 @@ export default function VoiceProcessPage() {
                         height="600px"
                         onClose={() => setShowDiagram(false)}
                         onError={(err) => showError(err)}
+                        onUpdate={handleBpmnUpdate}
+                        readOnly={false}
                     />
                 </div>
             )}
 
-            {/* TABLEAU ÉDITABLE */}
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                 <div className="bg-gray-800 text-white p-4">
                     <h2 className="text-xl font-bold flex items-center gap-2">
@@ -519,7 +533,6 @@ export default function VoiceProcessPage() {
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-
                                                 type="text"
                                                 value={row.étape}
                                                 onChange={(e) => handleChange(i, "étape", e.target.value)}
@@ -573,7 +586,6 @@ export default function VoiceProcessPage() {
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-
                                                 type="text"
                                                 value={row.outputNon}
                                                 onChange={(e) => handleChange(i, "outputNon", e.target.value)}
@@ -583,12 +595,10 @@ export default function VoiceProcessPage() {
                                         </td>
                                         <td className="border border-gray-300 p-1">
                                             <input
-
                                                 type="text"
                                                 value={row.outil}
                                                 onChange={(e) => handleChange(i, "outil", e.target.value)}
                                                 className="w-full px-2 py-1 border border-gray-300 rounded"
-
                                             />
                                         </td>
                                         <td className="border border-gray-300 p-1 text-center">
@@ -607,10 +617,9 @@ export default function VoiceProcessPage() {
                     </table>
                 </div>
             </div>
-            {/* BOUTON AJOUTER LIGNE */}
+
             <div className="mt-4">
                 <button
-
                     onClick={handleAddRow}
                     className="px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all flex items-center gap-2"
                 >
@@ -621,42 +630,3 @@ export default function VoiceProcessPage() {
         </div>
     );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

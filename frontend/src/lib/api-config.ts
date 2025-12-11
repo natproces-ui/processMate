@@ -16,7 +16,7 @@ const getApiBaseUrl = (): string => {
     }
 
     // Par défaut : local
-    return 'http://localhost:8002';
+    return 'http://localhost:8001';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -52,12 +52,23 @@ export const API_CONFIG = {
         imgToBpmnImprove: '/api/img-to-bpmn/improve',
         imgToBpmnBatchAnalyze: '/api/img-to-bpmn/batch-analyze',
         imgToBpmnInfo: '/api/img-to-bpmn/info',
+        /* ---------------------- MEGA TABLE ---------------------- */
+        megaProcessJson: '/api/mega/process-json',
+        megaProcessExcel: '/api/mega/process-excel',
+        megaStats: '/api/mega/stats',
+        megaInfo: '/api/mega/info',
 
         /* ---------------------- ROOT & HEALTH ---------------------- */
         apiRoot: '/api',
         health: '/health',
         quickStart: '/api/quick-start',
+        // 🆕 Scanner Pro
+        scannerScan: "/api/scanner/scan",
+        scannerScanAndAnalyze: "/api/scanner/scan-and-analyze",
+        scannerInfo: "/api/scanner/info"
     },
+
+
 
     /**
      * Construit l'URL complète pour un endpoint
@@ -96,4 +107,32 @@ export const API_CONFIG = {
 // Log de debug en dev (côté navigateur)
 if (typeof window !== 'undefined' && API_CONFIG.isDevelopment()) {
     console.log('🔧 API Configuration:', API_CONFIG.getEnvironmentInfo());
+}
+
+
+// Types pour le scanner
+export interface ScanResult {
+    success: boolean;
+    scanned_image: string;  // data:image/jpeg;base64,...
+    document_detected: boolean;
+    confidence: number;
+    corners?: number[][];
+    original_size: [number, number];
+    scanned_size: [number, number];
+    message?: string;
+}
+
+export interface ScanAndAnalyzeResult {
+    success: boolean;
+    workflow: any[];
+    steps_count: number;
+    scanned_image: string;
+    document_detected: boolean;
+    scan_confidence: number;
+    metadata: {
+        original_size: [number, number];
+        scanned_size: [number, number];
+        scan_mode: string;
+        enhanced: boolean;
+    };
 }

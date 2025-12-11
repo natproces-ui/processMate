@@ -29,8 +29,8 @@ export interface IdentifiantDeposant {
     version: number;
     typePersonne: string;
     nom: string;
-    prenom: string;
-    dateNaissance: string;
+    prenom: string | null;           // ✅ CORRECTION: null pour PM
+    dateNaissance: string | null;    // ✅ CORRECTION: null pour PM
     nationalite: string;
     formeJuridique: string | null;
     natureIdentifiantDeposant: string;
@@ -61,7 +61,7 @@ export interface Heritier {
 export interface InfosCompteBancaire {
     rib: string;
     natureCompte: string;
-    nombreCotitulaires: number;
+    nombreCotitulaires: number | null;  // ✅ CORRECTION: null pour IND
     pcec: string;
     devise: string;
     nomCompte: string;
