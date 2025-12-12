@@ -1,0 +1,37 @@
+# Environnement virtuel
+.venv/
+venv/
+env/
+
+# Fichiers de test et développement
+test-proc/
+**/test-proc/
+
+# Variables d'environnement
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Base de données
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# html
+static/
+index.html

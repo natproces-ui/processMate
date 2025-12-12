@@ -15,6 +15,7 @@ venv/
 env/
 clinic/venv/
 clinic/.venv/
+clinic/test-proc/
 
 # IDE
 .vscode/

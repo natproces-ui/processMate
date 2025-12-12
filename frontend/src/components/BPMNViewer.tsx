@@ -232,15 +232,12 @@ function useConnectionInteractions(viewerRef: React.RefObject<any>, editMode: bo
         try {
             const eventBus = viewerRef.current.get('eventBus');
             const modeling = viewerRef.current.get('modeling');
-            const canvas = viewerRef.current.get('canvas');
 
-            // Améliorer le hover sur les connexions
             const handleConnectionHover = (event: any) => {
                 if (event.element && (event.element.type === 'bpmn:SequenceFlow' || event.element.type === 'bpmn:Association')) {
                     const gfx = event.gfx;
                     if (gfx) {
                         gfx.style.cursor = 'pointer';
-                        // Augmenter temporairement l'épaisseur de la ligne pour faciliter la sélection
                         const path = gfx.querySelector('path');
                         if (path) {
                             path.style.strokeWidth = '6px';
@@ -262,7 +259,6 @@ function useConnectionInteractions(viewerRef: React.RefObject<any>, editMode: bo
                 }
             };
 
-            // Double-clic sur une connexion = ajouter bendpoint
             const handleDoubleClick = (event: any) => {
                 if (event.element.type === 'bpmn:SequenceFlow' || event.element.type === 'bpmn:Association') {
                     event.preventDefault();
@@ -270,8 +266,6 @@ function useConnectionInteractions(viewerRef: React.RefObject<any>, editMode: bo
 
                     const connection = event.element;
                     const position = { x: event.x, y: event.y };
-
-                    // Trouver le segment le plus proche
                     const waypoints = connection.waypoints;
                     let closestSegment = 0;
                     let minDistance = Infinity;
@@ -287,10 +281,8 @@ function useConnectionInteractions(viewerRef: React.RefObject<any>, editMode: bo
                         }
                     }
 
-                    // Insérer le nouveau waypoint
                     const newWaypoints = [...waypoints];
                     newWaypoints.splice(closestSegment + 1, 0, position);
-
                     modeling.updateWaypoints(connection, newWaypoints);
                 }
             };
@@ -310,7 +302,6 @@ function useConnectionInteractions(viewerRef: React.RefObject<any>, editMode: bo
     }, [viewerRef, editMode]);
 }
 
-// Fonction utilitaire : distance d'un point à un segment
 function distanceToSegment(point: any, start: any, end: any): number {
     const dx = end.x - start.x;
     const dy = end.y - start.y;
@@ -327,11 +318,7 @@ function distanceToSegment(point: any, start: any, end: any): number {
     return Math.sqrt((point.x - projectionX) ** 2 + (point.y - projectionY) ** 2);
 }
 
-function ZoomControls({ onZoomIn, onZoomOut, onFit }: {
-    onZoomIn: () => void;
-    onZoomOut: () => void;
-    onFit: () => void;
-}) {
+function ZoomControls({ onZoomIn, onZoomOut, onFit }: { onZoomIn: () => void; onZoomOut: () => void; onFit: () => void; }) {
     return (
         <div className="flex gap-1 bg-white rounded-lg border border-gray-300 p-1">
             <button onClick={onZoomIn} className="p-2 rounded hover:bg-gray-100" title="Zoom +">
@@ -367,32 +354,14 @@ export default function BPMNViewer({ xml, height = '800px', onClose, onError, on
                 height,
                 keyboard: { bindTo: document },
                 textRenderer: {
-                    defaultStyle: {
-                        fontFamily: 'Arial, sans-serif',
-                        fontWeight: '600',
-                        fontSize: '16px',
-                        lineHeight: 1.3
-                    },
-                    externalStyle: {
-                        fontSize: '16px',
-                        lineHeight: 1.3
-                    }
+                    defaultStyle: { fontFamily: 'Arial, sans-serif', fontWeight: '600', fontSize: '16px', lineHeight: 1.3 },
+                    externalStyle: { fontSize: '16px', lineHeight: 1.3 }
                 }
             });
 
             const eventBus = viewerRef.current.get('eventBus');
-            const changeEvents = [
-                'elements.changed',
-                'element.updateLabel',
-                'connection.reconnect',
-                'shape.move.end',
-                'connection.updateWaypoints'
-            ];
-
-            changeEvents.forEach(event => {
-                eventBus.on(event, () => {
-                    setHasChanges(true);
-                });
+            ['elements.changed', 'element.updateLabel', 'connection.reconnect', 'shape.move.end', 'connection.updateWaypoints'].forEach(event => {
+                eventBus.on(event, () => setHasChanges(true));
             });
 
             setLoading(false);
@@ -432,7 +401,6 @@ export default function BPMNViewer({ xml, height = '800px', onClose, onError, on
 
     const toggleEditMode = useCallback(() => {
         if (readOnly) return;
-
         const newMode = !editMode;
         setEditMode(newMode);
 
@@ -492,87 +460,32 @@ export default function BPMNViewer({ xml, height = '800px', onClose, onError, on
                 <div className="flex items-center gap-3">
                     <FileBarChart className="w-6 h-6 text-blue-600" />
                     <h2 className="text-xl font-semibold text-gray-800 m-0">Diagramme BPMN</h2>
-                    {hasChanges && (
-                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-semibold">
-                            Modifications non sauvegardées
-                        </span>
-                    )}
+                    {hasChanges && <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-semibold">Modifications non sauvegardées</span>}
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {!readOnly && (
-                        <>
-                            <button
-                                onClick={toggleEditMode}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm border transition-all ${editMode
-                                    ? 'bg-green-500 text-white border-green-500 hover:bg-green-600'
-                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                    }`}
-                                title={editMode ? "Passer en mode visualisation" : "Activer le mode édition"}
-                            >
-                                {editMode ? (
-                                    <>
-                                        <Unlock className="w-4 h-4" />
-                                        Édition active
-                                    </>
-                                ) : (
-                                    <>
-                                        <Lock className="w-4 h-4" />
-                                        Mode lecture
-                                    </>
-                                )}
-                            </button>
+                    {!readOnly && (<>
+                        <button onClick={toggleEditMode} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm border transition-all ${editMode ? 'bg-green-500 text-white border-green-500 hover:bg-green-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`} title={editMode ? "Passer en mode visualisation" : "Activer le mode édition"}>
+                            {editMode ? (<><Unlock className="w-4 h-4" />Édition active</>) : (<><Lock className="w-4 h-4" />Mode lecture</>)}
+                        </button>
+                        {hasChanges && onUpdate && (<button onClick={saveChanges} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 font-medium text-sm animate-pulse"><Save className="w-4 h-4" />Sauvegarder</button>)}
+                        <div className="w-px h-6 bg-gray-300 mx-1"></div>
+                    </>)}
 
-                            {hasChanges && onUpdate && (
-                                <button
-                                    onClick={saveChanges}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 font-medium text-sm animate-pulse"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    Sauvegarder
-                                </button>
-                            )}
+                    <ZoomControls onZoomIn={() => zoom(0.1)} onZoomOut={() => zoom(-0.1)} onFit={fitViewport} />
+                    <button onClick={downloadSVG} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"><Download className="w-4 h-4" />Exporter</button>
 
-                            <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                        </>
-                    )}
-
-                    <ZoomControls
-                        onZoomIn={() => zoom(0.1)}
-                        onZoomOut={() => zoom(-0.1)}
-                        onFit={fitViewport}
-                    />
-
-                    <button onClick={downloadSVG} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-                        <Download className="w-4 h-4" />
-                        Exporter
-                    </button>
-
-                    {onClose && (
-                        <>
-                            <div className="w-px h-6 bg-gray-300 mx-1"></div>
-                            <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100">
-                                <X className="w-5 h-5 text-gray-600" />
-                            </button>
-                        </>
-                    )}
+                    {onClose && (<><div className="w-px h-6 bg-gray-300 mx-1"></div><button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100"><X className="w-5 h-5 text-gray-600" /></button></>)}
                 </div>
             </div>
 
             {editMode && !readOnly && (
                 <div className="mx-6 mt-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-gray-700 m-0">
-                        <strong>🎯 Mode édition activé :</strong> Déplacez les éléments (drag & drop).
-                        Sur les flèches : <strong>Survolez</strong> pour voir les outils et augmenter l'épaisseur, <strong>double-cliquez</strong> pour ajouter un angle/coin.
-                    </p>
+                    <p className="text-sm text-gray-700 m-0"><strong>🎯 Mode édition activé :</strong> Déplacez les éléments (drag & drop). Sur les flèches : <strong>Survolez</strong> pour voir les outils et augmenter l'épaisseur, <strong>double-cliquez</strong> pour ajouter un angle/coin.</p>
                 </div>
             )}
 
-            <div
-                ref={containerRef}
-                style={{ height, position: 'relative' }}
-                className={`bg-white ${editMode ? 'bpmn-editable' : 'bpmn-view-only'}`}
-            >
+            <div ref={containerRef} style={{ height, position: 'relative' }} className={`bg-white ${editMode ? 'bpmn-editable' : 'bpmn-view-only'}`}>
                 {loading && (
                     <div className="absolute inset-0 bg-white/75 flex items-center justify-center z-10">
                         <svg className="w-12 h-12 text-blue-600 spinner" fill="none" viewBox="0 0 24 24">

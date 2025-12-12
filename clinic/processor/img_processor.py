@@ -29,7 +29,7 @@ class ImageProcessor:
         genai.configure(api_key=api_key)
         
         self.model = genai.GenerativeModel(
-            'gemini-2.0-flash-live',
+            'gemini-2.5-flash',
             generation_config={
                 "temperature": 0.1,
                 "top_p": 0.95,
