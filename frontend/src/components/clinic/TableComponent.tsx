@@ -47,7 +47,8 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
 
         const processData = async () => {
             try {
-                const result = processDotToTable(dotSource);
+                // ✅ CORRECTION: Ajout de 'await' ici
+                const result = await processDotToTable(dotSource);
                 setProcessingWarnings(result.warnings);
 
                 if (!result.success) {
