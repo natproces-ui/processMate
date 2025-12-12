@@ -43,6 +43,8 @@ export const API_CONFIG = {
         bpmnFormats: '/api/bpmn/formats',
         bpmnInfo: '/api/bpmn/info',
 
+        transcribe: '/api/stt/transcribe',  // ← AJOUTEZ CETTE LIGNE
+
         /* ---------------------- BPMN AI ---------------------- */
         bpmnAiEnrichTable: '/api/bpmn-ai/enrich-table',
         bpmnAiInfo: '/api/bpmn-ai/info',

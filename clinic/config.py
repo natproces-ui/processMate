@@ -15,7 +15,8 @@ load_dotenv()
 # ============================================
 
 # Mode développement vs production
-IS_PRODUCTION = os.getenv("RENDER", False)  # Render injecte automatiquement cette variable
+# clinic/config.py - ligne ~12
+IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").lower() == "true"
 
 # URL du frontend (dynamique selon l'environnement)
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
