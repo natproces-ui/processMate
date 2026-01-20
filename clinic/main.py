@@ -24,8 +24,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+
 from config import API_CONFIG, CORS_CONFIG, HTML_FILE, IS_PRODUCTION, FRONTEND_URL, GOOGLE_API_KEY
-from routers import parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn, doc_scanner, dot_to_table, cobol_flowchart, mega_routers  # ✅ AJOUTÉ
+from routers import parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn, doc_scanner, dot_to_table, cobol_flowchart, mega_routers, quota, doc_router  # ✅ AJOUTÉ
 
 app = FastAPI(
     title="BPMN Process Generator API",
@@ -59,6 +60,8 @@ app.include_router(img_to_bpmn.router)
 app.include_router(doc_scanner.router)
 app.include_router(dot_to_table.router)  
 app.include_router(mega_routers.router)  # ✅ AJOUTÉ
+app.include_router(quota.router)
+app.include_router(doc_router.router)  # 🆕 AJOUTÉ
 
 @app.head("/")
 async def head_root():
@@ -132,6 +135,7 @@ async def api_root():
                     "✅ Validation et normalisation des flux"
                 ]
             },
+            
             "img_to_bpmn": {
                 "status": "🆕 NOUVEAU - Simplifié",
                 "description": "Analyse d'images de workflows → Table1Row[]",
@@ -202,7 +206,9 @@ async def api_root():
                 "description": "Gestion des Mega Tables",
                 "base_path": "/api/mega"
             }
+
             
+
         },
         "data_model": {
             "Table1Row": {
@@ -218,6 +224,7 @@ async def api_root():
                 "actions": "string (actions détaillées)"
             }
         },
+
         "frontend_integration": {
             "dot_upload": {  # ✅ AJOUTÉ
                 "component": "DOT File Upload",

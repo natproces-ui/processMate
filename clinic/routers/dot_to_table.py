@@ -1,3 +1,4 @@
+# clinic/routers/dot_to_table.py
 """
 Router DOT to Table - Version BPMN avec Swimlanes correctes
 """
@@ -229,7 +230,11 @@ En BPMN, ACTEUR = SWIMLANE (la ligne horizontale qui montre QUI fait l'action).
    • "Appeler API POST /newid" → "Générer le numéro de compte"
    • "Définir profil tiers" → "Définir le profil du client"
 
-4️⃣ ACTIONS:
+4️⃣ ACTIONS (détails concrets):
+    • STRING avec retours à la ligne (\\n)
+    • Liste à puces des sous-étapes
+    • Maximum 2-3 actions par étape
+    • FORMAT OBLIGATOIRE : "• Action 1\\n• Action 2\\n• Action 3"
     • Détails précis de l'étape
     • Liste à puces des actions concretes, sans aller a plusieurs aussi dans de vastes details techniques
     • cest comme des sous etapes de l'étape
@@ -412,11 +417,14 @@ SORTIE JSON:
 ✅ OUTIL = Application précise (CRM Salesforce, API Service de Numérotation...)
 ✅ IDs séquentiels (1, 2, 3...)
 ✅ "" pour champs vides, JAMAIS null
+✅ "actions" est TOUJOURS une STRING, JAMAIS un array
+✅ Utilise "\\n" pour les retours à la ligne dans actions
+✅ Format actions: "• Action 1\\n• Action 2\\n• Action 3"
 ✅ Regroupe si MÊME acteur + MÊME département + MÊME outil + MÊME action métier
 ✅ eviter de forcer le regroupement si on voit clairement des contextes differents malgre que meme acteur/departement/outil
-
 ✅ Langage métier dans "étape", détails dans "actions"
 ✅ au niveau de action, maximum 2 ou 3 pour ne pas surcharger
+✅ JAMAIS de format ["action1", "action2"] pour actions
 
 Réponds UNIQUEMENT avec le JSON (pas de texte avant/après)."""
 
@@ -446,6 +454,18 @@ def dot_to_table_with_gemini(dot_source: str) -> List[Table1Row]:
         
         # Parse
         data = json.loads(result_text)
+        
+        # ✅ POST-TRAITEMENT : Convertir les arrays en strings
+        for row in data["rows"]:
+            # Si actions est une liste, la convertir en string avec \n
+            if isinstance(row.get("actions"), list):
+                row["actions"] = "\n".join(f"• {action}" for action in row["actions"])
+            
+            # Pareil pour d'autres champs si nécessaire
+            for field in ['département', 'acteur', 'condition', 'outputOui', 'outputNon', 'outil', 'étape']:
+                if isinstance(row.get(field), list):
+                    row[field] = "\n".join(row[field])
+        
         rows = [Table1Row(**row) for row in data["rows"]]
         
         logger.info(f"✅ {len(rows)} lignes générées par Gemini")

@@ -1,7 +1,3 @@
-# ============================================================================
-# FILE 1: flowchart_generator.py
-# ============================================================================
-
 """
 Générateur de flowcharts métier enrichis à partir d'AST JSON
 Utilise Google Gemini pour l'interprétation métier intelligente
@@ -117,6 +113,39 @@ digraph NomProcedure {
 }
 ```
 
+## RÈGLES DE SYNTAXE GRAPHVIZ - ULTRA IMPORTANT
+
+### 1. FORMAT DES NŒUDS - TOUJOURS UTILISER "label="
+
+MAUVAIS (syntaxe invalide) :
+start ["DÉBUT\\nProcédure", shape=circle, fillcolor="#2E8B57"];
+
+CORRECT (syntaxe valide) :
+start [label="DÉBUT\\nProcédure", shape=circle, fillcolor="#2E8B57"];
+
+RÈGLE : Tous les nœuds doivent utiliser l'attribut "label=" avant le texte du label.
+
+### 2. PAS DE VRAIE SAUT DE LIGNE DANS LES LABELS
+
+Les labels doivent rester sur UNE SEULE ligne de code. Utilise \\n pour les sauts de ligne.
+
+MAUVAIS :
+node [label="Ligne 1
+Ligne 2"];
+
+CORRECT :
+node [label="Ligne 1\\nLigne 2"];
+
+### 3. ÉCHAPPER LES GUILLEMETS DANS LES LABELS
+
+Si tu mentionnes des valeurs entre guillemets, échappe-les :
+
+MAUVAIS :
+node [label="Vérifier si statut = "ACTIF""];
+
+CORRECT :
+node [label="Vérifier si statut = \\"ACTIF\\""];
+
 ## CHECKLIST AVANT DE GÉNÉRER
 
 ✅ Chaque nœud décrit une ACTION, pas une liste de champs ?
@@ -126,6 +155,9 @@ digraph NomProcedure {
 ✅ Les erreurs décrivent CE QUI se passe en cas d'échec ?
 ✅ Les boucles expliquent POURQUOI on itère ?
 ✅ Pas de termes techniques bruts (cluster_, subgraph visible, etc.) ?
+✅ TOUS les nœuds utilisent "label=" avant le texte ?
+✅ AUCUN vrai saut de ligne dans les labels (utiliser \\n) ?
+✅ Les guillemets dans les labels sont échappés ?
 
 ## FORMAT DE SORTIE
 
@@ -192,6 +224,8 @@ RAPPELS CRITIQUES :
 - Interpréter toutes les fonctions (MD5, API, IBAN, etc.)
 - Expliquer le BUT de chaque groupe d'assignations
 - Mentionner les tables, endpoints API, normes (SEPA, etc.)
+- TOUJOURS utiliser "label=" pour les nœuds
+- PAS de vrais sauts de ligne (utiliser \\n)
 
 JSON à analyser :
 
@@ -264,5 +298,3 @@ Génère maintenant le flowchart Graphviz complet avec actions métier détaill�
             code = "\n".join(lines[start_idx:end_idx+1])
         
         return code
-
-
