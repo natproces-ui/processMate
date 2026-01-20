@@ -20,5 +20,5 @@ protobuf==5.29.5
 graphviz==0.21
 pandas==2.2.3
 opencv-python==4.7.0.72
-numpy==1.26.4
-google-cloud-service-usage==2.11.1
+numpy>=1.26.0,<2.0.0
+google-cloud-service-usage>=1.15.0
