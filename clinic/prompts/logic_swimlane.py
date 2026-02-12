@@ -1,3 +1,4 @@
+# clinic/prompts/logic_swimlane.py
 """
 Prompt logique pour BPMN avec swimlanes (Type A)
 """

@@ -1,3 +1,4 @@
+# clinic/prompts/logic_manuscript.py
 """
 Prompt logique pour diagrammes manuscrits (Type C)
 """

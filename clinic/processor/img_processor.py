@@ -2,7 +2,7 @@
 Processeur d'images 
 Extrait les workflows depuis des images et retourne au format Table1Row
 + Amélioration de workflows existants
-VERSION AMÉLIORÉE : Prompt adaptatif avec analyse réflexive
+VERSION ADAPTATIVE : Classification automatique → Prompt spécialisé
 """
 
 import google.generativeai as genai
@@ -19,7 +19,13 @@ import time
 import random
 from manager.model_manager import GeminiModelManager, GeminiModel
 
-# Import des prompts depuis les fichiers dédiés
+# Import du classifier et des prompts spécialisés
+from prompts.image_classifier import ImageClassifier
+from prompts.logic_swimlane import get_logic_swimlanes
+from prompts.logic_no_lanes import get_logic_no_lanes
+from prompts.logic_manuscript import get_logic_manuscript
+
+# Import des prompts standards
 from prompts.extract_prompt import get_extraction_prompt
 from prompts.enhance_prompt import get_improvement_prompt
 from prompts.verify_prompt import get_verification_prompt
@@ -36,11 +42,12 @@ class ImageProcessor:
             raise ValueError("GOOGLE_API_KEY non configurée")
         
         self.model_manager = GeminiModelManager(api_key)
-        self.request_timeout = 600
+        self.request_timeout = 600  # Timeout par défaut (peut être overridé par classifier)
     
     async def extract_workflow(self, image_data: bytes, content_type: str) -> Dict[str, Any]:
         """
         Extrait un workflow ET enrichissements depuis une image
+        AVEC classification adaptative pour sélectionner le prompt optimal
         
         Args:
             image_data: Données binaires de l'image
@@ -50,6 +57,25 @@ class ImageProcessor:
             Dict avec title, workflow, enrichments et métadonnées
         """
         try:
+            # ============================================
+            # PHASE 0 : Classification de l'image avec Gemini
+            # ============================================
+            logger.info("📊 Phase 0 : Classification de l'image avec Gemini...")
+            classifier = ImageClassifier()
+            classification = await classifier.classify_image(image_data)
+            
+            image_type = classification['type']
+            confidence = classification['confidence']
+            recommended_timeout = classification['recommended_timeout']
+            
+            logger.info(
+                f"📊 Image classifiée: {image_type} "
+                f"(confiance: {confidence}%, timeout: {recommended_timeout}s)"
+            )
+            
+            # ============================================
+            # Optimisation de l'image
+            # ============================================
             image = Image.open(io.BytesIO(image_data))
             
             max_size = 1024
@@ -60,19 +86,42 @@ class ImageProcessor:
                 image = Image.open(buffer)
                 logger.info(f"Image optimisée: {image.size} px, ~{len(buffer.getvalue())} bytes")
             
-            prompt = get_extraction_prompt()
+            # ============================================
+            # PHASE 1 : Sélection du prompt adaptatif
+            # ============================================
+            logger.info(f"🎯 Phase 1 : Sélection prompt pour type '{image_type}'")
+            
+            if image_type == "manuscript":
+                logic_prompt = get_logic_manuscript()
+                logger.info("📝 Prompt MANUSCRIT activé (correction orthographique)")
+            elif image_type == "swimlanes":
+                logic_prompt = get_logic_swimlanes()
+                logger.info("🏊 Prompt SWIMLANES activé (détection acteurs/outils)")
+            else:  # "simple" ou "no_lanes"
+                logic_prompt = get_logic_no_lanes()
+                logger.info("📋 Prompt SIMPLE activé (flux horizontal sans swimlanes)")
+            
+            # Combinaison : Logique spécialisée + Format de sortie
+            format_prompt = get_extraction_prompt()
+            full_prompt = logic_prompt + "\n\n" + format_prompt
+            
+            # ============================================
+            # PHASE 2 : Extraction avec Gemini
+            # ============================================
+            logger.info("🤖 Phase 2 : Extraction avec Gemini...")
             
             async def _extract_task(model_name: str):
                 logger.info(f"🔍 Extraction avec {model_name}")
                 
                 model = self.model_manager.get_model(model_name)
                 
+                # Utilise le timeout recommandé par le classifier
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         model.generate_content,
-                        [prompt, image]
+                        [full_prompt, image]
                     ),
-                    timeout=self.request_timeout
+                    timeout=recommended_timeout  # ← Timeout adaptatif
                 )
                 
                 return response
@@ -89,14 +138,35 @@ class ImageProcessor:
             
             logger.info(f"✓ Réponse Gemini reçue ({len(response.text)} caractères)")
             
+            # ============================================
+            # PHASE 3 : Parsing et validation
+            # ============================================
             workflow_data, title, enrichments_dict = self._parse_gemini_response(response.text)
             
             validated = self._validate_and_normalize_workflow(workflow_data)
             
+            # ============================================
+            # PHASE 4 : Métadonnées enrichies
+            # ============================================
             metadata = self._build_metadata(validated, image)
             metadata["model_used"] = result["model_used"]
             metadata["attempts"] = result["attempts"]
             metadata["enrichments_count"] = len(enrichments_dict)
+            
+            # Ajout des infos de classification
+            metadata["classification"] = {
+                "type": image_type,
+                "confidence": confidence,
+                "timeout_used": recommended_timeout,
+                "prompt_used": image_type,  # manuscript / swimlanes / no_lanes
+                "debug": classification.get('debug', {})
+            }
+            
+            logger.info(
+                f"✅ Extraction terminée: {len(validated)} étapes, "
+                f"{len(enrichments_dict)} enrichies, "
+                f"type={image_type}"
+            )
             
             return {
                 "title": title,
@@ -112,6 +182,7 @@ class ImageProcessor:
     async def improve_workflow(self, workflow: List[Dict[str, str]]) -> Dict[str, Any]:
         """
         Améliore un workflow existant avec Gemini 2.5 Flash
+        (Pas de classification nécessaire, workflow déjà extrait)
         
         Args:
             workflow: Tableau Table1Row[] existant

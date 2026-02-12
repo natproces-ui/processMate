@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 from config import API_CONFIG, CORS_CONFIG, HTML_FILE, IS_PRODUCTION, FRONTEND_URL, GOOGLE_API_KEY
-from routers import parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn, doc_scanner, dot_to_table, cobol_flowchart, mega_routers, quota, doc_router  # ✅ AJOUTÉ
+from routers import parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn, doc_scanner, dot_to_table, cobol_flowchart, mega_routers, quota, doc_router, stt  # ✅ AJOUTÉ
 
 app = FastAPI(
     title="BPMN Process Generator API",
@@ -60,6 +60,7 @@ app.include_router(img_to_bpmn.router)
 app.include_router(doc_scanner.router)
 app.include_router(dot_to_table.router)  
 app.include_router(mega_routers.router)  # ✅ AJOUTÉ
+app.include_router(stt.router)  # 🎙️ SPEECH-TO-TEXT
 app.include_router(quota.router)
 app.include_router(doc_router.router)  # 🆕 AJOUTÉ
 

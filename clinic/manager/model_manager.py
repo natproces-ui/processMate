@@ -1,5 +1,6 @@
 """
 Gestionnaire intelligent de modèles Gemini avec retry et fallback
+VERSION OPTIMISÉE : 1 tentative par modèle avant switch
 """
 
 import logging
@@ -22,14 +23,14 @@ class ModelRetryStrategy:
     """
     Stratégie de retry intelligente avec fallback entre modèles
     
-    Règles :
+    Règles OPTIMISÉES :
     - Erreur 429 (quota expiré) → Switch immédiat vers modèle lite
-    - Timeout → Retry 3x avec même modèle, puis switch
+    - Timeout → 1 tentative puis switch (pas 3 tentatives)
     - 429 sur les deux modèles → Erreur finale
     """
     
-    def __init__(self, max_retries: int = 3, retry_delay: float = 2.0):
-        self.max_retries = max_retries
+    def __init__(self, max_retries: int = 1, retry_delay: float = 2.0):
+        self.max_retries = max_retries  # ← 1 seule tentative par défaut
         self.retry_delay = retry_delay
         self.current_model = GeminiModel.FLASH
         
@@ -54,7 +55,7 @@ class ModelRetryStrategy:
         for model in models_to_try:
             logger.info(f"🤖 Tentative avec {model.value}")
             
-            # Retry pour timeouts
+            # Retry pour timeouts (1 seule fois maintenant)
             for attempt in range(1, self.max_retries + 1):
                 try:
                     result = await task_func(model.value)
@@ -69,11 +70,11 @@ class ModelRetryStrategy:
                     }
                     
                 except google_exceptions.ResourceExhausted as e:
-                    # 429 - Quota expiré
+                    # 429 - Quota expiré → Switch immédiat
                     logger.warning(f"⚠️ Quota expiré sur {model.value}: {str(e)}")
                     
                     if model == GeminiModel.FLASH:
-                        logger.info("🔄 Switch vers Flash Lite")
+                        logger.info("🔄 Switch immédiat vers Flash Lite (quota expiré)")
                         break  # Passer au modèle suivant
                     else:
                         # Déjà sur Flash Lite, on ne peut plus fallback
@@ -91,18 +92,18 @@ class ModelRetryStrategy:
                     logger.warning(f"⏱️ Timeout sur {model.value} (tentative {attempt}/{self.max_retries}): {str(e)}")
                     
                     if attempt < self.max_retries:
-                        # Retry avec le même modèle
+                        # Retry avec le même modèle (mais max_retries=1 donc jamais exécuté)
                         wait_time = self.retry_delay * attempt
                         logger.info(f"⏳ Attente de {wait_time}s avant retry...")
                         time.sleep(wait_time)
                         continue
                     else:
-                        # 3 échecs avec ce modèle
+                        # Timeout après 1 tentative → Switch modèle
                         if model == GeminiModel.FLASH:
-                            logger.info("🔄 3 timeouts sur Flash, switch vers Flash Lite")
+                            logger.info("🔄 Timeout sur Flash → Switch vers Flash Lite")
                             break  # Passer au modèle suivant
                         else:
-                            # Déjà sur Flash Lite après 3 timeouts
+                            # Déjà sur Flash Lite après timeout
                             return {
                                 "success": False,
                                 "error": "timeout_exhausted",
@@ -139,7 +140,7 @@ class GeminiModelManager:
     
     def __init__(self, api_key: str):
         genai.configure(api_key=api_key)
-        self.retry_strategy = ModelRetryStrategy(max_retries=3, retry_delay=2.0)
+        self.retry_strategy = ModelRetryStrategy(max_retries=1, retry_delay=2.0)  # ← 1 seule tentative
         
     def get_model(self, model_name: str) -> genai.GenerativeModel:
         """Crée une instance de modèle Gemini"""

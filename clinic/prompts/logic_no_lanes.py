@@ -1,3 +1,4 @@
+# clinic/prompts/logic_no_lanes.py
 """
 Prompt logique pour BPMN sans swimlanes (Type B)
 """
