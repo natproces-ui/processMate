@@ -1,0 +1,7 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "react/no-unknown-property": "off",
+    "@next/next/no-css-tags": "off"
+  }
+}

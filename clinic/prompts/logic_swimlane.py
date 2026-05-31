@@ -54,6 +54,17 @@ Les outils peuvent être placés :
 - Suis les flèches entre formes (même si elles traversent plusieurs swimlanes)
 - Gateway peut rediriger vers étape précédente (boucle)
 - Plusieurs chemins peuvent converger vers une même étape
+- Toutes les connexions se représentent dans le tableau **outputs** de chaque étape
+
+**TYPES DE GATEWAYS ET LEURS CONNEXIONS** :
+- **ExclusiveGateway** (losange vide/X) : une seule branche activée → 2+ entrées dans outputs avec labels ("Oui"/"Non")
+- **ParallelGateway** (losange avec +) : TOUTES les branches activées simultanément → plusieurs swimlanes en parallèle → outputs avec labels vides
+- **InclusiveGateway** (losange avec O) : une ou plusieurs branches → outputs avec labels de conditions
+
+⚠️ **ParallelGateway dans un contexte swimlanes** :
+Quand un acteur doit déclencher des actions dans PLUSIEURS swimlanes simultanément,
+c'est un ParallelGateway. Exemple : "Agence envoie à SOM ET à BOI en même temps"
+→ outputs: [{"targetId": "som_1", "label": ""}, {"targetId": "boi_1", "label": ""}]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ INSTRUCTIONS FINALES
@@ -64,6 +75,7 @@ Les outils peuvent être placés :
 - Outils = Systèmes avec @ ou noms d'applications
 - Ne confonds JAMAIS acteurs et outils
 - Les sections imbriquées : extrais chaque forme séparée
+- Utilise ParallelGateway quand plusieurs swimlanes sont activées simultanément
 
 """
 

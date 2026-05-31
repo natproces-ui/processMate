@@ -1,0 +1,137 @@
+﻿.next/types/validator.ts(105,39): error TS2307: Cannot find module '../../src/app/orchestration/page.js' or its corresponding type declarations.
+src/app/reactf/page.tsx(5,5): error TS2614: Module '"reactflow"' has no exported member 'Node'. Did you mean to use 'import Node from "reactflow"' instead?
+src/app/reactf/page.tsx(6,5): error TS2614: Module '"reactflow"' has no exported member 'Edge'. Did you mean to use 'import Edge from "reactflow"' instead?
+src/app/reactf/page.tsx(10,5): error TS2614: Module '"reactflow"' has no exported member 'useNodesState'. Did you mean to use 'import useNodesState from "reactflow"' instead?
+src/app/reactf/page.tsx(11,5): error TS2614: Module '"reactflow"' has no exported member 'useEdgesState'. Did you mean to use 'import useEdgesState from "reactflow"' instead?
+src/app/reactf/page.tsx(12,5): error TS2614: Module '"reactflow"' has no exported member 'MarkerType'. Did you mean to use 'import MarkerType from "reactflow"' instead?
+src/app/reactf/page.tsx(13,5): error TS2614: Module '"reactflow"' has no exported member 'Position'. Did you mean to use 'import Position from "reactflow"' instead?
+src/app/reactf/page.tsx(15,5): error TS2614: Module '"reactflow"' has no exported member 'NodeProps'. Did you mean to use 'import NodeProps from "reactflow"' instead?
+src/app/reactf/page.tsx(16,5): error TS2614: Module '"reactflow"' has no exported member 'ConnectionLineType'. Did you mean to use 'import ConnectionLineType from "reactflow"' instead?
+src/app/reactf/page.tsx(312,14): error TS2339: Property 'height' does not exist on type '{ id: string; acteur: string; x: number; color: { bg: string; border: string; header: string; }; }'.
+src/app/reactf/page.tsx(474,49): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/app/scv-test/page.tsx(209,33): error TS7006: Parameter 'scvWrapper' implicitly has an 'any' type.
+src/app/scv-test/page.tsx(209,45): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/app/stt/page.tsx(171,58): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/app/stt/page.tsx(175,21): error TS2322: Type '{}' is not assignable to type 'string'.
+src/app/stt/page.tsx(491,33): error TS2322: Type '(workflow: Table1Row[], title: string, newEnrichments: Map<string, TaskEnrichment>, procedureMetadata?: any) => void' is not assignable to type '(workflow: Table1Row[], title: string, enrichments: Map<string, TaskEnrichment>, procedureMetadata?: any) => void'.
+  Types of parameters 'workflow' and 'workflow' are incompatible.
+    Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+      Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/app/stt/page.tsx(499,33): error TS2322: Type '(newData: Table1Row[]) => void' is not assignable to type '(workflow: Table1Row[]) => void'.
+  Types of parameters 'newData' and 'workflow' are incompatible.
+    Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+      Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/app/stt/page.tsx(499,110): error TS2345: Argument of type 'Table1Row[]' is not assignable to parameter of type 'SetStateAction<Table1Row[]>'.
+  Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+    Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/app/stt/page.tsx(631,33): error TS2322: Type '(newData: Table1Row[]) => void' is not assignable to type '(data: Table1Row[]) => void'.
+  Types of parameters 'newData' and 'data' are incompatible.
+    Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+      Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/components/clinic/CustomNode.tsx(6,18): error TS2614: Module '"reactflow"' has no exported member 'Position'. Did you mean to use 'import Position from "reactflow"' instead?
+src/components/clinic/CustomNode.tsx(6,28): error TS2614: Module '"reactflow"' has no exported member 'NodeProps'. Did you mean to use 'import NodeProps from "reactflow"' instead?
+src/components/clinic/dotParser.tsx(3,10): error TS2614: Module '"reactflow"' has no exported member 'Node'. Did you mean to use 'import Node from "reactflow"' instead?
+src/components/clinic/dotParser.tsx(3,16): error TS2614: Module '"reactflow"' has no exported member 'Edge'. Did you mean to use 'import Edge from "reactflow"' instead?
+src/components/clinic/EditorView.tsx(7,5): error TS2614: Module '"reactflow"' has no exported member 'Node'. Did you mean to use 'import Node from "reactflow"' instead?
+src/components/clinic/EditorView.tsx(8,5): error TS2614: Module '"reactflow"' has no exported member 'Edge'. Did you mean to use 'import Edge from "reactflow"' instead?
+src/components/clinic/EditorView.tsx(13,5): error TS2614: Module '"reactflow"' has no exported member 'NodeChange'. Did you mean to use 'import NodeChange from "reactflow"' instead?
+src/components/clinic/EditorView.tsx(14,5): error TS2614: Module '"reactflow"' has no exported member 'EdgeChange'. Did you mean to use 'import EdgeChange from "reactflow"' instead?
+src/components/clinic/EditorView.tsx(15,5): error TS2614: Module '"reactflow"' has no exported member 'Connection'. Did you mean to use 'import Connection from "reactflow"' instead?
+src/components/clinic/EditorView.tsx(18,5): error TS2614: Module '"reactflow"' has no exported member 'NodeTypes'. Did you mean to use 'import NodeTypes from "reactflow"' instead?
+src/components/clinic/EditorView.tsx(183,25): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/components/clinic/EditorView.tsx(204,25): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/components/clinic/PropertiesPanel.tsx(6,10): error TS2614: Module '"reactflow"' has no exported member 'Node'. Did you mean to use 'import Node from "reactflow"' instead?
+src/components/clinic/PropertiesPanel.tsx(6,16): error TS2614: Module '"reactflow"' has no exported member 'Edge'. Did you mean to use 'import Edge from "reactflow"' instead?
+src/components/clinic/TableComponent.tsx(224,38): error TS2345: Argument of type 'TableRow[]' is not assignable to parameter of type 'Table1Row[]'.
+  Property 'outputs' is missing in type 'TableRow' but required in type 'Table1Row'.
+src/components/DetailModal.tsx(24,62): error TS2345: Argument of type '{ id_tache: string; descriptif: string; duree_estimee: string; frequence: string; kpi: string; }' is not assignable to parameter of type 'TaskEnrichment | (() => TaskEnrichment)'.
+  Type '{ id_tache: string; descriptif: string; duree_estimee: string; frequence: string; kpi: string; }' is missing the following properties from type 'TaskEnrichment': declencheur, applicatif
+src/components/DetailModal.tsx(37,25): error TS2345: Argument of type '{ id_tache: string; descriptif: string; duree_estimee: string; frequence: string; kpi: string; }' is not assignable to parameter of type 'SetStateAction<TaskEnrichment>'.
+  Type '{ id_tache: string; descriptif: string; duree_estimee: string; frequence: string; kpi: string; }' is missing the following properties from type 'TaskEnrichment': declencheur, applicatif
+src/components/FlowchartViewer.tsx(3,5): error TS2614: Module '"reactflow"' has no exported member 'Node'. Did you mean to use 'import Node from "reactflow"' instead?
+src/components/FlowchartViewer.tsx(4,5): error TS2614: Module '"reactflow"' has no exported member 'Edge'. Did you mean to use 'import Edge from "reactflow"' instead?
+src/components/FlowchartViewer.tsx(8,5): error TS2614: Module '"reactflow"' has no exported member 'useNodesState'. Did you mean to use 'import useNodesState from "reactflow"' instead?
+src/components/FlowchartViewer.tsx(9,5): error TS2614: Module '"reactflow"' has no exported member 'useEdgesState'. Did you mean to use 'import useEdgesState from "reactflow"' instead?
+src/components/FlowchartViewer.tsx(10,5): error TS2614: Module '"reactflow"' has no exported member 'MarkerType'. Did you mean to use 'import MarkerType from "reactflow"' instead?
+src/components/FlowchartViewer.tsx(11,5): error TS2614: Module '"reactflow"' has no exported member 'Position'. Did you mean to use 'import Position from "reactflow"' instead?
+src/components/FlowchartViewer.tsx(190,37): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/new-way/BpmnEditor.tsx(107,28): error TS7016: Could not find a declaration file for module 'bpmn-js-create-append-anything'. 'C:/processMate/frontend/node_modules/bpmn-js-create-append-anything/dist/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/bpmn-js-create-append-anything` if it exists or add a new declaration (.d.ts) file containing `declare module 'bpmn-js-create-append-anything';`
+src/components/new-way/OldEditor.tsx(106,28): error TS7016: Could not find a declaration file for module 'bpmn-js-create-append-anything'. 'C:/processMate/frontend/node_modules/bpmn-js-create-append-anything/dist/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/bpmn-js-create-append-anything` if it exists or add a new declaration (.d.ts) file containing `declare module 'bpmn-js-create-append-anything';`
+src/components/orchestration/BpmnHighlightViewer.tsx(140,45): error TS2322: Type 'HTMLDivElement | null' is not assignable to type 'string | HTMLElement | undefined'.
+  Type 'null' is not assignable to type 'string | HTMLElement | undefined'.
+src/components/orchestration/ComplexityPanel.tsx(110,24): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(iterable?: Iterable<readonly [unknown, unknown]> | null | undefined): Map<unknown, unknown>', gave the following error.
+    Argument of type '(string | WorkflowStep)[][]' is not assignable to parameter of type 'Iterable<readonly [unknown, unknown]>'.
+      The types returned by '[Symbol.iterator]().next(...)' are incompatible between these types.
+        Type 'IteratorResult<(string | WorkflowStep)[], undefined>' is not assignable to type 'IteratorResult<readonly [unknown, unknown], any>'.
+          Type 'IteratorYieldResult<(string | WorkflowStep)[]>' is not assignable to type 'IteratorResult<readonly [unknown, unknown], any>'.
+            Type 'IteratorYieldResult<(string | WorkflowStep)[]>' is not assignable to type 'IteratorYieldResult<readonly [unknown, unknown]>'.
+              Type '(string | WorkflowStep)[]' is not assignable to type 'readonly [unknown, unknown]'.
+                Target requires 2 element(s) but source may have fewer.
+  Overload 2 of 4, '(entries?: readonly (readonly [unknown, unknown])[] | null | undefined): Map<unknown, unknown>', gave the following error.
+    Argument of type '(string | WorkflowStep)[][]' is not assignable to parameter of type 'readonly (readonly [unknown, unknown])[]'.
+      Type '(string | WorkflowStep)[]' is not assignable to type 'readonly [unknown, unknown]'.
+        Target requires 2 element(s) but source may have fewer.
+src/components/orchestration/FindingCard.tsx(484,61): error TS2339: Property 'steps' does not exist on type 'Procedure'.
+src/components/orchestration/FindingCard.tsx(493,22): error TS2339: Property 'bpmn_xml' does not exist on type 'Procedure'.
+src/components/orchestration/FindingCard.tsx(494,28): error TS2339: Property 'bpmn_xml' does not exist on type 'Procedure'.
+src/components/orchestration/IrritantsDashboard.tsx(270,17): error TS2345: Argument of type 'DragBehavior<SVGGElement, any, any>' is not assignable to parameter of type '(selection: Selection<SVGGElement | BaseType, any, SVGGElement, unknown>) => void'.
+  Types of parameters 'selection' and 'selection' are incompatible.
+    Type 'Selection<SVGGElement | BaseType, any, SVGGElement, unknown>' is not assignable to type 'Selection<SVGGElement, any, any, any>'.
+      Types of property 'select' are incompatible.
+        Type '{ <DescElement extends BaseType>(selector: string): Selection<DescElement, any, SVGGElement, unknown>; <DescElement extends BaseType>(selector: null): Selection<null, undefined, SVGGElement, unknown>; <DescElement extends BaseType>(selector: ValueFn<...>): Selection<...>; }' is not assignable to type '{ <DescElement extends BaseType>(selector: string): Selection<DescElement, any, any, any>; <DescElement extends BaseType>(selector: null): Selection<null, undefined, any, any>; <DescElement extends BaseType>(selector: ValueFn<...>): Selection<...>; }'.
+          Types of parameters 'selector' and 'selector' are incompatible.
+            Types of parameters 'groups' and 'groups' are incompatible.
+              Type '(SVGGElement | BaseType)[] | ArrayLike<SVGGElement | BaseType>' is not assignable to type 'SVGGElement[] | ArrayLike<SVGGElement>'.
+                Type '(SVGGElement | BaseType)[]' is not assignable to type 'SVGGElement[] | ArrayLike<SVGGElement>'.
+                  Type '(SVGGElement | BaseType)[]' is not assignable to type 'SVGGElement[]'.
+                    Type 'SVGGElement | BaseType' is not assignable to type 'SVGGElement'.
+                      Type 'null' is not assignable to type 'SVGGElement'.
+src/components/orchestration/ProcedureEditor.tsx(345,25): error TS2322: Type '(workflow: Table1Row[], _: string, newEnrichments: Map<string, TaskEnrichment>) => void' is not assignable to type '(workflow: Table1Row[], title: string, enrichments: Map<string, TaskEnrichment>, procedureMetadata?: any) => void'.
+  Types of parameters 'workflow' and 'workflow' are incompatible.
+    Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+      Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/components/processmate/NotificationBell.tsx(219,57): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/processmate/SttPanel.tsx(140,58): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/components/processmate/SttPanel.tsx(141,54): error TS2322: Type '{}' is not assignable to type 'string'.
+src/components/processmate/SttPanel.tsx(375,29): error TS2322: Type '(workflow: Table1Row[], title: string, newEnrichments: Map<string, TaskEnrichment>, procedureMetadata?: any) => void' is not assignable to type '(workflow: Table1Row[], title: string, enrichments: Map<string, TaskEnrichment>, procedureMetadata?: any) => void'.
+  Types of parameters 'workflow' and 'workflow' are incompatible.
+    Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+      Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/components/processmate/SttPanel.tsx(382,29): error TS2322: Type '(d: Table1Row[]) => void' is not assignable to type '(workflow: Table1Row[]) => void'.
+  Types of parameters 'd' and 'workflow' are incompatible.
+    Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+      Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/components/processmate/SttPanel.tsx(382,106): error TS2345: Argument of type 'Table1Row[]' is not assignable to parameter of type 'SetStateAction<Table1Row[]>'.
+  Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+    Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/components/processmate/SttPanel.tsx(484,29): error TS2322: Type '(d: Table1Row[]) => void' is not assignable to type '(data: Table1Row[]) => void'.
+  Types of parameters 'd' and 'data' are incompatible.
+    Type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row[]' is not assignable to type 'import("C:/processMate/frontend/src/logic/types").Table1Row[]'.
+      Property 'typeActeur' is missing in type 'import("C:/processMate/frontend/src/logic/bpmnLayoutEngine").Table1Row' but required in type 'import("C:/processMate/frontend/src/logic/types").Table1Row'.
+src/components/ProcessTable.tsx(201,39): error TS2345: Argument of type '{ id_tache: string; descriptif: string; duree_estimee: string; frequence: string; kpi: string; }' is not assignable to parameter of type 'TaskEnrichment'.
+  Type '{ id_tache: string; descriptif: string; duree_estimee: string; frequence: string; kpi: string; }' is missing the following properties from type 'TaskEnrichment': declencheur, applicatif
+src/components/sfd/ExtractionResult.tsx(133,64): error TS2339: Property 'nom_banque' does not exist on type 'Format3SFD'.
+src/components/sfd/ExtractionResult.tsx(134,82): error TS2339: Property 'nom_banque' does not exist on type 'Format3SFD'.
+src/logic/bpmnLogicGenerator.ts(84,25): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(84,42): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(85,65): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(93,25): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(93,42): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(94,66): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(98,25): error TS2339: Property 'outputNon' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(98,42): error TS2339: Property 'outputNon' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(99,65): error TS2339: Property 'outputNon' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(106,25): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(106,42): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(106,73): error TS2339: Property 'outputNon' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(106,90): error TS2339: Property 'outputNon' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(107,66): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(108,65): error TS2339: Property 'outputNon' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(111,32): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(111,49): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/bpmnLogicGenerator.ts(112,67): error TS2339: Property 'outputOui' does not exist on type 'Table1Row'.
+src/logic/normalizeTable.ts(2,10): error TS2614: Module '"@/components/ProcessTable"' has no exported member 'ProcessRow'. Did you mean to use 'import ProcessRow from "@/components/ProcessTable"' instead?
+src/logic/parseTable.ts(2,10): error TS2614: Module '"@/components/ProcessTable"' has no exported member 'ProcessRow'. Did you mean to use 'import ProcessRow from "@/components/ProcessTable"' instead?

@@ -1,5 +1,4 @@
 // bpmnConstants.ts - Constantes partagées BPMN
-
 export const DEFAULT_DIMENSIONS = {
     LANE_WIDTH: 450,
     NODE_WIDTH: 180,
@@ -10,14 +9,14 @@ export const DEFAULT_DIMENSIONS = {
     HORIZONTAL_SPACING: 80,
     MARGIN_LEFT: 150,
     MARGIN_TOP: 100,
-    LANE_LABEL_OFFSET: 150, // Offset pour le label de lane
+    LANE_LABEL_OFFSET: 150,
     ANNOTATION_WIDTH: 120,
     ANNOTATION_HEIGHT: 45,
     ANNOTATION_OFFSET: 12,
 } as const;
 
 export const LANE_COLORS = [
-    { fill: 'transparent', stroke: '#c3ccd4ff', strokeWidth: '4', labelBg: '#e5e7eb' },
+    { fill: 'transparent', stroke: '#848484ff', strokeWidth: '4', labelBg: '#e5e7eb' },
     { fill: 'transparent', stroke: '#F57C00', strokeWidth: '4', labelBg: '#FFF3E0' },
     { fill: 'transparent', stroke: '#7B1FA2', strokeWidth: '4', labelBg: '#F3E5F5' },
     { fill: 'transparent', stroke: '#388E3C', strokeWidth: '4', labelBg: '#E8F5E9' },
@@ -42,4 +41,6 @@ export const BPMN_TYPES = {
     USER_TASK: 'UserTask',
     TASK: 'Task',
     EXCLUSIVE_GATEWAY: 'ExclusiveGateway',
+    PARALLEL_GATEWAY: 'ParallelGateway',   // AJOUT
+    INCLUSIVE_GATEWAY: 'InclusiveGateway',  // AJOUT
 } as const;

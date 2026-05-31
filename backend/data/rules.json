@@ -1,0 +1,375 @@
+{
+  "Identifiant_Deposant": {
+    "idscv": {
+      "type": "Numérique",
+      "longueur": 30,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "version": {
+      "type": "Numérique",
+      "longueur": 1,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "typePersonne": {
+      "type": "Référentiel",
+      "longueur": 2,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "nom": {
+      "type": "Alphabétique",
+      "longueur": 40,
+      "obligatoire": "Oui si PP",
+      "pseudo": "Oui"
+    },
+    "prenom": {
+      "type": "Alphabétique",
+      "longueur": 40,
+      "obligatoire": "Oui si PP",
+      "pseudo": "Oui"
+    },
+    "dateNaissance": {
+      "type": "Date",
+      "longueur": 10,
+      "obligatoire": "Oui si PP",
+      "pseudo": "Non"
+    },
+    "nationalite": {
+      "type": "Référentiel",
+      "longueur": 2,
+      "obligatoire": "Oui si PP",
+      "pseudo": "Non"
+    },
+    "formeJuridique": {
+      "type": "Référentiel",
+      "longueur": 8,
+      "obligatoire": "Oui si PM",
+      "pseudo": "Non"
+    },
+    "natureIdentifiantDeposant": {
+      "type": "Référentiel",
+      "longueur": 8,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "numeroIdentifiantDeposant": {
+      "type": "Alphanumérique",
+      "longueur": 30,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "denominationSociale": {
+      "type": "Alphanumérique",
+      "longueur": 100,
+      "obligatoire": "Oui si PM",
+      "pseudo": "Oui"
+    },
+    "nombreComptes": {
+      "type": "Numérique",
+      "longueur": 3,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "isDecede": {
+      "type": "Référentiel",
+      "longueur": 1,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "nombreHeritiers": {
+      "type": "Numérique",
+      "longueur": 3,
+      "obligatoire": "Oui si décédé",
+      "pseudo": "Non"
+    }
+  },
+  "Representant_Legal": {
+    "idscv": {
+      "type": "Numérique",
+      "longueur": 30,
+      "obligatoire": "Non",
+      "pseudo": "Non"
+    },
+    "natureIdentifiantDeposantP": {
+      "type": "Référentiel",
+      "longueur": 10,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "numeroIdentifiantDeposantP": {
+      "type": "Alphanumérique",
+      "longueur": 20,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "nom": {
+      "type": "Alphabétique",
+      "longueur": 40,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "prenom": {
+      "type": "Alphabétique",
+      "longueur": 40,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "dateNaissance": {
+      "type": "Date",
+      "longueur": 10,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "nationalite": {
+      "type": "Alphabétique",
+      "longueur": 2,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    }
+  },
+  "Heritier": {
+    "idscv": {
+      "type": "Numérique",
+      "longueur": 30,
+      "obligatoire": "Non",
+      "pseudo": "Non"
+    },
+    "natureIdentifiantDeposantP": {
+      "type": "Référentiel",
+      "longueur": 10,
+      "obligatoire": "Non",
+      "pseudo": "Non"
+    },
+    "numeroIdentifiantDeposantP": {
+      "type": "Alphanumérique",
+      "longueur": 20,
+      "obligatoire": "Non",
+      "pseudo": "Oui"
+    },
+    "nom": {
+      "type": "Alphabétique",
+      "longueur": 40,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "prenom": {
+      "type": "Alphabétique",
+      "longueur": 40,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "dateNaissance": {
+      "type": "Date",
+      "longueur": 10,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "nationalite": {
+      "type": "Alphabétique",
+      "longueur": 2,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "partHeritage": {
+      "type": "Numérique",
+      "longueur": 3,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    }
+  },
+  "Infos_Contact": {
+    "adresse1": {
+      "type": "Alphanumérique",
+      "longueur": 200,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "adresse2": {
+      "type": "Alphanumérique",
+      "longueur": 200,
+      "obligatoire": "Non",
+      "pseudo": "Non"
+    },
+    "codePostal": {
+      "type": "Alphanumérique",
+      "longueur": 10,
+      "obligatoire": "Non",
+      "pseudo": "Non"
+    },
+    "ville": {
+      "type": "Référentiel",
+      "longueur": 3,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "pays": {
+      "type": "Référentiel",
+      "longueur": 2,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "mobile": {
+      "type": "Alphanumérique",
+      "longueur": 20,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "fixe": {
+      "type": "Alphanumérique",
+      "longueur": 20,
+      "obligatoire": "Non",
+      "pseudo": "Oui"
+    },
+    "email": {
+      "type": "Alphanumérique",
+      "longueur": 50,
+      "obligatoire": "Non",
+      "pseudo": "Oui"
+    }
+  },
+  "Compte": {
+    "rib": {
+      "type": "Numérique",
+      "longueur": 24,
+      "obligatoire": "Oui",
+      "pseudo": "Oui"
+    },
+    "natureCompte": {
+      "type": "Référentiel",
+      "longueur": 3,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "nombreCoTitulaires": {
+      "type": "Numérique",
+      "longueur": 4,
+      "obligatoire": "Oui si collectif",
+      "pseudo": "Non"
+    },
+    "pcec": {
+      "type": "Référentiel",
+      "longueur": 5,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "devise": {
+      "type": "Référentiel",
+      "longueur": 3,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "nomCompte": {
+      "type": "Alphabétique",
+      "longueur": 100,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "isCarteBancaire": {
+      "type": "Référentiel",
+      "longueur": 1,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "statutCompte": {
+      "type": "Référentiel",
+      "longueur": 4,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "compteNSTP": {
+      "type": "Référentiel",
+      "longueur": 20,
+      "obligatoire": "Oui si NSTP",
+      "pseudo": "Non"
+    },
+    "autreCompteNSTP": {
+      "type": "Alphanumérique",
+      "longueur": 300,
+      "obligatoire": "Oui si Autre",
+      "pseudo": "Non"
+    },
+    "sensSolde": {
+      "type": "Référentiel",
+      "longueur": 4,
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "montantTotalSolde": {
+      "type": "Monétaire",
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "montantTotalDettes": {
+      "type": "Monétaire",
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "montantTotalDebits": {
+      "type": "Monétaire",
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "montantTotalAgios": {
+      "type": "Monétaire",
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "montantTotalGarantie": {
+      "type": "Monétaire",
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "montantTotalInterets": {
+      "type": "Monétaire",
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    }
+  },
+  "Cotitulaire": {
+    "idscv": {
+      "type": "Numérique",
+      "longueur": 30,
+      "obligatoire": "Oui si collectif",
+      "pseudo": "Non"
+    },
+    "partCoTitulaire": {
+      "type": "Numérique",
+      "longueur": 2,
+      "obligatoire": "Non",
+      "pseudo": "Non"
+    }
+  },
+  "Prelevement": {
+    "montant": {
+      "type": "Monétaire",
+      "obligatoire": "Oui",
+      "pseudo": "Non"
+    },
+    "nature": {
+      "type": "Référentiel",
+      "obligatoire": "Oui si montant>0",
+      "pseudo": "Non"
+    },
+    "natureAutre": {
+      "type": "Alphabétique",
+      "obligatoire": "Oui si nature=Autre",
+      "pseudo": "Non"
+    }
+  },
+  "Carte_Bancaire": {
+    "numeroCarte": {
+      "type": "Numérique",
+      "longueur": 16,
+      "obligatoire": "Oui si carte associée",
+      "pseudo": "Oui"
+    },
+    "validite": {
+      "type": "Date",
+      "longueur": 8,
+      "obligatoire": "Oui si carte associée",
+      "pseudo": "Non"
+    }
+  }
+}

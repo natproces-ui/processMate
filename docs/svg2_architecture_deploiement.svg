@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 640" width="900" height="640" font-family="Segoe UI, Arial, sans-serif">
+  <!-- Background -->
+  <rect width="900" height="640" fill="#f1f5f9" rx="12"/>
+
+  <!-- Title bar -->
+  <rect x="0" y="0" width="900" height="70" fill="#0f172a" rx="12"/>
+  <rect x="0" y="53" width="900" height="17" fill="#0f172a"/>
+  <text x="450" y="28" text-anchor="middle" fill="white" font-size="20" font-weight="bold">PROCESSMATE — Architecture de Déploiement</text>
+  <text x="450" y="54" text-anchor="middle" fill="#94a3b8" font-size="12">Vue d'ensemble des services, ports, CORS et liaisons — Durée estimée : 1 journée</text>
+
+  <!-- ===== INTERNET / EXTERNAL ===== -->
+  <rect x="330" y="88" width="240" height="52" fill="#e0f2fe" rx="10" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="450" y="109" text-anchor="middle" fill="#0369a1" font-size="13" font-weight="bold">INTERNET / DNS</text>
+  <text x="450" y="127" text-anchor="middle" fill="#0369a1" font-size="11">Render.com · Vercel · Supabase Cloud</text>
+
+  <!-- Arrow down to frontend -->
+  <line x1="450" y1="140" x2="450" y2="168" stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- ===== FRONTEND ===== -->
+  <rect x="300" y="168" width="300" height="88" fill="#f0fdf4" rx="10" stroke="#16a34a" stroke-width="2"/>
+  <rect x="300" y="168" width="300" height="32" fill="#16a34a" rx="10"/>
+  <rect x="300" y="188" width="300" height="12" fill="#16a34a"/>
+  <text x="450" y="189" text-anchor="middle" fill="white" font-size="13" font-weight="bold">Frontend — Next.js</text>
+  <rect x="370" y="204" width="60" height="20" fill="#bbf7d0" rx="4"/>
+  <text x="400" y="218" text-anchor="middle" fill="#15803d" font-size="11" font-weight="bold">Port 3000</text>
+  <text x="450" y="238" text-anchor="middle" fill="#166534" font-size="11">npm run build → npm start</text>
+  <text x="450" y="252" text-anchor="middle" fill="#4b7a57" font-size="10">Variables : NEXT_PUBLIC_API_URL · SCV_API_URL · SFD_API_URL</text>
+
+  <!-- ===== CORS ZONE ===== -->
+  <rect x="30" y="280" width="840" height="28" fill="#fef9c3" rx="6" stroke="#ca8a04" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="450" y="299" text-anchor="middle" fill="#78350f" font-size="12" font-weight="bold">CORS — Chaque backend autorise explicitement l'URL du frontend (FRONTEND_URL=https://...)</text>
+
+  <!-- Arrows from frontend to backends -->
+  <!-- to Clinic -->
+  <line x1="360" y1="256" x2="190" y2="332" stroke="#6366f1" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+  <!-- to SCV -->
+  <line x1="450" y1="256" x2="450" y2="332" stroke="#6366f1" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+  <!-- to SFD -->
+  <line x1="540" y1="256" x2="710" y2="332" stroke="#6366f1" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr2)"/>
+
+  <!-- ===== BACKEND 1 — CLINIC ===== -->
+  <rect x="30" y="332" width="240" height="148" fill="white" rx="10" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="30" y="332" width="240" height="32" fill="#7c3aed" rx="10"/>
+  <rect x="30" y="352" width="240" height="12" fill="#7c3aed"/>
+  <text x="150" y="353" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Clinic API — FastAPI</text>
+  <rect x="60" y="368" width="60" height="20" fill="#ede9fe" rx="4"/>
+  <text x="90" y="382" text-anchor="middle" fill="#5b21b6" font-size="12" font-weight="bold">Port 8002</text>
+  <text x="150" y="404" text-anchor="middle" fill="#374151" font-size="11">uvicorn clinic.main:app</text>
+  <text x="48" y="422" fill="#4b5563" font-size="10">28 routers : BPMN, OCR, Chat</text>
+  <text x="48" y="437" fill="#4b5563" font-size="10">GOOGLE_API_KEY (Gemini)</text>
+  <text x="48" y="452" fill="#4b5563" font-size="10">SUPABASE_URL + SERVICE_KEY</text>
+  <text x="48" y="467" fill="#4b5563" font-size="10">FRONTEND_URL (CORS)</text>
+
+  <!-- ===== BACKEND 2 — SCV ===== -->
+  <rect x="330" y="332" width="240" height="148" fill="white" rx="10" stroke="#0891b2" stroke-width="2"/>
+  <rect x="330" y="332" width="240" height="32" fill="#0891b2" rx="10"/>
+  <rect x="330" y="352" width="240" height="12" fill="#0891b2"/>
+  <text x="450" y="353" text-anchor="middle" fill="white" font-size="12" font-weight="bold">SCV Maker — FastAPI</text>
+  <rect x="360" y="368" width="60" height="20" fill="#cffafe" rx="4"/>
+  <text x="390" y="382" text-anchor="middle" fill="#0e7490" font-size="12" font-weight="bold">Port 8001</text>
+  <text x="450" y="404" text-anchor="middle" fill="#374151" font-size="11">uvicorn backend.main:app</text>
+  <text x="348" y="422" fill="#4b5563" font-size="10">Génération SCV + validation</text>
+  <text x="348" y="437" fill="#4b5563" font-size="10">GOOGLE_API_KEY (Gemini)</text>
+  <text x="348" y="452" fill="#4b5563" font-size="10">SUPABASE_URL + SERVICE_KEY</text>
+  <text x="348" y="467" fill="#4b5563" font-size="10">FRONTEND_URL (CORS)</text>
+
+  <!-- ===== BACKEND 3 — SFD ===== -->
+  <rect x="630" y="332" width="240" height="148" fill="white" rx="10" stroke="#dc2626" stroke-width="2"/>
+  <rect x="630" y="332" width="240" height="32" fill="#dc2626" rx="10"/>
+  <rect x="630" y="352" width="240" height="12" fill="#dc2626"/>
+  <text x="750" y="353" text-anchor="middle" fill="white" font-size="12" font-weight="bold">SFD Generator — FastAPI</text>
+  <rect x="660" y="368" width="60" height="20" fill="#fee2e2" rx="4"/>
+  <text x="690" y="382" text-anchor="middle" fill="#991b1b" font-size="12" font-weight="bold">Port 8004</text>
+  <text x="750" y="404" text-anchor="middle" fill="#374151" font-size="11">uvicorn sfd.main:app</text>
+  <text x="648" y="422" fill="#4b5563" font-size="10">Génération docs spécification</text>
+  <text x="648" y="437" fill="#4b5563" font-size="10">GOOGLE_API_KEY (Gemini)</text>
+  <text x="648" y="452" fill="#4b5563" font-size="10">FRONTEND_URL (CORS)</text>
+  <text x="648" y="467" fill="#4b5563" font-size="10">PORT=8004 (env var)</text>
+
+  <!-- ===== EXTERNAL SERVICES ===== -->
+  <!-- Supabase -->
+  <line x1="150" y1="480" x2="200" y2="540" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="450" y1="480" x2="370" y2="540" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <rect x="170" y="540" width="200" height="56" fill="#fff7ed" rx="8" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="270" y="560" text-anchor="middle" fill="#9a3412" font-size="12" font-weight="bold">Supabase Cloud</text>
+  <text x="270" y="576" text-anchor="middle" fill="#9a3412" font-size="10">PostgreSQL · Auth · Storage</text>
+  <text x="270" y="591" text-anchor="middle" fill="#c2410c" font-size="10">agotdktomrhlopryqiow.supabase.co</text>
+
+  <!-- Gemini -->
+  <line x1="150" y1="480" x2="530" y2="544" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="450" y1="480" x2="560" y2="540" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="750" y1="480" x2="650" y2="540" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <rect x="530" y="540" width="200" height="56" fill="#f0fdf4" rx="8" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="630" y="560" text-anchor="middle" fill="#14532d" font-size="12" font-weight="bold">Google Gemini API</text>
+  <text x="630" y="576" text-anchor="middle" fill="#14532d" font-size="10">IA : génération BPMN, OCR</text>
+  <text x="630" y="591" text-anchor="middle" fill="#15803d" font-size="10">GOOGLE_API_KEY → obligatoire</text>
+
+  <!-- ===== LEGEND ===== -->
+  <rect x="30" y="610" width="840" height="24" fill="#e2e8f0" rx="6"/>
+  <line x1="80" y1="622" x2="110" y2="622" stroke="#6366f1" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="115" y="626" fill="#374151" font-size="11">Requête HTTP frontend → backend</text>
+  <line x1="320" y1="622" x2="350" y2="622" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="355" y="626" fill="#374151" font-size="11">Connexion service externe</text>
+  <rect x="550" y="614" width="14" height="14" fill="#fef9c3" stroke="#ca8a04" stroke-width="1"/>
+  <text x="568" y="626" fill="#78350f" font-size="11">Zone CORS à configurer</text>
+
+  <!-- Arrow defs -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+    </marker>
+  </defs>
+</svg>

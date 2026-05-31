@@ -1,16 +1,25 @@
-// bpmnStyles.ts - Styles BPMN avec hitbox flèches améliorée
+// bpmnStyles.ts - STYLES FINAUX
 
 export const BPMN_VIEWER_STYLES = `
     @keyframes spin { to { transform: rotate(360deg); } }
     
-    /* Lanes verticales - SANS FOND */
-    .djs-container .djs-element[data-element-id^="Lane_"] rect:first-child {
+    /* ============================================
+       LANES - Structure et headers colorés
+       ============================================ */
+    
+    /* Lanes verticales - Fond transparent */
+    .djs-container .djs-element[data-element-id^="Lane_"] rect:not(.lane-header-custom) {
         fill: transparent !important;
         stroke-width: 4px !important;
         filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.1));
     }
     
-    /* Labels des lanes - EN HAUT, GRAS, 26PX */
+    /* Headers colorés personnalisés (créés par applyLaneColors) */
+    .lane-header-custom {
+        pointer-events: none !important;
+    }
+    
+    /* Labels des lanes - Positionnement */
     .djs-container .djs-element[data-element-id^="Lane_"] .djs-label {
         transform: translateY(0px) !important;
         white-space: pre-wrap !important;
@@ -18,28 +27,31 @@ export const BPMN_VIEWER_STYLES = `
         line-height: 1.4 !important;
     }
     
+    /* Texte des lanes - Style blanc (appliqué par JS) */
     .djs-container .djs-element[data-element-id^="Lane_"] .djs-label text {
-        font-size: 16px !important;
+        font-size: 18px !important;
         font-weight: 700 !important;
-        fill: #ffffff !important;
     }
     
     .djs-container .djs-element[data-element-id^="Lane_"] .djs-label tspan {
-        fill: #ffffff !important;
         font-weight: 700 !important;
     }
     
-    /* Labels des TÂCHES - AUGMENTÉS À 36PX */
+    /* ============================================
+       ÉLÉMENTS BPMN - Tâches, Events, Gateways
+       ============================================ */
+    
+    /* Labels des TÂCHES */
     .djs-container .djs-element[data-element-id^="Task_"] .djs-label text {
-        font-size: 50px !important;
-        font-weight: 700 !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
         fill: #111827 !important;
         line-height: 1.2 !important;
     }
     
     /* Labels des GATEWAYS */
     .djs-container .djs-element[data-element-id^="Gateway_"] .djs-label text {
-        font-size: 28px !important;
+        font-size: 14px !important;
         font-weight: 600 !important;
         fill: #111827 !important;
     }
@@ -47,82 +59,89 @@ export const BPMN_VIEWER_STYLES = `
     /* Labels des EVENTS */
     .djs-container .djs-element[data-element-id^="Start_"] .djs-label text,
     .djs-container .djs-element[data-element-id^="End_"] .djs-label text {
-        font-size: 26px !important;
+        font-size: 13px !important;
         font-weight: 600 !important;
         fill: #111827 !important;
     }
     
-    /* Annotations d'outils - RÉDUITS À 18PX */
+    /* ============================================
+       ANNOTATIONS & ASSOCIATIONS
+       ============================================ */
+    
+    /* Annotations d'outils - Style sobre (gris clair) */
     .djs-container .djs-element[data-element-id^="Annotation_"] rect {
         fill: transparent !important;
         stroke: none !important;
     }
     
     .djs-container .djs-element[data-element-id^="Annotation_"] text {
-        font-size: 18px !important;
-        font-weight: 600 !important;
-        fill: #F59E0B !important;
-        text-shadow: 0 0 3px rgba(255, 255, 255, 0.8);
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        fill: #9CA3AF !important;
+        text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
     }
     
+    /* Associations - Lignes pointillées grises (style MEGA) */
     .djs-container .djs-connection[data-element-id^="Association_"] path {
-        stroke: #F59E0B !important;
-        stroke-width: 1.5px !important;
-        stroke-dasharray: 4,2 !important;
-        opacity: 0.5 !important;
+        stroke: #D1D5DB !important;
+        stroke-width: 1px !important;
+        stroke-dasharray: 3,3 !important;
+        opacity: 0.4 !important;
     }
+    
+    /* ============================================
+       FORMES - Tâches, Gateways, Events
+       ============================================ */
     
     /* Tâches */
     .djs-container .djs-element[data-element-id^="Task_"] rect {
-        stroke-width: 4px !important;
-        filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.25));
+        stroke-width: 2px !important;
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
         rx: 8 !important;
     }
     
     /* Gateways */
     .djs-container .djs-element[data-element-id^="Gateway_"] path {
         stroke: #f59e0b !important;
-        stroke-width: 4px !important;
+        stroke-width: 3px !important;
         fill: #fffbeb !important;
     }
     
-    /* Events */
+    /* Start Events */
     .djs-container .djs-element[data-element-id^="Start_"] circle {
         stroke: #10b981 !important;
-        stroke-width: 4px !important;
+        stroke-width: 3px !important;
         fill: #d1fae5 !important;
     }
     
+    /* End Events */
     .djs-container .djs-element[data-element-id^="End_"] circle {
         stroke: #ef4444 !important;
-        stroke-width: 5px !important;
+        stroke-width: 4px !important;
         fill: #fee2e2 !important;
     }
     
-    /* Connexions - HITBOX ÉLARGIE */
-    .djs-container .djs-connection path {
-        stroke: #6b7280 !important;
-        stroke-width: 3px !important;
-    }
+    /* ============================================
+       CONNEXIONS - Style MEGA (gris sobre)
+       ============================================ */
     
-    /* Ajouter une hitbox invisible plus large pour faciliter la sélection */
-    .djs-container .djs-connection {
-        pointer-events: visibleStroke !important;
-    }
-    
+    /* Connexions - Gris moyen (style MEGA HOPEX) */
     .djs-container .djs-connection path {
+        stroke: #9CA3AF !important;
+        stroke-width: 2px !important;
         stroke-linecap: round !important;
         stroke-linejoin: round !important;
     }
     
-    /* Overlay invisible pour élargir la zone de sélection */
-    .djs-container .djs-connection::before {
-        content: '' !important;
-        position: absolute !important;
-        pointer-events: stroke !important;
+    /* Zone de sélection élargie pour faciliter les clics */
+    .djs-container .djs-connection {
+        pointer-events: visibleStroke !important;
     }
     
-    /* Style des flèches - IMPORTANT */
+    /* ============================================
+       FLÈCHES - Marqueurs de fin de connexion
+       ============================================ */
+    
     .djs-container svg defs marker {
         display: block !important;
         visibility: visible !important;
@@ -130,7 +149,7 @@ export const BPMN_VIEWER_STYLES = `
     
     .djs-container svg defs marker path,
     .djs-container svg defs marker polygon {
-        fill: #6b7280 !important;
+        fill: #9CA3AF !important;
         stroke: none !important;
     }
     
@@ -158,7 +177,7 @@ export const BPMN_VIEWER_STYLES = `
        MODE ÉDITION (éditable)
        ============================================ */
     
-    /* Context Pad - visible en mode édition */
+    /* Context Pad */
     .bpmn-editable .djs-container .djs-context-pad {
         display: block !important;
         visibility: visible !important;
@@ -177,19 +196,19 @@ export const BPMN_VIEWER_STYLES = `
         transform: scale(1.1);
     }
     
-    /* Amélioration hover des connexions - PLUS VISIBLE */
+    /* Hover sur connexions - Plus visible en mode édition */
     .bpmn-editable .djs-container .djs-connection path {
         transition: stroke-width 0.2s ease !important;
     }
     
     .bpmn-editable .djs-container .djs-connection:hover path,
     .bpmn-editable .djs-container .djs-connection.hover path {
-        stroke-width: 6px !important;
+        stroke-width: 4px !important;
         stroke: #3b82f6 !important;
         cursor: pointer !important;
     }
     
-    /* Bendpoints - MASQUÉS par défaut, visibles au hover de la connexion */
+    /* Bendpoints - Masqués par défaut, visibles au hover */
     .bpmn-editable .djs-container .djs-bendpoint {
         display: none !important;
         fill: #3b82f6 !important;
@@ -218,7 +237,7 @@ export const BPMN_VIEWER_STYLES = `
         fill: #1e40af !important;
     }
     
-    /* Connect handles - visibles seulement au hover */
+    /* Connect handles */
     .bpmn-editable .djs-container .djs-connect-handle {
         display: none !important;
         fill: #10b981 !important;
@@ -239,7 +258,7 @@ export const BPMN_VIEWER_STYLES = `
         r: 6 !important;
     }
     
-    /* Resize handles - visibles au hover */
+    /* Resize handles */
     .bpmn-editable .djs-container .djs-resize-handle {
         display: none !important;
         fill: #f59e0b !important;
@@ -259,7 +278,7 @@ export const BPMN_VIEWER_STYLES = `
         stroke-width: 3px !important;
     }
     
-    /* Waypoint handles - MASQUÉS, visibles au hover de connexion */
+    /* Waypoint handles */
     .bpmn-editable .djs-container .djs-waypoint-move-handle {
         display: none !important;
         fill: #8b5cf6 !important;
@@ -288,7 +307,7 @@ export const BPMN_VIEWER_STYLES = `
         fill: #6d28d9 !important;
     }
     
-    /* Segment dragger - MASQUÉ, visible au hover */
+    /* Segment dragger */
     .bpmn-editable .djs-container .djs-segment-dragger {
         display: none !important;
         stroke: #3b82f6 !important;
@@ -328,7 +347,7 @@ export const BPMN_VIEWER_STYLES = `
     
     .bpmn-editable .djs-container .djs-connection.selected path {
         stroke: #3b82f6 !important;
-        stroke-width: 5px !important;
+        stroke-width: 4px !important;
     }
     
     /* Hover */
@@ -350,5 +369,11 @@ export const BPMN_VIEWER_STYLES = `
         stroke-width: 2px !important;
     }
     
-    .spinner { animation: spin 1s linear infinite; }
+    /* ============================================
+       UTILITAIRES
+       ============================================ */
+    
+    .spinner { 
+        animation: spin 1s linear infinite; 
+    }
 `;

@@ -1,0 +1,880 @@
+[
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007363544029293242393993476976",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Ghazi",
+        "prenom": "Ilyas",
+        "dateNaissance": "04/12/1952",
+        "nationalite": "CA",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "LC3012",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "O",
+        "nombreHeritiers": 2
+      },
+      "infosContact": {
+        "adresse1": "Quartier Polo, Agadir",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "80000",
+        "pays": "MA",
+        "mobile": "06-32436384",
+        "fixe": "05-85853549",
+        "email": "ghazi.ilyas@3vma6sneej.net"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [
+        {
+          "identifiantHeritier": {
+            "idscv": "007374756667753754250278492413",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "oOwqdYlo7orvQv",
+            "nom": "ElAmrani",
+            "prenom": "Nour",
+            "dateNaissance": "04/01/1975",
+            "nationalite": "AW",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Boulevard Polo, Fès",
+            "adresse2": null,
+            "codePostal": null,
+            "ville": "30000",
+            "pays": "MA",
+            "mobile": "06-57017603",
+            "fixe": null,
+            "email": "elamrani.nour@c91cxzl.org"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        },
+        {
+          "identifiantHeritier": {
+            "idscv": "007388207740201490109930175373",
+            "natureIdentifiantDeposantP": "PASS",
+            "numeroIdentifiantDeposantP": "TE293068",
+            "nom": "Tayeb",
+            "prenom": "Rim",
+            "dateNaissance": "02/02/1971",
+            "nationalite": "JO",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Quartier Hassan II, Agadir",
+            "adresse2": null,
+            "codePostal": null,
+            "ville": "80000",
+            "pays": "MA",
+            "mobile": "07-47927271",
+            "fixe": "002125-41942840",
+            "email": "tayeb.rim@iq9gqbtpg8.org"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        }
+      ],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007174418297364023984403",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2038",
+            "devise": "MAD",
+            "nomCompte": "Compte de succession 1",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 621165480,
+            "montantTotalDettes": 185649644,
+            "montantTotalDebits": 1967628911,
+            "montantTotalAgios": 104605997,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 282506864
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007590463192539158929833356751",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Chafik",
+        "prenom": "Omar",
+        "dateNaissance": "14/10/1952",
+        "nationalite": "DM",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "GA400",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "O",
+        "nombreHeritiers": 2
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Ennakhil, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "07-76294775",
+        "fixe": "05-19248074",
+        "email": "chafik.omar@1cuwjsnwoqw.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [
+        {
+          "identifiantHeritier": {
+            "idscv": "007639439187328841030428874539",
+            "natureIdentifiantDeposantP": "PASS",
+            "numeroIdentifiantDeposantP": "GM338814",
+            "nom": "Tayeb",
+            "prenom": "Siham",
+            "dateNaissance": "12/04/1972",
+            "nationalite": "AM",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Quartier Ennakhil, Marrakech",
+            "adresse2": null,
+            "codePostal": null,
+            "ville": "40000",
+            "pays": "MA",
+            "mobile": "+2126-34199592",
+            "fixe": null,
+            "email": "tayeb.siham@39ma5h0t0j.org"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        },
+        {
+          "identifiantHeritier": {
+            "idscv": "007152007837398592835504203549",
+            "natureIdentifiantDeposantP": "NR",
+            "numeroIdentifiantDeposantP": "V3044",
+            "nom": "Chafik",
+            "prenom": "Ranya",
+            "dateNaissance": "13/06/1978",
+            "nationalite": "JO",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Rue Polo, Marrakech",
+            "adresse2": "Boulevard Derb Omar, Marrakech",
+            "codePostal": null,
+            "ville": "40000",
+            "pays": "MA",
+            "mobile": "07-11957407",
+            "fixe": "002125-88972476",
+            "email": "chafik.ranya@0grvpai5h08.ma"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        }
+      ],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007553315640392961304108",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2050",
+            "devise": "EUR",
+            "nomCompte": "Compte de succession 2",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 1788301418,
+            "montantTotalDettes": 15281460,
+            "montantTotalDebits": 1218002669,
+            "montantTotalAgios": 275291917,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 59188384
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007351050306284108283927746521",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Rami",
+        "prenom": "Adnane",
+        "dateNaissance": "19/07/1959",
+        "nationalite": "AW",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "IY0",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "O",
+        "nombreHeritiers": 3
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Ennakhil, Agadir",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "80000",
+        "pays": "MA",
+        "mobile": "06-66907336",
+        "fixe": null,
+        "email": "rami.adnane@mt82la2b.com"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [
+        {
+          "identifiantHeritier": {
+            "idscv": "007866066028526155189202535176",
+            "natureIdentifiantDeposantP": "PASS",
+            "numeroIdentifiantDeposantP": "BZ151395",
+            "nom": "Ouahidi",
+            "prenom": "Reda",
+            "dateNaissance": "26/06/1970",
+            "nationalite": "DM",
+            "partHeritage": 3334
+          },
+          "infosContact": {
+            "adresse1": "Quartier Derb Omar, Casablanca",
+            "adresse2": null,
+            "codePostal": null,
+            "ville": "20000",
+            "pays": "MA",
+            "mobile": "+2126-67449668",
+            "fixe": "002125-94836936",
+            "email": "ouahidi.reda@rnwghazkt5n6.net"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        },
+        {
+          "identifiantHeritier": {
+            "idscv": "007315785797261643571936658627",
+            "natureIdentifiantDeposantP": "PASS",
+            "numeroIdentifiantDeposantP": "S58766",
+            "nom": "AitLhaj",
+            "prenom": "Ikram",
+            "dateNaissance": "11/09/1986",
+            "nationalite": "JO",
+            "partHeritage": 3333
+          },
+          "infosContact": {
+            "adresse1": "Quartier Derb Omar, Fès",
+            "adresse2": "Quartier Hassan II, Fès",
+            "codePostal": null,
+            "ville": "30000",
+            "pays": "MA",
+            "mobile": "06-82865779",
+            "fixe": "05-97183327",
+            "email": "aitlhaj.ikram@12aokgfne.org"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        },
+        {
+          "identifiantHeritier": {
+            "idscv": "007210786581399732237878816982",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "CY5809",
+            "nom": "Tayeb",
+            "prenom": "Naima",
+            "dateNaissance": "16/07/1981",
+            "nationalite": "BJ",
+            "partHeritage": 3333
+          },
+          "infosContact": {
+            "adresse1": "Rue Ennakhil, Casablanca",
+            "adresse2": "Boulevard Polo, Casablanca",
+            "codePostal": null,
+            "ville": "20000",
+            "pays": "MA",
+            "mobile": "+2126-79799801",
+            "fixe": "05-36193841",
+            "email": "tayeb.naima@qbcdw46.net"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        }
+      ],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007925488538396562266021",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2041",
+            "devise": "EUR",
+            "nomCompte": "Compte de succession 3",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 743449774,
+            "montantTotalDettes": 182777635,
+            "montantTotalDebits": 1597807076,
+            "montantTotalAgios": 139161758,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 178467141
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007769695357420969118736466472",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Aarab",
+        "prenom": "Ismail",
+        "dateNaissance": "23/06/1958",
+        "nationalite": "BJ",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "UG09",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "O",
+        "nombreHeritiers": 2
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Ennakhil, Agadir",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "80000",
+        "pays": "MA",
+        "mobile": "07-11327243",
+        "fixe": "05-96675419",
+        "email": "aarab.ismail@vsxblrm829q.org"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [
+        {
+          "identifiantHeritier": {
+            "idscv": "007218672570666630470259027763",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "m1h8SuwxjRZxm3",
+            "nom": "Harmouch",
+            "prenom": "Amine",
+            "dateNaissance": "04/10/1984",
+            "nationalite": "JO",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Boulevard Derb Omar, Casablanca",
+            "adresse2": "Boulevard Derb Omar, Casablanca",
+            "codePostal": null,
+            "ville": "20000",
+            "pays": "MA",
+            "mobile": "06-36391735",
+            "fixe": null,
+            "email": "harmouch.amine@tuyswgx1ijhw.net"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        },
+        {
+          "identifiantHeritier": {
+            "idscv": "007133424940984710830356104279",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "ibiGKVwCBVOCkQ",
+            "nom": "Rami",
+            "prenom": "Bilal",
+            "dateNaissance": "09/06/1970",
+            "nationalite": "CA",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Boulevard Ennakhil, Fès",
+            "adresse2": null,
+            "codePostal": null,
+            "ville": "30000",
+            "pays": "MA",
+            "mobile": "07-97916397",
+            "fixe": "05-52420211",
+            "email": "rami.bilal@fxr0r9d4tf.net"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        }
+      ],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007873653457391917941415",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2041",
+            "devise": "EUR",
+            "nomCompte": "Compte de succession 4",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 2944880783,
+            "montantTotalDettes": 93367429,
+            "montantTotalDebits": 704273441,
+            "montantTotalAgios": 173499382,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 228983910
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007220208948704337647985540092",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "ElYazidi",
+        "prenom": "Houda",
+        "dateNaissance": "14/10/1943",
+        "nationalite": "BJ",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "E708062",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "O",
+        "nombreHeritiers": 2
+      },
+      "infosContact": {
+        "adresse1": "Quartier Ennakhil, Agadir",
+        "adresse2": "Rue Ennakhil, Agadir",
+        "codePostal": null,
+        "ville": "80000",
+        "pays": "MA",
+        "mobile": "06-50171200",
+        "fixe": "002125-76868328",
+        "email": "elyazidi.houda@3ppky783s9.com"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": "007281065103697933535647054777",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "T94",
+            "nom": "Rharbaoui",
+            "prenom": "Tarik",
+            "dateNaissance": "08/01/1972",
+            "nationalite": "DM"
+          },
+          "infosContact": {
+            "adresse1": "Rue Polo, Agadir",
+            "adresse2": "Rue Derb Omar, Agadir",
+            "codePostal": null,
+            "ville": "80000",
+            "pays": "MA",
+            "mobile": "07-63026540",
+            "fixe": "002125-22842466",
+            "email": "rharbaoui.tarik@a9vm3ni1qa.ma"
+          }
+        }
+      ],
+      "heritier": [
+        {
+          "identifiantHeritier": {
+            "idscv": "007501381785827919266072551335",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "L8453",
+            "nom": "ElYazidi",
+            "prenom": "Hind",
+            "dateNaissance": "09/08/1976",
+            "nationalite": "AW",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Boulevard Hassan II, Casablanca",
+            "adresse2": "Boulevard Ennakhil, Casablanca",
+            "codePostal": null,
+            "ville": "20000",
+            "pays": "MA",
+            "mobile": "+2126-40437297",
+            "fixe": null,
+            "email": "elyazidi.hind@izw7y2t.com"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        },
+        {
+          "identifiantHeritier": {
+            "idscv": "007220956107255471668257079511",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "XHJ6MK6AjUrEt8",
+            "nom": "Tayeb",
+            "prenom": "Souad",
+            "dateNaissance": "31/07/1991",
+            "nationalite": "CA",
+            "partHeritage": 5000
+          },
+          "infosContact": {
+            "adresse1": "Quartier Polo, Marrakech",
+            "adresse2": "Rue Hassan II, Marrakech",
+            "codePostal": null,
+            "ville": "40000",
+            "pays": "MA",
+            "mobile": "06-23034236",
+            "fixe": "05-74005846",
+            "email": "tayeb.souad@qkpwclm.ma"
+          },
+          "representantLegal": {
+            "identifiantRepresentantLegal": {
+              "idscv": null,
+              "natureIdentifiantDeposantP": null,
+              "numeroIdentifiantDeposantP": null,
+              "nom": null,
+              "prenom": null,
+              "dateNaissance": null,
+              "nationalite": null
+            },
+            "infosContact": {
+              "adresse1": null,
+              "adresse2": null,
+              "codePostal": null,
+              "ville": null,
+              "pays": null,
+              "mobile": null,
+              "fixe": null,
+              "email": null
+            }
+          }
+        }
+      ],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007110560327667121719281",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2041",
+            "devise": "EUR",
+            "nomCompte": "Compte de succession 5",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 2731608579,
+            "montantTotalDettes": 64669478,
+            "montantTotalDebits": 1555640234,
+            "montantTotalAgios": 483335743,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 235361305
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  }
+]

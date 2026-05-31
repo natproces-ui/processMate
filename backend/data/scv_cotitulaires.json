@@ -1,0 +1,511 @@
+[
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007672428250207313991637436839",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Naciri",
+        "prenom": "Nour",
+        "dateNaissance": "28/06/1978",
+        "nationalite": "AW",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "FU091",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Ennakhil, Fès",
+        "adresse2": "Rue Hassan II, Fès",
+        "codePostal": null,
+        "ville": "30000",
+        "pays": "MA",
+        "mobile": "07-38872148",
+        "fixe": null,
+        "email": "naciri.nour@wxwtvbz.net"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007920463762692314519303",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 4,
+            "pcec": "2050",
+            "devise": "MAD",
+            "nomCompte": "Compte collectif 1",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 4473589857,
+            "montantTotalDettes": 442013695,
+            "montantTotalDebits": 2800807931,
+            "montantTotalAgios": 163165407,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 54149582
+          },
+          "prelevement": [
+            {
+              "montant": 829880197,
+              "nature": "LOYER",
+              "natureAutre": null
+            },
+            {
+              "montant": 976765561,
+              "nature": "CREDIT",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007967470464449376822409963954",
+              "partCoTitulaire": 3334
+            },
+            {
+              "idscv": "007863112921284244866451266199",
+              "partCoTitulaire": 3333
+            },
+            {
+              "idscv": "007213258245150148855468774928",
+              "partCoTitulaire": 3333
+            }
+          ],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007801730967519817072768794244",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Tayeb",
+        "prenom": "Malak",
+        "dateNaissance": "29/04/1966",
+        "nationalite": "AW",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "V63",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Polo, Marrakech",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "40000",
+        "pays": "MA",
+        "mobile": "07-78462710",
+        "fixe": "05-47347942",
+        "email": "tayeb.malak@dt5h5dk0i.net"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007126193444885563295693",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 2,
+            "pcec": "2038",
+            "devise": "MAD",
+            "nomCompte": "Compte collectif 2",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 4081494798,
+            "montantTotalDettes": 115860265,
+            "montantTotalDebits": 2198996939,
+            "montantTotalAgios": 276318568,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 103223709
+          },
+          "prelevement": [
+            {
+              "montant": 568614250,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 500884302,
+              "nature": "PS",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007474682136497616665234161443",
+              "partCoTitulaire": 10000
+            }
+          ],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007382171934650316541861747299",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "OuladAli",
+        "prenom": "Nizar",
+        "dateNaissance": "27/12/1977",
+        "nationalite": "CA",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "RE741867",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Quartier Polo, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "06-71454602",
+        "fixe": "002125-64302434",
+        "email": "ouladali.nizar@png98oj4zdg.org"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007881013056272196042024",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 4,
+            "pcec": "2050",
+            "devise": "MAD",
+            "nomCompte": "Compte collectif 3",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 3309188011,
+            "montantTotalDettes": 146799118,
+            "montantTotalDebits": 1524059715,
+            "montantTotalAgios": 133481448,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 279179987
+          },
+          "prelevement": [
+            {
+              "montant": 881168355,
+              "nature": "CREDIT",
+              "natureAutre": null
+            },
+            {
+              "montant": 564840567,
+              "nature": "CREDIT",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007333974311119557577288346091",
+              "partCoTitulaire": 3334
+            },
+            {
+              "idscv": "007420283325437394354388467030",
+              "partCoTitulaire": 3333
+            },
+            {
+              "idscv": "007148345772193086994997244055",
+              "partCoTitulaire": 3333
+            }
+          ],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007731558153922675745293982362",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Chafik",
+        "prenom": "Omar",
+        "dateNaissance": "05/06/1973",
+        "nationalite": "AW",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "X309",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Polo, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "+2126-43930953",
+        "fixe": "05-31706829",
+        "email": "chafik.omar@kcs59.net"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007587898455688233232797",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 4,
+            "pcec": "2041",
+            "devise": "MAD",
+            "nomCompte": "Compte collectif 4",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 3612463731,
+            "montantTotalDettes": 215303518,
+            "montantTotalDebits": 1768737123,
+            "montantTotalAgios": 126573555,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 230265532
+          },
+          "prelevement": [
+            {
+              "montant": 759818137,
+              "nature": "LOYER",
+              "natureAutre": null
+            },
+            {
+              "montant": 979008713,
+              "nature": "CREDIT",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007482873023387154656423382709",
+              "partCoTitulaire": 3334
+            },
+            {
+              "idscv": "007882549638291733868141467168",
+              "partCoTitulaire": 3333
+            },
+            {
+              "idscv": "007368785756485136109608729213",
+              "partCoTitulaire": 3333
+            }
+          ],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007952633926651155203564330449",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Mouline",
+        "prenom": "Ranya",
+        "dateNaissance": "17/07/1970",
+        "nationalite": "AM",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "UR6",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Derb Omar, Marrakech",
+        "adresse2": "Rue Hassan II, Marrakech",
+        "codePostal": null,
+        "ville": "40000",
+        "pays": "MA",
+        "mobile": "07-26022247",
+        "fixe": null,
+        "email": "mouline.ranya@c0dbhub5l2n.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007944599637528728566208",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 2,
+            "pcec": "2050",
+            "devise": "MAD",
+            "nomCompte": "Compte collectif 5",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 1021173404,
+            "montantTotalDettes": 138623492,
+            "montantTotalDebits": 1170043275,
+            "montantTotalAgios": 177583440,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 99807804
+          },
+          "prelevement": [
+            {
+              "montant": 916070485,
+              "nature": "CREDIT",
+              "natureAutre": null
+            },
+            {
+              "montant": 960540082,
+              "nature": "CREDIT",
+              "natureAutre": null
+            },
+            {
+              "montant": 705401331,
+              "nature": "LOYER",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007753316795785302562550070638",
+              "partCoTitulaire": 10000
+            }
+          ],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  }
+]

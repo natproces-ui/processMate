@@ -1,3 +1,4 @@
+// frontend/src/components/scv/JsonPreview.tsx
 'use client';
 
 import { useState } from 'react';

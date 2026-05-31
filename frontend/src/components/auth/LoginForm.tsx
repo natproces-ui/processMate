@@ -1,116 +1,86 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LoginForm() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const { signIn } = useAuth();
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
+    setError(null);
 
-    try {
-      const res = await fetch("http://127.0.0.1:8000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+    const { error } = await signIn(email, password);
 
-      const data = await res.json();
-
-      if (res.ok) {
-        // 🔹 Stockage du token
-        localStorage.setItem("access_token", data.access_token);
-
-        // 🔹 Stockage de l'ID utilisateur pour ReportForm
-        if (data.user && data.user.id) {
-          localStorage.setItem("userId", data.user.id);
-        }
-
-        setMessage({ type: "success", text: "Connexion réussie 🎉" });
-
-        // 🔹 Redirection vers la page d'accueil
-        setTimeout(() => router.push("/"), 1000);
+    if (error) {
+      const msg = error.toLowerCase();
+      if (msg.includes('email not confirmed')) {
+        setError('Confirmez votre adresse email avant de vous connecter. Vérifiez votre boîte mail.');
+      } else if (msg.includes('invalid login') || msg.includes('invalid credentials') || msg.includes('wrong')) {
+        setError('Identifiants incorrects. Vérifiez votre email et mot de passe.');
       } else {
-        setMessage({ type: "error", text: data.detail || "Identifiants incorrects." });
+        setError(error);
       }
-    } catch {
-      setMessage({ type: "error", text: "Erreur réseau. Réessayez." });
-    } finally {
       setLoading(false);
+    } else {
+      router.replace('/orchestration');
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-4 w-full max-w-md mx-auto bg-white/80 dark:bg-gray-800/80 
-                 rounded-2xl shadow-md p-6"
-    >
-      <h2 className="text-2xl font-semibold text-center text-[var(--color-primary)] mb-2">
-        Connexion
-      </h2>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-      {message && (
-        <div
-          className={`p-3 rounded-md text-sm ${
-            message.type === "success"
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          }`}
-        >
-          {message.text}
+      {error && (
+        <div className="px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Adresse email</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium text-gray-700">Adresse email</label>
         <input
           type="email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
+          value={email}
+          onChange={e => setEmail(e.target.value)}
           required
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+          placeholder="vous@exemple.com"
+          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium mb-1">Mot de passe</label>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-gray-700">Mot de passe</label>
+        </div>
         <input
           type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
+          value={password}
+          onChange={e => setPassword(e.target.value)}
           required
-          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+          placeholder="••••••••"
+          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-[var(--color-primary)] text-white py-2 rounded-md font-semibold 
-                   hover:opacity-90 transition disabled:opacity-50"
+        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold rounded-lg transition-colors"
       >
-        {loading ? "Connexion..." : "Se connecter"}
+        {loading ? 'Connexion en cours…' : 'Se connecter'}
       </button>
 
-      <p className="text-sm text-center mt-2">
-        Pas encore de compte ?{" "}
-        <Link
-          href="/auth/signup"
-          className="text-[var(--color-primary)] font-medium hover:underline"
-        >
+      <p className="text-sm text-center text-gray-500">
+        Pas encore de compte ?{' '}
+        <Link href="/auth/signup" className="text-blue-600 font-medium hover:underline">
           Créer un compte
         </Link>
       </p>

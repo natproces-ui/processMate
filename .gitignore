@@ -43,5 +43,18 @@ retro/
 scripts/
 CLIENT_PRESENTATION.doc
 CLIENT_PRESENTATION.docx
-backend/
 frontend/src/app/api
+
+# Documents parasites
+*.pdf
+*.docx
+docs/~$*
+
+# Dossiers temporaires
+.codex_tmp_docs/
+.codex_xlsx_inspect_quartiers/
+.codex_xlsx_inspect_quartiers.zip
+sfd/tmp/outputs/
+
+# Claude local settings
+.claude/settings.local.json

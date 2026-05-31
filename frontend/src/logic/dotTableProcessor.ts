@@ -1,3 +1,4 @@
+// frontend/src/logic/dotTableProcessor.ts
 /**
  * Processeur pour convertir les fichiers .dot en données de tableau métier
  * VERSION API : Envoi direct à l'API FastAPI qui gère tout (parsing + enrichissement Gemini automatique)

@@ -1,0 +1,69 @@
+digraph SouscriptionCompte {
+	rankdir=TB size="20,30"
+	node [fillcolor=lightblue fontname=Arial fontsize=12 shape=box style=filled]
+	edge [fontname=Arial fontsize=10]
+	Start [label="Début de la Procédure : Lancement avec infos de base (catégorie produit, identifiant, nom, notes client)" fillcolor=green shape=ellipse]
+	Step1_Start [label="Rechercher le Produit : Préparer espaces pour noter numéro en texte et détails produit"]
+	Loop_Start [label="Examiner chaque produit dans la liste, du premier au dernier" shape=parallelogram]
+	Loop_Assign [label="Transformer position actuelle en texte"]
+	Loop_Decision [label="Est-ce que l'identifiant du produit courant correspond à celui du client ?" fillcolor=yellow shape=diamond]
+	Loop_AssignProduct [label="Copier toutes les infos du produit (code, monnaie, montants min/max, taux, etc.)"]
+	Loop_Break [label="Arrêter la recherche immédiatement"]
+	Loop_End [label="Fin de l'examen des produits" shape=parallelogram]
+	Step2_Start [label="Rassembler Infos pour Demande : Préparer grand paquet organisé en groupes"]
+	Sub2_1 [label="Groupe Profil Client : Noter type, métier, codes suivi"]
+	Sub2_2 [label="Groupe Processus et Statuts : Noter identifiants processus, étape, statuts"]
+	Sub2_3 [label="Groupe Produit : Noter identité client, identifiant produit, plan, catégorie, codes vides, catégorie générale, code produit, notes client"]
+	Sub2_4 [label="Groupe Banque et Agence : Récupérer et noter codes banque, agence, international"]
+	Sub2_5 [label="Groupe Compte : Noter monnaie, générer nom descriptif, date ouverture, codes vides, assembler type compte"]
+	Sub2_6 [label="Groupe Autorisations : Laisser vides codes et dates, indiquer pas d'autorisation"]
+	Sub2_7 [label="Groupe Impôts et Sécurité : Indiquer pas exemption, imposable, garantie dépôts"]
+	Sub2_8 [label="Groupe Limites : Noter montants min/max, taux min/max/légal"]
+	Sub2_9 [label="Groupe Calculs Intérêts : Noter méthode arrêt, fréquence"]
+	Sub2_10 [label="Groupe Niveau Sécurité : Noter niveau requis"]
+	Sub2_11 [label="Groupe Format Numéro : Préparer description, ajouter référence départ, longueur max, sens, caractères"]
+	Sub2_12 [label="Groupe Infos Finales : Noter date/heure, identité personne, clé numéro, code sécurité, code multi-banques, zone stockage"]
+	Step3 [label="Envoyer Demande à Service Automatique : Transmettre paquet pour générer numéro compte"]
+	Decision1 [label="Le retour indique-t-il un succès ?" fillcolor=yellow shape=diamond]
+	Error [label="Gérer Problème : Extraire message, afficher à utilisateur, noter dans journal, arrêter et signaler échec" fillcolor=red]
+	EndFailure [label="Fin : Signaler Échec" fillcolor=red shape=ellipse]
+	Step5_Num [label="Prendre Nouveau Numéro de Compte du Retour"]
+	Step5_IBAN [label="Récupérer Code Pays, Assembler Numéro International (IBAN) avec pays, banque, agence, numéro, Mettre à Jour Enregistrement Compte"]
+	Step6 [label="Noter Statut Final de l'Ouverture pour Suivi"]
+	Step7 [label="Lier Client comme Propriétaire Principal : Utiliser identifiant produit, numéro, nom compte, Noter si réussi"]
+	Step8_Start [label="Ajouter Ouverture dans Historique : Préparer code opération vide, statut événement, type, code, dates aujourd'hui"]
+	Step8_Add [label="Ajouter Entrée avec Tous Détails : Identité client, numéro, codes, statuts, type client, agence, métier, suivi, nom, type événement, dates, notes, niveau sécurité, Noter si réussi"]
+	EndSuccess [label="Fin : Signaler Succès" fillcolor=green shape=ellipse]
+	Start -> Step1_Start
+	Step1_Start -> Loop_Start
+	Loop_Start -> Loop_Assign
+	Loop_Assign -> Loop_Decision
+	Loop_Decision -> Loop_AssignProduct [label=Oui]
+	Loop_AssignProduct -> Loop_Break
+	Loop_Break -> Loop_End
+	Loop_Decision -> Loop_End [label="Non (continuer)"]
+	Loop_End -> Step2_Start
+	Step2_Start -> Sub2_1
+	Sub2_1 -> Sub2_2
+	Sub2_2 -> Sub2_3
+	Sub2_3 -> Sub2_4
+	Sub2_4 -> Sub2_5
+	Sub2_5 -> Sub2_6
+	Sub2_6 -> Sub2_7
+	Sub2_7 -> Sub2_8
+	Sub2_8 -> Sub2_9
+	Sub2_9 -> Sub2_10
+	Sub2_10 -> Sub2_11
+	Sub2_11 -> Sub2_12
+	Sub2_12 -> Step3
+	Step3 -> Decision1
+	Decision1 -> Error [label=Non]
+	Error -> EndFailure
+	Decision1 -> Step5_Num [label=Oui]
+	Step5_Num -> Step5_IBAN
+	Step5_IBAN -> Step6
+	Step6 -> Step7
+	Step7 -> Step8_Start
+	Step8_Start -> Step8_Add
+	Step8_Add -> EndSuccess
+}

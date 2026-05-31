@@ -1,14 +1,14 @@
-// bpmnRouter.ts - ROUTAGE INTELLIGENT BASÉ SUR L'ANALYSE DU LAYOUT
-
+// bpmnRouter.ts - VERSION AVEC CÔTÉS GATEWAY RÉSERVÉS (Oui/Non jamais même angle)
 import type { Table1Row, NodePosition } from './bpmnLayoutEngine';
 import { BPMNLayoutEngine } from './bpmnLayoutEngine';
-import { BPMN_TYPES } from './bpmnConstants';
+import { BPMN_TYPES, DEFAULT_DIMENSIONS } from './bpmnConstants';
 
 export interface Arrow {
     id: string;
     sourceId: string;
     targetId: string;
-    type: 'yes' | 'no' | 'next';
+    label: string;
+    outputIndex: number;
     sourceRow: Table1Row;
     targetRow: Table1Row;
     sourcePos: NodePosition;
@@ -24,23 +24,42 @@ export interface RouterConfig {
     corridorOffset: number;
 }
 
-/**
- * 🎯 ROUTER INTELLIGENT - Analyse le layout et applique les règles de routage
- */
+type ExitSide = 'top' | 'bottom' | 'left' | 'right';
+
+// Si le côté idéal est déjà pris → quel côté alternatif ?
+const ALTERNATE_SIDE: Record<ExitSide, ExitSide> = {
+    right: 'bottom',
+    bottom: 'right',
+    left: 'bottom',
+    top: 'right',
+};
+
 export class BPMNRouter {
     private config: RouterConfig;
     private layout: BPMNLayoutEngine;
+    private nodeHeights: Map<string, number>;
     private arrows: Arrow[] = [];
     private routedPaths: Map<string, Array<{ x: number; y: number }>> = new Map();
 
-    constructor(config: RouterConfig, layout: BPMNLayoutEngine) {
+    // Côtés déjà réservés par gateway : sourceId → Set<ExitSide>
+    private gatewayReservedSides: Map<string, Set<ExitSide>> = new Map();
+
+    // Anti-collision corridors
+    private corridorUsage: Map<number, number[]> = new Map();
+
+    constructor(
+        config: RouterConfig,
+        layout: BPMNLayoutEngine,
+        nodeHeights?: Map<string, number>
+    ) {
         this.config = config;
         this.layout = layout;
+        this.nodeHeights = nodeHeights || new Map();
     }
 
-    /**
-     * EXTRACTION DES FLÈCHES
-     */
+    // ============================================
+    // EXTRACTION DES FLÈCHES
+    // ============================================
     public extractArrows(
         data: Table1Row[],
         idMap: Map<string, Table1Row>,
@@ -49,64 +68,43 @@ export class BPMNRouter {
         this.arrows = [];
 
         data.forEach(row => {
-            // Flèche OUI/NEXT
-            if (row.outputOui && row.outputOui.trim() !== '') {
-                const targetRow = idMap.get(row.outputOui);
-                const targetPos = positions.get(row.outputOui);
+            const sourcePos = positions.get(row.id);
+            if (!sourcePos) return;
+
+            row.outputs.forEach((output, index) => {
+                if (!output.targetId || output.targetId.trim() === '') return;
+
+                const targetRow = idMap.get(output.targetId);
+                const targetPos = positions.get(output.targetId);
 
                 if (targetRow && targetPos) {
-                    const sourcePos = positions.get(row.id);
-                    if (sourcePos) {
-                        const arrowType = row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY ? 'yes' : 'next';
-
-                        this.arrows.push({
-                            id: `${row.id}_${arrowType}`,
-                            sourceId: row.id,
-                            targetId: row.outputOui,
-                            type: arrowType,
-                            sourceRow: row,
-                            targetRow: targetRow,
-                            sourcePos: sourcePos,
-                            targetPos: targetPos
-                        });
-                    }
+                    this.arrows.push({
+                        id: `${row.id}_${output.targetId}`,
+                        sourceId: row.id,
+                        targetId: output.targetId,
+                        label: output.label || '',
+                        outputIndex: index,
+                        sourceRow: row,
+                        targetRow,
+                        sourcePos,
+                        targetPos
+                    });
                 }
-            }
-
-            // Flèche NON (Gateway uniquement)
-            if (row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY &&
-                row.outputNon && row.outputNon.trim() !== '') {
-                const targetRow = idMap.get(row.outputNon);
-                const targetPos = positions.get(row.outputNon);
-
-                if (targetRow && targetPos) {
-                    const sourcePos = positions.get(row.id);
-                    if (sourcePos) {
-                        this.arrows.push({
-                            id: `${row.id}_no`,
-                            sourceId: row.id,
-                            targetId: row.outputNon,
-                            type: 'no',
-                            sourceRow: row,
-                            targetRow: targetRow,
-                            sourcePos: sourcePos,
-                            targetPos: targetPos
-                        });
-                    }
-                }
-            }
+            });
         });
 
         console.log(`\n📊 Router: ${this.arrows.length} flèches extraites\n`);
     }
 
-    /**
-     * ROUTER TOUTES LES FLÈCHES
-     */
     public routeAll(): Map<string, Array<{ x: number; y: number }>> {
         this.routedPaths.clear();
+        this.corridorUsage.clear();
+        this.gatewayReservedSides.clear();
 
-        this.arrows.forEach(arrow => {
+        // outputIndex 0 traité en premier → la réservation de côté est déterministe
+        const sorted = [...this.arrows].sort((a, b) => a.outputIndex - b.outputIndex);
+
+        sorted.forEach(arrow => {
             const waypoints = this.routeArrow(arrow);
             this.routedPaths.set(arrow.id, waypoints);
         });
@@ -114,253 +112,316 @@ export class BPMNRouter {
         return this.routedPaths;
     }
 
-    /**
-     * ROUTER UNE FLÈCHE - Détecte le cas et applique la règle
-     */
     private routeArrow(arrow: Arrow): Array<{ x: number; y: number }> {
         const sameLane = arrow.sourcePos.laneIndex === arrow.targetPos.laneIndex;
         const laneDistance = arrow.targetPos.laneIndex - arrow.sourcePos.laneIndex;
 
-        console.log(`\n🔍 Routage: ${arrow.id}`);
-        console.log(`   Source: lane ${arrow.sourcePos.laneIndex}, Y=${arrow.sourcePos.y}`);
-        console.log(`   Target: lane ${arrow.targetPos.laneIndex}, Y=${arrow.targetPos.y}`);
-        console.log(`   SameLane: ${sameLane}, Distance: ${laneDistance}`);
+        console.log(`\n🔍 Routage: ${arrow.id} [${arrow.label || 'no-label'}]`);
 
-        // CAS 1 : MÊME LANE
-        if (sameLane) {
-            return this.routeSameLane(arrow);
-        }
-
-        // CAS 2 : LANE IMMÉDIATE (n-1 ou n+1)
-        if (Math.abs(laneDistance) === 1) {
-            return this.routeAdjacentLane(arrow, laneDistance);
-        }
-
-        // CAS 3 : LANE ÉLOIGNÉE (n-2, n-3, n+2, n+3...)
+        if (sameLane) return this.routeSameLane(arrow);
+        if (Math.abs(laneDistance) === 1) return this.routeAdjacentLane(arrow, laneDistance);
         return this.routeDistantLane(arrow, laneDistance);
     }
 
-    /**
-     * CAS 1 : MÊME LANE
-     */
+    // ============================================
+    // CÔTÉ DE SORTIE GATEWAY — DYNAMIQUE + RÉSERVATION
+    // ============================================
+    private getGatewayExitSide(arrow: Arrow): ExitSide {
+        const { sourcePos, targetPos, sourceId } = arrow;
+
+        const sourceCenterX = sourcePos.x + this.config.nodeWidth / 2;
+        const sourceCenterY = sourcePos.y + this.config.gatewaySize / 2;
+        const targetCenterX = targetPos.x + this.config.nodeWidth / 2;
+        const targetCenterY = targetPos.y + this.config.gatewaySize / 2;
+
+        const dx = targetCenterX - sourceCenterX;
+        const dy = targetCenterY - sourceCenterY;
+
+        // Côté idéal selon vecteur source→cible
+        let ideal: ExitSide;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+            ideal = dx >= 0 ? 'right' : 'left';
+        } else {
+            ideal = dy >= 0 ? 'bottom' : 'top';
+        }
+
+        // Réservation : ce côté est-il déjà pris pour ce gateway ?
+        if (!this.gatewayReservedSides.has(sourceId)) {
+            this.gatewayReservedSides.set(sourceId, new Set());
+        }
+        const reserved = this.gatewayReservedSides.get(sourceId)!;
+
+        let chosen: ExitSide;
+        if (!reserved.has(ideal)) {
+            chosen = ideal;
+        } else {
+            // Côté alternatif obligatoire (jamais le même que l'output précédent)
+            const alt = ALTERNATE_SIDE[ideal];
+            if (!reserved.has(alt)) {
+                chosen = alt;
+            } else {
+                // 3ème sortie : premier côté libre parmi les 4
+                const allSides: ExitSide[] = ['right', 'bottom', 'left', 'top'];
+                chosen = allSides.find(s => !reserved.has(s)) ?? ideal;
+            }
+        }
+
+        reserved.add(chosen);
+        console.log(`   🔷 Gateway ${sourceId}: output[${arrow.outputIndex}] "${arrow.label}" → côté ${chosen}`);
+        return chosen;
+    }
+
+    // ============================================
+    // ANTI-COLLISION CORRIDORS
+    // ============================================
+    private getFreeCorridor(baseCorridor: number, sourceY: number): number {
+        const key = Math.round(baseCorridor / 10) * 10;
+        const used = this.corridorUsage.get(key) || [];
+
+        const offsets = [0, 15, -15, 30, -30, 45, -45];
+        for (const offset of offsets) {
+            const conflict = used.some(usedY => Math.abs(usedY - sourceY) < 25);
+            if (!conflict) {
+                used.push(sourceY);
+                this.corridorUsage.set(key, used);
+                return baseCorridor + offset;
+            }
+        }
+
+        const result = baseCorridor + (used.length * 12);
+        used.push(sourceY);
+        this.corridorUsage.set(key, used);
+        return result;
+    }
+
+    // ============================================
+    // POINTS DE CONNEXION
+    // ============================================
+    private getSourcePoint(arrow: Arrow): { x: number; y: number } {
+        const { sourceRow, sourcePos, targetPos } = arrow;
+
+        const isGateway =
+            sourceRow.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY ||
+            sourceRow.typeBpmn === 'ParallelGateway' ||
+            sourceRow.typeBpmn === 'InclusiveGateway';
+
+        if (isGateway) {
+            const side = this.getGatewayExitSide(arrow);
+            return this.getGatewayPoint(sourcePos, side);
+        }
+
+        if (sourceRow.typeBpmn === BPMN_TYPES.START_EVENT || sourceRow.typeBpmn === BPMN_TYPES.END_EVENT) {
+            return this.getEventPoint(sourcePos, 'bottom');
+        }
+
+        // Task : sortie dynamique selon position cible
+        const dx = targetPos.x - sourcePos.x;
+        const dy = targetPos.y - sourcePos.y;
+        const nodeHeight = this.getNodeHeight(sourceRow);
+
+        if (Math.abs(dx) > Math.abs(dy) * 1.5) {
+            return dx >= 0
+                ? this.getTaskPoint(sourcePos, 'right', nodeHeight)
+                : this.getTaskPoint(sourcePos, 'left', nodeHeight);
+        }
+        return this.getTaskPoint(sourcePos, 'bottom', nodeHeight);
+    }
+
+    private getTargetPoint(
+        row: Table1Row,
+        pos: NodePosition,
+        preferredSide: ExitSide = 'top'
+    ): { x: number; y: number } {
+        if (row.typeBpmn === BPMN_TYPES.START_EVENT || row.typeBpmn === BPMN_TYPES.END_EVENT) {
+            return this.getEventPoint(pos, preferredSide);
+        }
+        if (
+            row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY ||
+            row.typeBpmn === 'ParallelGateway' ||
+            row.typeBpmn === 'InclusiveGateway'
+        ) {
+            return this.getGatewayPoint(pos, preferredSide);
+        }
+        return this.getTaskPoint(pos, preferredSide, this.getNodeHeight(row));
+    }
+
+    private getGatewayPoint(pos: NodePosition, side: ExitSide): { x: number; y: number } {
+        const offset = (this.config.nodeWidth - this.config.gatewaySize) / 2;
+        const gx = pos.x + offset;
+        const gy = pos.y;
+        const gs = this.config.gatewaySize;
+
+        switch (side) {
+            case 'right': return { x: gx + gs, y: gy + gs / 2 };
+            case 'left': return { x: gx, y: gy + gs / 2 };
+            case 'bottom': return { x: gx + gs / 2, y: gy + gs };
+            case 'top': return { x: gx + gs / 2, y: gy };
+        }
+    }
+
+    private getEventPoint(pos: NodePosition, side: ExitSide): { x: number; y: number } {
+        const size = this.config.eventSize;
+        const cx = pos.x + this.config.nodeWidth / 2;
+        const cy = pos.y + size / 2;
+
+        switch (side) {
+            case 'top': return { x: cx, y: pos.y };
+            case 'bottom': return { x: cx, y: pos.y + size };
+            case 'left': return { x: pos.x + (this.config.nodeWidth - size) / 2, y: cy };
+            case 'right': return { x: pos.x + (this.config.nodeWidth + size) / 2, y: cy };
+        }
+    }
+
+    private getTaskPoint(pos: NodePosition, side: ExitSide, nodeHeight: number): { x: number; y: number } {
+        const cy = pos.y + nodeHeight / 2;
+
+        switch (side) {
+            case 'top': return { x: pos.x + this.config.nodeWidth / 2, y: pos.y };
+            case 'bottom': return { x: pos.x + this.config.nodeWidth / 2, y: pos.y + nodeHeight };
+            case 'left': return { x: pos.x, y: cy };
+            case 'right': return { x: pos.x + this.config.nodeWidth, y: cy };
+        }
+    }
+
+    // ============================================
+    // CAS 1 : MÊME LANE
+    // ============================================
     private routeSameLane(arrow: Arrow): Array<{ x: number; y: number }> {
-        // Vérifier s'il y a des intermédiaires
         const intermediates = this.layout.getIntermediateSteps(arrow.sourceId, arrow.targetId);
         const immediate = this.layout.isImmediateNext(arrow.sourceId, arrow.targetId);
 
-        console.log(`   → Même lane, intermédiaires: ${intermediates.length}, immédiat: ${immediate}`);
-
-        // CAS 1A : Pas d'intermédiaire OU immédiat → ligne droite
         if (intermediates.length === 0 || immediate) {
-            console.log(`   ✅ Ligne droite (pas d'obstacle)`);
-
-            const sourcePoint = this.getConnectionPoint(arrow.sourceRow, arrow.sourcePos, 'bottom', arrow.type);
-            const targetPoint = this.getConnectionPoint(arrow.targetRow, arrow.targetPos, 'top');
-
-            return [sourcePoint, targetPoint];
+            const src = this.getSourcePoint(arrow);
+            const tgt = this.getTargetPoint(arrow.targetRow, arrow.targetPos, 'top');
+            return [src, tgt];
         }
-
-        // CAS 1B : Avec intermédiaires → contourner par la gauche
-        console.log(`   ✅ Contournement par gauche (${intermediates.length} obstacles)`);
 
         return this.routeSameLaneWithObstacles(arrow);
     }
 
-    /**
-     * CAS 1B : Même lane avec obstacles
-     */
     private routeSameLaneWithObstacles(arrow: Arrow): Array<{ x: number; y: number }> {
-        const sourceLeft = this.getConnectionPoint(arrow.sourceRow, arrow.sourcePos, 'left', arrow.type);
-        const targetLeft = this.getConnectionPoint(arrow.targetRow, arrow.targetPos, 'left');
+        const src = this.getSourcePoint(arrow);
+        const tgt = this.getTargetPoint(arrow.targetRow, arrow.targetPos, 'left');
+        const baseCorridorX = 80 + (arrow.sourcePos.laneIndex * this.config.laneWidth) + 30;
+        const corridorX = this.getFreeCorridor(baseCorridorX, arrow.sourcePos.y);
 
-        // Couloir gauche de la lane
-        const corridorX = 80 + (arrow.sourcePos.laneIndex * this.config.laneWidth) + 30;
-
-        const waypoints = [
-            sourceLeft,
-            { x: sourceLeft.x - 20, y: sourceLeft.y },
-            { x: corridorX, y: sourceLeft.y },
-            { x: corridorX, y: targetLeft.y },
-            { x: targetLeft.x - 20, y: targetLeft.y },
-            targetLeft
+        return [
+            src,
+            { x: src.x - 20, y: src.y },
+            { x: corridorX, y: src.y },
+            { x: corridorX, y: tgt.y },
+            { x: tgt.x - 20, y: tgt.y },
+            tgt
         ];
-
-        return waypoints;
     }
 
-    /**
-     * CAS 2 : LANE ADJACENTE (n±1)
-     */
+    // ============================================
+    // CAS 2 : LANE ADJACENTE (n±1)
+    // ============================================
     private routeAdjacentLane(arrow: Arrow, laneDistance: number): Array<{ x: number; y: number }> {
         const goingRight = laneDistance > 0;
 
-        console.log(`   → Lane adjacente, direction: ${goingRight ? 'droite' : 'gauche'}`);
-
         if (goingRight) {
-            // Sortir à droite, entrer à gauche
-            const sourceRight = this.getConnectionPoint(arrow.sourceRow, arrow.sourcePos, 'right', arrow.type);
-            const targetLeft = this.getConnectionPoint(arrow.targetRow, arrow.targetPos, 'left');
+            const src = this.getSourcePoint(arrow);
+            const tgt = this.getTargetPoint(arrow.targetRow, arrow.targetPos, 'left');
+            const sameY = Math.abs(src.y - tgt.y) < 50;
 
-            // Analyser positions verticales
-            const sameY = Math.abs(arrow.sourcePos.y - arrow.targetPos.y) < 50;
-            const targetHigher = arrow.targetPos.y < arrow.sourcePos.y;
+            if (sameY) return [src, tgt];
 
-            console.log(`   → SameY: ${sameY}, TargetHigher: ${targetHigher}`);
-
-            if (sameY) {
-                // Même niveau → horizontal direct
-                console.log(`   ✅ Horizontal direct`);
-                return [sourceRight, targetLeft];
-            } else if (targetHigher) {
-                // Target plus haut → sortir, monter, entrer
-                console.log(`   ✅ Sortir-Monter-Entrer`);
-                const midX = (sourceRight.x + targetLeft.x) / 2;
-                return [
-                    sourceRight,
-                    { x: sourceRight.x + 20, y: sourceRight.y },
-                    { x: midX, y: sourceRight.y },
-                    { x: midX, y: targetLeft.y },
-                    { x: targetLeft.x - 20, y: targetLeft.y },
-                    targetLeft
-                ];
-            } else {
-                // Target plus bas → sortir, descendre, entrer
-                console.log(`   ✅ Sortir-Descendre-Entrer`);
-                const midX = (sourceRight.x + targetLeft.x) / 2;
-                return [
-                    sourceRight,
-                    { x: sourceRight.x + 20, y: sourceRight.y },
-                    { x: midX, y: sourceRight.y },
-                    { x: midX, y: targetLeft.y },
-                    { x: targetLeft.x - 20, y: targetLeft.y },
-                    targetLeft
-                ];
-            }
+            const midX = (src.x + tgt.x) / 2;
+            return [
+                src,
+                { x: src.x + 20, y: src.y },
+                { x: midX, y: src.y },
+                { x: midX, y: tgt.y },
+                { x: tgt.x - 20, y: tgt.y },
+                tgt
+            ];
         } else {
-            // Aller à gauche
-            const sourceLeft = this.getConnectionPoint(arrow.sourceRow, arrow.sourcePos, 'left', arrow.type);
-            const targetRight = this.getConnectionPoint(arrow.targetRow, arrow.targetPos, 'right');
+            const src = this.getSourcePoint(arrow);
+            const tgt = this.getTargetPoint(arrow.targetRow, arrow.targetPos, 'right');
+            const sameY = Math.abs(src.y - tgt.y) < 50;
 
-            const sameY = Math.abs(arrow.sourcePos.y - arrow.targetPos.y) < 50;
+            if (sameY) return [src, tgt];
 
-            if (sameY) {
-                console.log(`   ✅ Horizontal direct (vers gauche)`);
-                return [sourceLeft, targetRight];
-            } else {
-                console.log(`   ✅ Sortir-Descendre-Entrer (vers gauche)`);
-                const midX = (sourceLeft.x + targetRight.x) / 2;
-                return [
-                    sourceLeft,
-                    { x: sourceLeft.x - 20, y: sourceLeft.y },
-                    { x: midX, y: sourceLeft.y },
-                    { x: midX, y: targetRight.y },
-                    { x: targetRight.x + 20, y: targetRight.y },
-                    targetRight
-                ];
-            }
+            const midX = (src.x + tgt.x) / 2;
+            return [
+                src,
+                { x: src.x - 20, y: src.y },
+                { x: midX, y: src.y },
+                { x: midX, y: tgt.y },
+                { x: tgt.x + 20, y: tgt.y },
+                tgt
+            ];
         }
     }
 
-    /**
-     * CAS 3 : LANE ÉLOIGNÉE (n±2, n±3...)
-     */
+    // ============================================
+    // CAS 3 : LANE ÉLOIGNÉE (n±2, n±3...)
+    // ============================================
     private routeDistantLane(arrow: Arrow, laneDistance: number): Array<{ x: number; y: number }> {
         const goingRight = laneDistance > 0;
-
-        console.log(`   → Lane éloignée (distance: ${Math.abs(laneDistance)}), direction: ${goingRight ? 'droite' : 'gauche'}`);
-        console.log(`   ✅ Grand contournement`);
-
-        // Obtenir Y max global pour contourner TOUT
-        const globalMaxY = this.layout.getGlobalMaxY();
-        const bypassY = globalMaxY + 100; // Descendre sous tout
+        const globalMaxY = this.getGlobalMaxY();
+        const bypassY = globalMaxY + 80 + (arrow.outputIndex * 20);
 
         if (goingRight) {
-            const sourceRight = this.getConnectionPoint(arrow.sourceRow, arrow.sourcePos, 'right', arrow.type);
-            const targetLeft = this.getConnectionPoint(arrow.targetRow, arrow.targetPos, 'left');
-
-            // Couloirs
-            const sourceCorridor = 80 + (arrow.sourcePos.laneIndex * this.config.laneWidth) + this.config.laneWidth - 30;
-            const targetCorridor = 80 + (arrow.targetPos.laneIndex * this.config.laneWidth) + 30;
+            const src = this.getSourcePoint(arrow);
+            const tgt = this.getTargetPoint(arrow.targetRow, arrow.targetPos, 'left');
+            const srcCorridor = 80 + (arrow.sourcePos.laneIndex * this.config.laneWidth) + this.config.laneWidth - 30;
+            const tgtCorridor = 80 + (arrow.targetPos.laneIndex * this.config.laneWidth) + 30;
 
             return [
-                sourceRight,
-                { x: sourceRight.x + 20, y: sourceRight.y },
-                { x: sourceCorridor, y: sourceRight.y },
-                { x: sourceCorridor, y: bypassY },
-                { x: targetCorridor, y: bypassY },
-                { x: targetCorridor, y: targetLeft.y },
-                { x: targetLeft.x - 20, y: targetLeft.y },
-                targetLeft
+                src,
+                { x: src.x + 20, y: src.y },
+                { x: srcCorridor, y: src.y },
+                { x: srcCorridor, y: bypassY },
+                { x: tgtCorridor, y: bypassY },
+                { x: tgtCorridor, y: tgt.y },
+                { x: tgt.x - 20, y: tgt.y },
+                tgt
             ];
         } else {
-            const sourceLeft = this.getConnectionPoint(arrow.sourceRow, arrow.sourcePos, 'left', arrow.type);
-            const targetRight = this.getConnectionPoint(arrow.targetRow, arrow.targetPos, 'right');
-
-            const sourceCorridor = 80 + (arrow.sourcePos.laneIndex * this.config.laneWidth) + 30;
-            const targetCorridor = 80 + (arrow.targetPos.laneIndex * this.config.laneWidth) + this.config.laneWidth - 30;
+            const src = this.getSourcePoint(arrow);
+            const tgt = this.getTargetPoint(arrow.targetRow, arrow.targetPos, 'right');
+            const srcCorridor = 80 + (arrow.sourcePos.laneIndex * this.config.laneWidth) + 30;
+            const tgtCorridor = 80 + (arrow.targetPos.laneIndex * this.config.laneWidth) + this.config.laneWidth - 30;
 
             return [
-                sourceLeft,
-                { x: sourceLeft.x - 20, y: sourceLeft.y },
-                { x: sourceCorridor, y: sourceLeft.y },
-                { x: sourceCorridor, y: bypassY },
-                { x: targetCorridor, y: bypassY },
-                { x: targetCorridor, y: targetRight.y },
-                { x: targetRight.x + 20, y: targetRight.y },
-                targetRight
+                src,
+                { x: src.x - 20, y: src.y },
+                { x: srcCorridor, y: src.y },
+                { x: srcCorridor, y: bypassY },
+                { x: tgtCorridor, y: bypassY },
+                { x: tgtCorridor, y: tgt.y },
+                { x: tgt.x + 20, y: tgt.y },
+                tgt
             ];
         }
     }
 
-    /**
-     * OBTENIR POINT DE CONNEXION
-     */
-    private getConnectionPoint(
-        row: Table1Row,
-        pos: NodePosition,
-        side: 'top' | 'bottom' | 'left' | 'right',
-        flowType?: 'yes' | 'no' | 'next'
-    ): { x: number; y: number } {
-        if (row.typeBpmn === BPMN_TYPES.START_EVENT || row.typeBpmn === BPMN_TYPES.END_EVENT) {
-            const size = this.config.eventSize;
-            const centerX = pos.x + this.config.nodeWidth / 2;
-            const centerY = pos.y + size / 2;
+    // ============================================
+    // UTILITAIRES
+    // ============================================
+    private getNodeHeight(row: Table1Row): number {
+        if (this.nodeHeights.has(row.id)) return this.nodeHeights.get(row.id)!;
+        if (row.typeBpmn === BPMN_TYPES.START_EVENT || row.typeBpmn === BPMN_TYPES.END_EVENT) return this.config.eventSize;
+        if (
+            row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY ||
+            row.typeBpmn === 'ParallelGateway' ||
+            row.typeBpmn === 'InclusiveGateway'
+        ) return this.config.gatewaySize;
+        return this.config.nodeHeight;
+    }
 
-            switch (side) {
-                case 'top': return { x: centerX, y: pos.y };
-                case 'bottom': return { x: centerX, y: pos.y + size };
-                case 'left': return { x: pos.x + (this.config.nodeWidth - size) / 2, y: centerY };
-                case 'right': return { x: pos.x + (this.config.nodeWidth + size) / 2, y: centerY };
-            }
-        } else if (row.typeBpmn === BPMN_TYPES.EXCLUSIVE_GATEWAY) {
-            const centerOffset = (this.config.nodeWidth - this.config.gatewaySize) / 2;
-            const centerX = pos.x + centerOffset + this.config.gatewaySize / 2;
-            const centerY = pos.y + this.config.gatewaySize / 2;
-
-            // Gateway : OUI sort à droite, NON sort en bas
-            if (flowType === 'yes') {
-                return { x: pos.x + centerOffset + this.config.gatewaySize, y: centerY };
-            } else if (flowType === 'no') {
-                return { x: centerX, y: pos.y + this.config.gatewaySize };
-            }
-
-            switch (side) {
-                case 'top': return { x: centerX, y: pos.y };
-                case 'bottom': return { x: centerX, y: pos.y + this.config.gatewaySize };
-                case 'left': return { x: pos.x + centerOffset, y: centerY };
-                case 'right': return { x: pos.x + centerOffset + this.config.gatewaySize, y: centerY };
-            }
-        } else {
-            // Task standard
-            const centerY = pos.y + this.config.nodeHeight / 2;
-
-            switch (side) {
-                case 'top': return { x: pos.x + this.config.nodeWidth / 2, y: pos.y };
-                case 'bottom': return { x: pos.x + this.config.nodeWidth / 2, y: pos.y + this.config.nodeHeight };
-                case 'left': return { x: pos.x, y: centerY };
-                case 'right': return { x: pos.x + this.config.nodeWidth, y: centerY };
-            }
-        }
+    private getGlobalMaxY(): number {
+        let maxY = 0;
+        this.arrows.forEach(arrow => {
+            const srcEnd = arrow.sourcePos.y + this.getNodeHeight(arrow.sourceRow);
+            const tgtEnd = arrow.targetPos.y + this.getNodeHeight(arrow.targetRow);
+            if (srcEnd > maxY) maxY = srcEnd;
+            if (tgtEnd > maxY) maxY = tgtEnd;
+        });
+        return maxY;
     }
 
     public getRoutedPath(arrowId: string): Array<{ x: number; y: number }> | undefined {

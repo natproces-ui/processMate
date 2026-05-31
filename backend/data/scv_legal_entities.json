@@ -1,0 +1,556 @@
+[
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007296769267870762208115087076",
+        "version": 1,
+        "typePersonne": "PM",
+        "nom": "SERVICES PLUS",
+        "prenom": null,
+        "dateNaissance": null,
+        "nationalite": "MA",
+        "formeJuridique": "SARL",
+        "natureIdentifiantDeposant": "RC",
+        "numeroIdentifiantDeposant": "RC289338",
+        "denominationSociale": "SERVICES PLUS",
+        "nombreComptes": 2,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Lot 13 Boulevard Polo, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "06-20335848",
+        "fixe": "002125-91775553",
+        "email": "services-plus@company.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": "007276783467053599035225736393",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "F994",
+            "nom": "Boutaleb",
+            "prenom": "Nizar",
+            "dateNaissance": "03/09/1989",
+            "nationalite": "DM"
+          },
+          "infosContact": {
+            "adresse1": "Quartier Ennakhil, Fès",
+            "adresse2": "Boulevard Derb Omar, Fès",
+            "codePostal": null,
+            "ville": "30000",
+            "pays": "MA",
+            "mobile": "06-76861708",
+            "fixe": "002125-18777308",
+            "email": "boutaleb.nizar@zpe70qa5qr.com"
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007308089043351155197708",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 3,
+            "pcec": "2041",
+            "devise": "MAD",
+            "nomCompte": "Compte SERVICES PLUS",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 5842603947,
+            "montantTotalDettes": 1759291453,
+            "montantTotalDebits": 6541066491,
+            "montantTotalAgios": 0,
+            "montantTotalGarantie": 4995605331,
+            "montantTotalInterets": 0
+          },
+          "prelevement": [
+            {
+              "montant": 2303926708,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 2658889839,
+              "nature": "PS",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007945000065056627628935276559",
+              "partCoTitulaire": 5000
+            },
+            {
+              "idscv": "007100413246779531210869545913",
+              "partCoTitulaire": 5000
+            }
+          ],
+          "infosCarteBancaire": [
+            {
+              "numeroCarte": "0076715357058957",
+              "validite": "04/2035"
+            },
+            {
+              "numeroCarte": "0079496468870589",
+              "validite": "05/2037"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007913833609846964821616907966",
+        "version": 1,
+        "typePersonne": "PM",
+        "nom": "LOGISTICS EXPRESS",
+        "prenom": null,
+        "dateNaissance": null,
+        "nationalite": "MA",
+        "formeJuridique": "SCA",
+        "natureIdentifiantDeposant": "RC",
+        "numeroIdentifiantDeposant": "RC261331",
+        "denominationSociale": "LOGISTICS EXPRESS",
+        "nombreComptes": 3,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Lot 73 Boulevard Ennakhil, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "06-73537646",
+        "fixe": "002125-86510901",
+        "email": "logistics-express@company.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": "007239920252871347343026569258",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "J253",
+            "nom": "Moutawakil",
+            "prenom": "Bilal",
+            "dateNaissance": "26/07/1988",
+            "nationalite": "BJ"
+          },
+          "infosContact": {
+            "adresse1": "Boulevard Polo, Agadir",
+            "adresse2": "Rue Hassan II, Agadir",
+            "codePostal": null,
+            "ville": "80000",
+            "pays": "MA",
+            "mobile": "06-98804065",
+            "fixe": "05-25364019",
+            "email": "moutawakil.bilal@yajnu.ma"
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007410130719836383398405",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 2,
+            "pcec": "2050",
+            "devise": "MAD",
+            "nomCompte": "Compte LOGISTICS EXPRESS",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 7243966445,
+            "montantTotalDettes": 1781466942,
+            "montantTotalDebits": 9418857818,
+            "montantTotalAgios": 0,
+            "montantTotalGarantie": 1301196584,
+            "montantTotalInterets": 0
+          },
+          "prelevement": [
+            {
+              "montant": 2828230773,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 4516553704,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 3037451829,
+              "nature": "PS",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007326383905536209655397686727",
+              "partCoTitulaire": 10000
+            }
+          ],
+          "infosCarteBancaire": [
+            {
+              "numeroCarte": "0075082693754224",
+              "validite": "05/2033"
+            },
+            {
+              "numeroCarte": "0072387000085760",
+              "validite": "03/2033"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007926267859860477173364114478",
+        "version": 1,
+        "typePersonne": "PM",
+        "nom": "IMMOBILIER HOLDING",
+        "prenom": null,
+        "dateNaissance": null,
+        "nationalite": "MA",
+        "formeJuridique": "SCS",
+        "natureIdentifiantDeposant": "RC",
+        "numeroIdentifiantDeposant": "RC607763",
+        "denominationSociale": "IMMOBILIER HOLDING",
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Lot 33 Boulevard Hassan II, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "+2126-14881014",
+        "fixe": "05-98794280",
+        "email": "immobilier-holding@company.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": "007287582802961149793036133260",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "Q808",
+            "nom": "Moutawakil",
+            "prenom": "Yahya",
+            "dateNaissance": "22/02/1986",
+            "nationalite": "BJ"
+          },
+          "infosContact": {
+            "adresse1": "Rue Derb Omar, Casablanca",
+            "adresse2": "Rue Ennakhil, Casablanca",
+            "codePostal": null,
+            "ville": "20000",
+            "pays": "MA",
+            "mobile": "07-75116128",
+            "fixe": null,
+            "email": "moutawakil.yahya@fdgcn4889.ma"
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007792667629580609775636",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 2,
+            "pcec": "2100",
+            "devise": "MAD",
+            "nomCompte": "Compte IMMOBILIER HOLDING",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 6974504323,
+            "montantTotalDettes": 1142151317,
+            "montantTotalDebits": 12176652688,
+            "montantTotalAgios": 0,
+            "montantTotalGarantie": 2209150318,
+            "montantTotalInterets": 0
+          },
+          "prelevement": [
+            {
+              "montant": 2292268825,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 4830298924,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 4649199638,
+              "nature": "PS",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007474373366065195430209068463",
+              "partCoTitulaire": 10000
+            }
+          ],
+          "infosCarteBancaire": [
+            {
+              "numeroCarte": "0074672453794788",
+              "validite": "03/2033"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007191516193567805572303166885",
+        "version": 1,
+        "typePersonne": "PM",
+        "nom": "SERVICES PLUS",
+        "prenom": null,
+        "dateNaissance": null,
+        "nationalite": "MA",
+        "formeJuridique": "SA",
+        "natureIdentifiantDeposant": "RC",
+        "numeroIdentifiantDeposant": "RC589354",
+        "denominationSociale": "SERVICES PLUS",
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Lot 72 Boulevard Derb Omar, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "06-40365972",
+        "fixe": "002125-77656443",
+        "email": "services-plus@company.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": "007965062231875295568397950415",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "WA3",
+            "nom": "AitLhaj",
+            "prenom": "Ines",
+            "dateNaissance": "22/12/1980",
+            "nationalite": "DM"
+          },
+          "infosContact": {
+            "adresse1": "Rue Ennakhil, Marrakech",
+            "adresse2": null,
+            "codePostal": null,
+            "ville": "40000",
+            "pays": "MA",
+            "mobile": "06-14420683",
+            "fixe": "05-71361891",
+            "email": "aitlhaj.ines@w7bcwgdx.com"
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007465576058726475217108",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 2,
+            "pcec": "2100",
+            "devise": "MAD",
+            "nomCompte": "Compte SERVICES PLUS",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 18507104000,
+            "montantTotalDettes": 743214684,
+            "montantTotalDebits": 7020477167,
+            "montantTotalAgios": 0,
+            "montantTotalGarantie": 3846458983,
+            "montantTotalInterets": 0
+          },
+          "prelevement": [
+            {
+              "montant": 3089818861,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 3259226736,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 4731030971,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 3562882665,
+              "nature": "PS",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007138770053725473732747219446",
+              "partCoTitulaire": 10000
+            }
+          ],
+          "infosCarteBancaire": [
+            {
+              "numeroCarte": "0076872448623655",
+              "validite": "03/2035"
+            },
+            {
+              "numeroCarte": "0072056854319727",
+              "validite": "05/2035"
+            },
+            {
+              "numeroCarte": "0074722166676008",
+              "validite": "05/2035"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007148448887604445472995301014",
+        "version": 1,
+        "typePersonne": "PM",
+        "nom": "TECH INNOVATIONS",
+        "prenom": null,
+        "dateNaissance": null,
+        "nationalite": "MA",
+        "formeJuridique": "SNC",
+        "natureIdentifiantDeposant": "RC",
+        "numeroIdentifiantDeposant": "RC395465",
+        "denominationSociale": "TECH INNOVATIONS",
+        "nombreComptes": 3,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Lot 20 Boulevard Derb Omar, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "+2126-79064905",
+        "fixe": "002125-84702916",
+        "email": "tech-innovations@company.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": "007348137336997899555428081688",
+            "natureIdentifiantDeposantP": "CNIE",
+            "numeroIdentifiantDeposantP": "PC97913",
+            "nom": "Naciri",
+            "prenom": "Adnane",
+            "dateNaissance": "09/10/1978",
+            "nationalite": "DM"
+          },
+          "infosContact": {
+            "adresse1": "Quartier Derb Omar, Marrakech",
+            "adresse2": "Rue Hassan II, Marrakech",
+            "codePostal": null,
+            "ville": "40000",
+            "pays": "MA",
+            "mobile": "06-18186483",
+            "fixe": "002125-92623058",
+            "email": "naciri.adnane@2jfydx.net"
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007597216825197512073037",
+            "natureCompte": "COL",
+            "nombreCotitulaires": 3,
+            "pcec": "2050",
+            "devise": "MAD",
+            "nomCompte": "Compte TECH INNOVATIONS",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 13564909329,
+            "montantTotalDettes": 947057220,
+            "montantTotalDebits": 8883755650,
+            "montantTotalAgios": 0,
+            "montantTotalGarantie": 1992876473,
+            "montantTotalInterets": 0
+          },
+          "prelevement": [
+            {
+              "montant": 4477309039,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 4715305179,
+              "nature": "PS",
+              "natureAutre": null
+            },
+            {
+              "montant": 2862074051,
+              "nature": "PS",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [
+            {
+              "idscv": "007854771339845849492243724746",
+              "partCoTitulaire": 5000
+            },
+            {
+              "idscv": "007812012759489049802657634361",
+              "partCoTitulaire": 5000
+            }
+          ],
+          "infosCarteBancaire": [
+            {
+              "numeroCarte": "0072441429197699",
+              "validite": "05/2035"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

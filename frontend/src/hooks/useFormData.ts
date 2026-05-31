@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SCVRoot, Refs } from '@/lib/types';
-import { api } from '@/lib/api';
+import { api } from '@/lib/scv-api';
 
 interface MultiSCVData {
     scvList: SCVRoot[];

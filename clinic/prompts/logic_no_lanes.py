@@ -36,7 +36,11 @@ Les acteurs sont mentionnés DIRECTEMENT dans ou près des formes.
 Les étapes s'enchaînent généralement de gauche à droite :
 - Cercle de départ → Rectangles → Losanges → Cercle de fin
 - Suis les flèches pour l'ordre exact
-- outputOui = ID de l'étape suivante
+- Toutes les connexions sont dans le tableau **outputs** de chaque étape
+- Task/StartEvent : `outputs: [{"targetId": "X", "label": ""}]`
+- ExclusiveGateway : `outputs: [{"targetId": "X", "label": "Oui"}, {"targetId": "Y", "label": "Non"}, ...]`
+- ParallelGateway (losange +) : `outputs: [{"targetId": "X", "label": ""}, {"targetId": "Y", "label": ""}, ...]`
+- EndEvent : `outputs: []`
 
 **4. CONTEXTE POUR DÉBUT/FIN**
 

@@ -6,6 +6,7 @@ import DeposantForm from '@/components/scv/DeposantForm';
 import HeritierForm from '@/components/scv/HeritierForm';
 import CompteForm from '@/components/scv/CompteForm';
 import JsonPreview from '@/components/scv/JsonPreview';
+import { SCV_API_CONFIG } from '@/lib/scv-api-config';
 import {
     Download,
     Upload,
@@ -120,10 +121,14 @@ export default function Home() {
             const formData = new FormData();
             formData.append('file', file);
 
-            const response = await fetch('http://localhost:8001/import/excel', {
-                method: 'POST',
-                body: formData
-            });
+            const response = await fetch(
+                SCV_API_CONFIG.getFullUrl(SCV_API_CONFIG.endpoints.importExcel),
+                {
+                    method: 'POST',
+                    body: formData
+                }
+            );
+
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -141,7 +146,10 @@ export default function Home() {
     };
 
     const downloadTemplate = () => {
-        window.open('http://localhost:8001/download/template', '_blank');
+        window.open(
+            SCV_API_CONFIG.getFullUrl(SCV_API_CONFIG.endpoints.downloadTemplate),
+            '_blank'
+        );
     };
 
     const downloadImportResults = () => {
@@ -188,13 +196,36 @@ export default function Home() {
         setOpenSection(openSection === section ? '' : section);
     };
 
+    // Dans Home.tsx - Remplacer la fonction handleExport
+
     const handleExport = () => {
-        const jsonContent = exportAllSCV();
+        // ✅ Récupérer tous les SCV depuis le hook (retourne un tableau)
+        const allSCVJson = exportAllSCV(); // Retourne le JSON string de tous les SCV
+        const allSCVArray = JSON.parse(allSCVJson); // Parser pour obtenir le tableau
+
+        // ✅ Chaque SCV unitaire doit être linéaire, le tableau global formaté
+        const jsonLines = [
+            '[',
+            ...allSCVArray.map((scvWrapper, index) => {
+                // scvWrapper est déjà au format {SCV: {...}}
+                const linearJson = JSON.stringify(scvWrapper, null, 0); // Linéaire
+                return index < allSCVArray.length - 1
+                    ? `  ${linearJson},`
+                    : `  ${linearJson}`;
+            }),
+            ']'
+        ];
+        const jsonContent = jsonLines.join('\n');
+
+        // ✅ Nom au format 007_DDMMYYYYHHMMSS.json
+        const now = new Date();
+        const filename = `007_${now.getDate().toString().padStart(2, '0')}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getFullYear()}${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}.json`;
+
         const blob = new Blob([jsonContent], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `scv_data_${scvCount}_items_${new Date().getTime()}.json`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

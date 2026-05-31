@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Body
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List
-import google.generativeai as genai
+from google import  genai
 import os
 import json
 router = APIRouter(prefix="/api/bpmn-ai", tags=["BPMN AI"])
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/bpmn-ai", tags=["BPMN AI"])
 # Configuration Gemini
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ✅ Modèle Pydantic pour les lignes du tableau
 class TableRowInput(BaseModel):

@@ -56,8 +56,10 @@ Les losanges manuscrits ont souvent des annotations simples :
 - Si texte flou → Déduis du contexte
 
 ⚠️ **RÈGLE ABSOLUE** :
-- outputOui = chemin "OK" / "Oui" / "Conforme"
-- outputNon = chemin "KO" / "Non" / "Non conforme"
+- outputs[0] avec label "Oui" = chemin "OK" / "Oui" / "Conforme"
+- outputs[1] avec label "Non" = chemin "KO" / "Non" / "Non conforme"
+- Exemple : `outputs: [{"targetId": "X", "label": "Oui"}, {"targetId": "Y", "label": "Non"}]`
+- Si 3 branches visibles → 3 entrées dans outputs avec labels descriptifs
 
 **3. ACTEURS MANUSCRITS**
 

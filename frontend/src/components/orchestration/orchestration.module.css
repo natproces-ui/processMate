@@ -1,0 +1,111 @@
+/* Orchestration Page Styles */
+
+/* Chart Bar Heights */
+.chart-bar {
+  transition: all 0.3s ease;
+}
+
+.chart-bar:hover {
+  opacity: 1;
+}
+
+/* Dashboard Inline Styles */
+.gradient-bar {
+  background: linear-gradient(to right, #10b981, #059669);
+  transition: width 0.3s ease;
+}
+
+.gradient-bar-blue {
+  background: linear-gradient(to right, #3b82f6, #06b6d4);
+  transition: width 0.3s ease;
+}
+
+.gradient-bar-orange {
+  background: linear-gradient(to right, #f97316, #ea580c);
+  transition: width 0.3s ease;
+}
+
+/* Progress bars */
+.progress-bar {
+  transition: width 0.3s ease;
+}
+
+/* Evolution Chart */
+.chart-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.chart-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+/* ProcessFlow Progress Bars */
+.process-progress-bar {
+  height: 0.75rem;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.process-progress-fill {
+  height: 100%;
+  background-color: #3b82f6;
+  transition: width 0.5s ease;
+  width: var(--progress-width, 0%);
+}
+
+.process-global-progress {
+  height: 0.75rem;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.process-global-progress-fill {
+  height: 100%;
+  background-color: #16a34a;
+  transition: width 0.5s ease;
+  width: 0%;
+}
+
+.chart-bar-validated {
+  background: linear-gradient(to top, #10b981, #34d399);
+  border-radius: 0.25rem 0.25rem 0 0;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.chart-bar-validated:hover {
+  opacity: 1;
+}
+
+.chart-bar-inprogress {
+  background: linear-gradient(to top, #3b82f6, #60a5fa);
+  border-radius: 0.25rem 0.25rem 0 0;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.chart-bar-inprogress:hover {
+  opacity: 1;
+}
+
+.chart-bar-pending {
+  background: linear-gradient(to top, #f97316, #fb923c);
+  border-radius: 0.25rem 0.25rem 0 0;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.chart-bar-pending:hover {
+  opacity: 1;
+}

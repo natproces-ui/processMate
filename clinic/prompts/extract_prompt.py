@@ -2,13 +2,120 @@
 Prompt pour l'extraction de workflows depuis des images BPMN
 """
 
-EXTRACTION_PROMPT = """Tu es un expert en extraction de processus métier depuis des diagrammes BPMN visuels.
+EXTRACTION_PROMPT = """Tu es un expert en extraction de processus métier depuis des documents de tout type (diagrammes BPMN, procédures textuelles, images manuscrites, PDF structurés, etc.).
 
-🎯 OBJECTIF: Extraire le workflow (TABLE 1) ET les enrichissements documentaires (TABLE 2) en un seul JSON structuré.
+🎯 OBJECTIF: Extraire le workflow (TABLE 1), les enrichissements documentaires (TABLE 2) ET constituer les métadonnées de la procédure (TABLE 0) en un seul JSON structuré.
 Sois méthodique et précis, ne néglige aucune étape visible.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 PHASE 0 : IDENTIFICATION DU TITRE DU PROCESSUS
+📋 PHASE 0 : CONSTITUTION DES MÉTADONNÉES DE LA PROCÉDURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Le document peut avoir n'importe quelle structure. Tu dois **constituer** ces champs à partir de ce que tu comprends du contenu global, peu importe sa forme.
+
+**RÈGLE GÉNÉRALE** : Si une information est absente ou non déductible → laisser "" (jamais null). Ne jamais inventer une information qui n'est pas dans le document.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ DÉFINITION FONDAMENTALE : ACTEUR INTERNE vs ACTEUR EXTERNE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Cette distinction est utilisée partout dans l'extraction (métadonnées ET chaque étape du workflow).
+
+**Acteur INTERNE** : entité qui appartient à l'organisation qui exécute le processus (la banque). Il exécute des tâches, prend des décisions, valide des opérations au sein du processus.
+- Exemples : Agence, Chargé de caisse, Gestionnaire BOI, Responsable BOI, Back Office International, Direction Conformité, Middle Office...
+
+**Acteur EXTERNE** : entité qui n'appartient PAS à l'organisation. Il intervient dans le processus de l'extérieur — en émettant une demande, en recevant une notification, un message SWIFT, un email ou un avis. Il n'exécute aucune tâche opérationnelle dans le système interne de la banque.
+- Exemples : Client (tireur, donneur d'ordre, exportateur...), Banque étrangère, Banque présentatrice, Banque correspondante, Correspondant étranger, Office de Change, organisme régulateur, banque du tiré...
+
+**⚠️ Les acteurs externes ne sont pas toujours explicitement mentionnés comme "externes" dans le document.** Il faut les identifier depuis :
+- Une swimlane dédiée dans le logigramme (souvent positionnée aux extrémités — tout à gauche ou tout à droite des lanes internes)
+- Le contexte métier : un Client, une Banque tierce, un organisme régulateur sont TOUJOURS externes, même sans mention explicite
+- Les annotations ou libellés du document : "Message SWIFT d'un avis de paiement", "Notification du client", "Envoi de la demande de..."
+- Le texte de procédure : "le client soumet", "la banque présentatrice reçoit", "l'Office des Changes valide"
+
+**REPRÉSENTATION DES ACTEURS EXTERNES DANS LE WORKFLOW** :
+Si un acteur externe intervient dans le processus — que ce soit par une swimlane visible, une annotation, un message ou une interaction mentionnée dans le texte — il doit apparaître dans le workflow avec des Task décrivant son action réelle :
+- Émission vers l'interne : "Envoi de la demande de renouvellement", "Soumission du dossier de financement", "Transmission de l'ordre de virement"
+- Réception depuis l'interne : "Réception de la notification de paiement", "Réception du message SWIFT de relance", "Réception de l'avis de non-paiement"
+- Le libellé doit être **descriptif et spécifique** — jamais "Émission" ou "Réception" seuls
+- Ces Task ont `typeActeur: "externe"` et sont connectées aux tâches internes concernées via `outputs`
+
+**⚠️ RÈGLE ABSOLUE SUR LE STARTEVENT** : Le StartEvent est TOUJOURS chez le premier acteur interne. Si un acteur externe déclenche le processus (ex: le client dépose une demande), sa tâche externe est créée avant le StartEvent et pointe vers lui. Le StartEvent lui-même appartient toujours à l'acteur interne qui reçoit et traite en premier.
+
+**SOURCE PRIORITAIRE** : Si le document contient une section "Acteurs" avec distinction explicite internes/externes → lire directement depuis là.
+**FALLBACK** : Si absente, appliquer les exemples ci-dessus pour inférer depuis le contexte métier.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+**CE QU'IL FAUT CONSTITUER** :
+
+**`nom`** — Le titre complet du processus/de la procédure.
+- Prends le titre le plus explicite et complet visible dans le document.
+- Si plusieurs titres existent, prends le plus descriptif.
+- Si aucun titre, déduis-en un depuis le contenu (max 120 caractères).
+
+**`ref`** — La référence documentaire si elle existe (code alphanumérique identifiant le document).
+- Exemple : "Proc-GOI-DOC-001-26", "REF-2024-001", "V3-BOI"
+- Si absente : ""
+
+**`version`** — La version du document si mentionnée.
+- Exemples : "V1", "V3", "2.0", "Version finale"
+- Si absente : ""
+
+**`dateEffet`** — La date d'entrée en vigueur si mentionnée (format texte libre).
+- Si absente : ""
+
+**`dateDiffusion`** — La date de diffusion/publication si mentionnée.
+- Si absente : ""
+
+**`pole`** — L'entité organisationnelle de niveau supérieur émettrice du document.
+- Exemples : "Pôle Systèmes d'information", "Direction Générale", "Département IT"
+- Si absent : ""
+
+**`direction`** — La direction ou service responsable de la procédure.
+- Exemples : "Direction Organisation et Reengineering de Processus", "Back Office International"
+- Si absent : ""
+
+**`objet`** — Une description synthétique de ce que fait ce processus / à quoi sert cette procédure.
+- Constitue-la depuis le titre, les descriptions d'étapes, le contexte général.
+- 1 à 3 phrases. Commence par "Cette procédure a pour objet de..." ou "Ce processus décrit...".
+- TOUJOURS remplir ce champ (même si synthétisé depuis le contenu du workflow).
+
+**`perimeter`** — Le périmètre d'application : quelles opérations, systèmes ou entités sont couverts.
+- Constitue-le depuis les acteurs, départements et outils identifiés dans le workflow.
+- Si explicitement mentionné dans le document, reprends-le. Sinon, synthétise depuis le contenu.
+
+**`responsabilites_internes`** — Liste des acteurs INTERNES qui interviennent dans le processus.
+- Appliquer la définition INTERNE établie ci-dessus.
+- Déduis-la directement du workflow : récupère les acteurs uniques classés "interne".
+- Exemples : ["Chargé de caisse - Agence", "Gestionnaire BOI", "Compliance"]
+
+**`responsabilites_externes`** — Liste des acteurs EXTERNES (hors organisation).
+- Appliquer la définition EXTERNE établie ci-dessus.
+- Inclure TOUS les acteurs externes identifiés, même ceux sans swimlane explicite (identifiés par le contexte).
+- Exemples : ["Client", "Banque présentatrice", "Office des Changes", "Correspondant étranger"]
+
+**`references`** — Documents, textes réglementaires ou normes mentionnés dans le document.
+- Si présents : les lister. Sinon : ""
+
+**`definitions`** — Termes métier spécifiques définis ou implicitement expliqués dans le document.
+- Constitue une définition pour chaque terme technique ou acronyme développé dans le texte.
+- Format : [{"terme": "...", "definition": "..."}]
+- Si aucun terme définissable : []
+
+**`abbreviations`** — Abréviations et acronymes utilisés dans le document.
+- Constitue la liste depuis toutes les abréviations rencontrées, même si non explicitement définies, en déduisant leur signification depuis le contexte.
+- Format : [{"abrv": "BOI", "signification": "Back Office International"}]
+- Si aucune abréviation : []
+
+**`regles_gestion`** — Les règles métier, contraintes ou conditions qui gouvernent le processus.
+- Constitue-les depuis : les conditions des gateways, les annotations, les règles explicites, les contraintes mentionnées.
+- Une règle par ligne (séparées par \\n).
+- Exemples : "Le montant de l'avance ne doit pas dépasser 80% du montant facturé", "Le délai minimum est de 30 jours"
+- Si aucune règle identifiable : ""
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 PHASE 1 : IDENTIFICATION DU TITRE DU PROCESSUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **OÙ CHERCHER LE TITRE ?**
@@ -23,24 +130,25 @@ Sois méthodique et précis, ne néglige aucune étape visible.
 - Exemples : "Processus d'ouverture de compte bancaire", "Processus de vérification KYC"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 PHASE 1 : ANALYSE VISUELLE CRITIQUE
+📊 PHASE 2 : ANALYSE VISUELLE CRITIQUE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 **1. STRUCTURE DES SWIMLANES**
    - Détecte les bandes horizontales/verticales avec en-têtes
    - Les en-têtes = acteurs (ex: "Client", "Agence/Chef de caisse", "CAE/Middle Office BPP")
    - Repère leur position : en haut, à gauche, ou dans une colonne dédiée
+   - ⚠️ Les swimlanes aux extrémités (tout à gauche ou tout à droite) sont souvent des acteurs externes
 
 **2. ACTEURS vs OUTILS (⚠️ CRITIQUE)**
-   
+
    **ACTEURS** = Rôles humains ou organisationnels qui EXÉCUTENT les tâches
    - Positionnés dans les en-têtes de swimlanes
    - Exemples : "Client", "Gestionnaire", "CAE/Middle Office", "Mandataires habilités"
-   
+
    **OUTILS** = Systèmes informatiques UTILISÉS pour réaliser les tâches
    - Mentionnés À CÔTÉ ou DANS les rectangles/cercles d'étapes
    - Souvent avec @ ou des icônes : "Nov@ OA", "Nov@ CL", "TI+", "Portal", "CRM", "Email"
-   
+
    ⚠️ **RÈGLE ABSOLUE** :
    - Si tu vois "Nov@ OA" PRÈS d'une forme → c'est un OUTIL, pas un acteur
    - L'acteur est celui dans l'EN-TÊTE de la swimlane où se trouve cette forme
@@ -48,7 +156,7 @@ Sois méthodique et précis, ne néglige aucune étape visible.
    - ✅ CORRECT : acteur: "Client", outil: "Nov@ OA"
 
 **3. HIÉRARCHIE DES GROUPEMENTS**
-   
+
    **CAGES/RECTANGLES ENGLOBANTS** = Groupes d'étapes sous un titre commun
    - Un rectangle avec un titre général contient PLUSIEURS formes à l'intérieur
    - Exemple : "Identification du souscripteur" contient "Recherche client", "Entretien", "Définir usage"
@@ -56,29 +164,34 @@ Sois méthodique et précis, ne néglige aucune étape visible.
    - Extrais CHAQUE forme À L'INTÉRIEUR comme étape séparée
 
 **4. IDENTIFICATION PRÉCISE DES FORMES BPMN**
-   
+
    - **Cercle simple** (trait fin) → **StartEvent** (début du processus)
    - **Cercle épais/double/rempli** → **EndEvent** (fin du processus)
    - **Rectangle** (coins droits ou arrondis) → **Task** (action à réaliser)
-   - **Losange** → **ExclusiveGateway** (décision binaire avec AU MOINS 2 sorties)
-   
+   - **Losange** (vide ou avec X) → **ExclusiveGateway** (décision : une seule sortie active)
+   - **Losange avec + à l'intérieur** → **ParallelGateway** (AND-split ou AND-join : toutes les sorties activées simultanément)
+   - **Losange avec O à l'intérieur** → **InclusiveGateway** (OR : une ou plusieurs sorties activées selon conditions)
+
    ⚠️ **Annotations sur flèches** : Labels comme "Oui", "Non", "Conforme" sont des CONDITIONS, pas des étapes
 
 **5. FLUX ET GATEWAYS COMPLEXES**
-   
+
    - **Retour en arrière** : Un Gateway peut rediriger vers une étape précédente (boucle)
    - **Jonction (OU logique)** : Plusieurs chemins peuvent se rejoindre sur une même étape
    - **Gateway → Gateway** : Chaque Gateway est une étape distincte
 
 **6. END EVENTS vs TASKS FINALES**
-   
+
    - **EndEvent** = Cercle épais qui TERMINE le processus (pas de sortie)
    - **Task finale** = Rectangle qui peut avoir une sortie vers un EndEvent
-   - Les EndEvents peuvent avoir les mêmes acteurs/swimlanes que les tâches précédentes
+   - ⚠️ **RÈGLE ABSOLUE** : Un EndEvent DOIT toujours avoir le MÊME acteur ET le MÊME département que la Task qui le précède directement dans le flux
+     - ❌ FAUX : EndEvent avec acteur: "" ou département: ""
+     - ✅ CORRECT : EndEvent avec acteur: "Direction Conformité", département: "Conformité" (copié de la Task précédente)
    - Ne pas inventer d'EndEvent ni de swimlane
+   - Si plusieurs EndEvent existent, chacun hérite de l'acteur/département de SA Task précédente respective
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🖊️ PHASE 1.5 : TRAITEMENT DES DIAGRAMMES MANUSCRITS
+🖊️ PHASE 2.5 : TRAITEMENT DES DIAGRAMMES MANUSCRITS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ **SI LE DIAGRAMME EST MANUSCRIT** (traits irréguliers, écriture à la main) :
@@ -118,30 +231,30 @@ TOUS les ExclusiveGateway doivent avoir des sorties Oui/Non LOGIQUES
 
 📌 **Gateway avec OK/KO** : Transforme en question Oui/Non
 - Manuscrit : [Losange] "OK ?" → OK / KO
-- JSON : "Contrôle validé ?", outputOui (chemin OK), outputNon (chemin KO)
+- JSON : "Contrôle validé ?", outputs[0] label "Oui" (chemin OK), outputs[1] label "Non" (chemin KO)
 
 📌 **Gateway avec Succès/Échec** : Transforme en question
-- "Tâche effectuée avec succès ?", outputOui (Succès), outputNon (Échec)
+- "Tâche effectuée avec succès ?", outputs[0] label "Oui" (Succès), outputs[1] label "Non" (Échec)
 
 📌 **Gateway avec Conforme/Non conforme** : Transforme en question
-- "Documents conformes ?", outputOui (Conforme), outputNon (Non conforme)
+- "Documents conformes ?", outputs[0] label "Oui" (Conforme), outputs[1] label "Non" (Non conforme)
 
-🚨 **RÈGLE ABSOLUE** : 
-- **JAMAIS** de "OK/KO", "Succès/Échec" dans outputOui/outputNon
+🚨 **RÈGLE ABSOLUE** :
+- **JAMAIS** de "OK/KO", "Succès/Échec" dans les labels d'outputs
 - **TOUJOURS** transformer en question claire avec réponse Oui/Non
-- **TOUJOURS** garder la LOGIQUE : ce qui était "OK" devient outputOui
+- **TOUJOURS** garder la LOGIQUE : ce qui était "OK" devient le premier output avec label "Oui"
 
 **ÉTAPE 3 : COMPRENDRE LES CONNEXIONS**
 - Les flèches montrent les connexions RÉELLES entre zones
 - Une flèche qui traverse les zones = ces zones sont CONNECTÉES
 
 **ÉTAPE 4 : FUSIONNER EN UN SEUL FLOW**
-- **UN SEUL StartEvent** au début du processus global
+- **UN SEUL StartEvent** au début du processus global, chez le premier acteur INTERNE
 - **Toutes les sections sont des BRANCHES** d'un même processus
 - **Plusieurs EndEvent possibles** selon les issues
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 PHASE 2 : EXTRACTION DU WORKFLOW (TABLE 1)
+📋 PHASE 3 : EXTRACTION DU WORKFLOW (TABLE 1)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Pour CHAQUE forme géométrique visible, extrais :
@@ -149,12 +262,12 @@ Pour CHAQUE forme géométrique visible, extrais :
 **CHAMPS OBLIGATOIRES** :
 - **id** : Séquentiel "1", "2", "3"... (dans l'ordre du flux)
 - **étape** : Nom descriptif de l'action
-- **typeBpmn** : StartEvent | Task | ExclusiveGateway | EndEvent
+- **typeBpmn** : StartEvent | Task | ExclusiveGateway | ParallelGateway | InclusiveGateway | EndEvent
 - **département** : Service métier déduit de l'acteur (ex: "CAE/Middle Office" → "Middle Office")
 - **acteur** : Copie EXACTEMENT l'en-tête de swimlane (ou "" si absent)
+- **typeActeur** : "interne" | "externe" — Appliquer la définition établie ci-dessus. Le même acteur doit avoir le même typeActeur sur TOUTES les étapes où il apparaît.
 - **condition** : Question pour Gateway (ex: "Dossier conforme ?"), sinon ""
-- **outputOui** : ID de l'étape suivante
-- **outputNon** : ID alternatif pour Gateway uniquement, sinon ""
+- **outputs** : Tableau des sorties, chaque entrée sous la forme {"targetId": "ID", "label": "label optionnel"}
 - **outil** : Système informatique utilisé (ex: "CRM", "Nov@ OA"), sinon ""
 
 **RÈGLES D'EXTRACTION** :
@@ -166,6 +279,25 @@ Pour CHAQUE forme géométrique visible, extrais :
 - **Sans swimlanes** : Extrait le rôle depuis le texte de la forme
 - **Aucun acteur visible** : acteur = ""
 
+📌 **TYPE ACTEUR** :
+- Applique la définition établie en début de prompt
+- Si le document a une section "Acteurs" explicite → utilise-la comme source de vérité
+- Sinon → infère depuis le contexte métier (Client, banque tierce → "externe" ; entités internes de la banque → "interne")
+- ⚠️ COHÉRENCE ABSOLUE : un même acteur = un seul typeActeur sur toutes ses étapes
+
+📌 **TÂCHES DES ACTEURS EXTERNES** :
+Un acteur externe doit apparaître dans le workflow avec des Task dès qu'il intervient, que ce soit :
+- Via une swimlane visible dans le logigramme
+- Via une annotation ou un libellé de message dans le document (ex: "Message SWIFT d'un avis de paiement")
+- Via une mention dans le texte de procédure (ex: "le client soumet", "la banque présentatrice reçoit")
+
+Le libellé de la Task externe doit décrire précisément l'action réelle :
+- ✅ "Envoi de la demande de renouvellement", "Réception du message SWIFT de relance", "Soumission du dossier de financement"
+- ❌ "Émission", "Réception" seuls — trop vagues, interdit
+
+Ces Task ont `typeActeur: "externe"` et sont reliées aux tâches internes concernées via `outputs`.
+Le StartEvent est TOUJOURS chez le premier acteur interne — jamais chez un externe.
+
 📌 **OUTILS** :
 - Systèmes avec @ : "Nov@ OA", "Nov@ CL", "Nov@ Bank"
 - Applications : "TI+", "CRM", "Portal", "SAP", "Swift"
@@ -173,10 +305,23 @@ Pour CHAQUE forme géométrique visible, extrais :
 - Normalise : "nov@ oa" → "Nov@ OA", "crm" → "CRM"
 
 📌 **CONNEXIONS** :
-- **outputOui** = ID de l'étape suivante dans le flux principal
-- **outputNon** = ID de l'alternative (UNIQUEMENT pour ExclusiveGateway)
-- **Flux avec retour** : outputNon peut pointer vers une étape précédente (boucle)
-- **Gateway vers Gateway** : Chaque Gateway est une étape distincte
+- Le champ **outputs** contient un tableau de toutes les sorties de l'étape.
+- Chaque sortie est un objet : {"targetId": "ID_de_l_étape_cible", "label": "label optionnel"}
+- **Task / StartEvent** : une seule sortie, label vide → `[{"targetId": "X", "label": ""}]`
+- **ExclusiveGateway** : 2 sorties ou plus avec labels obligatoires → `[{"targetId": "X", "label": "Oui"}, {"targetId": "Y", "label": "Non"}, ...]`
+  - Les labels "Oui" / "Non" correspondent aux branches de décision
+  - Un outputNon peut pointer vers une étape précédente (boucle)
+- **ParallelGateway** : toutes les sorties sont activées simultanément, labels vides → `[{"targetId": "X", "label": ""}, {"targetId": "Y", "label": ""}, ...]`
+- **InclusiveGateway** : une ou plusieurs sorties activées selon conditions → `[{"targetId": "X", "label": "Condition A"}, {"targetId": "Y", "label": "Condition B"}, ...]`
+- **EndEvent** : aucune sortie → `[]`
+- **Gateway → Gateway** : Chaque Gateway est une étape distincte
+
+📌 **CONNEXIONS DES TÂCHES EXTERNES — RÈGLE CRITIQUE** :
+Une tâche externe est SOIT un prédécesseur SOIT un successeur d'une tâche interne — JAMAIS les deux.
+- Tâche externe ÉMETTRICE (client envoie, banque tierce envoie) → elle a un output vers la tâche interne qui reçoit. La tâche interne suivante dans le flux reste connectée normalement à la tâche interne précédente — la tâche externe ne s'insère pas dans la chaîne interne.
+- Tâche externe RÉCEPTRICE (client reçoit, banque tierce reçoit) → la tâche interne qui envoie a un output vers la tâche externe ET continue vers la tâche interne suivante. La tâche externe n'a PAS de successeur dans le flux principal.
+- Les tâches à l'intérieur d'une même lane externe ne sont JAMAIS connectées entre elles.
+- Le flux interne reste continu et intact — les tâches externes sont des branches latérales, pas des nœuds du flux principal.
 
 📌 **CONDITIONS (pour ExclusiveGateway)** :
 - Extrais le texte du losange et transforme en question si nécessaire
@@ -187,13 +332,16 @@ Pour CHAQUE forme géométrique visible, extrais :
 **RÈGLES STRICTES** :
 - Utilise "" si vide, JAMAIS null
 - IDs séquentiels dans l'ordre du flux
-- Pour ExclusiveGateway : condition, outputOui ET outputNon obligatoires
-- Pour Task/StartEvent/EndEvent : condition = "", outputNon = ""
+- Pour ExclusiveGateway : condition obligatoire, outputs avec au moins 2 entrées avec labels "Oui"/"Non"
+- Pour ParallelGateway : condition = "", outputs listant toutes les branches avec labels vides
+- Pour InclusiveGateway : condition = "" ou description générale, outputs avec labels de conditions
+- Pour Task/StartEvent : condition = "", outputs avec 1 entrée, label ""
+- Pour EndEvent : condition = "", outputs = []
 - Extrais TOUTES les formes géométriques visibles
 - JSON PUR sans markdown
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 PHASE 3 : ENRICHISSEMENTS DOCUMENTAIRES (TABLE 2)
+📋 PHASE 4 : ENRICHISSEMENTS DOCUMENTAIRES (TABLE 2)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
@@ -203,7 +351,7 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
    - Mentionne les inputs (ce qui est reçu)
    - Mentionne les outputs (ce qui est produit)
    - Identifie les risques potentiels si pertinent
-   
+
    **Exemples** :
    - "Le client accède au portail en ligne et sélectionne un créneau disponible. Le système envoie une confirmation par email et SMS."
    - "Vérifier l'authenticité des documents via des outils de détection de fraude. Contrôler les hologrammes, filigranes et signatures."
@@ -214,13 +362,14 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
    - Tâche manuelle complexe → 20-45 min
    - Tâche système automatisée → 1-5 min
    - Tâche de validation/contrôle → 10-30 min
+   - Tâche externe (client, banque tierce) → "" (durée non maîtrisée)
    - Si manque d'infos → ""
-   
+
    **Exemples** : "5 min", "15-20 min", "1 h", "2-3 min"
 
 **3. FRÉQUENCE** (optionnel, valeur exacte parmi) :
    Quotidien | Hebdomadaire | Mensuel | Trimestriel | Annuel | À la demande | En continu | Ponctuel
-   
+
    **Règles de déduction** :
    - Demandes clients → "À la demande"
    - Reporting → "Mensuel" ou "Hebdomadaire"
@@ -232,7 +381,7 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
 **4. KPI** (optionnel, 20-60 caractères)
    - Un indicateur concret et mesurable
    - Lié à la performance de la tâche
-   
+
    **Exemples** :
    - "Taux de conversion > 80%"
    - "Taux d'erreur < 2%"
@@ -243,8 +392,8 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
    - Si manque d'infos → ""
 
 ⚠️ **RÈGLES IMPORTANTES** :
-- Ne génère PAS d'enrichissement pour StartEvent, EndEvent, ExclusiveGateway
-- **DESCRIPTIF OBLIGATOIRE** pour TOUTES les Tasks (ne jamais laisser vide)
+- Ne génère PAS d'enrichissement pour StartEvent, EndEvent, ExclusiveGateway, ParallelGateway, InclusiveGateway
+- **DESCRIPTIF OBLIGATOIRE** pour TOUTES les Tasks — internes ET externes (ne jamais laisser vide)
 - Durée, fréquence, KPI sont optionnels (laisse "" si incertain)
 - Base-toi sur le département, l'acteur et l'outil pour déduire le contexte métier
 - Sois réaliste et professionnel
@@ -254,17 +403,34 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {
-  "title": "Titre du processus extrait ou déduit",
+  "title": "Titre court du processus",
+  "procedureMetadata": {
+    "nom": "Titre complet constitué depuis le document",
+    "ref": "Référence si présente, sinon \"\"",
+    "version": "Version si présente, sinon \"\"",
+    "dateEffet": "Date d'effet si présente, sinon \"\"",
+    "dateDiffusion": "Date de diffusion si présente, sinon \"\"",
+    "pole": "Entité organisationnelle si présente, sinon \"\"",
+    "direction": "Direction si présente, sinon \"\"",
+    "objet": "Description synthétique du processus (TOUJOURS rempli)",
+    "perimeter": "Périmètre constitué depuis acteurs/outils/contexte",
+    "responsabilites_internes": ["Acteurs internes déduits du workflow"],
+    "responsabilites_externes": ["Acteurs externes déduits du workflow"],
+    "references": "Documents de référence mentionnés, sinon \"\"",
+    "definitions": [{"terme": "Terme", "definition": "Définition constituée depuis le contexte"}],
+    "abbreviations": [{"abrv": "ABC", "signification": "Signification déduite du contexte"}],
+    "regles_gestion": "Règles métier constituées depuis les conditions et contraintes du document (\\n entre chaque règle)"
+  },
   "workflow": [
     {
       "id": "1",
       "étape": "Nom descriptif de l'action",
-      "typeBpmn": "StartEvent | Task | ExclusiveGateway | EndEvent",
+      "typeBpmn": "StartEvent | Task | ExclusiveGateway | ParallelGateway | InclusiveGateway | EndEvent",
       "département": "Service métier déduit",
       "acteur": "Rôle responsable depuis swimlane",
+      "typeActeur": "interne | externe",
       "condition": "Question pour Gateway (sinon vide)",
-      "outputOui": "ID étape suivante",
-      "outputNon": "ID alternatif (Gateway uniquement)",
+      "outputs": [{"targetId": "ID étape suivante", "label": "label optionnel"}],
       "outil": "Système informatique utilisé (sinon vide)"
     }
   ],
@@ -284,150 +450,117 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 {
-  "title": "Processus d'ouverture de compte bancaire",
+  "title": "MCNE en MAD : Mise en Place",
+  "procedureMetadata": {
+    "nom": "MCNE en MAD : Mise en Place",
+    "ref": "Proc-BOI-EXP-001",
+    "version": "V3",
+    "dateEffet": "",
+    "dateDiffusion": "",
+    "pole": "Pôle Systèmes d'information",
+    "direction": "Direction Organisation et Reengineering de Processus",
+    "objet": "La présente procédure a pour objet de décrire les modalités de mise en place d'une MCNE en MAD.",
+    "perimeter": "Cette procédure s'applique aux opérations de Mobilisation de Créances Nées à l'Etranger en MAD.",
+    "responsabilites_internes": ["Agence (Chargé de caisse & Chargé d'affaires)", "Back Office International (Gestionnaire des opérations)"],
+    "responsabilites_externes": ["Client"],
+    "references": "Instruction Générale des Opérations de Change",
+    "definitions": [{"terme": "MCNE", "definition": "Financement à court terme accordé à une entreprise exportatrice pour reconstituer sa liquidité."}],
+    "abbreviations": [
+      {"abrv": "BOI", "signification": "Back Office International"},
+      {"abrv": "MCNE", "signification": "Mobilisation des Créances Nées à L'Etranger"},
+      {"abrv": "OC", "signification": "Office de Change"}
+    ],
+    "regles_gestion": "A la date de la mobilisation, le délai restant à courir de la créance en devises doit être supérieur ou égal à 30 jours au minimum.\\nLe montant du déblocage ne doit pas dépasser 80% du montant de la créance."
+  },
   "workflow": [
     {
       "id": "1",
-      "étape": "Demande d'ouverture de compte",
-      "typeBpmn": "StartEvent",
-      "département": "Commercial",
+      "étape": "Envoi de la demande de mise en place d'une MCNE en MAD",
+      "typeBpmn": "Task",
+      "département": "Client",
       "acteur": "Client",
+      "typeActeur": "externe",
       "condition": "",
-      "outputOui": "2",
-      "outputNon": "",
-      "outil": "Portail web"
-    },
-    {
-      "id": "2",
-      "étape": "Prendre rendez-vous en ligne",
-      "typeBpmn": "Task",
-      "département": "Commercial",
-      "acteur": "Client",
-      "condition": "",
-      "outputOui": "3",
-      "outputNon": "",
-      "outil": "Application mobile"
-    },
-    {
-      "id": "3",
-      "étape": "Collecter les informations client",
-      "typeBpmn": "Task",
-      "département": "Commercial",
-      "acteur": "Conseiller",
-      "condition": "",
-      "outputOui": "4",
-      "outputNon": "",
-      "outil": "CRM"
-    },
-    {
-      "id": "4",
-      "étape": "Fournir les documents",
-      "typeBpmn": "Task",
-      "département": "Commercial",
-      "acteur": "Client",
-      "condition": "",
-      "outputOui": "5",
-      "outputNon": "",
-      "outil": "Portail client"
-    },
-    {
-      "id": "5",
-      "étape": "Vérifier authenticité des documents",
-      "typeBpmn": "Task",
-      "département": "Conformité",
-      "acteur": "KYC",
-      "condition": "",
-      "outputOui": "6",
-      "outputNon": "",
-      "outil": "GED"
-    },
-    {
-      "id": "6",
-      "étape": "Documents conformes ?",
-      "typeBpmn": "ExclusiveGateway",
-      "département": "Conformité",
-      "acteur": "KYC",
-      "condition": "Documents conformes ?",
-      "outputOui": "7",
-      "outputNon": "4",
+      "outputs": [{"targetId": "2", "label": ""}],
       "outil": ""
     },
     {
-      "id": "7",
-      "étape": "Créer le compte bancaire",
-      "typeBpmn": "Task",
-      "département": "Back Office",
-      "acteur": "Comptabilité",
+      "id": "2",
+      "étape": "Début",
+      "typeBpmn": "StartEvent",
+      "département": "Agence",
+      "acteur": "Chargé de caisse",
+      "typeActeur": "interne",
       "condition": "",
-      "outputOui": "8",
-      "outputNon": "",
-      "outil": "Core Banking"
+      "outputs": [{"targetId": "3", "label": ""}],
+      "outil": ""
     },
     {
-      "id": "8",
-      "étape": "Informer le client",
+      "id": "3",
+      "étape": "Rattacher les documents et valider",
       "typeBpmn": "Task",
-      "département": "Commercial",
-      "acteur": "Conseiller",
+      "département": "Agence",
+      "acteur": "Chargé de caisse",
+      "typeActeur": "interne",
       "condition": "",
-      "outputOui": "9",
-      "outputNon": "",
-      "outil": "Email"
+      "outputs": [{"targetId": "4", "label": ""}],
+      "outil": "Nov@BOmain"
     },
     {
-      "id": "9",
-      "étape": "Compte créé avec succès",
+      "id": "4",
+      "étape": "Procéder au contrôle du dossier",
+      "typeBpmn": "Task",
+      "département": "Back Office International",
+      "acteur": "Gestionnaire des Opérations",
+      "typeActeur": "interne",
+      "condition": "",
+      "outputs": [{"targetId": "5", "label": ""}],
+      "outil": "Nov@BOmain"
+    },
+    {
+      "id": "5",
+      "étape": "Contrôle concluant ?",
+      "typeBpmn": "ExclusiveGateway",
+      "département": "Back Office International",
+      "acteur": "Gestionnaire des Opérations",
+      "typeActeur": "interne",
+      "condition": "Contrôle concluant ?",
+      "outputs": [{"targetId": "6", "label": "Oui"}, {"targetId": "3", "label": "Non"}],
+      "outil": ""
+    },
+    {
+      "id": "6",
+      "étape": "Fin",
       "typeBpmn": "EndEvent",
-      "département": "Commercial",
-      "acteur": "",
+      "département": "Back Office International",
+      "acteur": "Gestionnaire des Opérations",
+      "typeActeur": "interne",
       "condition": "",
-      "outputOui": "",
-      "outputNon": "",
+      "outputs": [],
       "outil": ""
     }
   ],
   "enrichments": [
     {
-      "id_tache": "2",
-      "descriptif": "Le client accède au portail en ligne et sélectionne un créneau disponible pour un rendez-vous. Le système envoie une confirmation par email et SMS.",
-      "duree_estimee": "5 min",
-      "frequence": "À la demande",
-      "kpi": "Taux de conversion > 80%"
-    },
-    {
-      "id_tache": "3",
-      "descriptif": "Le conseiller recueille l'identité, l'adresse, la situation professionnelle et les revenus du client via un formulaire CRM. Ces informations sont nécessaires pour l'analyse KYC.",
-      "duree_estimee": "15 min",
-      "frequence": "À la demande",
-      "kpi": "Taux de complétion > 95%"
-    },
-    {
-      "id_tache": "4",
-      "descriptif": "Le client télécharge ses pièces d'identité, justificatif de domicile et relevés bancaires via le portail sécurisé. Les documents sont automatiquement horodatés.",
-      "duree_estimee": "10 min",
+      "id_tache": "1",
+      "descriptif": "Le client prépare et soumet sa demande de mise en place d'une MCNE en MAD avec les justificatifs requis (demande signée, DUM, facture, billet à ordre).",
+      "duree_estimee": "",
       "frequence": "À la demande",
       "kpi": ""
     },
     {
-      "id_tache": "5",
-      "descriptif": "Vérification de l'authenticité des documents fournis via des outils de détection de fraude. Contrôle des hologrammes, filigranes et signatures.",
+      "id_tache": "3",
+      "descriptif": "Le chargé de caisse s'assure de l'exhaustivité des documents (demande signée, DUM, facture, billet à ordre) et les rattache sur Nov@BOmain.",
+      "duree_estimee": "15 min",
+      "frequence": "À la demande",
+      "kpi": "Taux de dossiers complets > 95%"
+    },
+    {
+      "id_tache": "4",
+      "descriptif": "Le gestionnaire contrôle l'exhaustivité et la conformité des documents. Il recalcule l'avance (max 80% du montant facturé).",
       "duree_estimee": "20 min",
       "frequence": "À la demande",
-      "kpi": "Taux de détection fraude > 95%"
-    },
-    {
-      "id_tache": "7",
-      "descriptif": "Création du compte dans le système Core Banking avec génération de l'IBAN et paramétrage des droits d'accès et des produits associés.",
-      "duree_estimee": "5 min",
-      "frequence": "À la demande",
-      "kpi": "Délai de création < 10 min"
-    },
-    {
-      "id_tache": "8",
-      "descriptif": "Envoi d'un email récapitulatif au client contenant ses identifiants, son IBAN et les documents contractuels à signer électroniquement.",
-      "duree_estimee": "2 min",
-      "frequence": "À la demande",
-      "kpi": "Délai de notification < 1h"
+      "kpi": "Taux d'erreur < 2%"
     }
   ]
 }
@@ -437,12 +570,27 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Avant de retourner le JSON, vérifie :
+✓ procedureMetadata.nom rempli (titre complet) ?
+✓ procedureMetadata.objet rempli (même synthétisé) ?
+✓ procedureMetadata.responsabilites_internes déduit des acteurs internes du workflow ?
+✓ procedureMetadata.responsabilites_externes déduit des acteurs externes du workflow (y compris ceux identifiés par le contexte, sans swimlane explicite) ?
+✓ procedureMetadata.abbreviations : toutes les abréviations du document couvertes ?
+✓ procedureMetadata.regles_gestion : toutes les contraintes/conditions métier capturées ?
 ✓ Toutes les formes géométriques extraites ?
 ✓ Les acteurs sont dans les swimlanes, pas les outils ?
-✓ Tous les Gateway ont des conditions en questions Oui/Non ?
-✓ Toutes les connexions (flèches) sont capturées ?
+✓ Chaque étape a un typeActeur renseigné ("interne" ou "externe") ?
+✓ Le même acteur a le même typeActeur sur toutes ses étapes (cohérence) ?
+✓ Aucun client, banque tierce ou organisme externe n'est classé "interne" ?
+✓ Tous les acteurs externes identifiés (swimlane, annotation, texte) ont des Task dans le workflow avec typeActeur: "externe" ?
+✓ Les libellés des Task externes sont descriptifs et spécifiques (pas "Émission" ou "Réception" seuls) ?
+✓ Le StartEvent est chez un acteur interne (jamais chez un externe) ?
+✓ Tous les ExclusiveGateway ont des conditions en questions Oui/Non avec outputs étiquetés "Oui"/"Non" ?
+✓ Tous les ParallelGateway ont leurs outputs listant toutes les branches avec labels vides ?
+✓ Tous les InclusiveGateway ont leurs outputs avec labels de conditions ?
+✓ Tous les EndEvent ont outputs = [] ?
+✓ Toutes les connexions (flèches) sont capturées dans les tableaux outputs ?
 ✓ Le flow est continu, logique et fait du sens métier ?
-✓ TOUTES les Tasks ont un descriptif obligatoire ?
+✓ TOUTES les Tasks (internes ET externes) ont un descriptif obligatoire ?
 ✓ Les enrichissements optionnels (durée, fréquence, KPI) sont remplis quand possible ?
 ✓ JSON pur sans markdown (pas de ```json) ?
 

@@ -4,7 +4,7 @@ Classificateur d'images BPMN avec Gemini
 Classification rapide et précise en ~10 secondes
 """
 
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 import io
 from typing import Dict
@@ -40,9 +40,7 @@ Réponds UNIQUEMENT avec un seul mot : swimlanes, manuscript, ou simple"""
         if not api_key:
             raise ValueError("GOOGLE_API_KEY non configurée")
         
-        genai.configure(api_key=api_key)
-        # Utiliser Flash pour classification rapide
-        self.model = genai.GenerativeModel("gemini-2.5-flash")
+        self.client = genai.Client(api_key=api_key)
     
     async def classify_image(self, image_data: bytes) -> Dict[str, any]:
         """

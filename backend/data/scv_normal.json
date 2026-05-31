@@ -1,0 +1,419 @@
+[
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007725473614217186193067596721",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "ElYazidi",
+        "prenom": "Idriss",
+        "dateNaissance": "18/06/1990",
+        "nationalite": "DM",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "CR6760",
+        "denominationSociale": null,
+        "nombreComptes": 2,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Ennakhil, Casablanca",
+        "adresse2": "Quartier Ennakhil, Casablanca",
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "07-44813389",
+        "fixe": "002125-56820679",
+        "email": "elyazidi.idriss@mrsay5ra79pl.com"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007230699958968527014994",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2038",
+            "devise": "USD",
+            "nomCompte": "Compte personnel 1",
+            "isCarteBancaire": "O",
+            "statutCompte": "NSTP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "CRED",
+            "montantTotalSolde": 761911638,
+            "montantTotalDettes": 127331706,
+            "montantTotalDebits": 239397931,
+            "montantTotalAgios": 19313762,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 48099278
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007700449556946094066240043319",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "OuladAli",
+        "prenom": "Samir",
+        "dateNaissance": "11/08/1978",
+        "nationalite": "AM",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "CoyTiPVUVh0rJQ",
+        "denominationSociale": null,
+        "nombreComptes": 2,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Rue Ennakhil, Fès",
+        "adresse2": "Rue Derb Omar, Fès",
+        "codePostal": null,
+        "ville": "30000",
+        "pays": "MA",
+        "mobile": "+2126-54541843",
+        "fixe": null,
+        "email": "ouladali.samir@epmxczuei8.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007258835544014746064950",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2038",
+            "devise": "MAD",
+            "nomCompte": "Compte personnel 2",
+            "isCarteBancaire": "N",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 1523869127,
+            "montantTotalDettes": 34061212,
+            "montantTotalDebits": 598146333,
+            "montantTotalAgios": 20444618,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 45372804
+          },
+          "prelevement": [
+            {
+              "montant": 255628544,
+              "nature": "PS",
+              "natureAutre": "Prélèvement automatique"
+            },
+            {
+              "montant": 414586399,
+              "nature": "LOYER",
+              "natureAutre": null
+            }
+          ],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007851303464585868643990465645",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Essalhi",
+        "prenom": "Adnane",
+        "dateNaissance": "09/01/1978",
+        "nationalite": "CA",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "CNIE",
+        "numeroIdentifiantDeposant": "c6NGOB165EwwLH",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Rue Derb Omar, Casablanca",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "07-98809751",
+        "fixe": "002125-95544822",
+        "email": "essalhi.adnane@sy2ei.org"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007174718436813187702156",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2041",
+            "devise": "USD",
+            "nomCompte": "Compte personnel 3",
+            "isCarteBancaire": "O",
+            "statutCompte": "NSTP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 1246550555,
+            "montantTotalDettes": 103601325,
+            "montantTotalDebits": 1458871891,
+            "montantTotalAgios": 74159232,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 39286732
+          },
+          "prelevement": [
+            {
+              "montant": 180869573,
+              "nature": "PS",
+              "natureAutre": "Prélèvement automatique"
+            }
+          ],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007320918516688323260860521714",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Rami",
+        "prenom": "Adnane",
+        "dateNaissance": "16/05/1969",
+        "nationalite": "AW",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "PASS",
+        "numeroIdentifiantDeposant": "TkdKajMlL0CT8Q",
+        "denominationSociale": null,
+        "nombreComptes": 2,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Boulevard Polo, Marrakech",
+        "adresse2": null,
+        "codePostal": null,
+        "ville": "40000",
+        "pays": "MA",
+        "mobile": "07-22067291",
+        "fixe": null,
+        "email": "rami.adnane@9z7lnh2fz9.org"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007341607190135659236856",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2038",
+            "devise": "MAD",
+            "nomCompte": "Compte personnel 4",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 1611809223,
+            "montantTotalDettes": 72213369,
+            "montantTotalDebits": 680615268,
+            "montantTotalAgios": 32787220,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 9900877
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  },
+  {
+    "SCV": {
+      "identifiantDeposant": {
+        "idscv": "007424562620208675581251316604",
+        "version": 1,
+        "typePersonne": "PP",
+        "nom": "Rharbaoui",
+        "prenom": "Malak",
+        "dateNaissance": "16/08/1968",
+        "nationalite": "CA",
+        "formeJuridique": null,
+        "natureIdentifiantDeposant": "NR",
+        "numeroIdentifiantDeposant": "S0",
+        "denominationSociale": null,
+        "nombreComptes": 1,
+        "isDecede": "N",
+        "nombreHeritiers": 0
+      },
+      "infosContact": {
+        "adresse1": "Quartier Hassan II, Casablanca",
+        "adresse2": "Quartier Derb Omar, Casablanca",
+        "codePostal": null,
+        "ville": "20000",
+        "pays": "MA",
+        "mobile": "+2126-90697700",
+        "fixe": "05-87184597",
+        "email": "rharbaoui.malak@ng0ow7cy.ma"
+      },
+      "representantLegal": [
+        {
+          "identifiantRepresentantLegal": {
+            "idscv": null,
+            "natureIdentifiantDeposantP": null,
+            "numeroIdentifiantDeposantP": null,
+            "nom": null,
+            "prenom": null,
+            "dateNaissance": null,
+            "nationalite": null
+          },
+          "infosContact": {
+            "adresse1": null,
+            "adresse2": null,
+            "codePostal": null,
+            "ville": null,
+            "pays": null,
+            "mobile": null,
+            "fixe": null,
+            "email": null
+          }
+        }
+      ],
+      "heritier": [],
+      "compte": [
+        {
+          "infosCompteBancaire": {
+            "rib": "007980292773681825445709",
+            "natureCompte": "IND",
+            "nombreCotitulaires": null,
+            "pcec": "2038",
+            "devise": "USD",
+            "nomCompte": "Compte personnel 5",
+            "isCarteBancaire": "O",
+            "statutCompte": "STP",
+            "compteNSTP": null,
+            "autreCompteNSTP": null,
+            "sensSolde": "DEB",
+            "montantTotalSolde": 1875852353,
+            "montantTotalDettes": 6457534,
+            "montantTotalDebits": 191692101,
+            "montantTotalAgios": 31835202,
+            "montantTotalGarantie": null,
+            "montantTotalInterets": 3479511
+          },
+          "prelevement": [],
+          "cotitulaire": [],
+          "infosCarteBancaire": []
+        }
+      ]
+    }
+  }
+]

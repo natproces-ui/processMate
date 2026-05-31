@@ -1,0 +1,2712 @@
+{
+  "referentiels": {
+    "typePersonne": [
+      {
+        "code": "PP",
+        "libelle": "Personne physique"
+      },
+      {
+        "code": "PM",
+        "libelle": "Personne morale"
+      }
+    ],
+    "nationalitePaysNaissance": [
+      {
+        "code": "AF",
+        "libelle": "Afghanistan"
+      },
+      {
+        "code": "ZA",
+        "libelle": "Afrique du Sud"
+      },
+      {
+        "code": "AX",
+        "libelle": "Åland, Îles"
+      },
+      {
+        "code": "AL",
+        "libelle": "Albanie"
+      },
+      {
+        "code": "DZ",
+        "libelle": "Algérie"
+      },
+      {
+        "code": "DE",
+        "libelle": "Allemagne"
+      },
+      {
+        "code": "DD",
+        "libelle": "Allemagne de l'EST"
+      },
+      {
+        "code": "AD",
+        "libelle": "Andorre"
+      },
+      {
+        "code": "AO",
+        "libelle": "Angola"
+      },
+      {
+        "code": "AI",
+        "libelle": "Anguilla"
+      },
+      {
+        "code": "AQ",
+        "libelle": "Antarctique"
+      },
+      {
+        "code": "AG",
+        "libelle": "Antigua et Barbuda"
+      },
+      {
+        "code": "AN",
+        "libelle": "Antilles néerlandaises"
+      },
+      {
+        "code": "SA",
+        "libelle": "Arabie Saoudite"
+      },
+      {
+        "code": "AR",
+        "libelle": "Argentine"
+      },
+      {
+        "code": "AM",
+        "libelle": "Arménie"
+      },
+      {
+        "code": "AW",
+        "libelle": "Aruba"
+      },
+      {
+        "code": "AU",
+        "libelle": "Australie"
+      },
+      {
+        "code": "AT",
+        "libelle": "Autriche"
+      },
+      {
+        "code": "AZ",
+        "libelle": "Azerbaïdjan"
+      },
+      {
+        "code": "BS",
+        "libelle": "Bahamas"
+      },
+      {
+        "code": "BH",
+        "libelle": "Bahreïn"
+      },
+      {
+        "code": "BD",
+        "libelle": "Bangladesh"
+      },
+      {
+        "code": "BB",
+        "libelle": "Barbade"
+      },
+      {
+        "code": "BY",
+        "libelle": "Bélarus"
+      },
+      {
+        "code": "BE",
+        "libelle": "Belgique"
+      },
+      {
+        "code": "BZ",
+        "libelle": "Bélize"
+      },
+      {
+        "code": "BJ",
+        "libelle": "Bénin"
+      },
+      {
+        "code": "BM",
+        "libelle": "Bermudes"
+      },
+      {
+        "code": "BT",
+        "libelle": "Bhoutan"
+      },
+      {
+        "code": "BO",
+        "libelle": "Bolivie (État plurinational de)"
+      },
+      {
+        "code": "BA",
+        "libelle": "Bosnie-Herzégovine"
+      },
+      {
+        "code": "BW",
+        "libelle": "Botswana"
+      },
+      {
+        "code": "BR",
+        "libelle": "Brésil"
+      },
+      {
+        "code": "BN",
+        "libelle": "Brunéi Darussalam"
+      },
+      {
+        "code": "BG",
+        "libelle": "Bulgarie"
+      },
+      {
+        "code": "BF",
+        "libelle": "Burkina Faso"
+      },
+      {
+        "code": "BI",
+        "libelle": "Burundi"
+      },
+      {
+        "code": "CV",
+        "libelle": "Cabo Verde"
+      },
+      {
+        "code": "CA",
+        "libelle": "Canada"
+      },
+      {
+        "code": "CL",
+        "libelle": "Chili"
+      },
+      {
+        "code": "CN",
+        "libelle": "Chine"
+      },
+      {
+        "code": "CY",
+        "libelle": "Chypre"
+      },
+      {
+        "code": "CO",
+        "libelle": "Colombie"
+      },
+      {
+        "code": "KM",
+        "libelle": "Comores"
+      },
+      {
+        "code": "CG",
+        "libelle": "Congo"
+      },
+      {
+        "code": "CD",
+        "libelle": "Congo, République démocratique du"
+      },
+      {
+        "code": "CI",
+        "libelle": "Côte d'Ivoire"
+      },
+      {
+        "code": "HR",
+        "libelle": "Croatie"
+      },
+      {
+        "code": "CU",
+        "libelle": "Cuba"
+      },
+      {
+        "code": "DK",
+        "libelle": "Danemark"
+      },
+      {
+        "code": "DJ",
+        "libelle": "Djibouti"
+      },
+      {
+        "code": "DO",
+        "libelle": "Dominicaine, République"
+      },
+      {
+        "code": "DM",
+        "libelle": "Dominique"
+      },
+      {
+        "code": "EG",
+        "libelle": "Égypte"
+      },
+      {
+        "code": "SV",
+        "libelle": "El Salvador"
+      },
+      {
+        "code": "AE",
+        "libelle": "Émirats arabes unis"
+      },
+      {
+        "code": "EC",
+        "libelle": "Équateur"
+      },
+      {
+        "code": "ES",
+        "libelle": "Espagne"
+      },
+      {
+        "code": "EE",
+        "libelle": "Estonie"
+      },
+      {
+        "code": "US",
+        "libelle": "États-Unis d’Amérique"
+      },
+      {
+        "code": "ET",
+        "libelle": "Éthiopie"
+      },
+      {
+        "code": "FI",
+        "libelle": "Finlande"
+      },
+      {
+        "code": "FR",
+        "libelle": "France"
+      },
+      {
+        "code": "GA",
+        "libelle": "Gabon"
+      },
+      {
+        "code": "GM",
+        "libelle": "Gambie"
+      },
+      {
+        "code": "GH",
+        "libelle": "Ghana"
+      },
+      {
+        "code": "GR",
+        "libelle": "Grèce"
+      },
+      {
+        "code": "GD",
+        "libelle": "Grenade"
+      },
+      {
+        "code": "GL",
+        "libelle": "Groenland"
+      },
+      {
+        "code": "GP",
+        "libelle": "Guadeloupe"
+      },
+      {
+        "code": "GN",
+        "libelle": "Guinée"
+      },
+      {
+        "code": "GW",
+        "libelle": "Guinée-Bissau"
+      },
+      {
+        "code": "GQ",
+        "libelle": "Guinée équatoriale"
+      },
+      {
+        "code": "GY",
+        "libelle": "Guyana"
+      },
+      {
+        "code": "GF",
+        "libelle": "Guyane française"
+      },
+      {
+        "code": "HT",
+        "libelle": "Haïti"
+      },
+      {
+        "code": "HN",
+        "libelle": "Honduras"
+      },
+      {
+        "code": "HK",
+        "libelle": "Hong Kong"
+      },
+      {
+        "code": "HU",
+        "libelle": "Hongrie"
+      },
+      {
+        "code": "IS",
+        "libelle": "Islande"
+      },
+      {
+        "code": "IN",
+        "libelle": "Inde"
+      },
+      {
+        "code": "ID",
+        "libelle": "Indonésie"
+      },
+      {
+        "code": "IR",
+        "libelle": "Iran, République islamique d’"
+      },
+      {
+        "code": "IQ",
+        "libelle": "Iraq"
+      },
+      {
+        "code": "IE",
+        "libelle": "Irlande"
+      },
+      {
+        "code": "IL",
+        "libelle": "Israël"
+      },
+      {
+        "code": "IT",
+        "libelle": "Italie"
+      },
+      {
+        "code": "JM",
+        "libelle": "Jamaïque"
+      },
+      {
+        "code": "JP",
+        "libelle": "Japon"
+      },
+      {
+        "code": "JO",
+        "libelle": "Jordanie"
+      },
+      {
+        "code": "KZ",
+        "libelle": "Kazakhstan"
+      },
+      {
+        "code": "KE",
+        "libelle": "Kenya"
+      },
+      {
+        "code": "KW",
+        "libelle": "Koweït"
+      },
+      {
+        "code": "LA",
+        "libelle": "Lao, République démocratique populaire"
+      },
+      {
+        "code": "LB",
+        "libelle": "Liban"
+      },
+      {
+        "code": "LR",
+        "libelle": "Libéria"
+      },
+      {
+        "code": "LY",
+        "libelle": "Libye"
+      },
+      {
+        "code": "LI",
+        "libelle": "Liechtenstein"
+      },
+      {
+        "code": "LT",
+        "libelle": "Lituanie"
+      },
+      {
+        "code": "LU",
+        "libelle": "Luxembourg"
+      },
+      {
+        "code": "MO",
+        "libelle": "Macao"
+      },
+      {
+        "code": "MK",
+        "libelle": "Macédoine, ex-République yougoslave de"
+      },
+      {
+        "code": "MG",
+        "libelle": "Madagascar"
+      },
+      {
+        "code": "MY",
+        "libelle": "Malaisie"
+      },
+      {
+        "code": "MW",
+        "libelle": "Malawi"
+      },
+      {
+        "code": "MV",
+        "libelle": "Maldives"
+      },
+      {
+        "code": "ML",
+        "libelle": "Mali"
+      },
+      {
+        "code": "MT",
+        "libelle": "Malte"
+      },
+      {
+        "code": "MP",
+        "libelle": "Mariannes du nord, Îles"
+      },
+      {
+        "code": "MA",
+        "libelle": "Maroc"
+      },
+      {
+        "code": "MH",
+        "libelle": "Marshall, Îles"
+      },
+      {
+        "code": "MQ",
+        "libelle": "Martinique"
+      },
+      {
+        "code": "MU",
+        "libelle": "Maurice"
+      },
+      {
+        "code": "MR",
+        "libelle": "Mauritanie"
+      },
+      {
+        "code": "YT",
+        "libelle": "Mayotte"
+      }
+    ],
+    "formeJuridique": [
+      {
+        "code": "SA",
+        "libelle": "Société anonyme"
+      },
+      {
+        "code": "SARL",
+        "libelle": "Société à responsabilité limitée (s.a.r.l.)"
+      },
+      {
+        "code": "SNC",
+        "libelle": "Société en nom collectif"
+      },
+      {
+        "code": "SCS",
+        "libelle": "Société en commandite simple"
+      },
+      {
+        "code": "SCA",
+        "libelle": "Société en commandite par action"
+      },
+      {
+        "code": "CO",
+        "libelle": "Sociétés coopératives"
+      },
+      {
+        "code": "AP",
+        "libelle": "Affaire personnelle"
+      },
+      {
+        "code": "SCI",
+        "libelle": "Société civile immobilière"
+      },
+      {
+        "code": "SCP",
+        "libelle": "Société civile professionnelle"
+      },
+      {
+        "code": "SDF",
+        "libelle": "Sociétés de fait"
+      },
+      {
+        "code": "SARLAU",
+        "libelle": "Société à responsabilité limitée d'associé unique"
+      },
+      {
+        "code": "GIE",
+        "libelle": "Groupement d'intérêt économique (G.I.E.)"
+      },
+      {
+        "code": "APP",
+        "libelle": "Association (ou société) en participation"
+      },
+      {
+        "code": "IBNL",
+        "libelle": "Institution à but non lucratif"
+      },
+      {
+        "code": "EP",
+        "libelle": "Etablissement public"
+      },
+      {
+        "code": "SAS",
+        "libelle": "Société anonyme simplifiée"
+      },
+      {
+        "code": "AE",
+        "libelle": "Auto-Entrepreneur"
+      }
+    ],
+    "natureIdentifiantDeposantMorale": [
+      {
+        "code": "ICE",
+        "libelle": "Identifiant Commun Entreprise"
+      },
+      {
+        "code": "IF",
+        "libelle": "Identifiant Fiscal"
+      },
+      {
+        "code": "RC",
+        "libelle": "N° du Registre de commerce"
+      },
+      {
+        "code": "CNSS",
+        "libelle": "N° d’affiliation à la CNSS"
+      },
+      {
+        "code": "CP",
+        "libelle": "Numéro de la carte professionnelle"
+      },
+      {
+        "code": "RECEP",
+        "libelle": "N° de récépissé d’association, fondation ou coopérative ou autre"
+      }
+    ],
+    "natureIdentifiantDeposantPhysique": [
+      {
+        "code": "CNIE",
+        "libelle": "Numéro de la carte d’identité national du déposant (CNIE ou CIN)"
+      },
+      {
+        "code": "PASS",
+        "libelle": "Numéro du passeport (Pour les déposants étrangers non-résidents au Maroc)"
+      },
+      {
+        "code": "NR",
+        "libelle": "Numéro d’immatriculation ou de résidence (Pour les déposants étrangers résidents au Maroc)"
+      }
+    ],
+    "prelevement": [
+      {
+        "code": "PF",
+        "libelle": "Prélèvement fiscal"
+      },
+      {
+        "code": "PS",
+        "libelle": "Prélèvement social"
+      }
+    ],
+    "natureCompte": [
+      {
+        "code": "IND",
+        "libelle": "Individuel"
+      },
+      {
+        "code": "COL",
+        "libelle": "Collectif"
+      }
+    ],
+    "libellePCEC": [
+      {
+        "code": "2011",
+        "libelle": "Comptes chèques"
+      },
+      {
+        "code": "2012",
+        "libelle": "Comptes courants"
+      },
+      {
+        "code": "2021",
+        "libelle": "Comptes d’affacturage disponibles"
+      },
+      {
+        "code": "2022",
+        "libelle": "Comptes d’affacturage non disponibles"
+      },
+      {
+        "code": "2031",
+        "libelle": "Comptes en déshérence"
+      },
+      {
+        "code": "2032",
+        "libelle": "Comptes de succession"
+      },
+      {
+        "code": "2035",
+        "libelle": "Comptes de clients de passage"
+      },
+      {
+        "code": "2036",
+        "libelle": "Autres comptes de la clientèle"
+      },
+      {
+        "code": "2041",
+        "libelle": "Comptes sur carnets"
+      },
+      {
+        "code": "2042",
+        "libelle": "Comptes d’épargne logement"
+      },
+      {
+        "code": "2043",
+        "libelle": "Plans d’épargne logement"
+      },
+      {
+        "code": "2046",
+        "libelle": "Autres comptes d’épargne"
+      },
+      {
+        "code": "2051",
+        "libelle": "Comptes à terme"
+      },
+      {
+        "code": "2055",
+        "libelle": "Bons de caisse"
+      },
+      {
+        "code": "2071",
+        "libelle": "Dépôts des sociétés en formation"
+      },
+      {
+        "code": "2072",
+        "libelle": "Dépôts pour augmentation de capital des sociétés"
+      },
+      {
+        "code": "2076",
+        "libelle": "Autres dépôts réglementés"
+      },
+      {
+        "code": "2081",
+        "libelle": "Dépôts de garantie pour ouverture de crédit documentaire"
+      },
+      {
+        "code": "2082",
+        "libelle": "Dépôts de garantie pour autres engagements par signature"
+      },
+      {
+        "code": "2083",
+        "libelle": "Dépôts de garantie pour location de coffres-forts"
+      },
+      {
+        "code": "2084",
+        "libelle": "Retenues de garantie"
+      },
+      {
+        "code": "2085",
+        "libelle": "Dépôts de garantie sur opérations de crédit-bail et de location"
+      },
+      {
+        "code": "2086",
+        "libelle": "Autres dépôts de garantie"
+      }
+    ],
+    "devise": [
+      {
+        "code": "EUR",
+        "libelle": "EURO"
+      },
+      {
+        "code": "USD",
+        "libelle": "DOLLAR U.S.A."
+      },
+      {
+        "code": "CAD",
+        "libelle": "DOLLAR CANADIEN"
+      },
+      {
+        "code": "GBP",
+        "libelle": "LIVRE STERLING"
+      },
+      {
+        "code": "GIP",
+        "libelle": "LIVRE GIBRALTAR"
+      },
+      {
+        "code": "CHF",
+        "libelle": "FRANC SUISSE"
+      },
+      {
+        "code": "DKK",
+        "libelle": "COURONNES DANOISES"
+      },
+      {
+        "code": "SEK",
+        "libelle": "COURONNES SUEDOISES"
+      },
+      {
+        "code": "NOK",
+        "libelle": "COURONNES NORVEGIENNES"
+      },
+      {
+        "code": "SAR",
+        "libelle": "RIYAL SAOUDIEN"
+      },
+      {
+        "code": "KWD",
+        "libelle": "DINAR KOWEITIEN"
+      },
+      {
+        "code": "AED",
+        "libelle": "DIRHAM E.A.U."
+      },
+      {
+        "code": "QAR",
+        "libelle": "RIYAL QATARI"
+      },
+      {
+        "code": "BHD",
+        "libelle": "DINAR BAHREINI"
+      },
+      {
+        "code": "JPY",
+        "libelle": "YENS JAPONAIS"
+      },
+      {
+        "code": "DZD",
+        "libelle": "DINARS ALGERIENS"
+      },
+      {
+        "code": "TND",
+        "libelle": "DINAR TUNISIEN"
+      },
+      {
+        "code": "LYD",
+        "libelle": "DINAR LIBYEN"
+      },
+      {
+        "code": "MRU",
+        "libelle": "OUGUIYAS MAURITANIENNES"
+      },
+      {
+        "code": "OMR",
+        "libelle": "RIYAL OMANI"
+      },
+      {
+        "code": "BRL",
+        "libelle": "REAL BRÉSILIEN"
+      },
+      {
+        "code": "RUB",
+        "libelle": "ROUBLE RUSSE"
+      },
+      {
+        "code": "INR",
+        "libelle": "ROUPIE INDIENNE"
+      },
+      {
+        "code": "CNY",
+        "libelle": "YUAN CHINOIS"
+      },
+      {
+        "code": "AUD",
+        "libelle": "DOLLAR AUSTRALIEN"
+      },
+      {
+        "code": "ZAR",
+        "libelle": "RAND SUD-AFRICAIN"
+      },
+      {
+        "code": "TRY",
+        "libelle": "LIVRE TURQUE"
+      },
+      {
+        "code": "EGP",
+        "libelle": "LIVRE EGYPTIENNE"
+      },
+      {
+        "code": "JOD",
+        "libelle": "DINAR JORDANIEN"
+      },
+      {
+        "code": "XOF",
+        "libelle": "FRANC CFA"
+      }
+    ],
+    "statutCompte": [
+      {
+        "code": "STP",
+        "libelle": "Straight to Payout"
+      },
+      {
+        "code": "NSTP",
+        "libelle": "Non Straight to Payout"
+      }
+    ],
+    "comptesNSTP": [
+      {
+        "code": "ST",
+        "libelle": "Comptes faisant l’objet de sanctions"
+      },
+      {
+        "code": "LT",
+        "libelle": "Comptes faisant l’objet de litiges"
+      },
+      {
+        "code": "CI",
+        "libelle": "Comptes inactifs"
+      },
+      {
+        "code": "AD",
+        "libelle": "Comptes appartenant aux ayants droits"
+      },
+      {
+        "code": "LJ",
+        "libelle": "Comptes dont les titulaires font l’objet de redressement ou de liquidation judiciaire"
+      },
+      {
+        "code": "DI",
+        "libelle": "Comptes appartenant à des déposants dont les données relatives à leur identification et/ou à leur localisation sont indisponibles"
+      },
+      {
+        "code": "AUTRE",
+        "libelle": "Autre (à enrichir par les établissements adhérents)"
+      }
+    ],
+    "sensSolde": [
+      {
+        "code": "DEB",
+        "libelle": "Débiteur"
+      },
+      {
+        "code": "CRED",
+        "libelle": "Créditeur"
+      }
+    ],
+    "statutTitulaire": [
+      {
+        "code": "O",
+        "libelle": "Oui"
+      },
+      {
+        "code": "N",
+        "libelle": "Non"
+      }
+    ],
+    "etablissementsAdherents": [
+      {
+        "code": "002",
+        "sigle": "ARABBA",
+        "libelle": "ARAB BANK PLC"
+      },
+      {
+        "code": "003",
+        "sigle": "CAIXA",
+        "libelle": "Caja De Ahorros Y Pensiones De Barcelona « Caixa Bank, S.A»"
+      },
+      {
+        "code": "005",
+        "sigle": "UMB",
+        "libelle": "Union Marocaine de Banques"
+      },
+      {
+        "code": "007",
+        "sigle": "AWB",
+        "libelle": "ATTIJARIWAFA BANK"
+      },
+      {
+        "code": "011",
+        "sigle": "BOA",
+        "libelle": "Bank of Africa, BMCE BANK"
+      },
+      {
+        "code": "013",
+        "sigle": "BMCI",
+        "libelle": "Banque Marocaine pour le Commerce et Industrie"
+      },
+      {
+        "code": "021",
+        "sigle": "CDM",
+        "libelle": "Crédit du Maroc"
+      },
+      {
+        "code": "022",
+        "sigle": "SGMA",
+        "libelle": "Société Générale Marocaine de Banques"
+      },
+      {
+        "code": "028",
+        "sigle": "CITIBA",
+        "libelle": "CITIBANK"
+      },
+      {
+        "code": "040",
+        "sigle": "CPM",
+        "libelle": "Crédit Populaire Marocain"
+      },
+      {
+        "code": "050",
+        "sigle": "CFG",
+        "libelle": "CFG Bank Group"
+      },
+      {
+        "code": "054",
+        "sigle": "CDGC",
+        "libelle": "CDG CAPITAL"
+      },
+      {
+        "code": "070",
+        "sigle": "SABADELL",
+        "libelle": "BANCO SABADELL"
+      },
+      {
+        "code": "225",
+        "sigle": "CAM",
+        "libelle": "Crédit Agricole Marocain"
+      },
+      {
+        "code": "230",
+        "sigle": "CIH",
+        "libelle": "Crédit Immobilier et Hôtelier"
+      },
+      {
+        "code": "350",
+        "sigle": "ABB",
+        "libelle": "AL BARID BANK"
+      },
+      {
+        "code": "360",
+        "sigle": "UMNIA",
+        "libelle": "UMNIA Bank"
+      },
+      {
+        "code": "361",
+        "sigle": "NAJMAH",
+        "libelle": "Najmah"
+      },
+      {
+        "code": "362",
+        "sigle": "ASSAFA",
+        "libelle": "Bank Assafaa"
+      },
+      {
+        "code": "363",
+        "sigle": "DAA",
+        "libelle": "Dar Al Amane"
+      },
+      {
+        "code": "364",
+        "sigle": "ARREDA",
+        "libelle": "Arreda"
+      },
+      {
+        "code": "365",
+        "sigle": "AAB",
+        "libelle": "Al Akhdar Bank"
+      },
+      {
+        "code": "366",
+        "sigle": "BAY",
+        "libelle": "Bank AL Yousr"
+      },
+      {
+        "code": "367",
+        "sigle": "BTI",
+        "libelle": "Bank AL karam"
+      }
+    ],
+    "villes": [
+      {
+        "code": "010",
+        "ville": "AGADIR"
+      },
+      {
+        "code": "011",
+        "ville": "BIOUGRA"
+      },
+      {
+        "code": "012",
+        "ville": "AIT BAHA"
+      },
+      {
+        "code": "013",
+        "ville": "HAD AIT BELFAA"
+      },
+      {
+        "code": "014",
+        "ville": "KHEMIS IDDA OU GNIDIF"
+      },
+      {
+        "code": "015",
+        "ville": "MASSA"
+      },
+      {
+        "code": "016",
+        "ville": "TANALT"
+      },
+      {
+        "code": "021",
+        "ville": "INZEGANE"
+      },
+      {
+        "code": "022",
+        "ville": "AIT MELLOUL"
+      },
+      {
+        "code": "023",
+        "ville": "IMOUZZER IDDA OU TANANE"
+      },
+      {
+        "code": "024",
+        "ville": "TAMRI"
+      },
+      {
+        "code": "025",
+        "ville": "IRHERM"
+      },
+      {
+        "code": "026",
+        "ville": "AIT ABDELLAH"
+      },
+      {
+        "code": "027",
+        "ville": "TNINE ADDAR"
+      },
+      {
+        "code": "028",
+        "ville": "OULAD TEIMA"
+      },
+      {
+        "code": "029",
+        "ville": "ARGANA"
+      },
+      {
+        "code": "031",
+        "ville": "SEBT GUERDANE"
+      },
+      {
+        "code": "041",
+        "ville": "TAROUDANT"
+      },
+      {
+        "code": "042",
+        "ville": "AHMAR"
+      },
+      {
+        "code": "043",
+        "ville": "AOULOUZ"
+      },
+      {
+        "code": "044",
+        "ville": "FREIJA"
+      },
+      {
+        "code": "045",
+        "ville": "SIDI SLIMANE"
+      },
+      {
+        "code": "046",
+        "ville": "TAFINGOULT"
+      },
+      {
+        "code": "050",
+        "ville": "AL HOCEIMA"
+      },
+      {
+        "code": "051",
+        "ville": "BNI BOUFRAH"
+      },
+      {
+        "code": "052",
+        "ville": "BNI GMIL MESTASSA"
+      },
+      {
+        "code": "053",
+        "ville": "BNI OURIARHEL"
+      },
+      {
+        "code": "054",
+        "ville": "ARBAA TAOURIRT"
+      },
+      {
+        "code": "055",
+        "ville": "BNI BOUAYACH"
+      },
+      {
+        "code": "056",
+        "ville": "BNI HAFIDA"
+      },
+      {
+        "code": "057",
+        "ville": "IMZOUREN"
+      },
+      {
+        "code": "058",
+        "ville": "IZEMMOUREN"
+      },
+      {
+        "code": "061",
+        "ville": "TARGUIST"
+      },
+      {
+        "code": "062",
+        "ville": "BNI AMMART"
+      },
+      {
+        "code": "063",
+        "ville": "KETAMA"
+      },
+      {
+        "code": "064",
+        "ville": "TABARRANNT"
+      },
+      {
+        "code": "070",
+        "ville": "AZILAL"
+      },
+      {
+        "code": "071",
+        "ville": "AIT M HAMED"
+      },
+      {
+        "code": "072",
+        "ville": "TABANNT"
+      },
+      {
+        "code": "073",
+        "ville": "ZAOUIA AHANSAL"
+      },
+      {
+        "code": "074",
+        "ville": "BZOU"
+      },
+      {
+        "code": "075",
+        "ville": "AIT AATAB"
+      },
+      {
+        "code": "076",
+        "ville": "TANANNT"
+      },
+      {
+        "code": "081",
+        "ville": "DEMNATE"
+      },
+      {
+        "code": "082",
+        "ville": "OUAOULA"
+      },
+      {
+        "code": "083",
+        "ville": "FETOUAKA"
+      },
+      {
+        "code": "084",
+        "ville": "OUAOUIZARHT"
+      },
+      {
+        "code": "085",
+        "ville": "AFOURER"
+      },
+      {
+        "code": "086",
+        "ville": "ANERGUI"
+      },
+      {
+        "code": "087",
+        "ville": "TAGUELFT"
+      },
+      {
+        "code": "088",
+        "ville": "TILOUGGUITE"
+      },
+      {
+        "code": "090",
+        "ville": "BENI MELLAL"
+      },
+      {
+        "code": "091",
+        "ville": "OULAD M BAREK"
+      },
+      {
+        "code": "092",
+        "ville": "OULAD YAICHE"
+      },
+      {
+        "code": "093",
+        "ville": "HAD OULED BEN MOUSSA"
+      },
+      {
+        "code": "094",
+        "ville": "DAR OULD ZIDOUH"
+      },
+      {
+        "code": "095",
+        "ville": "SEBT OULAD NEMMA"
+      },
+      {
+        "code": "096",
+        "ville": "EL KSIBA"
+      },
+      {
+        "code": "097",
+        "ville": "AGHBALA"
+      },
+      {
+        "code": "098",
+        "ville": "TAGHZIRT"
+      },
+      {
+        "code": "099",
+        "ville": "ZAOUIA CHEIKH"
+      },
+      {
+        "code": "101",
+        "ville": "FQUI BEN SALAH"
+      },
+      {
+        "code": "102",
+        "ville": "BENI AMIR"
+      },
+      {
+        "code": "103",
+        "ville": "BENI OUKIL"
+      },
+      {
+        "code": "104",
+        "ville": "KASBA TADLA"
+      },
+      {
+        "code": "105",
+        "ville": "GUETTAYA"
+      },
+      {
+        "code": "106",
+        "ville": "SEMGUET"
+      },
+      {
+        "code": "107",
+        "ville": "OULAD SAID EL OUAD"
+      },
+      {
+        "code": "110",
+        "ville": "BEN SLIMANE"
+      },
+      {
+        "code": "111",
+        "ville": "FEDALATE"
+      },
+      {
+        "code": "112",
+        "ville": "MDAKRA"
+      },
+      {
+        "code": "115",
+        "ville": "ZIAIDA"
+      },
+      {
+        "code": "121",
+        "ville": "BOUZNIKA"
+      },
+      {
+        "code": "122",
+        "ville": "BNI YAKHLAF"
+      },
+      {
+        "code": "123",
+        "ville": "SIDI MOUSSA BEN ALI"
+      },
+      {
+        "code": "124",
+        "ville": "SIDI YAHIA ZAIRE"
+      },
+      {
+        "code": "130",
+        "ville": "BOUJDOUR"
+      },
+      {
+        "code": "135",
+        "ville": "GUELTAT ZEMMOUR"
+      },
+      {
+        "code": "140",
+        "ville": "BOULEMANE"
+      },
+      {
+        "code": "141",
+        "ville": "IMMOUZZER MARMOUCHA"
+      },
+      {
+        "code": "143",
+        "ville": "SKOURA"
+      },
+      {
+        "code": "144",
+        "ville": "MISSOUR"
+      },
+      {
+        "code": "145",
+        "ville": "KSABI"
+      },
+      {
+        "code": "146",
+        "ville": "OUTAT EL HAJ"
+      },
+      {
+        "code": "147",
+        "ville": "OULAD ALI"
+      },
+      {
+        "code": "148",
+        "ville": "FRITISSA"
+      },
+      {
+        "code": "150",
+        "ville": "CHEFCHAOUN"
+      },
+      {
+        "code": "151",
+        "ville": "BAB BERRET"
+      },
+      {
+        "code": "152",
+        "ville": "BENI AHMED"
+      },
+      {
+        "code": "153",
+        "ville": "JEBHA"
+      },
+      {
+        "code": "156",
+        "ville": "BAB TAZA"
+      },
+      {
+        "code": "157",
+        "ville": "FIFI"
+      },
+      {
+        "code": "158",
+        "ville": "TANKOUB"
+      },
+      {
+        "code": "161",
+        "ville": "BOU AHMED"
+      },
+      {
+        "code": "162",
+        "ville": "ASSIFANE"
+      },
+      {
+        "code": "163",
+        "ville": "TALEMBOTE"
+      },
+      {
+        "code": "165",
+        "ville": "MOKRISSET"
+      },
+      {
+        "code": "166",
+        "ville": "BRIKCHA"
+      },
+      {
+        "code": "167",
+        "ville": "ZOUMI"
+      },
+      {
+        "code": "170",
+        "ville": "EL JADIDA"
+      },
+      {
+        "code": "171",
+        "ville": "MOULAY ABDELLAH"
+      },
+      {
+        "code": "172",
+        "ville": "OULAD HSINE"
+      },
+      {
+        "code": "173",
+        "ville": "OULAD AISSA"
+      },
+      {
+        "code": "174",
+        "ville": "OULAD GHANEM"
+      },
+      {
+        "code": "176",
+        "ville": "AZEMMOUR"
+      },
+      {
+        "code": "177",
+        "ville": "BIR JDID"
+      },
+      {
+        "code": "178",
+        "ville": "CHTOUKA"
+      },
+      {
+        "code": "179",
+        "ville": "SIDI BENNOUR"
+      },
+      {
+        "code": "181",
+        "ville": "BENI HLAL"
+      },
+      {
+        "code": "182",
+        "ville": "EL AOUNATE"
+      },
+      {
+        "code": "183",
+        "ville": "OULAD AAMRANE"
+      },
+      {
+        "code": "184",
+        "ville": "SIDI SMAIL"
+      },
+      {
+        "code": "185",
+        "ville": "OULED FREJ"
+      },
+      {
+        "code": "186",
+        "ville": "KHEMIS ZEMAMRA"
+      },
+      {
+        "code": "187",
+        "ville": "OUALIDIYA"
+      },
+      {
+        "code": "188",
+        "ville": "TNINE RHARBIA"
+      },
+      {
+        "code": "189",
+        "ville": "SANIAT BENRKIK"
+      },
+      {
+        "code": "190",
+        "ville": "EL KELAA"
+      },
+      {
+        "code": "191",
+        "ville": "AHL EL GHABA"
+      },
+      {
+        "code": "192",
+        "ville": "BENI AMEUR"
+      },
+      {
+        "code": "193",
+        "ville": "OUNASDASS OULAD YACOUB"
+      },
+      {
+        "code": "194",
+        "ville": "ATTAOUIA ECH CHAIBIYA"
+      },
+      {
+        "code": "195",
+        "ville": "KHEMIS ATTAOUIA"
+      },
+      {
+        "code": "196",
+        "ville": "SIDI RAHAL"
+      },
+      {
+        "code": "197",
+        "ville": "SIDI BOU OTHMANE"
+      },
+      {
+        "code": "198",
+        "ville": "LOUTA"
+      },
+      {
+        "code": "199",
+        "ville": "RAS EL AIN"
+      },
+      {
+        "code": "201",
+        "ville": "BEN GUERIR"
+      },
+      {
+        "code": "203",
+        "ville": "OULAD TMIM"
+      },
+      {
+        "code": "204",
+        "ville": "SKHOUR"
+      },
+      {
+        "code": "205",
+        "ville": "TNINE BOUCHANE"
+      },
+      {
+        "code": "207",
+        "ville": "TAMLELT"
+      },
+      {
+        "code": "210",
+        "ville": "ERRACHIDIA"
+      },
+      {
+        "code": "211",
+        "ville": "AOUFOUSS"
+      },
+      {
+        "code": "212",
+        "ville": "BOUDNIB"
+      },
+      {
+        "code": "213",
+        "ville": "MDARHRA KHENG"
+      },
+      {
+        "code": "215",
+        "ville": "ASSOUL"
+      },
+      {
+        "code": "216",
+        "ville": "AIT HANI"
+      },
+      {
+        "code": "217",
+        "ville": "AMELLAGO"
+      },
+      {
+        "code": "218",
+        "ville": "ERFOUD"
+      },
+      {
+        "code": "219",
+        "ville": "ALNIF"
+      },
+      {
+        "code": "221",
+        "ville": "ARBAA SEBBAH ZIZ"
+      },
+      {
+        "code": "222",
+        "ville": "JORF"
+      },
+      {
+        "code": "223",
+        "ville": "GOULMIMA"
+      },
+      {
+        "code": "224",
+        "ville": "AGHBALOU N KERDOUSS"
+      },
+      {
+        "code": "225",
+        "ville": "MELLAB"
+      },
+      {
+        "code": "226",
+        "ville": "TINEJDAD"
+      },
+      {
+        "code": "227",
+        "ville": "IMILCHIL"
+      },
+      {
+        "code": "228",
+        "ville": "AMOUGUER"
+      },
+      {
+        "code": "229",
+        "ville": "OUTERBAT"
+      },
+      {
+        "code": "230",
+        "ville": "CIH"
+      },
+      {
+        "code": "231",
+        "ville": "RICH"
+      },
+      {
+        "code": "232",
+        "ville": "AIT IZDEG"
+      },
+      {
+        "code": "233",
+        "ville": "GOURRAMA"
+      },
+      {
+        "code": "235",
+        "ville": "RISSANI"
+      },
+      {
+        "code": "236",
+        "ville": "TAOUZ"
+      },
+      {
+        "code": "240",
+        "ville": "ESSAOUIRA"
+      },
+      {
+        "code": "241",
+        "ville": "HAD MRAMER"
+      },
+      {
+        "code": "242",
+        "ville": "KHEMIS TAKATE"
+      },
+      {
+        "code": "243",
+        "ville": "TAFTECHT"
+      },
+      {
+        "code": "244",
+        "ville": "HAD DRAA"
+      },
+      {
+        "code": "245",
+        "ville": "SEBT KORIMATE"
+      },
+      {
+        "code": "246",
+        "ville": "TLATA HANCHANE"
+      },
+      {
+        "code": "248",
+        "ville": "TALMEST"
+      },
+      {
+        "code": "251",
+        "ville": "TAMANAR"
+      },
+      {
+        "code": "252",
+        "ville": "AIT DAOUD"
+      },
+      {
+        "code": "254",
+        "ville": "TNINE IDA OU ZEMZEM"
+      },
+      {
+        "code": "256",
+        "ville": "SMIMOU"
+      },
+      {
+        "code": "260",
+        "ville": "ES SEMARA"
+      },
+      {
+        "code": "262",
+        "ville": "AL JDIRIYA"
+      },
+      {
+        "code": "264",
+        "ville": "AMGALA"
+      },
+      {
+        "code": "266",
+        "ville": "HAWZA"
+      },
+      {
+        "code": "268",
+        "ville": "TFARITI"
+      },
+      {
+        "code": "270",
+        "ville": "FES"
+      },
+      {
+        "code": "272",
+        "ville": "AIN CHEGGAG"
+      },
+      {
+        "code": "274",
+        "ville": "SIDI HARAZEM"
+      },
+      {
+        "code": "276",
+        "ville": "MOULAY YAKOUB"
+      },
+      {
+        "code": "278",
+        "ville": "OULAD JEMAA LEMTA"
+      },
+      {
+        "code": "281",
+        "ville": "SEFROU"
+      },
+      {
+        "code": "282",
+        "ville": "AIT YOUSSI"
+      },
+      {
+        "code": "284",
+        "ville": "BENI YAZRHA"
+      },
+      {
+        "code": "286",
+        "ville": "BHALIL"
+      },
+      {
+        "code": "287",
+        "ville": "EL ADREJ"
+      },
+      {
+        "code": "288",
+        "ville": "IMOUZZER KANDAR"
+      },
+      {
+        "code": "310",
+        "ville": "FIGUIG"
+      },
+      {
+        "code": "311",
+        "ville": "KSAR ZENASA"
+      },
+      {
+        "code": "312",
+        "ville": "BOUARFA"
+      },
+      {
+        "code": "313",
+        "ville": "TENDRARA"
+      },
+      {
+        "code": "315",
+        "ville": "BENI TAJJIT"
+      },
+      {
+        "code": "316",
+        "ville": "BOUANANE"
+      },
+      {
+        "code": "317",
+        "ville": "DOUIMNIAA"
+      },
+      {
+        "code": "318",
+        "ville": "TALSINNT"
+      },
+      {
+        "code": "320",
+        "ville": "GUELMIM"
+      },
+      {
+        "code": "321",
+        "ville": "ASRIR"
+      },
+      {
+        "code": "322",
+        "ville": "KSABI"
+      },
+      {
+        "code": "323",
+        "ville": "ASSA"
+      },
+      {
+        "code": "324",
+        "ville": "ZAG"
+      },
+      {
+        "code": "325",
+        "ville": "BOUIZAKARANE"
+      },
+      {
+        "code": "326",
+        "ville": "IFRANE ATLAS SEGHIR"
+      },
+      {
+        "code": "327",
+        "ville": "TARHJIJT"
+      },
+      {
+        "code": "330",
+        "ville": "KENITRA"
+      },
+      {
+        "code": "331",
+        "ville": "BEN MANSOUR"
+      },
+      {
+        "code": "332",
+        "ville": "SIDI YAHIA EL GHARB"
+      },
+      {
+        "code": "333",
+        "ville": "HAD KOURT"
+      },
+      {
+        "code": "334",
+        "ville": "AIN DEFALI"
+      },
+      {
+        "code": "335",
+        "ville": "KHENICHET"
+      },
+      {
+        "code": "336",
+        "ville": "MECHRA BEL KSIRI"
+      },
+      {
+        "code": "337",
+        "ville": "DAR EL GUEDDARI"
+      },
+      {
+        "code": "338",
+        "ville": "HOUAFAT"
+      },
+      {
+        "code": "339",
+        "ville": "NOUÏRAT"
+      },
+      {
+        "code": "340",
+        "ville": "JORF EL MELHA"
+      },
+      {
+        "code": "341",
+        "ville": "OUAZZANE"
+      },
+      {
+        "code": "342",
+        "ville": "MZEFROUN"
+      },
+      {
+        "code": "343",
+        "ville": "SIDI BOUSBER"
+      },
+      {
+        "code": "344",
+        "ville": "SIDI REDOUANE"
+      },
+      {
+        "code": "345",
+        "ville": "TEROUAL"
+      },
+      {
+        "code": "346",
+        "ville": "SIDI KACEM"
+      },
+      {
+        "code": "347",
+        "ville": "ZAGGOUTA HAD TEKNA"
+      },
+      {
+        "code": "348",
+        "ville": "ZIRARA"
+      },
+      {
+        "code": "349",
+        "ville": "SIDI SLIMANE"
+      },
+      {
+        "code": "351",
+        "ville": "BOU MAIZ"
+      },
+      {
+        "code": "352",
+        "ville": "KSIBIA DAR EL AMRI"
+      },
+      {
+        "code": "353",
+        "ville": "SOUK EL ARBAA EL GHARB"
+      },
+      {
+        "code": "354",
+        "ville": "ARBAOUA"
+      },
+      {
+        "code": "355",
+        "ville": "KARIA BEN AOUDA"
+      },
+      {
+        "code": "356",
+        "ville": "LALLA MIMOUNA"
+      },
+      {
+        "code": "357",
+        "ville": "SIDI BOUBKER EL HAJ"
+      },
+      {
+        "code": "358",
+        "ville": "SIDI MOHAMED AHMAR"
+      },
+      {
+        "code": "359",
+        "ville": "SOUK TLETA EL RHARB"
+      },
+      {
+        "code": "360",
+        "ville": "KHEMISSET"
+      },
+      {
+        "code": "361",
+        "ville": "AIT MIMOUN"
+      },
+      {
+        "code": "362",
+        "ville": "AIT OURIBEL"
+      },
+      {
+        "code": "363",
+        "ville": "MSAGHRA AIT YADINE"
+      },
+      {
+        "code": "364",
+        "ville": "RHANDOR MSEDDER"
+      },
+      {
+        "code": "365",
+        "ville": "OULMES"
+      },
+      {
+        "code": "366",
+        "ville": "MAAZIZ"
+      },
+      {
+        "code": "367",
+        "ville": "TIDDAS"
+      },
+      {
+        "code": "368",
+        "ville": "ROMMANI"
+      },
+      {
+        "code": "369",
+        "ville": "HAD BRACHOUA"
+      },
+      {
+        "code": "371",
+        "ville": "HAD RHOUALEM"
+      },
+      {
+        "code": "372",
+        "ville": "SIDI BETTACHE"
+      },
+      {
+        "code": "373",
+        "ville": "ZHILIGA"
+      },
+      {
+        "code": "374",
+        "ville": "TIFLET"
+      },
+      {
+        "code": "375",
+        "ville": "SIDI ABDERRAZZAK"
+      },
+      {
+        "code": "376",
+        "ville": "SIDI ALLAL BAHRAOUI"
+      },
+      {
+        "code": "380",
+        "ville": "KHENIFRA"
+      },
+      {
+        "code": "381",
+        "ville": "AGUELMOUS"
+      },
+      {
+        "code": "382",
+        "ville": "KAF NSOUR"
+      },
+      {
+        "code": "383",
+        "ville": "MOUHA OU HAMOU ZAYANI"
+      },
+      {
+        "code": "384",
+        "ville": "MOULAY BOUAZZA"
+      },
+      {
+        "code": "385",
+        "ville": "EL KEBAB"
+      },
+      {
+        "code": "386",
+        "ville": "AIT ISHAK"
+      },
+      {
+        "code": "387",
+        "ville": "KERROUCHEN"
+      },
+      {
+        "code": "391",
+        "ville": "MIDELT"
+      },
+      {
+        "code": "392",
+        "ville": "AIT OUFELLA"
+      },
+      {
+        "code": "395",
+        "ville": "BOUMIA"
+      },
+      {
+        "code": "396",
+        "ville": "ITZER"
+      },
+      {
+        "code": "397",
+        "ville": "TOUNFITE"
+      },
+      {
+        "code": "400",
+        "ville": "KHOURIBGA"
+      },
+      {
+        "code": "401",
+        "ville": "BOUJNIBA"
+      },
+      {
+        "code": "402",
+        "ville": "HATTANE"
+      },
+      {
+        "code": "405",
+        "ville": "BOUJAD"
+      },
+      {
+        "code": "406",
+        "ville": "CHOUGRANE"
+      },
+      {
+        "code": "568",
+        "ville": "TAGOUNITE"
+      },
+      {
+        "code": "569",
+        "ville": "TAZZARINE"
+      },
+      {
+        "code": "570",
+        "ville": "OUJDA"
+      },
+      {
+        "code": "571",
+        "ville": "BNI DRAR"
+      },
+      {
+        "code": "572",
+        "ville": "SIDI YAHIA"
+      },
+      {
+        "code": "573",
+        "ville": "TOUISSITE"
+      },
+      {
+        "code": "575",
+        "ville": "BERKANE"
+      },
+      {
+        "code": "576",
+        "ville": "AHFIR"
+      },
+      {
+        "code": "577",
+        "ville": "AKLIM"
+      },
+      {
+        "code": "578",
+        "ville": "BNI ATTIG"
+      },
+      {
+        "code": "579",
+        "ville": "SAIDIA"
+      },
+      {
+        "code": "581",
+        "ville": "TAFORHALT"
+      },
+      {
+        "code": "582",
+        "ville": "JERARDA"
+      },
+      {
+        "code": "583",
+        "ville": "AIN BNI MATHAR"
+      },
+      {
+        "code": "584",
+        "ville": "BNI YAALA"
+      },
+      {
+        "code": "585",
+        "ville": "TAOURIRT"
+      },
+      {
+        "code": "586",
+        "ville": "DEBDOU"
+      },
+      {
+        "code": "587",
+        "ville": "EL AIOUN"
+      },
+      {
+        "code": "590",
+        "ville": "SAFI"
+      },
+      {
+        "code": "591",
+        "ville": "ARBAA KHATTAZAKARNE"
+      },
+      {
+        "code": "592",
+        "ville": "BHATRA CHAMALIA"
+      },
+      {
+        "code": "593",
+        "ville": "GZOULA"
+      },
+      {
+        "code": "594",
+        "ville": "RHIATE"
+      },
+      {
+        "code": "595",
+        "ville": "TLETA SIDI BOUGUEDRA"
+      },
+      {
+        "code": "596",
+        "ville": "JEMAA SHIM"
+      },
+      {
+        "code": "597",
+        "ville": "HAD BEKHATT"
+      },
+      {
+        "code": "598",
+        "ville": "TEMRA"
+      },
+      {
+        "code": "601",
+        "ville": "CHEMAIA"
+      },
+      {
+        "code": "605",
+        "ville": "RAS EL AIN"
+      },
+      {
+        "code": "606",
+        "ville": "SIDI CHIKER"
+      },
+      {
+        "code": "607",
+        "ville": "YOUSSOUFIA"
+      },
+      {
+        "code": "610",
+        "ville": "SETTAT"
+      },
+      {
+        "code": "611",
+        "ville": "SIDI EL AIDI"
+      },
+      {
+        "code": "612",
+        "ville": "OULAD BEN DAOUED"
+      },
+      {
+        "code": "613",
+        "ville": "OULAD BOUZIRI"
+      },
+      {
+        "code": "614",
+        "ville": "OULAD SAID"
+      },
+      {
+        "code": "615",
+        "ville": "BEN AHMED"
+      },
+      {
+        "code": "616",
+        "ville": "MAARIF OULAD M HAMED"
+      },
+      {
+        "code": "617",
+        "ville": "MLAL"
+      },
+      {
+        "code": "618",
+        "ville": "RAS EL AIN"
+      },
+      {
+        "code": "619",
+        "ville": "SIDI HAJJAJ"
+      },
+      {
+        "code": "621",
+        "ville": "BERRECHID"
+      },
+      {
+        "code": "622",
+        "ville": "EL GARA"
+      },
+      {
+        "code": "623",
+        "ville": "OULAD ABBOU"
+      },
+      {
+        "code": "624",
+        "ville": "OULAD HARRIZ CHARQUIA"
+      },
+      {
+        "code": "625",
+        "ville": "OULAD HARRIZ GHARBIA"
+      },
+      {
+        "code": "626",
+        "ville": "EL BOROUJ"
+      },
+      {
+        "code": "627",
+        "ville": "BENI MESKINE CHARQUIA"
+      },
+      {
+        "code": "628",
+        "ville": "BENI MESKINE GHARBIA"
+      },
+      {
+        "code": "640",
+        "ville": "TANGER"
+      },
+      {
+        "code": "643",
+        "ville": "ASILAH"
+      },
+      {
+        "code": "644",
+        "ville": "DAR CHAOUI"
+      },
+      {
+        "code": "645",
+        "ville": "RHARBIA"
+      },
+      {
+        "code": "646",
+        "ville": "TNIN SIDI LYAMANI"
+      },
+      {
+        "code": "647",
+        "ville": "FAHS"
+      },
+      {
+        "code": "648",
+        "ville": "GZANAIA"
+      },
+      {
+        "code": "649",
+        "ville": "MELLOUSSA"
+      },
+      {
+        "code": "650",
+        "ville": "TAN TAN"
+      },
+      {
+        "code": "651",
+        "ville": "ABETEH"
+      },
+      {
+        "code": "653",
+        "ville": "M SIED"
+      },
+      {
+        "code": "655",
+        "ville": "TAN TAN PLAGE"
+      },
+      {
+        "code": "660",
+        "ville": "TAOUNATE"
+      },
+      {
+        "code": "661",
+        "ville": "AIN MEDIOUNA"
+      },
+      {
+        "code": "662",
+        "ville": "BNI OULID"
+      },
+      {
+        "code": "663",
+        "ville": "BOHOUDA"
+      },
+      {
+        "code": "664",
+        "ville": "TAHAR SOUK"
+      },
+      {
+        "code": "665",
+        "ville": "KARIA BA MOHAMED"
+      },
+      {
+        "code": "666",
+        "ville": "CHERRAGA"
+      },
+      {
+        "code": "667",
+        "ville": "OULAD AISSA HJAOUA"
+      },
+      {
+        "code": "671",
+        "ville": "RHAFSAI"
+      },
+      {
+        "code": "672",
+        "ville": "OURTZARH"
+      },
+      {
+        "code": "673",
+        "ville": "TAFARANNT"
+      },
+      {
+        "code": "675",
+        "ville": "TISSA"
+      },
+      {
+        "code": "676",
+        "ville": "OULAD ALIANE"
+      },
+      {
+        "code": "677",
+        "ville": "AIN AICHA"
+      },
+      {
+        "code": "678",
+        "ville": "BOUAROUSS"
+      },
+      {
+        "code": "679",
+        "ville": "OULAD RIYAB"
+      },
+      {
+        "code": "680",
+        "ville": "TATA"
+      },
+      {
+        "code": "681",
+        "ville": "AKKA"
+      },
+      {
+        "code": "682",
+        "ville": "FAM EL HISSN"
+      },
+      {
+        "code": "683",
+        "ville": "KHEMIS D ISSAFEN"
+      },
+      {
+        "code": "684",
+        "ville": "TLETA TAGMOUTE"
+      },
+      {
+        "code": "685",
+        "ville": "FOUM ZGUID"
+      },
+      {
+        "code": "686",
+        "ville": "AKKA IGUIREN"
+      },
+      {
+        "code": "687",
+        "ville": "TISSINT"
+      },
+      {
+        "code": "690",
+        "ville": "TAZA"
+      },
+      {
+        "code": "691",
+        "ville": "BAB MERZOUKA"
+      },
+      {
+        "code": "692",
+        "ville": "BENI FRASSEN"
+      },
+      {
+        "code": "693",
+        "ville": "BENI LENNT"
+      },
+      {
+        "code": "694",
+        "ville": "MEKNASSA"
+      },
+      {
+        "code": "695",
+        "ville": "OUED AMLIL"
+      },
+      {
+        "code": "696",
+        "ville": "AKNOUL"
+      },
+      {
+        "code": "697",
+        "ville": "AJDIR"
+      },
+      {
+        "code": "698",
+        "ville": "BOURED"
+      },
+      {
+        "code": "699",
+        "ville": "MEZGUITEM"
+      },
+      {
+        "code": "701",
+        "ville": "TIZI OUZLI"
+      },
+      {
+        "code": "703",
+        "ville": "GUERCIF"
+      },
+      {
+        "code": "704",
+        "ville": "BERKINE"
+      },
+      {
+        "code": "705",
+        "ville": "HAOUARA OULAD RAHO"
+      },
+      {
+        "code": "706",
+        "ville": "MAHIRIJA"
+      },
+      {
+        "code": "707",
+        "ville": "SAKA"
+      },
+      {
+        "code": "711",
+        "ville": "TAHALA"
+      },
+      {
+        "code": "712",
+        "ville": "BOUZEMLANE"
+      },
+      {
+        "code": "713",
+        "ville": "MERHRAOUA"
+      },
+      {
+        "code": "714",
+        "ville": "RIBAT EL KHEIR"
+      },
+      {
+        "code": "715",
+        "ville": "ZERADA"
+      },
+      {
+        "code": "716",
+        "ville": "TAINESTE"
+      },
+      {
+        "code": "717",
+        "ville": "BAB MROUJ"
+      },
+      {
+        "code": "718",
+        "ville": "KAHF EL RHAR"
+      },
+      {
+        "code": "720",
+        "ville": "TETOUAN"
+      },
+      {
+        "code": "721",
+        "ville": "BNI HASSAN"
+      },
+      {
+        "code": "722",
+        "ville": "BNI KARRICH"
+      },
+      {
+        "code": "723",
+        "ville": "BNI SAID"
+      },
+      {
+        "code": "725",
+        "ville": "ANJRA"
+      },
+      {
+        "code": "726",
+        "ville": "FNIDEK"
+      },
+      {
+        "code": "727",
+        "ville": "MARTIL"
+      },
+      {
+        "code": "728",
+        "ville": "MEDIEQ"
+      },
+      {
+        "code": "729",
+        "ville": "TLETA JBEL EL HABIB"
+      },
+      {
+        "code": "731",
+        "ville": "KSAR EL KEBIR"
+      },
+      {
+        "code": "732",
+        "ville": "AL AAOUAMRA"
+      },
+      {
+        "code": "733",
+        "ville": "TATOUFT"
+      },
+      {
+        "code": "734",
+        "ville": "TOLBA"
+      },
+      {
+        "code": "735",
+        "ville": "LARACHE"
+      },
+      {
+        "code": "736",
+        "ville": "BNI AAROUSS"
+      },
+      {
+        "code": "737",
+        "ville": "BNI GRAFFET"
+      },
+      {
+        "code": "738",
+        "ville": "KHEMIS SAHEL"
+      },
+      {
+        "code": "750",
+        "ville": "TIZNIT"
+      },
+      {
+        "code": "751",
+        "ville": "ARBAA RASMOUKA"
+      },
+      {
+        "code": "752",
+        "ville": "OULED JERRAR"
+      },
+      {
+        "code": "754",
+        "ville": "ANEZI"
+      },
+      {
+        "code": "755",
+        "ville": "ARBAA AIT AHMED"
+      },
+      {
+        "code": "756",
+        "ville": "IDDA GOUGMAR"
+      },
+      {
+        "code": "757",
+        "ville": "ZAOUIA SIDI AHMED OU MOUS"
+      },
+      {
+        "code": "761",
+        "ville": "IFNI"
+      },
+      {
+        "code": "762",
+        "ville": "MESTI"
+      },
+      {
+        "code": "763",
+        "ville": "MIRLEFT"
+      },
+      {
+        "code": "765",
+        "ville": "TAFRAOUTE"
+      },
+      {
+        "code": "766",
+        "ville": "AFFELLA IRHIR"
+      },
+      {
+        "code": "767",
+        "ville": "HAD TAHALA"
+      },
+      {
+        "code": "771",
+        "ville": "TLETA AKHSSASS"
+      },
+      {
+        "code": "772",
+        "ville": "AIT ERKHA"
+      },
+      {
+        "code": "773",
+        "ville": "JEMAA N TIRHIRT"
+      },
+      {
+        "code": "780",
+        "ville": "CASABLANCA"
+      },
+      {
+        "code": "787",
+        "ville": "MOHAMMEDIA"
+      },
+      {
+        "code": "791",
+        "ville": "BOUSKOURA"
+      },
+      {
+        "code": "792",
+        "ville": "DAR BOUAZZA"
+      },
+      {
+        "code": "793",
+        "ville": "MEDIOUNA"
+      },
+      {
+        "code": "794",
+        "ville": "NOUACEUR"
+      },
+      {
+        "code": "795",
+        "ville": "OULAD SALAH"
+      },
+      {
+        "code": "796",
+        "ville": "AIN HARROUDA"
+      },
+      {
+        "code": "797",
+        "ville": "TIT MELLIL"
+      },
+      {
+        "code": "810",
+        "ville": "RABAT"
+      },
+      {
+        "code": "815",
+        "ville": "SALE"
+      },
+      {
+        "code": "819",
+        "ville": "TOUARGA"
+      },
+      {
+        "code": "821",
+        "ville": "SKHIRATE"
+      },
+      {
+        "code": "822",
+        "ville": "AIN EL AOUDA"
+      },
+      {
+        "code": "823",
+        "ville": "ARBAA SEHOUL"
+      },
+      {
+        "code": "824",
+        "ville": "BOUKNADEL"
+      },
+      {
+        "code": "825",
+        "ville": "TEMARA"
+      },
+      {
+        "code": "999",
+        "ville": "ETRANGER"
+      }
+    ],
+    "code libelle": [
+      {
+        "code": "O",
+        "libelle": "Oui"
+      },
+      {
+        "code": "N",
+        "libelle": "Non"
+      }
+    ]
+  }
+}

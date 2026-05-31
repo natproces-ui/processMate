@@ -1,0 +1,21 @@
+// .eslintrc.json - Local ESLint configuration for Orchestration Module
+// This allows specific inline styles that are dynamically generated
+// and cannot be converted to static CSS classes
+{
+  "rules": {
+    // Allow inline styles for dynamic widths, heights, and percentages
+    // These are necessary for charts, progress bars, and responsive layouts
+    "@next/next/no-style-component-with-css-modules": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/orchestration/**/*.tsx"
+      ],
+      "rules": {
+        // Chart and progress bar components need dynamic inline styles
+        "style-prop-object": "off"
+      }
+    }
+  ]
+}

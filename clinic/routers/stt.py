@@ -7,7 +7,7 @@ Router STT (Speech-To-Text) pour ProcessMate
 
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-import google.generativeai as genai
+from google import genai
 from google.api_core.exceptions import ResourceExhausted
 import logging
 from typing import List, Dict, Any, Optional
@@ -17,8 +17,7 @@ from config import GOOGLE_API_KEY
 logger = logging.getLogger(__name__)
 
 # Configurer Gemini
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel("gemini-2.5-flash-lite")
+client = genai.Client(api_key=GOOGLE_API_KEY)
 
 router = APIRouter(prefix="/api/stt", tags=["Speech-To-Text"])
 
@@ -38,12 +37,10 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
         ValueError: Si transcription invalide ou quota dépassé
     """
     try:
-        result = model.generate_content(
-            [
-                {
-                    "mime_type": mime_type,
-                    "data": audio_bytes
-                },
+        result = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=[
+                {"inline_data": {"mime_type": mime_type, "data": audio_bytes}},
                 "Transcris ce fichier audio en texte clair, en corrigeant les fautes d'orthographe."
             ]
         )
@@ -166,7 +163,7 @@ RÈGLES IMPORTANTES:
 - Les acteurs doivent être spécifiques (pas "personnel", mais "Chef d'équipe")
 """
         
-        result = model.generate_content(prompt)
+        result = client.models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
         
         if not result or not result.text:
             raise ValueError("Gemini n'a pas retourné de parsing")

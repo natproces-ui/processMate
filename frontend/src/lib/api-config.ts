@@ -5,18 +5,15 @@
 
 // Détection automatique de l'URL backend
 const getApiBaseUrl = (): string => {
-    // Priorité : variable d'environnement explicite
     if (process.env.NEXT_PUBLIC_API_URL) {
         return process.env.NEXT_PUBLIC_API_URL;
     }
 
-    // Sinon détection automatique
     if (process.env.NODE_ENV === 'production') {
         return 'https://processmate-back.onrender.com';
     }
 
-    // Par défaut : local
-    return 'http://localhost:8001';
+    return 'http://localhost:8002';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -43,7 +40,7 @@ export const API_CONFIG = {
         bpmnFormats: '/api/bpmn/formats',
         bpmnInfo: '/api/bpmn/info',
 
-        transcribe: '/api/stt/transcribe',  // ← AJOUTEZ CETTE LIGNE
+        transcribe: '/api/stt/transcribe',
 
         /* ---------------------- BPMN AI ---------------------- */
         bpmnAiEnrichTable: '/api/bpmn-ai/enrich-table',
@@ -52,8 +49,15 @@ export const API_CONFIG = {
         /* ---------------------- IMG → BPMN ---------------------- */
         imgToBpmnAnalyze: '/api/img-to-bpmn/analyze',
         imgToBpmnImprove: '/api/img-to-bpmn/improve',
+        imgToBpmnVerify: '/api/img-to-bpmn/verify',
         imgToBpmnBatchAnalyze: '/api/img-to-bpmn/batch-analyze',
+        imgToBpmnEnrichTask: '/api/img-to-bpmn/enrich-task',
+        imgToBpmnEnrichWorkflow: '/api/img-to-bpmn/enrich-workflow',
         imgToBpmnInfo: '/api/img-to-bpmn/info',
+
+        /* ---------------------- DOCUMENT GENERATION ---------------------- */  // 🆕 SECTION AJOUTÉE
+        docGenerate: '/api/doc/generate',  // 🆕 ENDPOINT AJOUTÉ
+
         /* ---------------------- MEGA TABLE ---------------------- */
         megaProcessJson: '/api/mega/process-json',
         megaProcessExcel: '/api/mega/process-excel',
@@ -64,13 +68,24 @@ export const API_CONFIG = {
         apiRoot: '/api',
         health: '/health',
         quickStart: '/api/quick-start',
-        // 🆕 Scanner Pro
+
+        // Scanner Pro
         scannerScan: "/api/scanner/scan",
         scannerScanAndAnalyze: "/api/scanner/scan-and-analyze",
-        scannerInfo: "/api/scanner/info"
+        scannerInfo: "/api/scanner/info",
+
+
+        interfacesDetect: '/api/interfaces/detect',   // 🆕 Détection interfaces
+        interfacesInfo: '/api/interfaces/info',        // 🆕 Info module
+        discoveryAnalyze: '/api/discovery/analyze',
+        discoveryChat: '/api/discovery/chat',
+        generationGenerate: '/api/generation/generate',
+        revisionApply: '/api/revision/apply',
+
+        chatSession: '/api/chat/session',
+        chatMessage: '/api/chat/message',
+        chatSessions: '/api/chat/sessions',
     },
-
-
 
     /**
      * Construit l'URL complète pour un endpoint
@@ -111,11 +126,10 @@ if (typeof window !== 'undefined' && API_CONFIG.isDevelopment()) {
     console.log('🔧 API Configuration:', API_CONFIG.getEnvironmentInfo());
 }
 
-
 // Types pour le scanner
 export interface ScanResult {
     success: boolean;
-    scanned_image: string;  // data:image/jpeg;base64,...
+    scanned_image: string;
     document_detected: boolean;
     confidence: number;
     corners?: number[][];

@@ -1,10 +1,11 @@
+// frontend/src/components/clinic/Table.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
 import { Download, Search, Filter, ChevronDown, ChevronUp, Network, AlertTriangle, Plus, Trash2, Sparkles } from 'lucide-react';
-import { generateBPMN } from '@/logic/bpmnGenerator';
+import { generateBPMN, Table1Row } from '@/logic/bpmnGenerator';
 import BPMNViewer from '@/components/BPMNViewer';
 import { processDotToTable, TableRow } from '@/logic/dotTableProcessor';
 import { enrichTable, mergeAIEnrichments } from '@/logic/dotAIMerger';
@@ -231,7 +232,20 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
                 throw new Error('Aucune donnée valide pour générer le BPMN');
             }
 
-            const xml = generateBPMN(rows);
+            const table1Rows: Table1Row[] = rows.map(r => ({
+                id: r.id,
+                étape: r.étape,
+                typeBpmn: r.typeBpmn as any,
+                département: r.département,
+                acteur: r.acteur,
+                condition: r.condition,
+                outputs: [
+                    ...(r.outputOui ? [{ targetId: r.outputOui, label: 'Oui' }] : []),
+                    ...(r.outputNon ? [{ targetId: r.outputNon, label: 'Non' }] : []),
+                ],
+                outil: r.outil,
+            }));
+            const xml = generateBPMN(table1Rows);
             setBpmnXml(xml);
             setShowBPMN(true);
         } catch (error: any) {

@@ -1,0 +1,111 @@
+// Processus Inscription Client - Workflow Métier Simplifié
+digraph {
+	nodesep=0.5 rankdir=TB ranksep=0.8 splines=ortho
+	graph [compound=true fontname=Arial fontsize=16 label="🌟 PROCESSUS MÉTIER : INSCRIPTION CLIENT\nVue simplifiée en langage naturel"]
+	node [fontname=Arial fontsize=16]
+	edge [fontname=Arial fontsize=12]
+	
+	// COULOIR 1 : LE CLIENT
+	subgraph cluster_client {
+		color="#4CAF50" fillcolor="#E8F5E8" fontcolor="#000000" fontsize=14 
+		label="👤 LE CLIENT" penwidth=3 style=filled
+		C1_DEBUT [label="🚀 Début\nBesoin de créer un compte" fillcolor="#4CAF50" fontcolor=white penwidth=2 shape=ellipse style=filled]
+		C1_FORMULAIRE [label="📝 Remplir le formulaire\n• Nom, Prénom\n• Email, Téléphone\n• Pièce d'identité\n• Adresse complète" fillcolor="#81C784" penwidth=2 style="filled,rounded"]
+		C1_ENVOI [label="📤 Soumettre le formulaire" fillcolor="#A5D6A7" penwidth=2 style="filled,rounded"]
+		C1_ATTENTE [label="⏳ Attendre le résultat" fillcolor="#C8E6C9" penwidth=2 style="filled,rounded"]
+		C1_RESULTAT [label="📧 Recevoir le message de retour" fillcolor="#66BB6A" penwidth=2 shape=parallelogram style="filled,rounded"]
+		C1_FIN [label="🏁 Fin du processus" fillcolor="#2E7D32" fontcolor=white penwidth=2 shape=ellipse style=filled]
+	}
+	
+	// COULOIR 2 : LE SYSTÈME
+	subgraph cluster_systeme {
+		color="#2196F3" fillcolor="#E3F2FD" fontcolor="#000000" fontsize=14 
+		label="💻 LE SYSTÈME" penwidth=3 style=filled
+		S1_RECEPTION [label="📥 Recevoir les informations du client" fillcolor="#BBDEFB" penwidth=2 style="filled,rounded"]
+		S1_VERIF_FORMULAIRE [label="🔍 Vérifier le formulaire complet ?" fillcolor="#90CAF9" penwidth=2 shape=diamond style=filled]
+		S1_ERREUR_FORMULAIRE [label="❌ Formulaire incomplet" fillcolor="#FFCDD2" penwidth=2 style="filled,rounded"]
+		S1_ANALYSE [label="📋 Comprendre les informations client" fillcolor="#64B5F6" penwidth=2 style="filled,rounded"]
+		S1_CONNEXION [label="🔗 Se connecter à la base de données" fillcolor="#42A5F5" penwidth=2 style="filled,rounded"]
+		S1_VERIF_CONNEXION [label="✅ Connexion réussie ?" fillcolor="#90CAF9" penwidth=2 shape=diamond style=filled]
+		S1_ERREUR_CONNEXION [label="⚠️ Problème de connexion" fillcolor="#FFCDD2" penwidth=2 style="filled,rounded"]
+	}
+	
+	// COULOIR 3 : ADRESSE
+	subgraph cluster_adresse {
+		color="#FF9800" fillcolor="#FFF3E0" fontcolor="#000000" fontsize=14 
+		label="🏠 GESTION ADRESSE" penwidth=3 style=filled
+		A1_RECHERCHE [label="🔍 Chercher si l'adresse existe déjà" fillcolor="#FFCC80" penwidth=2 style="filled,rounded"]
+		A1_ADRESSE_TROUVEE [label="✅ Adresse déjà enregistrée" fillcolor="#FFE082" penwidth=2 style="filled,rounded"]
+		A1_ADRESSE_NOUVELLE [label="➕ Adresse nouvelle" fillcolor="#FFB74D" penwidth=2 style="filled,rounded"]
+		A1_CREATION [label="🆕 Créer la nouvelle adresse" fillcolor="#FF9800" penwidth=2 style="filled,rounded"]
+		A1_VERIF_CREATION [label="✅ Adresse créée avec succès ?" fillcolor="#FFA726" penwidth=2 shape=diamond style=filled]
+		A1_ERREUR_CREATION [label="❌ Échec création adresse" fillcolor="#FFCDD2" penwidth=2 style="filled,rounded"]
+	}
+	
+	// COULOIR 4 : COMPTE CLIENT
+	subgraph cluster_compte {
+		color="#9C27B0" fillcolor="#F3E5F5" fontcolor="#000000" fontsize=14 
+		label="👤 CRÉATION COMPTE" penwidth=3 style=filled
+		COMPTE_CREATION [label="💾 Créer le profil client\navec l'adresse" fillcolor="#E1BEE7" penwidth=2 style="filled,rounded"]
+		COMPTE_VERIF [label="✅ Profil créé avec succès ?" fillcolor="#CE93D8" penwidth=2 shape=diamond style=filled]
+		COMPTE_SUCCES [label="🎉 Compte créé et actif" fillcolor="#AB47BC" penwidth=2 style="filled,rounded"]
+		COMPTE_DOUBLON [label="⚠️ Client déjà existant" fillcolor="#F8BBD9" penwidth=2 style="filled,rounded"]
+		COMPTE_ERREUR [label="❌ Échec création profil" fillcolor="#FFCDD2" penwidth=2 style="filled,rounded"]
+	}
+	
+	// COULOIR 5 : RÉPONSE
+	subgraph cluster_reponse {
+		color="#F44336" fillcolor="#FFEBEE" fontcolor="#000000" fontsize=14 
+		label="📤 ENVOI RÉSULTAT" penwidth=3 style=filled
+		R1_PREPARATION [label="📋 Préparer le message de résultat" fillcolor="#EF9A9A" penwidth=2 style="filled,rounded"]
+		R1_TYPE_RESULTAT [label="❓ Succès ou erreur ?" fillcolor="#E57373" penwidth=2 shape=diamond style=filled]
+		R1_SUCCES [label="✅ Message de succès" fillcolor="#4CAF50" penwidth=2 style="filled,rounded"]
+		R1_ERREUR [label="❌ Message d'erreur" fillcolor="#F44336" penwidth=2 style="filled,rounded"]
+		R1_ENVOI [label="📨 Envoyer le résultat au client" fillcolor="#E53935" penwidth=2 style="filled,rounded"]
+	}
+	
+	// FLUX PRINCIPAL
+	C1_DEBUT -> C1_FORMULAIRE
+	C1_FORMULAIRE -> C1_ENVOI
+	C1_ENVOI -> S1_RECEPTION [label="📤 Soumission" color="#4CAF50" penwidth=3 style=bold]
+	
+	S1_RECEPTION -> S1_VERIF_FORMULAIRE
+	S1_VERIF_FORMULAIRE -> S1_ERREUR_FORMULAIRE [label="❌ Incomplet" color="red"]
+	S1_ERREUR_FORMULAIRE -> R1_PREPARATION [lhead=cluster_reponse]
+	S1_VERIF_FORMULAIRE -> S1_ANALYSE [label="✅ Complet" color="green"]
+	
+	S1_ANALYSE -> S1_CONNEXION
+	S1_CONNEXION -> S1_VERIF_CONNEXION
+	S1_VERIF_CONNEXION -> S1_ERREUR_CONNEXION [label="❌ Échec" color="red"]
+	S1_ERREUR_CONNEXION -> R1_PREPARATION [lhead=cluster_reponse]
+	S1_VERIF_CONNEXION -> A1_RECHERCHE [label="✅ Connecté" color="green"]
+	
+	A1_RECHERCHE -> A1_ADRESSE_TROUVEE [label="✅ Existe" color="green"]
+	A1_RECHERCHE -> A1_ADRESSE_NOUVELLE [label="➕ Nouvelle"]
+	
+	A1_ADRESSE_TROUVEE -> COMPTE_CREATION [label="Utilise adresse existante"]
+	A1_ADRESSE_NOUVELLE -> A1_CREATION
+	A1_CREATION -> A1_VERIF_CREATION
+	A1_VERIF_CREATION -> A1_ERREUR_CREATION [label="❌ Échec" color="red"]
+	A1_ERREUR_CREATION -> R1_PREPARATION [lhead=cluster_reponse]
+	A1_VERIF_CREATION -> A1_ADRESSE_TROUVEE [label="✅ Créée" color="green"]
+	
+	COMPTE_CREATION -> COMPTE_VERIF
+	COMPTE_VERIF -> COMPTE_SUCCES [label="✅ OK" color="green"]
+	COMPTE_VERIF -> COMPTE_DOUBLON [label="⚠️ Doublon"]
+	COMPTE_VERIF -> COMPTE_ERREUR [label="❌ Erreur" color="red"]
+	
+	COMPTE_SUCCES -> R1_PREPARATION [lhead=cluster_reponse]
+	COMPTE_DOUBLON -> R1_PREPARATION [lhead=cluster_reponse color="orange"]
+	COMPTE_ERREUR -> R1_PREPARATION [lhead=cluster_reponse color="red"]
+	
+	R1_PREPARATION -> R1_TYPE_RESULTAT
+	R1_TYPE_RESULTAT -> R1_SUCCES [label="✅ Succès" color="green"]
+	R1_TYPE_RESULTAT -> R1_ERREUR [label="❌ Erreur" color="red"]
+	R1_SUCCES -> R1_ENVOI
+	R1_ERREUR -> R1_ENVOI
+	R1_ENVOI -> C1_RESULTAT [label="📨 Résultat" color="#F44336" penwidth=3 style=bold]
+	
+	C1_ATTENTE -> C1_RESULTAT [style=dashed]
+	C1_RESULTAT -> C1_FIN
+}

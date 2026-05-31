@@ -1,3 +1,4 @@
+# processor/img_processor.py
 """
 Processeur d'images 
 Extrait les workflows depuis des images et retourne au format Table1Row
@@ -5,7 +6,7 @@ Extrait les workflows depuis des images et retourne au format Table1Row
 VERSION ADAPTATIVE : Classification automatique → Prompt spécialisé
 """
 
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 import io
 import json
@@ -48,13 +49,6 @@ class ImageProcessor:
         """
         Extrait un workflow ET enrichissements depuis une image
         AVEC classification adaptative pour sélectionner le prompt optimal
-        
-        Args:
-            image_data: Données binaires de l'image
-            content_type: Type MIME de l'image
-        
-        Returns:
-            Dict avec title, workflow, enrichments et métadonnées
         """
         try:
             # ============================================
@@ -112,18 +106,15 @@ class ImageProcessor:
             
             async def _extract_task(model_name: str):
                 logger.info(f"🔍 Extraction avec {model_name}")
-                
                 model = self.model_manager.get_model(model_name)
-                
-                # Utilise le timeout recommandé par le classifier
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         model.generate_content,
-                        [full_prompt, image]
+                        model=model_name,
+                        contents=[full_prompt, image]
                     ),
-                    timeout=recommended_timeout  # ← Timeout adaptatif
+                    timeout=recommended_timeout
                 )
-                
                 return response
             
             result = await self.model_manager.execute_with_fallback(
@@ -135,14 +126,12 @@ class ImageProcessor:
                 raise ValueError(result["message"])
             
             response = result["result"]
-            
             logger.info(f"✓ Réponse Gemini reçue ({len(response.text)} caractères)")
             
             # ============================================
             # PHASE 3 : Parsing et validation
             # ============================================
             workflow_data, title, enrichments_dict = self._parse_gemini_response(response.text)
-            
             validated = self._validate_and_normalize_workflow(workflow_data)
             
             # ============================================
@@ -152,13 +141,11 @@ class ImageProcessor:
             metadata["model_used"] = result["model_used"]
             metadata["attempts"] = result["attempts"]
             metadata["enrichments_count"] = len(enrichments_dict)
-            
-            # Ajout des infos de classification
             metadata["classification"] = {
                 "type": image_type,
                 "confidence": confidence,
                 "timeout_used": recommended_timeout,
-                "prompt_used": image_type,  # manuscript / swimlanes / no_lanes
+                "prompt_used": image_type,
                 "debug": classification.get('debug', {})
             }
             
@@ -182,30 +169,21 @@ class ImageProcessor:
     async def improve_workflow(self, workflow: List[Dict[str, str]]) -> Dict[str, Any]:
         """
         Améliore un workflow existant avec Gemini 2.5 Flash
-        (Pas de classification nécessaire, workflow déjà extrait)
-        
-        Args:
-            workflow: Tableau Table1Row[] existant
-        
-        Returns:
-            Dict avec workflow amélioré et métadonnées de comparaison
         """
         try:
             prompt = get_improvement_prompt(workflow)
             
             async def _improve_task(model_name: str):
                 logger.info(f"🔧 Amélioration avec {model_name}")
-                
                 model = self.model_manager.get_model(model_name)
-                
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         model.generate_content,
-                        prompt
+                        model=model_name,
+                        contents=prompt
                     ),
                     timeout=90
                 )
-                
                 return response
             
             result = await self.model_manager.execute_with_fallback(
@@ -217,11 +195,9 @@ class ImageProcessor:
                 raise ValueError(result["message"])
             
             response = result["result"]
-            
             logger.info(f"✓ Réponse Gemini amélioration reçue ({len(response.text)} caractères)")
             
             improved_data, _, _ = self._parse_gemini_response(response.text)
-            
             validated = self._validate_and_normalize_workflow(improved_data)
             
             comparison = self._build_comparison_metadata(workflow, validated)
@@ -243,15 +219,6 @@ class ImageProcessor:
                                extracted_workflow: List[Dict[str, str]]) -> Dict[str, Any]:
         """
         Vérifie l'extraction en comparant l'image et le workflow JSON
-        Identifie les éléments manquants ou mal extraits
-        
-        Args:
-            image_data: Données binaires de l'image originale
-            content_type: Type MIME de l'image
-            extracted_workflow: Workflow déjà extrait à vérifier
-        
-        Returns:
-            Dict avec analyse des erreurs et éléments manquants
         """
         try:
             image = Image.open(io.BytesIO(image_data))
@@ -267,17 +234,15 @@ class ImageProcessor:
             
             async def _verify_task(model_name: str):
                 logger.info(f"🔍 Vérification avec {model_name}")
-                
                 model = self.model_manager.get_model(model_name)
-                
                 response = await asyncio.wait_for(
                     asyncio.to_thread(
                         model.generate_content,
-                        [prompt, image]
+                        model=model_name,
+                        contents=[prompt, image]
                     ),
                     timeout=self.request_timeout
                 )
-                
                 return response
             
             result = await self.model_manager.execute_with_fallback(
@@ -289,7 +254,6 @@ class ImageProcessor:
                 raise ValueError(result["message"])
             
             response = result["result"]
-            
             logger.info(f"✓ Vérification reçue ({len(response.text)} caractères)")
             
             verification_result = self._parse_verification_response(response.text)
@@ -338,6 +302,8 @@ class ImageProcessor:
                     enrichments_dict[task_id] = {
                         "id_tache": task_id,
                         "descriptif": enr.get("descriptif", "").strip(),
+                        "declencheur": enr.get("declencheur", "").strip(),
+                        "applicatif": enr.get("applicatif", "").strip(),
                         "duree_estimee": enr.get("duree_estimee", "").strip(),
                         "frequence": enr.get("frequence", "").strip(),
                         "kpi": enr.get("kpi", "").strip()
@@ -350,44 +316,68 @@ class ImageProcessor:
             logger.error(f"❌ Erreur parsing JSON: {str(e)}\nTexte: {text[:500]}")
             raise ValueError(f"Réponse non-JSON de Gemini: {str(e)}")
     
-    def _validate_and_normalize_workflow(self, workflow: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-        """Valide et normalise au format Table1Row strict"""
+    def _validate_and_normalize_workflow(self, workflow: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Valide et normalise au format Table1Row strict (avec outputs[])"""
         validated = []
         all_ids = [str(step.get("id", "")) for step in workflow]
-        
+
+        valid_types = ["StartEvent", "Task", "ExclusiveGateway", "ParallelGateway", "InclusiveGateway", "EndEvent"]
+
         for idx, step in enumerate(workflow):
+            type_bpmn = str(step.get("typeBpmn", "Task"))
+            if type_bpmn not in valid_types:
+                logger.warning(f"⚠️ Type invalide '{type_bpmn}' → Task")
+                type_bpmn = "Task"
+
+            # --- Normalisation du tableau outputs ---
+            raw_outputs = step.get("outputs", [])
+            outputs = []
+
+            if isinstance(raw_outputs, list):
+                for out in raw_outputs:
+                    if isinstance(out, dict):
+                        target_id = str(out.get("targetId", "")).strip()
+                        label = str(out.get("label", "")).strip()
+                        if target_id:
+                            if target_id not in all_ids:
+                                logger.warning(
+                                    f"⚠️ targetId '{target_id}' introuvable pour étape {step.get('id')}"
+                                )
+                            outputs.append({"targetId": target_id, "label": label})
+                    elif isinstance(out, str) and out.strip():
+                        # Rétrocompatibilité : string seul → targetId sans label
+                        if out.strip() not in all_ids:
+                            logger.warning(
+                                f"⚠️ targetId '{out.strip()}' introuvable pour étape {step.get('id')}"
+                            )
+                        outputs.append({"targetId": out.strip(), "label": ""})
+
+            # --- Condition (gateway uniquement) ---
+            if type_bpmn == "ExclusiveGateway":
+                condition = str(step.get("condition", "")).strip()
+                if not condition:
+                    condition = str(step.get("étape", "")) or "Décision"
+                if len(outputs) < 2:
+                    logger.warning(f"⚠️ ExclusiveGateway '{step.get('id')}' a moins de 2 sorties")
+            elif type_bpmn == "InclusiveGateway":
+                condition = str(step.get("condition", "")).strip()
+            else:
+                condition = ""
+
             normalized = {
                 "id": str(step.get("id", str(idx + 1))),
                 "étape": str(step.get("étape", "")).strip() or f"Étape {idx + 1}",
-                "typeBpmn": str(step.get("typeBpmn", "Task")),
+                "typeBpmn": type_bpmn,
                 "département": str(step.get("département", "")).strip(),
                 "acteur": str(step.get("acteur", "")).strip(),
-                "condition": str(step.get("condition", "")).strip(),
-                "outputOui": str(step.get("outputOui", "")).strip(),
-                "outputNon": str(step.get("outputNon", "")).strip(),
+                "typeActeur": str(step.get("typeActeur", "")).strip(),  # ← AJOUT
+                "condition": condition,
+                "outputs": outputs,
                 "outil": str(step.get("outil", "")).strip()
             }
-            
-            valid_types = ["StartEvent", "Task", "ExclusiveGateway", "EndEvent"]
-            if normalized["typeBpmn"] not in valid_types:
-                logger.warning(f"⚠️ Type invalide '{normalized['typeBpmn']}' → Task")
-                normalized["typeBpmn"] = "Task"
-            
-            if normalized["typeBpmn"] == "ExclusiveGateway":
-                if not normalized["condition"]:
-                    normalized["condition"] = normalized["étape"] or "Décision"
-            else:
-                normalized["condition"] = ""
-                normalized["outputNon"] = ""
-            
-            if normalized["outputOui"] and normalized["outputOui"] not in all_ids:
-                logger.warning(f"⚠️ OutputOui invalide pour {normalized['id']}")
-            
-            if normalized["outputNon"] and normalized["outputNon"] not in all_ids:
-                logger.warning(f"⚠️ OutputNon invalide pour {normalized['id']}")
-            
+
             validated.append(normalized)
-        
+
         logger.info(f"✅ Workflow validé: {len(validated)} étapes")
         return validated
     
@@ -407,7 +397,10 @@ class ImageProcessor:
                 "start_events": sum(1 for s in workflow if s["typeBpmn"] == "StartEvent"),
                 "end_events": sum(1 for s in workflow if s["typeBpmn"] == "EndEvent"),
                 "tasks": sum(1 for s in workflow if s["typeBpmn"] == "Task"),
-                "gateways": sum(1 for s in workflow if s["typeBpmn"] == "ExclusiveGateway")
+                "exclusive_gateways": sum(1 for s in workflow if s["typeBpmn"] == "ExclusiveGateway"),
+                "parallel_gateways": sum(1 for s in workflow if s["typeBpmn"] == "ParallelGateway"),
+                "inclusive_gateways": sum(1 for s in workflow if s["typeBpmn"] == "InclusiveGateway"),
+                "gateways": sum(1 for s in workflow if s["typeBpmn"] in ("ExclusiveGateway", "ParallelGateway", "InclusiveGateway"))
             },
             "business_info": {
                 "actors": actors if actors else ["Non spécifié"],
@@ -422,9 +415,7 @@ class ImageProcessor:
     def _build_comparison_metadata(self, 
                                    original: List[Dict[str, str]], 
                                    improved: List[Dict[str, str]]) -> Dict[str, Any]:
-        """
-        Construit les métadonnées de comparaison avant/après amélioration
-        """
+        """Construit les métadonnées de comparaison avant/après amélioration"""
         original_actors = set(s["acteur"] for s in original if s["acteur"])
         improved_actors = set(s["acteur"] for s in improved if s["acteur"])
         
@@ -448,7 +439,10 @@ class ImageProcessor:
                 "start_events": sum(1 for s in improved if s["typeBpmn"] == "StartEvent"),
                 "end_events": sum(1 for s in improved if s["typeBpmn"] == "EndEvent"),
                 "tasks": sum(1 for s in improved if s["typeBpmn"] == "Task"),
-                "gateways": sum(1 for s in improved if s["typeBpmn"] == "ExclusiveGateway")
+                "exclusive_gateways": sum(1 for s in improved if s["typeBpmn"] == "ExclusiveGateway"),
+                "parallel_gateways": sum(1 for s in improved if s["typeBpmn"] == "ParallelGateway"),
+                "inclusive_gateways": sum(1 for s in improved if s["typeBpmn"] == "InclusiveGateway"),
+                "gateways": sum(1 for s in improved if s["typeBpmn"] in ("ExclusiveGateway", "ParallelGateway", "InclusiveGateway"))
             },
             "improvements": {
                 "steps_reformulated": sum(

@@ -6,10 +6,10 @@ Générateur de processus BPMN à partir de documents (PDF/Word)
 Utilise Gemini AI pour analyser et formaliser les processus métier
 """
 
-import os
+# import os
 import json
 from typing import List, Dict, Any
-import google.generativeai as genai
+from google import genai
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
@@ -25,8 +25,7 @@ class BPMNGenerator:
         Args:
             api_key: Clé API Google Gemini
         """
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.client = genai.Client(api_key=api_key)
     
     def analyze_documents(self, files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -68,7 +67,7 @@ class BPMNGenerator:
         
         # Appeler Gemini avec tous les fichiers
         try:
-            response = self.model.generate_content(content_parts)
+            response = self.client.models.generate_content(model='gemini-2.5-flash', contents=content_parts)
             response_text = response.text
             
             # Parser la réponse JSON

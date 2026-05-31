@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import '@/app/clinic/css/style.css';
 import FlowchartResults from '@/components/clinic/FlowchartResults';
 import BPMNResults from '@/components/clinic/BPMNResults';
@@ -17,10 +18,14 @@ import {
     downloadJson,
     downloadBPMN
 } from '@/app/clinic/lib/clinicHandlers';
+import AuthGuard from '@/components/auth/AuthGuard';
 
-export default function ClinicPage() {
+function ClinicPageInner() {
+    const searchParams = useSearchParams();
+    const initialMode = (searchParams.get('mode') === 'bpmn' ? 'bpmn' : 'flowchart') as Mode;
+
     // Mode State
-    const [mode, setMode] = useState<Mode>('flowchart');
+    const [mode, setMode] = useState<Mode>(initialMode);
 
     // File State
     const [file, setFile] = useState<File | null>(null);
@@ -193,7 +198,7 @@ export default function ClinicPage() {
     const hasBpmnResults = mode === 'bpmn' && currentStep === 'completed' && bpmnData;
 
     return (
-        <>
+        <div className="clinic-page">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js" async />
             <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js" async />
 
@@ -424,6 +429,14 @@ export default function ClinicPage() {
                     )}
                 </div>
             </div>
-        </>
+        </div>
+    );
+}
+
+export default function ClinicPage() {
+    return (
+        <AuthGuard>
+            <ClinicPageInner />
+        </AuthGuard>
     );
 }

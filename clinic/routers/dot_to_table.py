@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any
 import logging
 import json
 import os
-import google.generativeai as genai
+from google import genai
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     logger.error("❌ GOOGLE_API_KEY non définie - module inutilisable")
 else:
-    genai.configure(api_key=GOOGLE_API_KEY)
+    client = genai.Client(api_key=GOOGLE_API_KEY)
 
 router = APIRouter(
     prefix="/api/dot-to-table",
@@ -440,12 +440,10 @@ def dot_to_table_with_gemini(dot_source: str) -> List[Table1Row]:
         raise ValueError("Google API Key non configurée")
     
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        
         prompt = PROMPT_TEMPLATE.format(dot_source=dot_source)
         
         logger.info("🤖 Gemini transforme le .dot en tableau BPMN...")
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         result_text = response.text.strip()
         
         # Nettoyage

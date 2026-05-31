@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import 'bpmn-js/dist/assets/diagram-js.css';
+@import 'bpmn-js/dist/assets/bpmn-js.css';
+@import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 
 :root {
   /* Neutres */
@@ -6,10 +9,14 @@
   --foreground: #111827;
 
   /* Couleurs principales */
-  --color-primary: #2667ad;   /* Bleu profond */
-  --color-secondary: #FACC15; /* Jaune solaire */
-  --color-accent: #14B8A6;    /* Vert turquoise */
+  --color-primary: #2667ad;
+  /* Bleu profond */
+  --color-secondary: #FACC15;
+  /* Jaune solaire */
+  --color-accent: #14B8A6;
+  /* Vert turquoise */
 }
+
 /* postcss-ignore */
 @theme {
   --color-background: var(--background);
@@ -25,8 +32,10 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #111827; /* gris foncé */
-    --foreground: #F3F4F6; /* gris clair */
+    --background: #111827;
+    /* gris foncé */
+    --foreground: #F3F4F6;
+    /* gris clair */
   }
 }
 
@@ -34,4 +43,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.22s ease forwards;
 }

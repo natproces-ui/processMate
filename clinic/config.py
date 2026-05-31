@@ -30,13 +30,16 @@ if not GOOGLE_API_KEY and IS_PRODUCTION:
 # CONFIGURATION CORS
 # ============================================
 
+_extra_origins = [o.strip() for o in os.getenv("EXTRA_CORS_ORIGINS", "").split(",") if o.strip()]
+
 CORS_CONFIG = {
-    "allow_origins": [
-        FRONTEND_URL,                    # Frontend Render
-        "http://localhost:3000",         # Dev local Next.js
-        "http://localhost:3001",         # Alternative
+    "allow_origins": list({
+        FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:3001",
         "http://127.0.0.1:3000",
-    ],
+        *_extra_origins,
+    }),
     "allow_credentials": True,
     "allow_methods": ["*"],
     "allow_headers": ["*"],

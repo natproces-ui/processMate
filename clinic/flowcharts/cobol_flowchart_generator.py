@@ -3,7 +3,7 @@ Générateur de flowcharts métier pour programmes COBOL
 Exploite la compréhension native de Gemini du code et des domaines métier
 """
 
-import google.generativeai as genai
+from google import genai
 import json
 from graphviz import Source
 import tempfile
@@ -298,17 +298,9 @@ Réponds UNIQUEMENT avec le code Graphviz DOT complet.
         if not api_key:
             raise ValueError("La clé API Gemini est requise")
         
-        genai.configure(api_key=api_key)
-        
-        self.model = genai.GenerativeModel(
-            model_name='gemini-2.5-flash',
-            generation_config={
-                'temperature': 0.4,  # Créativité pour traduction métier
-                'top_p': 0.95,
-                'top_k': 40,
-                'max_output_tokens': 8192,
-            }
-        )
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = 'gemini-2.5-flash'
+        self.generation_config = {'temperature': 0.4, 'top_p': 0.95, 'top_k': 40, 'max_output_tokens': 8192}
     
     def generate_flowchart(
         self, 
@@ -343,7 +335,7 @@ Génère maintenant le code Graphviz DOT complet (sans markdown, sans explicatio
 """
         
         try:
-            response = self.model.generate_content([self.SYSTEM_PROMPT, user_prompt])
+            response = self.client.models.generate_content(model=self.model_name, contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
             graphviz_code = self._extract_text_from_response(response)
             graphviz_code = self._clean_graphviz_code(graphviz_code)
             
