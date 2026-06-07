@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { taxonomyApi, TaxonomyNode } from '@/lib/taxonomyApi';
-import { Plus, Edit2, Trash2, FolderOpen, Loader2, Map, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Loader2, Map, RefreshCw, FileSearch } from 'lucide-react';
 
 // ─── BIAN uniform colours (matching the standard image) ───────
 
@@ -78,6 +78,7 @@ interface CtxMenu {
 
 interface Props {
   onGoToProcedures: () => void;
+  onGoToWorkspace?: () => void;
   isAdmin: boolean;
 }
 
@@ -167,7 +168,7 @@ function CategoryBlock({
 
 // ─── Main component ───────────────────────────────────────────
 
-export default function BianServiceMap({ onGoToProcedures, isAdmin }: Props) {
+export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAdmin }: Props) {
   const [themes, setThemes] = useState<TaxonomyNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -363,6 +364,13 @@ export default function BianServiceMap({ onGoToProcedures, isAdmin }: Props) {
               onClick={() => { setCtxMenu(null); onGoToProcedures(); }}>
               <FolderOpen className="w-3.5 h-3.5 text-blue-500" /> Ouvrir les procédures
             </button>
+            {onGoToWorkspace && (
+              <button type="button"
+                className="w-full text-left px-4 py-2 hover:bg-violet-50 hover:text-violet-700 flex items-center gap-2 transition-colors"
+                onClick={() => { setCtxMenu(null); onGoToWorkspace(); }}>
+                <FileSearch className="w-3.5 h-3.5 text-violet-500" /> Ouvrir dans le Workspace
+              </button>
+            )}
 
             {isAdmin && (<>
               <button type="button"

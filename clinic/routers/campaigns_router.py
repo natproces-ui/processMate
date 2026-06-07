@@ -256,6 +256,36 @@ async def close_campaign(campaign_id: str):
     return {"success": True, "status": "completed"}
 
 
+@router.post("/{campaign_id}/block")
+async def block_campaign(campaign_id: str):
+    db = get_supabase()
+    db.table("formalization_campaigns").update({
+        "status": "blocked",
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", campaign_id).execute()
+    return {"success": True, "status": "blocked"}
+
+
+@router.post("/{campaign_id}/pause")
+async def pause_campaign(campaign_id: str):
+    db = get_supabase()
+    db.table("formalization_campaigns").update({
+        "status": "on_hold",
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", campaign_id).execute()
+    return {"success": True, "status": "on_hold"}
+
+
+@router.post("/{campaign_id}/resume")
+async def resume_campaign(campaign_id: str):
+    db = get_supabase()
+    db.table("formalization_campaigns").update({
+        "status": "active",
+        "updated_at": datetime.utcnow().isoformat(),
+    }).eq("id", campaign_id).execute()
+    return {"success": True, "status": "active"}
+
+
 @router.post("/{campaign_id}/sync")
 async def sync_campaign(campaign_id: str):
     """Re-synchronise les noms, refs et statuts depuis les workflows réels."""

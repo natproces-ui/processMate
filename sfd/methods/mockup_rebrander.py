@@ -32,24 +32,44 @@ async def rebrand_screenshot(
             f"Le logo sera injecté en CSS via une image séparée.\n"
         )
 
-    prompt = f"""Tu es un expert UI/UX. Analyse ce screenshot d'interface web et recrée-le en HTML/CSS autonome (tout inline, pas de fichiers externes sauf les CDN publics).
+    prompt = f"""You are a pixel-perfect UI replication expert. Your task is to reproduce this screenshot as an EXACT HTML/CSS replica, changing ONLY the brand identity.
 
-INSTRUCTIONS DE REBRANDING :
-- Nom du client : {client_name}
-- Couleur primaire : {primary_color} (remplace toutes les couleurs principales : navbar, boutons primaires, headers)
-- Couleur secondaire : {secondary_color} (remplace les accents, hover states, highlights)
-- Remplace tous les textes "démo", noms de marque du site source, ou contenus génériques par des contenus plausibles pour {client_name}
+═══ WHAT TO CHANGE (brand only) ═══
+- Replace every occurrence of the source brand name with: {client_name}
+- Replace primary color with: {primary_color}
+- Replace secondary/accent color with: {secondary_color}
 {logo_instruction}
-RÈGLES TECHNIQUES :
-- HTML complet et autonome (<!DOCTYPE html> ... </html>)
-- CSS inline dans <style> — zéro fichier externe sauf polices Google Fonts et icônes Lucide/FontAwesome via CDN
-- Reproduis fidèlement la STRUCTURE et le LAYOUT de l'écran (navbar, sidebar, tables, cartes, graphiques)
-- Utilise des données fictives mais réalistes pour {client_name} (données financières, bancaires si pertinent)
-- Les graphiques peuvent être simulés avec des barres CSS ou Chart.js CDN
-- Responsive non requis — cible desktop 1440px
-- NE génère PAS de JavaScript complexe, garde l'UI statique
+═══ WHAT TO KEEP IDENTICAL ═══
+- EVERY layout element: navbar, sidebar, breadcrumb, hero, cards, tables, charts, footer
+- EVERY micro-component: buttons, badges, pills, tags, arrows, icons, tooltips, progress bars
+- EVERY spacing: margins, paddings, gaps between elements
+- EVERY typography: font sizes, weights, line heights, text transforms
+- EVERY visual effect: gradients, shadows, borders, border-radius, opacity
+- EVERY data value: numbers, dates, currencies, percentages (only replace brand names in text)
+- EVERY interactive element appearance: hover states visually rendered as in the screenshot
 
-Retourne UNIQUEMENT le code HTML, sans aucun texte avant ou après, sans balises markdown.
+═══ TECHNICAL REQUIREMENTS ═══
+- Complete standalone HTML (<!DOCTYPE html>...</html>)
+- All CSS in a single <style> block — no external files except:
+  * Google Fonts CDN (match the fonts visible in the screenshot)
+  * Font Awesome or Lucide icons CDN (match the icons exactly)
+  * Chart.js CDN only if the screenshot contains actual charts/graphs
+- Target: desktop 1440px width, no responsive needed
+- For icons: inspect the screenshot carefully and use the matching icon names
+- For gradients: extract the exact gradient colors from the screenshot
+- For data cards: reproduce the EXACT card structure — title, value, date, trend arrow, source label, action button
+- For charts: use Chart.js with data that approximates what is visible in the screenshot
+- Static HTML only — no complex JavaScript
+
+═══ CRITICAL RULES ═══
+1. DO NOT simplify — if the original has 12 navigation items, reproduce all 12
+2. DO NOT omit elements — every visible pixel must be accounted for
+3. DO NOT change layouts — same column count, same grid, same sidebar width
+4. DO NOT invent new elements — only reproduce what you see
+5. If text is a brand name (the source site name) → replace with {client_name}
+6. If text is data/content (numbers, descriptions, dates) → keep as-is
+
+Return ONLY the HTML code. No markdown, no explanation, no comments outside the code.
 """
 
     content_parts = [
@@ -61,7 +81,7 @@ Retourne UNIQUEMENT le code HTML, sans aucun texte avant ou après, sans balises
     ]
 
     # Retry sur 503 : 3 tentatives par modèle, fallback Flash Lite
-    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash-lite"]
+    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
     response = None
 
     for model in models_to_try:
@@ -72,8 +92,8 @@ Retourne UNIQUEMENT le code HTML, sans aucun texte avant ou après, sans balises
                     model=model,
                     contents=content_parts,
                     config=types.GenerateContentConfig(
-                        max_output_tokens=16384,
-                        temperature=0.2,
+                        max_output_tokens=32768,
+                        temperature=0.1,
                     ),
                 )
                 break  # succès → sortir des tentatives

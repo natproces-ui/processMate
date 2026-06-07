@@ -48,6 +48,9 @@ const RegulatoryImpactWorkspace = dynamic(() => import('@/components/regulatory-
 const AnalysisWorkspace = dynamic(() => import('@/components/analysis/AnalysisWorkspace'), { loading: PanelSkeleton });
 const BianServiceMap = dynamic(() => import('@/components/orchestration/BianServiceMap'), { loading: PanelSkeleton });
 const CampaignsPanel = dynamic(() => import('@/components/orchestration/CampaignsPanel'), { loading: PanelSkeleton });
+const CorrectionsPanel = dynamic(() => import('@/components/orchestration/CorrectionsPanel'), { loading: PanelSkeleton });
+const WorkspaceShell      = dynamic(() => import('@/components/workspace/WorkspaceShell'),            { loading: PanelSkeleton });
+const ProjectsPortfolio   = dynamic(() => import('@/components/orchestration/ProjectsPortfolio'),    { loading: PanelSkeleton });
 
 // Modules externes — montés dans le même shell
 const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), { loading: PanelSkeleton, ssr: false });
@@ -60,7 +63,7 @@ type OrchestraTab =
     | 'dashboard' | 'pipeline' | 'procedures' | 'workflow'
     | 'raci' | 'validation' | 'tasks' | 'irritants'
     | 'complexity' | 'applicatifs' | 'settings'
-    | 'regulatory-impact' | 'analysis' | 'taxonomy' | 'bian' | 'campaigns';
+    | 'regulatory-impact' | 'analysis' | 'taxonomy' | 'bian' | 'campaigns' | 'corrections' | 'workspace' | 'portfolio';
 
 interface ProcedureTab {
     id: string;
@@ -185,9 +188,11 @@ function ProcessMateInner() {
     };
 
     const handleOpenProcedureFromTask = (procedureId: string) => {
-        const procedure = procedures.find(p => p.id === procedureId);
-        if (procedure) { handleOpenProcedure(procedure); return; }
-        handleTabChange('procedures');
+        // Ouvre la procédure directement dans le Workspace via deep link
+        const url = new URL(window.location.href);
+        url.searchParams.set('procedure_id', procedureId);
+        window.history.pushState({}, '', url.toString());
+        handleTabChange('workspace');
     };
 
     const handleInstruire = (procedureId: string) => {
@@ -385,16 +390,22 @@ function ProcessMateInner() {
                                         <LazyPanel active={activeTab === 'bian'}>
                                             <BianServiceMap
                                                 onGoToProcedures={() => handleTabChange('procedures')}
+                                                onGoToWorkspace={() => handleTabChange('workspace')}
                                                 isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
                                             />
                                         </LazyPanel>
                                         <LazyPanel active={activeTab === 'campaigns'}>
                                             <CampaignsPanel onOpenProcedure={pid => {
-                                                const p = procedures.find(x => x.id === pid);
-                                                if (p) handleOpenProcedure(p);
-                                                else handleTabChange('procedures');
+                                                const url = new URL(window.location.href);
+                                                url.searchParams.set('procedure_id', pid);
+                                                url.searchParams.set('tab', 'workspace');
+                                                window.history.pushState({}, '', url.toString());
+                                                handleTabChange('workspace');
                                             }} />
                                         </LazyPanel>
+                                        <LazyPanel active={activeTab === 'corrections'}><CorrectionsPanel /></LazyPanel>
+                                        <LazyPanel active={activeTab === 'workspace'}><WorkspaceShell /></LazyPanel>
+                                        <LazyPanel active={activeTab === 'portfolio'}><ProjectsPortfolio /></LazyPanel>
                                         <LazyPanel active={activeTab === 'settings'}><SettingsPanel /></LazyPanel>
                                     </>
                                 )}

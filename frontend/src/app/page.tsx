@@ -80,7 +80,9 @@ const MODULES: Module[] = [
           { label: 'Valider',                desc: 'Soumettre une procédure au circuit de validation', href: '/orchestration?tab=validation', icon: <CheckSquare className={ic} /> },
           { label: 'Suivre le pipeline',     desc: "Visualiser l'avancement global des procédures",    href: '/orchestration?tab=pipeline',   icon: <GitBranch className={ic} />   },
           { label: 'Gérer les flux',         desc: 'Orchestrer les étapes et acteurs du flux',         href: '/orchestration?tab=workflow',   icon: <Workflow className={ic} />    },
-          { label: 'Campagnes',              desc: 'Lancer et suivre des campagnes de formalisation',  href: '/orchestration?tab=campaigns',  icon: <Megaphone className={ic} />   },
+          { label: 'Projets',                desc: 'Lancer et suivre des projets de formalisation',    href: '/orchestration?tab=campaigns',  icon: <Megaphone className={ic} />   },
+          { label: 'Portfolio',              desc: 'Vue globale de tous les projets (admin)',           href: '/orchestration?tab=portfolio',  icon: <BarChart2 className={ic} />   },
+          { label: 'Workspace',              desc: 'Espace de travail par procédure — révision et corrections', href: '/orchestration?tab=workspace', icon: <FileText className={ic} />   },
         ],
       },
       {

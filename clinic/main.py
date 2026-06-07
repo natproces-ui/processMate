@@ -30,7 +30,8 @@ from routers import (
     dot_to_table, cobol_flowchart,
     quota, doc_router, stt, interface_router, revision_router, bpmn_from_document, chat_router,
     orchestration_router, irritants_router, orchestration_tasks_router, regulatory_impact_router,
-    analysis_router, taxonomy_router, campaigns_router
+    analysis_router, taxonomy_router, campaigns_router, reports_router, corrections_router,
+    workspace_router
 )
 
 
@@ -84,6 +85,9 @@ app.include_router(regulatory_impact_router.router)
 app.include_router(analysis_router.router)
 app.include_router(taxonomy_router.router)
 app.include_router(campaigns_router.router)
+app.include_router(reports_router.router)
+app.include_router(corrections_router.router)
+app.include_router(workspace_router.router)
 
 @app.head("/")
 async def head_root():

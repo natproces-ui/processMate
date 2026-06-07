@@ -8,7 +8,6 @@ Endpoints :
 
 import asyncio
 import base64
-import io
 import os
 import uuid
 from typing import Annotated, Optional
@@ -18,7 +17,7 @@ from fastapi.responses import Response
 
 from google import genai
 
-from methods.web_explorer    import explore_website
+from methods.web_explorer    import explore_for_mockup, explore_for_mockup_v2
 from methods.mockup_rebrander  import rebrand_screenshot
 from methods.mockup_word_export import generate_mockup_word
 
@@ -35,53 +34,13 @@ def _get_gemini_api_key() -> str:
     return api_key
 
 
-def _pil_to_b64(img) -> str:
-    """Convertit une image PIL en base64 PNG."""
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return base64.b64encode(buf.getvalue()).decode()
-
 
 def _extract_screens(result: dict) -> list[dict]:
     """
-    Extrait les écrans uniques depuis le résultat de web_explorer.
-    Garde uniquement les étapes qui ont provoqué une navigation (URL différente).
-    Associe chaque navigation au screenshot PIL correspondant.
+    Retourne directement les écrans capturés par explore_for_mockup.
+    Chaque écran contient déjà url, title et screenshot_b64.
     """
-    history     = result.get("history", [])
-    screenshots = result.get("screenshots", [])
-    screens     = []
-    seen_urls   = set()
-
-    # Index screenshots — il y a 1 screenshot par action dans all_screenshots
-    for i, h in enumerate(history):
-        url_before = h.get("url_before", "")
-        url_after  = h.get("url_after", "")
-
-        # Ne garder que les vraies navigations vers un nouvel écran
-        if url_after and url_after != url_before and url_after not in seen_urls:
-            seen_urls.add(url_after)
-
-            # Screenshot correspondant (même index dans all_screenshots)
-            pil_img = screenshots[i] if i < len(screenshots) else None
-            if pil_img is None:
-                continue
-
-            screens.append({
-                "url":           url_after,
-                "title":         h.get("visible_text_sample", url_after)[:60] or url_after,
-                "screenshot_b64": _pil_to_b64(pil_img),
-            })
-
-    # Fallback : si aucune navigation détectée, prendre le premier screenshot
-    if not screens and screenshots:
-        screens.append({
-            "url":            result.get("url", ""),
-            "title":          result.get("title", "Page principale"),
-            "screenshot_b64": _pil_to_b64(screenshots[0]),
-        })
-
-    return screens
+    return result.get("screens", [])
 
 
 # ── Pipeline background ───────────────────────────────────────────────────────
@@ -95,6 +54,7 @@ async def _run_pipeline(
     max_pages: int,
     logo_b64: Optional[str],
     logo_mime: str,
+    engine: str = "v1",
 ):
     job = _jobs[job_id]
 
@@ -109,14 +69,21 @@ async def _run_pipeline(
 
         api_key = _get_gemini_api_key()
 
-        # max_gemini_calls ≈ max_pages / 2  (chaque call couvre ~2 navigations)
-        result = await explore_website(
-            target_url       = url,
-            gemini_api_key   = api_key,
-            max_gemini_calls = max(3, max_pages // 2),
-            actions_per_call = 6,
-            on_progress      = on_progress,
-        )
+        if engine == "v2":
+            result = await explore_for_mockup_v2(
+                target_url     = url,
+                gemini_api_key = api_key,
+                max_pages      = max_pages,
+                on_progress    = on_progress,
+            )
+        else:
+            result = await explore_for_mockup(
+                target_url       = url,
+                gemini_api_key   = api_key,
+                max_pages        = max_pages,
+                screens_per_page = 3,
+                on_progress      = on_progress,
+            )
 
         screens = _extract_screens(result)
 
@@ -201,6 +168,7 @@ async def generate_mockups(
     primary_color:   Annotated[str,  Form()],
     secondary_color: Annotated[str,  Form()],
     max_pages:       Annotated[int,  Form()] = 8,
+    engine:          Annotated[str,  Form()] = "v1",
     logo:            Optional[UploadFile] = File(default=None),
 ):
     """
@@ -228,14 +196,15 @@ async def generate_mockups(
 
     background_tasks.add_task(
         _run_pipeline,
-        job_id        = job_id,
-        url           = url,
-        client_name   = client_name,
-        primary_color = primary_color,
+        job_id          = job_id,
+        url             = url,
+        client_name     = client_name,
+        primary_color   = primary_color,
         secondary_color = secondary_color,
-        max_pages     = max_pages,
-        logo_b64      = logo_b64,
-        logo_mime     = logo_mime,
+        max_pages       = max_pages,
+        logo_b64        = logo_b64,
+        logo_mime       = logo_mime,
+        engine          = engine,
     )
 
     return {"job_id": job_id}

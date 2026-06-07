@@ -479,6 +479,414 @@ def _build_text_summary(history: list, title: str, url: str, visited_urls: set) 
     return "\n".join(lines)
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MOCKUP EXPLORER — scroll-first, domain-locked, navigation intelligente
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _same_domain(url1: str, url2: str) -> bool:
+    from urllib.parse import urlparse
+    try:
+        return urlparse(url1).netloc == urlparse(url2).netloc
+    except Exception:
+        return False
+
+
+def _pil_to_b64_png(img) -> str:
+    import base64
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+async def _scroll_and_capture(page, max_screens: int = 4) -> list:
+    """
+    Scrolle la page de haut en bas et capture un screenshot par viewport.
+    Retourne une liste d'images PIL (max max_screens).
+    """
+    await page.evaluate("window.scrollTo(0, 0)")
+    await asyncio.sleep(0.5)
+
+    viewport_h = await page.evaluate("window.innerHeight")
+    page_h     = await page.evaluate("document.body.scrollHeight")
+
+    shots   = []
+    current = 0
+
+    while len(shots) < max_screens:
+        try:
+            raw = await page.screenshot(type="jpeg", quality=80, timeout=12000)
+            shots.append(screenshot_to_pil(raw))
+        except Exception as e:
+            print(f"   ⚠️  Screenshot échoué : {e}")
+
+        next_pos = min(current + viewport_h, page_h - viewport_h)
+        if next_pos <= current or current + viewport_h >= page_h:
+            break
+
+        await page.evaluate(f"window.scrollTo(0, {next_pos})")
+        await asyncio.sleep(0.7)
+        current = next_pos
+
+    return shots
+
+
+async def _gemini_pick_next_link(client, page, visited_urls: set, base_domain: str,
+                                  pages_visited: list) -> Optional[str]:
+    """
+    Gemini choisit le prochain lien à visiter :
+    même domaine, non visité, contenu riche prioritaire.
+    Retourne une URL ou None.
+    """
+    from google.genai import types
+    from urllib.parse import urlparse
+
+    links_raw = await page.evaluate(f"""
+        () => {{
+            const base = "{base_domain}";
+            return [...document.querySelectorAll('a[href]')]
+                .map(a => ({{ text: (a.innerText || a.title || a.getAttribute('aria-label') || '').trim().slice(0, 80), href: a.href }}))
+                .filter(l => {{
+                    try {{
+                        return l.href && l.href.startsWith('http') &&
+                               new URL(l.href).hostname === base &&
+                               !l.href.includes('#');
+                    }} catch(e) {{ return false; }}
+                }})
+                .slice(0, 60);
+        }}
+    """)
+
+    available = [l for l in links_raw if l["href"] not in visited_urls]
+    if not available:
+        return None
+
+    links_text  = "\n".join([f"  [{l['text'] or '(sans texte)'}] → {l['href']}" for l in available[:30]])
+    visited_txt = "\n".join([f"  - {t}" for t in pages_visited[-10:]]) or "  (aucune)"
+
+    prompt = f"""Tu explores le site {base_domain} pour générer une démonstration commerciale.
+
+Pages déjà visitées :
+{visited_txt}
+
+Liens disponibles (même domaine, non visités) :
+{links_text}
+
+Choisis le lien LE PLUS UTILE pour montrer les fonctionnalités du site.
+Priorité haute : données, graphiques, séries statistiques, thématiques, catalogue, chiffres-clés, publications, API.
+Priorité basse : mentions légales, CGU, contact, login, cookies, accessibilité, 404.
+Évite de revisiter une section déjà explorée.
+
+Réponds UNIQUEMENT avec l'URL exacte choisie. Rien d'autre."""
+
+    try:
+        raw_shot = await page.screenshot(type="jpeg", quality=60, timeout=8000)
+        screenshot_part = types.Part.from_bytes(data=raw_shot, mime_type="image/jpeg")
+        contents = [screenshot_part, prompt]
+    except Exception:
+        contents = [prompt]
+
+    try:
+        response = await asyncio.to_thread(
+            client.models.generate_content,
+            model="gemini-2.5-flash",
+            contents=contents,
+            config={"max_output_tokens": 200, "temperature": 0.1},
+        )
+        url = (response.text or "").strip().strip("`").strip()
+        if url.startswith("http") and base_domain in url and url not in visited_urls:
+            return url
+    except Exception as e:
+        print(f"   ⚠️  gemini_pick_next_link erreur : {e}")
+
+    # Fallback : premier lien dispo qui n'est pas une page utilitaire
+    skip_kw = ("mentions-legales", "contact", "login", "cookies", "accessibilite",
+                "cgu", "404", "legal", "privacy")
+    for l in available:
+        if not any(kw in l["href"].lower() for kw in skip_kw):
+            return l["href"]
+    return available[0]["href"]
+
+
+async def explore_for_mockup(
+    target_url: str,
+    gemini_api_key: str,
+    max_pages: int = 8,
+    screens_per_page: int = 3,
+    on_progress: Optional[ProgressCallback] = None,
+) -> dict:
+    """
+    Explorateur dédié aux maquettes :
+    - Reste strictement sur le domaine de target_url
+    - Pour chaque page : scrolle de haut en bas, capture screens_per_page screenshots
+    - Gemini choisit le prochain lien à visiter (utile, non visité, même domaine)
+    - Retourne screens: list[{url, title, screenshot_b64}]
+    """
+    from urllib.parse import urlparse
+
+    async def notify(stage: str, message: str):
+        print(message)
+        if on_progress:
+            await on_progress(stage, message)
+
+    if not PLAYWRIGHT_AVAILABLE:
+        await notify("exploration", "⚠️ Playwright non disponible")
+        return {"url": target_url, "title": "", "screens": [], "screenshots": [],
+                "visited_urls": [], "history": []}
+
+    from google import genai
+    client = genai.Client(api_key=gemini_api_key)
+
+    base_domain   = urlparse(target_url).netloc
+    visited_urls  = set()
+    all_screens   = []   # [{url, title, screenshot_b64}]
+    all_pil       = []   # PIL images
+    pages_visited = []   # titres pour le contexte Gemini
+    site_title    = ""
+
+    await notify("exploration", f"🌐 Chargement de {target_url}...")
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox",
+                      "--disable-blink-features=AutomationControlled"]
+            )
+            context = await browser.new_context(
+                viewport={"width": 1440, "height": 900},
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/121.0.0.0 Safari/537.36"
+                ),
+                locale="fr-FR",
+            )
+            page = await context.new_page()
+
+            # Chargement initial
+            try:
+                await page.goto(target_url, wait_until="networkidle", timeout=45000)
+            except Exception:
+                try:
+                    await page.goto(target_url, wait_until="load", timeout=30000)
+                except Exception:
+                    await page.goto(target_url, wait_until="commit", timeout=20000)
+            await asyncio.sleep(2)
+
+            site_title = await page.title()
+            visited_urls.add(page.url)
+            await notify("exploration", f"✅ Site chargé : {site_title}")
+
+            for page_num in range(1, max_pages + 1):
+                current_url   = page.url
+                current_title = await page.title()
+                pages_visited.append(f"{current_title} ({current_url})")
+
+                await notify("exploration",
+                    f"📄 Page {page_num}/{max_pages} — {current_title[:55]}")
+
+                # ── 1. Scroll complet + captures ────────────────────────
+                shots = await _scroll_and_capture(page, max_screens=screens_per_page)
+
+                for i, img in enumerate(shots):
+                    all_screens.append({
+                        "url":            current_url,
+                        "title":          current_title,
+                        "screenshot_b64": _pil_to_b64_png(img),
+                        "scroll_index":   i,
+                    })
+                    all_pil.append(img)
+
+                await notify("exploration",
+                    f"   📸 {len(shots)} capture(s) — total {len(all_screens)} écrans")
+
+                if page_num >= max_pages:
+                    break
+
+                # ── 2. Gemini choisit le prochain lien ──────────────────
+                await notify("exploration", "   🤔 Choix du prochain lien...")
+                next_url = await _gemini_pick_next_link(
+                    client, page, visited_urls, base_domain, pages_visited
+                )
+
+                if not next_url:
+                    await notify("exploration", "   ✅ Aucun lien utile restant")
+                    break
+
+                visited_urls.add(next_url)
+                await notify("exploration", f"   ➡️  Vers : {next_url}")
+
+                try:
+                    await page.goto(next_url, wait_until="domcontentloaded", timeout=25000)
+                    await asyncio.sleep(1.5)
+                    try:
+                        await page.wait_for_load_state("networkidle", timeout=5000)
+                    except Exception:
+                        pass
+                except Exception as e:
+                    await notify("exploration", f"   ❌ Navigation échouée : {str(e)[:60]}")
+                    break
+
+            await browser.close()
+
+    except Exception as e:
+        await notify("exploration", f"❌ Erreur Playwright : {str(e)[:80]}")
+
+    await notify("exploration",
+        f"✅ Terminé : {len(visited_urls)} page(s), {len(all_screens)} écran(s)")
+
+    return {
+        "url":          target_url,
+        "title":        site_title,
+        "screens":      all_screens,
+        "screenshots":  all_pil,
+        "visited_urls": list(visited_urls),
+        "history":      [],
+    }
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MOCKUP EXPLORER V2 — browser-use : l'IA décide scroll / capture / navigation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def explore_for_mockup_v2(
+    target_url: str,
+    gemini_api_key: str,
+    max_pages: int = 8,
+    on_progress: Optional[ProgressCallback] = None,
+) -> dict:
+    """
+    Explorateur v2 basé sur browser-use.
+    L'IA navigue et scrolle comme un humain.
+    Les captures sont prises automatiquement dans le step callback
+    (pas d'action custom — évite les boucles infinies de l'agent).
+    """
+    from urllib.parse import urlparse
+
+    async def notify(stage: str, message: str):
+        print(message)
+        if on_progress:
+            await on_progress(stage, message)
+
+    try:
+        from browser_use import Agent
+        from browser_use.llm.google.chat import ChatGoogle
+    except ImportError as e:
+        await notify("exploration", f"⚠️ browser-use non disponible ({e}) — fallback v1")
+        return await explore_for_mockup(
+            target_url=target_url, gemini_api_key=gemini_api_key,
+            max_pages=max_pages, on_progress=on_progress,
+        )
+
+    base_domain      = urlparse(target_url).netloc
+    captured_screens: list[dict] = []
+    site_title       = ""
+    max_total        = max_pages * 3   # max captures totales
+    last_url         = ""              # pour détecter les changements de page
+    captures_on_page = 0              # captures sur la page courante
+
+    # ── Callback : capture automatique à chaque step ─────────────────────────
+    async def step_callback(state, output, step_num: int):
+        nonlocal site_title, last_url, captures_on_page
+
+        if len(captured_screens) >= max_total:
+            return
+
+        url       = getattr(state, "url", "") or ""
+        title     = getattr(state, "title", "") or ""
+        screenshot = getattr(state, "screenshot", None)
+
+        # Filtrer domaine
+        if base_domain not in url or not screenshot:
+            return
+
+        # Reset compteur si nouvelle page
+        if url != last_url:
+            last_url = url
+            captures_on_page = 0
+
+        # Max 3 captures par page
+        if captures_on_page >= 3:
+            return
+
+        captured_screens.append({
+            "url":            url,
+            "title":          title,
+            "screenshot_b64": screenshot,
+            "scroll_index":   captures_on_page,
+        })
+        captures_on_page += 1
+
+        if not site_title:
+            site_title = title
+
+        msg = f"📸 Capture #{len(captured_screens)} — {title[:50]} (étape {step_num})"
+        print(f"   {msg}")
+        if on_progress:
+            await on_progress("exploration", msg)
+
+    # ── LLM ──────────────────────────────────────────────────────────────────
+    llm = ChatGoogle(
+        model="gemini-2.5-flash",
+        api_key=gemini_api_key,
+        temperature=0.1,
+    )
+
+    # ── Tâche : navigation + scroll, pas de capture (c'est automatique) ──────
+    task = f"""Explore the website {target_url} thoroughly for a professional visual demonstration.
+
+STRICT RULES:
+1. Stay ONLY on domain {base_domain} — never follow external links
+2. For each page:
+   - Read the visible content carefully
+   - Scroll down progressively to see all content (use scroll_down action)
+   - Keep scrolling until you reach the bottom of the page
+   - Then navigate to the next most interesting section
+3. Navigation priority: data pages (themes, statistical series, catalogue, key figures, publications, charts, API)
+4. Avoid: legal notices, cookies, login pages, empty pages
+5. Visit {max_pages} distinct pages then stop
+
+Start at {target_url} and explore methodically. Focus on scrolling and navigation — screenshots are taken automatically."""
+
+    await notify("exploration", f"🤖 Agent V2 lancé sur {target_url}...")
+
+    agent = None
+    try:
+        agent = Agent(
+            task=task,
+            llm=llm,
+            max_actions_per_step=1,
+            register_new_step_callback=step_callback,
+            use_vision=True,
+            loop_detection_enabled=True,
+        )
+
+        await agent.run(max_steps=max_pages * 12)
+
+    except Exception as e:
+        await notify("exploration", f"❌ Erreur agent : {str(e)[:100]}")
+    finally:
+        if agent is not None:
+            try:
+                await agent.browser_session.stop()
+            except Exception:
+                pass
+
+    await notify("exploration",
+        f"✅ V2 terminé : {len(captured_screens)} écran(s) capturé(s) sur {base_domain}")
+
+    return {
+        "url":          target_url,
+        "title":        site_title,
+        "screens":      captured_screens,
+        "screenshots":  [],
+        "visited_urls": list({s["url"] for s in captured_screens}),
+        "history":      [],
+    }
+
+
 async def _fallback_scrape(url: str) -> dict:
     try:
         import httpx

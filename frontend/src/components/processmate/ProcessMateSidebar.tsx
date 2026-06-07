@@ -25,6 +25,7 @@ import {
     Layers,
     Map,
     Megaphone,
+    PenLine,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -50,6 +51,7 @@ interface NavItem {
     color: string;
     module: ActiveModule;
     isModuleHeader?: boolean;
+    adminOnly?: boolean;
 }
 
 const MODULES: { id: ActiveModule; label: string; icon: React.ElementType; color: string }[] = [
@@ -73,7 +75,10 @@ const ORCHESTRATION_ITEMS: NavItem[] = [
     { id: 'applicatifs', label: 'Cartographie Applicative', icon: Server, color: 'text-teal-600', module: 'orchestration' },
     { id: 'analysis', label: 'Analyse IA', icon: MessageSquare, color: 'text-purple-600', module: 'orchestration' },
     { id: 'bian', label: 'Carte BIAN', icon: Map, color: 'text-cyan-600', module: 'orchestration' },
-    { id: 'campaigns', label: 'Campagnes', icon: Megaphone, color: 'text-orange-500', module: 'orchestration' },
+    { id: 'portfolio', label: 'Portfolio', icon: BarChart3, color: 'text-orange-600', module: 'orchestration', adminOnly: true },
+    { id: 'campaigns', label: 'Projets', icon: Megaphone, color: 'text-orange-500', module: 'orchestration' },
+    { id: 'corrections', label: 'Corrections', icon: PenLine, color: 'text-rose-500', module: 'orchestration' },
+    { id: 'workspace',   label: 'Workspace',   icon: FileSearch, color: 'text-violet-600', module: 'orchestration' },
 ];
 
 // ─── Composant principal ──────────────────────────────────────
@@ -88,10 +93,13 @@ export default function ProcessMateSidebar({
     userRole,
 }: SidebarProps) {
 
+    const isAdmin = userRole === 'admin';
     const canSeeRegulatoryImpact = userRole === 'admin' || userRole === 'validator';
-    const visibleOrchestrationItems = ORCHESTRATION_ITEMS.filter(item =>
-        item.id !== 'regulatory-impact' || canSeeRegulatoryImpact
-    );
+    const visibleOrchestrationItems = ORCHESTRATION_ITEMS.filter(item => {
+        if (item.adminOnly && !isAdmin) return false;
+        if (item.id === 'regulatory-impact' && !canSeeRegulatoryImpact) return false;
+        return true;
+    });
 
     const handleModuleChange = (moduleId: ActiveModule) => {
         setActiveModule(moduleId);

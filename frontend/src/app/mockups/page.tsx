@@ -21,6 +21,7 @@ export default function MockupsPage() {
     const [primaryColor, setPrimaryColor] = useState('#1a3560');
     const [secondaryColor, setSecondaryColor] = useState('#2E74B5');
     const [maxPages, setMaxPages] = useState(8);
+    const [engine, setEngine] = useState<'v1' | 'v2'>('v2');
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState('');
     const logoInputRef = useRef<HTMLInputElement>(null);
@@ -73,6 +74,7 @@ export default function MockupsPage() {
         formData.append('primary_color', primaryColor);
         formData.append('secondary_color', secondaryColor);
         formData.append('max_pages', String(maxPages));
+        formData.append('engine', engine);
         if (logoFile) formData.append('logo', logoFile);
 
         setJob({ jobId: '', status: 'running', message: 'Démarrage...', progress: 0 });
@@ -89,7 +91,7 @@ export default function MockupsPage() {
         } catch (e: unknown) {
             setJob({ jobId: '', status: 'error', message: String(e), progress: 0 });
         }
-    }, [url, clientName, primaryColor, secondaryColor, maxPages, logoFile, startPolling]);
+    }, [url, clientName, primaryColor, secondaryColor, maxPages, engine, logoFile, startPolling]);
 
     // ── Téléchargement ─────────────────────────────────────────────────────────
     const handleDownload = useCallback(async () => {
@@ -239,6 +241,35 @@ export default function MockupsPage() {
                             onChange={handleLogo}
                             className="hidden"
                         />
+                    </div>
+
+                    {/* Moteur d'exploration */}
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Moteur d'exploration
+                        </label>
+                        <div className="flex gap-2">
+                            {(['v1', 'v2'] as const).map(v => (
+                                <button
+                                    key={v}
+                                    type="button"
+                                    onClick={() => setEngine(v)}
+                                    disabled={isRunning}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                                        engine === v
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow'
+                                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                                    }`}
+                                >
+                                    {v === 'v1' ? '⚙️ V1 — Scroll fixe' : '🤖 V2 — Agent IA'}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">
+                            {engine === 'v2'
+                                ? 'L\'IA décide elle-même quand scroller et capturer (browser-use)'
+                                : 'Scroll automatique par étapes fixes (Playwright direct)'}
+                        </p>
                     </div>
 
                     {/* Nombre de pages */}

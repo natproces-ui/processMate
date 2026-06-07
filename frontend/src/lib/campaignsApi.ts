@@ -23,7 +23,7 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
 
 // ─── Types ────────────────────────────────────────────────────
 
-export type CampaignStatus = 'draft' | 'active' | 'completed' | 'archived';
+export type CampaignStatus = 'draft' | 'active' | 'completed' | 'archived' | 'blocked' | 'on_hold';
 export type CampaignProcedureStatus = 'pending' | 'in_progress' | 'formalized' | 'validated' | 'skipped';
 
 export interface CampaignProcedure {
@@ -93,6 +93,15 @@ export const campaignsApi = {
   close: (id: string) =>
     fetchJSON<{ success: boolean; status: string }>(`/api/campaigns/${id}/close`, { method: 'POST' }),
 
+  block: (id: string) =>
+    fetchJSON<{ success: boolean; status: string }>(`/api/campaigns/${id}/block`, { method: 'POST' }),
+
+  pause: (id: string) =>
+    fetchJSON<{ success: boolean; status: string }>(`/api/campaigns/${id}/pause`, { method: 'POST' }),
+
+  resume: (id: string) =>
+    fetchJSON<{ success: boolean; status: string }>(`/api/campaigns/${id}/resume`, { method: 'POST' }),
+
   sync: (id: string) =>
     fetchJSON<{ success: boolean; synced: number }>(`/api/campaigns/${id}/sync`, { method: 'POST' }),
 
@@ -116,16 +125,20 @@ export const campaignsApi = {
 
 export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   draft:     'Brouillon',
-  active:    'Active',
-  completed: 'Terminée',
-  archived:  'Archivée',
+  active:    'En cours',
+  completed: 'Terminé',
+  archived:  'Archivé',
+  blocked:   'Bloqué',
+  on_hold:   'En pause',
 };
 
 export const CAMPAIGN_STATUS_COLORS: Record<CampaignStatus, { bg: string; text: string; dot: string }> = {
-  draft:     { bg: 'bg-gray-100',   text: 'text-gray-600',   dot: 'bg-gray-400' },
-  active:    { bg: 'bg-blue-50',    text: 'text-blue-700',   dot: 'bg-blue-500' },
-  completed: { bg: 'bg-green-50',   text: 'text-green-700',  dot: 'bg-green-500' },
-  archived:  { bg: 'bg-amber-50',   text: 'text-amber-700',  dot: 'bg-amber-400' },
+  draft:     { bg: 'bg-gray-100',   text: 'text-gray-600',   dot: 'bg-gray-400'   },
+  active:    { bg: 'bg-blue-50',    text: 'text-blue-700',   dot: 'bg-blue-500'   },
+  completed: { bg: 'bg-green-50',   text: 'text-green-700',  dot: 'bg-green-500'  },
+  archived:  { bg: 'bg-amber-50',   text: 'text-amber-700',  dot: 'bg-amber-400'  },
+  blocked:   { bg: 'bg-red-50',     text: 'text-red-700',    dot: 'bg-red-500'    },
+  on_hold:   { bg: 'bg-purple-50',  text: 'text-purple-700', dot: 'bg-purple-400' },
 };
 
 export const PROC_STATUS_LABELS: Record<CampaignProcedureStatus, string> = {

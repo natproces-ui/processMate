@@ -217,6 +217,8 @@ export async function notifyTaskAssignedByEmail(params: {
   procedureName?: string;
   taskType: string;
   dueDate?: string | null;
+  workspaceUrl?: string;
+  taskDescription?: string;
 }): Promise<void> {
   try {
     await fetch('/api/notify/email', {
