@@ -11,5 +11,4 @@ tmp/
 test-proc/
 .codex_*
 *.ipynb
-flowcharts/
 static/index.html
