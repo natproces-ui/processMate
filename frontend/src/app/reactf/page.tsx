@@ -200,6 +200,7 @@ function generateReactFlowBPMN(data: TableRow[]): { nodes: Node[]; edges: Edge[]
         acteur,
         x: MARGIN_LEFT + index * LANE_WIDTH,
         color: LANE_COLORS[index % LANE_COLORS.length],
+        height: 0,
     }));
 
     // Calculer les positions et créer les nodes
