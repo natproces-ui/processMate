@@ -19,7 +19,7 @@ load_dotenv()
 IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").lower() == "true"
 
 # URL du frontend (dynamique selon l'environnement)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").strip().rstrip("/")
 
 # 🔑 Clé API Google (importante pour les routers IA)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -30,7 +30,7 @@ if not GOOGLE_API_KEY and IS_PRODUCTION:
 # CONFIGURATION CORS
 # ============================================
 
-_extra_origins = [o.strip() for o in os.getenv("EXTRA_CORS_ORIGINS", "").split(",") if o.strip()]
+_extra_origins = [o.strip().rstrip("/") for o in os.getenv("EXTRA_CORS_ORIGINS", "").split(",") if o.strip()]
 
 CORS_CONFIG = {
     "allow_origins": list({
@@ -40,6 +40,7 @@ CORS_CONFIG = {
         "http://127.0.0.1:3000",
         *_extra_origins,
     }),
+    "allow_origin_regex": r"https://.*\.vercel\.app",
     "allow_credentials": True,
     "allow_methods": ["*"],
     "allow_headers": ["*"],
