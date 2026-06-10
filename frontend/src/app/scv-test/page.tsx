@@ -206,7 +206,7 @@ export default function Home() {
         // ✅ Chaque SCV unitaire doit être linéaire, le tableau global formaté
         const jsonLines = [
             '[',
-            ...allSCVArray.map((scvWrapper, index) => {
+            ...allSCVArray.map((scvWrapper: unknown, index: number) => {
                 // scvWrapper est déjà au format {SCV: {...}}
                 const linearJson = JSON.stringify(scvWrapper, null, 0); // Linéaire
                 return index < allSCVArray.length - 1
