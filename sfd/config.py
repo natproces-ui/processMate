@@ -16,7 +16,7 @@ load_dotenv()
 
 IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").lower() == "true"
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").strip().rstrip("/")
 
 # 🔑 Clé API Google Gemini (obligatoire)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -37,6 +37,7 @@ CORS_CONFIG = {
         "http://127.0.0.1:3001",
         "http://127.0.0.1:3002",
     ],
+    "allow_origin_regex": r"https://.*\.vercel\.app",
     "allow_credentials": True,
     "allow_methods": ["*"],
     "allow_headers": ["*"],
