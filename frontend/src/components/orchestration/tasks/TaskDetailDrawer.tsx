@@ -119,7 +119,7 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
             <div className="border border-gray-200 rounded-xl p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <UserRound className="w-4 h-4" />
-                Assigne a
+                Assigné à
               </div>
               <p className="font-semibold text-gray-900 mt-2">{actorName(actors, task.assigned_to, task.assigned_to_name)}</p>
               {actorMeta(actors, task.assigned_to) && <p className="text-xs text-gray-400 mt-0.5">{actorMeta(actors, task.assigned_to)}</p>}
@@ -128,10 +128,10 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
             <div className="border border-gray-200 rounded-xl p-4">
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <Calendar className="w-4 h-4" />
-                Delai
+                Délai
               </div>
               <p className="font-semibold text-gray-900 mt-2">
-                {task.due_date ? new Date(task.due_date).toLocaleDateString('fr-FR') : 'Non defini'}
+                {task.due_date ? new Date(task.due_date).toLocaleDateString('fr-FR') : 'Non défini'}
               </p>
             </div>
           </div>
@@ -143,23 +143,25 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
             </p>
           </div>
 
-          <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-            <h4 className="font-semibold text-gray-900">Message pour l&apos;action</h4>
-            <textarea
-              value={actionMessage}
-              onChange={event => setActionMessage(event.target.value)}
-              rows={3}
-              placeholder="Commentaire optionnel lie a la prochaine action..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
-            />
-            <TaskActionBar
-              task={task}
-              actor={actor}
-              message={actionMessage}
-              onChanged={handleChanged}
-              onError={setError}
-            />
-          </div>
+          {task.status !== 'validated' && task.status !== 'cancelled' && (
+            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+              <h4 className="font-semibold text-gray-900">Message pour l&apos;action</h4>
+              <textarea
+                value={actionMessage}
+                onChange={event => setActionMessage(event.target.value)}
+                rows={3}
+                placeholder="Commentaire optionnel lié à la prochaine action…"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 resize-none"
+              />
+              <TaskActionBar
+                task={task}
+                actor={actor}
+                message={actionMessage}
+                onChanged={handleChanged}
+                onError={setError}
+              />
+            </div>
+          )}
 
           <div className="border border-gray-200 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2">

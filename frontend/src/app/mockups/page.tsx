@@ -22,6 +22,7 @@ export default function MockupsPage() {
     const [secondaryColor, setSecondaryColor] = useState('#2E74B5');
     const [maxPages, setMaxPages] = useState(8);
     const [engine, setEngine] = useState<'v1' | 'v2'>('v2');
+    const [instructions, setInstructions] = useState('');
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState('');
     const logoInputRef = useRef<HTMLInputElement>(null);
@@ -75,6 +76,7 @@ export default function MockupsPage() {
         formData.append('secondary_color', secondaryColor);
         formData.append('max_pages', String(maxPages));
         formData.append('engine', engine);
+        formData.append('instructions', instructions);
         if (logoFile) formData.append('logo', logoFile);
 
         setJob({ jobId: '', status: 'running', message: 'Démarrage...', progress: 0 });
@@ -91,7 +93,7 @@ export default function MockupsPage() {
         } catch (e: unknown) {
             setJob({ jobId: '', status: 'error', message: String(e), progress: 0 });
         }
-    }, [url, clientName, primaryColor, secondaryColor, maxPages, engine, logoFile, startPolling]);
+    }, [url, clientName, primaryColor, secondaryColor, maxPages, engine, instructions, logoFile, startPolling]);
 
     // ── Téléchargement ─────────────────────────────────────────────────────────
     const handleDownload = useCallback(async () => {
@@ -111,7 +113,7 @@ export default function MockupsPage() {
     const isError = job?.status === 'error';
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col">
+        <div className="h-full bg-slate-100 flex flex-col overflow-y-auto">
 
             {/* Header */}
             <div className="bg-gradient-to-r from-[#1a3560] to-[#1e4d8c] px-6 py-4 shadow-lg">
@@ -290,6 +292,22 @@ export default function MockupsPage() {
                             <span>2 (rapide)</span>
                             <span>15 (complet)</span>
                         </div>
+                    </div>
+
+                    {/* Instructions personnalisées */}
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Instructions de rebranding <span className="text-slate-400 font-normal">(optionnel)</span>
+                        </label>
+                        <textarea
+                            rows={3}
+                            placeholder={"Ex: Ajoute un bandeau de navigation rouge en haut. Remplace les graphiques par des tableaux. Utilise une police sans-serif moderne..."}
+                            value={instructions}
+                            onChange={e => setInstructions(e.target.value)}
+                            disabled={isRunning}
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none disabled:bg-slate-50 disabled:cursor-not-allowed"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Décris les modifications spécifiques que l'agent doit appliquer à chaque maquette</p>
                     </div>
 
                     {/* Bouton */}

@@ -10,10 +10,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import ProcessMateSidebar, { type ActiveModule } from '@/components/processmate/ProcessMateSidebar';
 import ProcessMateHeader from '@/components/processmate/Header';
 import { useProceduresStore } from '@/store/proceduresStore';
-import { orchestrationApi, Procedure } from '@/lib/orchestrationApi';
+import { orchestrationApi } from '@/lib/orchestrationApi';
 import type { ActorRole, TaskActor } from '@/lib/orchestrationTasksApi';
 import { useAuth } from '@/context/AuthContext';
-import { X, FileText, List, Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 import { taxonomyApi } from '@/lib/taxonomyApi';
 
 // ─── Skeleton commun ──────────────────────────────────────────
@@ -28,29 +28,25 @@ function PanelSkeleton() {
 
 // ─── Imports dynamiques ───────────────────────────────────────
 
-const Dashboard = dynamic(() => import('@/components/orchestration/Dashboard'), { loading: PanelSkeleton });
-const ProcedureList = dynamic(() => import('@/components/orchestration/ProcedureList'), { loading: PanelSkeleton });
-const ProcedureEditor = dynamic(() => import('@/components/orchestration/ProcedureEditor'), { loading: PanelSkeleton });
-const ProcessFlow = dynamic(() => import('@/components/orchestration/ProcessFlow'), { loading: PanelSkeleton, ssr: false });
-const RACIMatrix = dynamic(() => import('@/components/orchestration/RACIMatrix'), { loading: PanelSkeleton });
-const ValidationHub = dynamic(() => import('@/components/orchestration/ValidationHub'), { loading: PanelSkeleton });
-const ProcedureDetail = dynamic(() => import('@/components/orchestration/ProcedureDetail'), { loading: PanelSkeleton });
-const IrritantsPanel = dynamic(() => import('@/components/orchestration/IrritantsPanel'), { loading: PanelSkeleton });
-const ComplexityPanel = dynamic(() => import('@/components/orchestration/ComplexityPanel'), { loading: PanelSkeleton });
-const ApplicatifsPanel = dynamic(() => import('@/components/orchestration/ApplicatifsPanel'), { loading: PanelSkeleton });
-const WorkflowPipeline = dynamic(() => import('@/components/orchestration/WorkflowPipeline'), { loading: PanelSkeleton, ssr: false });
-const TaxonomyTree = dynamic(() => import('@/components/orchestration/TaxonomyTree'), { loading: PanelSkeleton });
+// ── Main new panels ──
+const ProceduresLibrary   = dynamic(() => import('@/components/orchestration/ProceduresLibrary'),   { loading: PanelSkeleton });
+const ProceduresDrilldown = dynamic(() => import('@/components/orchestration/ProceduresDrilldown'), { loading: PanelSkeleton });
+const AnalyserPanel       = dynamic(() => import('@/components/orchestration/AnalyserPanel'),       { loading: PanelSkeleton });
+const WorkspaceShell      = dynamic(() => import('@/components/workspace/WorkspaceShell'),           { loading: PanelSkeleton });
 const TaskOrchestrationHub = dynamic(
     () => import('@/components/orchestration/tasks').then(m => ({ default: m.TaskOrchestrationHub })),
     { loading: PanelSkeleton }
 );
-const RegulatoryImpactWorkspace = dynamic(() => import('@/components/regulatory-impact/RegulatoryImpactWorkspace'), { loading: PanelSkeleton });
-const AnalysisWorkspace = dynamic(() => import('@/components/analysis/AnalysisWorkspace'), { loading: PanelSkeleton });
-const BianServiceMap = dynamic(() => import('@/components/orchestration/BianServiceMap'), { loading: PanelSkeleton });
-const CampaignsPanel = dynamic(() => import('@/components/orchestration/CampaignsPanel'), { loading: PanelSkeleton });
-const CorrectionsPanel = dynamic(() => import('@/components/orchestration/CorrectionsPanel'), { loading: PanelSkeleton });
-const WorkspaceShell      = dynamic(() => import('@/components/workspace/WorkspaceShell'),            { loading: PanelSkeleton });
-const ProjectsPortfolio   = dynamic(() => import('@/components/orchestration/ProjectsPortfolio'),    { loading: PanelSkeleton });
+const DashboardPanel = dynamic(() => import('@/components/orchestration/DashboardPanel'), { loading: PanelSkeleton });
+const SpecificationsPanel = dynamic(() => import('@/components/orchestration/SpecificationsPanel'), { loading: PanelSkeleton });
+
+// ── Legacy panels (accessible via deep-link or internal navigation) ──
+const Dashboard         = dynamic(() => import('@/components/orchestration/Dashboard'),               { loading: PanelSkeleton });
+const CampaignsPanel    = dynamic(() => import('@/components/orchestration/CampaignsPanel'),         { loading: PanelSkeleton });
+const CorrectionsPanel  = dynamic(() => import('@/components/orchestration/CorrectionsPanel'),       { loading: PanelSkeleton });
+const ProjectsPortfolio = dynamic(() => import('@/components/orchestration/ProjectsPortfolio'),      { loading: PanelSkeleton });
+const TaxonomyTree      = dynamic(() => import('@/components/orchestration/TaxonomyTree'),           { loading: PanelSkeleton });
+const BianServiceMap    = dynamic(() => import('@/components/orchestration/BianServiceMap'),         { loading: PanelSkeleton });
 
 // Modules externes — montés dans le même shell
 const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), { loading: PanelSkeleton, ssr: false });
@@ -60,15 +56,13 @@ const ClinicPanel = dynamic(() => import('@/components/processmate/ClinicPanel')
 // ─── Types ────────────────────────────────────────────────────
 
 type OrchestraTab =
-    | 'dashboard' | 'pipeline' | 'procedures' | 'workflow'
-    | 'raci' | 'validation' | 'tasks' | 'irritants'
-    | 'complexity' | 'applicatifs' | 'settings'
-    | 'regulatory-impact' | 'analysis' | 'taxonomy' | 'bian' | 'campaigns' | 'corrections' | 'workspace' | 'portfolio';
-
-interface ProcedureTab {
-    id: string;
-    procedure: Procedure;
-}
+    // Primary navigation (sidebar)
+    | 'procedures' | 'campagnes' | 'analyser' | 'taches' | 'workspace' | 'tableau-de-bord' | 'specifications'
+    // Legacy deep-links (no sidebar item, still accessible via URL)
+    | 'dashboard' | 'campaigns' | 'corrections' | 'portfolio' | 'taxonomy'
+    | 'pipeline' | 'irritants' | 'complexity' | 'applicatifs'
+    | 'regulatory-impact' | 'analysis' | 'bian' | 'workflow'
+    | 'raci' | 'validation' | 'tasks' | 'settings';
 
 function mapRole(globalRole: string): ActorRole {
     return globalRole === 'admin' ? 'admin' : 'user';
@@ -91,6 +85,119 @@ function LazyPanel({ active, children }: { active: boolean; children: React.Reac
     );
 }
 
+// ─── Procedures Panel (Créer / Modifier) ─────────────────────
+
+function ProceduresPanel({
+    onOpenEditor, onOpenTasks, onAssignToCampaign, onOpenStudio,
+    onGoToWorkspace, isAdmin,
+}: {
+    onOpenEditor: (pid: string) => void;
+    onOpenTasks: (filter: { procedureIds?: string[] }) => void;
+    onAssignToCampaign: () => void;
+    onOpenStudio: (pid?: string) => void;
+    onGoToWorkspace: () => void;
+    isAdmin: boolean;
+}) {
+    const [subTab, setSubTab] = useState<'modifier' | 'creer'>('modifier');
+    const [creatingFor, setCreatingFor] = useState<{ id: string; name: string } | null>(null);
+    const [newProcName, setNewProcName] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [expandToNode, setExpandToNode] = useState<string | null>(null);
+    const { fetchProcedures } = useProceduresStore();
+
+    const handleCreateProcedure = (subcategoryId: string, subcategoryName: string) => {
+        setCreatingFor({ id: subcategoryId, name: subcategoryName });
+        setNewProcName('');
+    };
+
+    const handleSubmitCreate = async () => {
+        if (!newProcName.trim() || !creatingFor) return;
+        setSaving(true);
+        try {
+            const res = await orchestrationApi.createProcedure({
+                nom: newProcName.trim(),
+                taxonomy_id: creatingFor.id,
+            });
+            const subcatId = creatingFor.id;
+            setCreatingFor(null);
+            setNewProcName('');
+            await fetchProcedures(true);
+            setExpandToNode(subcatId);
+            setSubTab('modifier');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="h-full flex flex-col bg-gray-50">
+            <div className="shrink-0 bg-white border-b border-gray-200 flex items-end gap-0 px-4 pt-2">
+                {([
+                    { id: 'modifier' as const, label: 'Modifier' },
+                    { id: 'creer' as const, label: 'Créer' },
+                ]).map(tab => (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setSubTab(tab.id)}
+                        className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                            subTab === tab.id
+                                ? 'border-blue-600 text-blue-700'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Formulaire création procédure */}
+            {creatingFor && (
+                <div className="shrink-0 bg-emerald-50 border-b border-emerald-200 px-5 py-3 flex items-center gap-3">
+                    <span className="text-sm text-emerald-800 font-medium shrink-0">
+                        Nouvelle procédure dans <strong>{creatingFor.name}</strong>
+                    </span>
+                    <input
+                        autoFocus
+                        type="text"
+                        value={newProcName}
+                        onChange={e => setNewProcName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleSubmitCreate(); if (e.key === 'Escape') setCreatingFor(null); }}
+                        placeholder="Nom de la procédure…"
+                        className="flex-1 px-3 py-1.5 text-sm border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <button type="button" onClick={handleSubmitCreate} disabled={!newProcName.trim() || saving}
+                        className="px-4 py-1.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Créer'}
+                    </button>
+                    <button type="button" onClick={() => setCreatingFor(null)}
+                        className="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg">Annuler</button>
+                </div>
+            )}
+
+            <div className="flex-1 relative overflow-hidden">
+                <div className={subTab === 'modifier' ? 'absolute inset-0 overflow-y-auto' : 'absolute inset-0 overflow-y-auto invisible pointer-events-none'}>
+                    <ProceduresLibrary
+                        onOpenEditor={onOpenEditor}
+                        onOpenTasks={onOpenTasks}
+                        onAssignToCampaign={onAssignToCampaign}
+                        onOpenStudio={onOpenStudio}
+                        expandToNodeId={expandToNode}
+                    />
+                </div>
+                <div className={subTab === 'creer' ? 'absolute inset-0 overflow-y-auto' : 'absolute inset-0 overflow-y-auto invisible pointer-events-none'}>
+                    <BianServiceMap
+                        onGoToProcedures={() => setSubTab('modifier')}
+                        onGoToWorkspace={onGoToWorkspace}
+                        isAdmin={isAdmin}
+                        onCreateProcedure={handleCreateProcedure}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Inner ────────────────────────────────────────────────────
 
 function ProcessMateInner() {
@@ -107,8 +214,12 @@ function ProcessMateInner() {
     );
 
     const [actors, setActors] = useState<TaskActor[]>([]);
+    const [workspaceProcedureId, setWorkspaceProcedureId] = useState<string | null>(null);
+    const [studioProcedureId, setStudioProcedureId] = useState<string | null>(null);
+    const [studioReturnContext, setStudioReturnContext] = useState<{ tab: OrchestraTab; procedureId?: string } | null>(null);
     const [currentActor, setCurrentActor] = useState<TaskActor | null>(null);
     const [actorsLoading, setActorsLoading] = useState(true);
+    const [taskFilterProcIds, setTaskFilterProcIds] = useState<string[] | null>(null);
 
     useEffect(() => { fetchProcedures(); }, []);
 
@@ -153,63 +264,54 @@ function ProcessMateInner() {
             .finally(() => setActorsLoading(false));
     }, [profile]);
 
-    const initialTab = (searchParams.get('tab') as OrchestraTab) || 'dashboard';
+    const initialTab = (searchParams.get('tab') as OrchestraTab) || 'procedures';
     const [activeTab, setActiveTab] = useState<OrchestraTab>(initialTab);
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [detailProcedure, setDetailProcedure] = useState<Procedure | null>(null);
-    const [procedureTabs, setProcedureTabs] = useState<ProcedureTab[]>([]);
-    const [activeProcedureTabId, setActiveProcedureTabId] = useState<string | null>(null);
+
+    const LEGACY_REDIRECTS: Record<string, OrchestraTab> = {
+        campaigns: 'campagnes',
+        dashboard: 'tableau-de-bord',
+        portfolio: 'tableau-de-bord',
+    };
 
     useEffect(() => {
-        const tab = searchParams.get('tab') as OrchestraTab | null;
-        if (tab && tab !== activeTab) setActiveTab(tab);
-    }, [searchParams, activeTab]);
+        const raw = searchParams.get('tab');
+        const tab = (raw ? (LEGACY_REDIRECTS[raw] ?? raw) : null) as OrchestraTab | null;
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+            if (raw && LEGACY_REDIRECTS[raw]) router.replace(`/orchestration?tab=${tab}`, { scroll: false });
+        }
+    }, [searchParams, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleTabChange = (tab: string) => {
         setActiveTab(tab as OrchestraTab);
-        setDetailProcedure(null);
         router.replace(`/orchestration?tab=${tab}`, { scroll: false });
     };
 
     const handleModuleChange = (module: ActiveModule) => {
         setActiveModule(module);
-        if (module === 'orchestration') setActiveTab('dashboard');
-    };
-
-    const handleOpenProcedure = (procedure: Procedure) => {
-        const existing = procedureTabs.find(t => t.id === procedure.id);
-        if (existing) { setActiveProcedureTabId(procedure.id); }
-        else {
-            setProcedureTabs(prev => [...prev, { id: procedure.id, procedure }]);
-            setActiveProcedureTabId(procedure.id);
-        }
-        setActiveTab('procedures');
-        setDetailProcedure(null);
+        if (module === 'orchestration') setActiveTab('procedures');
     };
 
     const handleOpenProcedureFromTask = (procedureId: string) => {
-        // Ouvre la procédure directement dans le Workspace via deep link
-        const url = new URL(window.location.href);
-        url.searchParams.set('procedure_id', procedureId);
-        window.history.pushState({}, '', url.toString());
+        setWorkspaceProcedureId(procedureId);
         handleTabChange('workspace');
     };
 
-    const handleInstruire = (procedureId: string) => {
-        // Ouvre BPMN Studio dans le même shell avec la procédure chargée
+    const handleOpenStudio = (procedureId?: string) => {
+        setStudioReturnContext({ tab: activeTab, procedureId: workspaceProcedureId ?? undefined });
+        setStudioProcedureId(procedureId ?? null);
         setActiveModule('stt');
-        // On passe l'id via un state ou searchParams
-        router.replace(`/orchestration?tab=dashboard&studio=${procedureId}`, { scroll: false });
     };
 
-    const handleCloseProcedureTab = (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setProcedureTabs(prev => {
-            const next = prev.filter(t => t.id !== id);
-            if (activeProcedureTabId === id)
-                setActiveProcedureTabId(next.length > 0 ? next[next.length - 1].id : null);
-            return next;
-        });
+    const handleStudioBack = () => {
+        setActiveModule('orchestration');
+        if (studioReturnContext) {
+            setActiveTab(studioReturnContext.tab);
+            if (studioReturnContext.procedureId) setWorkspaceProcedureId(studioReturnContext.procedureId);
+            setStudioReturnContext(null);
+        }
+        fetchProcedures(true);
     };
 
     const withActors = (content: React.ReactNode) => {
@@ -248,195 +350,127 @@ function ProcessMateInner() {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
                 {/* Header compact */}
-                {!detailProcedure && (
-                    <ProcessMateHeader
-                        activeModule={activeModule}
-                        activeTab={activeModule === 'orchestration' ? activeTab : undefined}
-                        currentActorName={profile?.display_name || profile?.full_name || currentActor?.name || user?.email?.split('@')[0]}
-                        currentActorTitle={profile?.job_title || currentActor?.job_title || undefined}
-                        currentActorId={currentActor?.id}
-                        onSettingsClick={() => handleTabChange('settings')}
-                        onOpenStudio={() => setActiveModule('stt')}
-                    />
-                )}
+                <ProcessMateHeader
+                    activeModule={activeModule}
+                    activeTab={activeModule === 'orchestration' ? activeTab : undefined}
+                    currentActorName={profile?.display_name || profile?.full_name || currentActor?.name || user?.email?.split('@')[0]}
+                    currentActorTitle={profile?.job_title || currentActor?.job_title || undefined}
+                    currentActorId={currentActor?.id}
+                    onSettingsClick={() => handleTabChange('settings')}
+                    onOpenStudio={() => handleOpenStudio()}
+                />
 
                 <div className="flex-1 overflow-hidden flex flex-col">
-                    {detailProcedure ? (
-                        <ProcedureDetail
-                            procedureId={detailProcedure.id}
-                            onClose={() => setDetailProcedure(null)}
-                            onStatusChange={() => { }}
-                        />
-                    ) : (
-                        <>
-                            {/* Sous-onglets procédures */}
-                            {activeModule === 'orchestration' && activeTab === 'procedures' && (
-                                <div className="shrink-0 flex items-end gap-0 px-4 pt-2 bg-white border-b border-gray-200 overflow-x-auto">
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveProcedureTabId(null)}
-                                        className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors flex-shrink-0 ${activeProcedureTabId === null
-                                            ? 'border-blue-600 text-blue-700'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        <List className="w-3.5 h-3.5" />
-                                        Procédures
-                                    </button>
-                                    {procedureTabs.map(tab => (
-                                        <button
-                                            key={tab.id}
-                                            type="button"
-                                            onClick={() => setActiveProcedureTabId(tab.id)}
-                                            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors flex-shrink-0 group/tab ${activeProcedureTabId === tab.id
-                                                ? 'border-blue-600 text-blue-700'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                                                }`}
-                                        >
-                                            <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-                                            <span className="max-w-[160px] truncate">
-                                                {tab.procedure.nom.length > 24 ? tab.procedure.nom.slice(0, 24) + '…' : tab.procedure.nom}
-                                            </span>
-                                            <span
-                                                role="button"
-                                                title="Fermer"
-                                                onClick={e => handleCloseProcedureTab(tab.id, e)}
-                                                className="ml-1 p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700 opacity-0 group-hover/tab:opacity-100 transition-opacity"
-                                            >
-                                                <X className="w-3 h-3" />
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                    <div className="flex-1 relative overflow-hidden">
 
-                            {/* ── Panneaux ── */}
-                            <div className="flex-1 relative overflow-hidden">
+                        {/* ══ Module Orchestration ══ */}
+                        {activeModule === 'orchestration' && (
+                            <>
+                                {/* ─ Panneaux principaux (sidebar) ─ */}
+                                <LazyPanel active={activeTab === 'procedures'}>
+                                    <ProceduresPanel
+                                        onOpenEditor={pid => {
+                                            setWorkspaceProcedureId(pid);
+                                            handleTabChange('workspace');
+                                        }}
+                                        onOpenTasks={filter => {
+                                            setTaskFilterProcIds(filter.procedureIds ?? null);
+                                            handleTabChange('taches');
+                                        }}
+                                        onAssignToCampaign={() => handleTabChange('campagnes')}
+                                        onOpenStudio={pid => handleOpenStudio(pid)}
+                                        onGoToWorkspace={() => handleTabChange('workspace')}
+                                        isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
+                                    />
+                                </LazyPanel>
 
-                                {/* ══ Module Orchestration ══ */}
-                                {activeModule === 'orchestration' && (
-                                    <>
-                                        <LazyPanel active={activeTab === 'dashboard'}>
-                                            <Dashboard />
-                                        </LazyPanel>
+                                <LazyPanel active={activeTab === 'campagnes'}>
+                                    <ProceduresDrilldown
+                                        isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
+                                        onOpenStudio={wfId => handleOpenStudio(wfId)}
+                                        onOpenWorkspace={pid => {
+                                            setWorkspaceProcedureId(pid);
+                                            handleTabChange('workspace');
+                                        }}
+                                    />
+                                </LazyPanel>
 
-                                        <div className={
-                                            activeTab === 'procedures'
-                                                ? 'absolute inset-0 overflow-hidden flex flex-col'
-                                                : 'absolute inset-0 overflow-hidden flex flex-col invisible pointer-events-none'
-                                        }>
-                                            <div className={
-                                                activeProcedureTabId === null
-                                                    ? 'absolute inset-0 overflow-y-auto bg-gray-50'
-                                                    : 'absolute inset-0 overflow-y-auto bg-gray-50 invisible pointer-events-none'
-                                            }>
-                                                <ProcedureList
-                                                    onOpenDetail={p => setDetailProcedure(p)}
-                                                    onOpenProcedure={handleOpenProcedure}
-                                                    isAdmin={
-                                                        profile?.global_role === 'admin' ||
-                                                        profile?.global_role === 'process_owner'
-                                                    }
-                                                />
-                                            </div>
-                                            {procedureTabs.map(tab => (
-                                                <div key={tab.id} className={
-                                                    activeProcedureTabId === tab.id
-                                                        ? 'absolute inset-0 overflow-hidden'
-                                                        : 'absolute inset-0 overflow-hidden invisible pointer-events-none'
-                                                }>
-                                                    <ProcedureEditor procedure={tab.procedure} />
-                                                </div>
-                                            ))}
-                                        </div>
+                                <LazyPanel active={activeTab === 'analyser'}>
+                                    <AnalyserPanel
+                                        actors={actors}
+                                        currentActor={currentActor}
+                                        isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
+                                        onOpenStudio={() => handleOpenStudio()}
+                                        onGoToProcedures={() => handleTabChange('procedures')}
+                                        onGoToWorkspace={() => handleTabChange('workspace')}
+                                        initialSubTab={(searchParams.get('subtab') as import('@/components/orchestration/AnalyserPanel').AnalyserTab) ?? undefined}
+                                    />
+                                </LazyPanel>
 
-                                        <LazyPanel active={activeTab === 'pipeline'}>
-                                            <WorkflowPipeline
-                                                onCreateAI={() => setActiveModule('stt')}
-                                                onCreateForm={() => handleTabChange('procedures')}
-                                                onFormalize={() => handleTabChange('procedures')}
-                                                onWorkflow={() => handleTabChange('workflow')}
-                                                onIrritants={() => handleTabChange('irritants')}
-                                                onValidation={() => handleTabChange('validation')}
-                                                onRaci={() => handleTabChange('raci')}
-                                                onComplexity={() => handleTabChange('complexity')}
-                                                onTasks={() => handleTabChange('tasks')}
-                                                onApplicatifs={() => handleTabChange('applicatifs')}
-                                                onAnalysis={() => handleTabChange('analysis')}
-                                                onSfd={() => setActiveModule('sfd')}
-                                            />
-                                        </LazyPanel>
-
-                                        <LazyPanel active={activeTab === 'workflow'}><ProcessFlow /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'raci'}>{withActors(currentActor ? <RACIMatrix currentActor={currentActor} /> : null)}</LazyPanel>
-                                        <LazyPanel active={activeTab === 'validation'}><ValidationHub currentActor={currentActor ?? undefined} /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'tasks'}>
-                                            {withActors(currentActor ? (
-                                                <TaskOrchestrationHub
-                                                    actors={actors}
-                                                    currentActor={currentActor}
-                                                    procedures={procedures}
-                                                    onActorChange={setCurrentActor}
-                                                    onOpenProcedure={handleOpenProcedureFromTask}
-                                                />
-                                            ) : null)}
-                                        </LazyPanel>
-                                        <LazyPanel active={activeTab === 'irritants'}><IrritantsPanel onInstruire={handleInstruire} /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'complexity'}><ComplexityPanel /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'applicatifs'}><ApplicatifsPanel /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'regulatory-impact'}><RegulatoryImpactWorkspace /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'analysis'}><AnalysisWorkspace actors={actors} currentActor={currentActor} /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'taxonomy'}><TaxonomyTree /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'bian'}>
-                                            <BianServiceMap
-                                                onGoToProcedures={() => handleTabChange('procedures')}
-                                                onGoToWorkspace={() => handleTabChange('workspace')}
-                                                isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
-                                            />
-                                        </LazyPanel>
-                                        <LazyPanel active={activeTab === 'campaigns'}>
-                                            <CampaignsPanel onOpenProcedure={pid => {
-                                                const url = new URL(window.location.href);
-                                                url.searchParams.set('procedure_id', pid);
-                                                url.searchParams.set('tab', 'workspace');
-                                                window.history.pushState({}, '', url.toString());
-                                                handleTabChange('workspace');
-                                            }} />
-                                        </LazyPanel>
-                                        <LazyPanel active={activeTab === 'corrections'}><CorrectionsPanel /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'workspace'}><WorkspaceShell /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'portfolio'}><ProjectsPortfolio /></LazyPanel>
-                                        <LazyPanel active={activeTab === 'settings'}><SettingsPanel /></LazyPanel>
-                                    </>
-                                )}
-
-                                {/* ══ Module BPMN Studio ══ */}
-                                {activeModule === 'stt' && (
-                                    <div className="absolute inset-0 overflow-hidden">
-                                        <SttPanel
-                                            workflowId={studioWorkflowId}
-                                            onBack={() => setActiveModule('orchestration')}
+                                <LazyPanel active={activeTab === 'taches'}>
+                                    {withActors(currentActor ? (
+                                        <TaskOrchestrationHub
+                                            actors={actors}
+                                            currentActor={currentActor}
+                                            procedures={procedures}
+                                            onActorChange={setCurrentActor}
+                                            onOpenProcedure={handleOpenProcedureFromTask}
+                                            initialProcedureFilter={taskFilterProcIds}
+                                            onClearFilter={() => setTaskFilterProcIds(null)}
                                         />
-                                    </div>
-                                )}
+                                    ) : null)}
+                                </LazyPanel>
 
-                                {/* ══ Module SFD ══ */}
-                                {activeModule === 'sfd' && (
-                                    <div className="absolute inset-0 overflow-hidden">
-                                        <SfdPanel />
-                                    </div>
-                                )}
+                                <LazyPanel active={activeTab === 'workspace'}>
+                                    <WorkspaceShell openProcedureId={workspaceProcedureId}
+                                        onNavigateBack={() => handleTabChange('procedures')}
+                                        onOpenStudio={pid => handleOpenStudio(pid)} />
+                                </LazyPanel>
+                                <LazyPanel active={activeTab === 'tableau-de-bord'}><DashboardPanel /></LazyPanel>
+                                <LazyPanel active={activeTab === 'specifications'}><SpecificationsPanel /></LazyPanel>
 
-                                {/* ══ Module Clinic ══ */}
-                                {activeModule === 'clinic' && (
-                                    <div className="absolute inset-0 overflow-hidden">
-                                        <ClinicPanel />
-                                    </div>
-                                )}
+                                {/* ─ Legacy / deep-link panels ─ */}
+                                <LazyPanel active={activeTab === 'dashboard'}><Dashboard /></LazyPanel>
+                                <LazyPanel active={activeTab === 'campaigns'}>
+                                    <CampaignsPanel onOpenProcedure={pid => {
+                                        setWorkspaceProcedureId(pid);
+                                        handleTabChange('workspace');
+                                    }} />
+                                </LazyPanel>
+                                <LazyPanel active={activeTab === 'corrections'}><CorrectionsPanel /></LazyPanel>
+                                <LazyPanel active={activeTab === 'portfolio'}><ProjectsPortfolio /></LazyPanel>
+                                <LazyPanel active={activeTab === 'taxonomy'}><TaxonomyTree /></LazyPanel>
+                                <LazyPanel active={activeTab === 'settings'}><SettingsPanel /></LazyPanel>
+                            </>
+                        )}
 
+                        {/* ══ Module BPMN Studio ══ */}
+                        {activeModule === 'stt' && (
+                            <div className="absolute inset-0 overflow-hidden">
+                                <SttPanel
+                                    workflowId={studioProcedureId ?? studioWorkflowId}
+                                    onBack={handleStudioBack}
+                                    currentActorId={currentActor?.id}
+                                    fromClinic={searchParams.get('from') === 'clinic'}
+                                />
                             </div>
-                        </>
-                    )}
+                        )}
+
+                        {/* ══ Module SFD ══ */}
+                        {activeModule === 'sfd' && (
+                            <div className="absolute inset-0 overflow-hidden">
+                                <SfdPanel />
+                            </div>
+                        )}
+
+                        {/* ══ Module Clinic ══ */}
+                        {activeModule === 'clinic' && (
+                            <div className="absolute inset-0 overflow-hidden">
+                                <ClinicPanel />
+                            </div>
+                        )}
+
+                    </div>
                 </div>
             </div>
         </div>

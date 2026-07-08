@@ -482,6 +482,69 @@ export default function ProcedureDetail({ procedureId, onClose, onStatusChange }
               </dl>
             </div>
 
+            {/* Métadonnées procédure (objet, périmètre, règles de gestion, acteurs) */}
+            {(() => {
+              const meta = (procedure.metadata || {}) as Record<string, unknown>;
+              const perimetre = (meta.perimeter as string) || (meta.perimetre as string) || '';
+              const reglesRaw = meta.regles_gestion;
+              const regles: string[] = Array.isArray(reglesRaw)
+                ? (reglesRaw as unknown[]).map(String).filter(Boolean)
+                : typeof reglesRaw === 'string' && reglesRaw
+                  ? reglesRaw.split('\n').map(r => r.trim()).filter(Boolean)
+                  : [];
+              const acteursInternes: string[] = Array.isArray(meta.responsabilites_internes)
+                ? (meta.responsabilites_internes as unknown[]).map(String).filter(Boolean) : [];
+              const acteursExternes: string[] = Array.isArray(meta.responsabilites_externes)
+                ? (meta.responsabilites_externes as unknown[]).map(String).filter(Boolean) : [];
+
+              if (!perimetre && regles.length === 0 && acteursInternes.length === 0 && acteursExternes.length === 0) {
+                return null;
+              }
+
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+                  <h3 className="font-semibold text-gray-900">Métadonnées de la procédure</h3>
+
+                  {perimetre && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1">Périmètre</p>
+                      <p className="text-sm text-gray-800 whitespace-pre-line">{perimetre}</p>
+                    </div>
+                  )}
+
+                  {regles.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1">Règles de gestion</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-gray-800">
+                        {regles.map((r, i) => <li key={i}>{r}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  {(acteursInternes.length > 0 || acteursExternes.length > 0) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {acteursInternes.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Acteurs internes</p>
+                          <ul className="list-disc list-inside space-y-0.5 text-sm text-gray-800">
+                            {acteursInternes.map((a, i) => <li key={i}>{a}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                      {acteursExternes.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Acteurs externes</p>
+                          <ul className="list-disc list-inside space-y-0.5 text-sm text-gray-800">
+                            {acteursExternes.map((a, i) => <li key={i}>{a}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Snapshot finalisation */}
             {procedure.is_finalized && (procedure.metadata?.finalized_snapshot as Record<string, unknown>) && (
               <div className="bg-green-50 rounded-xl border border-green-200 p-5">

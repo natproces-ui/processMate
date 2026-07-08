@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FileText, Download, Loader2, ChevronDown, ChevronUp, Plus, Trash2, Sparkles } from 'lucide-react';
+import { FileText, Download, Loader2, ChevronDown, ChevronUp, Plus, Trash2, Sparkles, Crop, ImageOff } from 'lucide-react';
 import { Table1Row } from '@/logic/bpmnGenerator';
 import { TaskEnrichment, ProcessMetadata } from '@/logic/bpmnTypes';
 import { API_CONFIG } from '@/lib/api-config';
 import DocumentPreviewModal from './DocumentPreviewModal';
+import PdfCaptureModal from './PdfCaptureModal';
 
 export interface AbbreviationItem { abrv: string; signification: string; }
 export interface DefinitionItem { terme: string; definition: string; }
+export interface AnnexeItem { titre: string; contenu: string; image?: string; }
 
 export interface CIHProcedureMetadata {
     nom: string;
@@ -26,6 +28,7 @@ export interface CIHProcedureMetadata {
     definitions: DefinitionItem[];
     abbreviations: AbbreviationItem[];
     regles_gestion: string;
+    annexe: AnnexeItem[];
 }
 
 export const DEFAULT_CIH_METADATA: CIHProcedureMetadata = {
@@ -34,7 +37,7 @@ export const DEFAULT_CIH_METADATA: CIHProcedureMetadata = {
     direction: 'Direction Organisation et Reengineering de Processus',
     objet: '', perimeter: '',
     responsabilites_internes: [], responsabilites_externes: [],
-    references: '', definitions: [], abbreviations: [], regles_gestion: '',
+    references: '', definitions: [], abbreviations: [], regles_gestion: '', annexe: [],
 };
 
 interface DocumentExportPanelProps {
@@ -48,11 +51,14 @@ interface DocumentExportPanelProps {
     onError: (message: string) => void;
     /** Métadonnées pré-extraites depuis le document uploadé (auto-fill) */
     initialMeta?: Partial<CIHProcedureMetadata>;
+    /** Fichiers sources uploadés (PDF/images), disponibles pour la capture d'annexe */
+    sourceFiles?: File[];
 }
 
 interface ExportOptions {
     include_diagram: boolean;
     include_enrichments: boolean;
+    include_annexes: boolean;
     detail_level: 'synthesis' | 'standard' | 'complete';
 }
 
@@ -66,7 +72,7 @@ const textareaCls = "w-full bg-gray-800 border border-gray-600 text-white text-s
 const labelCls = "block text-xs text-gray-400 mb-1";
 
 export default function DocumentExportPanel({
-    data, enrichments, processMetadata, bpmnXml, diagramCaptureFn, onSuccess, onError, initialMeta,
+    data, enrichments, processMetadata, bpmnXml, diagramCaptureFn, onSuccess, onError, initialMeta, sourceFiles,
 }: DocumentExportPanelProps) {
 
     const [isGenerating, setIsGenerating] = useState(false);
@@ -76,6 +82,11 @@ export default function DocumentExportPanel({
     const [showPreview, setShowPreview] = useState(false);
     const [documentData, setDocumentData] = useState<DocumentResponse | null>(null);
     const [autoFilled, setAutoFilled] = useState(false);
+    const [captureTargetIdx, setCaptureTargetIdx] = useState<number | null>(null);
+
+    const captureCandidates = (sourceFiles || []).filter(
+        f => f.type === 'application/pdf' || f.type.startsWith('image/')
+    );
 
     const [cihMeta, setCihMeta] = useState<CIHProcedureMetadata>({
         ...DEFAULT_CIH_METADATA,
@@ -83,7 +94,7 @@ export default function DocumentExportPanel({
     });
 
     const [options, setOptions] = useState<ExportOptions>({
-        include_diagram: true, include_enrichments: true, detail_level: 'standard',
+        include_diagram: true, include_enrichments: true, include_annexes: true, detail_level: 'standard',
     });
 
     // Pré-remplissage automatique quand initialMeta arrive depuis l'extraction
@@ -119,7 +130,7 @@ export default function DocumentExportPanel({
             const diagramBase64 = await captureDiagramAsBase64();
             setCurrentStep('Génération du document Word...');
             const payload = {
-                metadata: { ...cihMeta, responsabilites_internes: cihMeta.responsabilites_internes.filter(Boolean), responsabilites_externes: cihMeta.responsabilites_externes.filter(Boolean), definitions: cihMeta.definitions.filter(d => d.terme), abbreviations: cihMeta.abbreviations.filter(a => a.abrv) },
+                metadata: { ...cihMeta, responsabilites_internes: cihMeta.responsabilites_internes.filter(Boolean), responsabilites_externes: cihMeta.responsabilites_externes.filter(Boolean), definitions: cihMeta.definitions.filter(d => d.terme), abbreviations: cihMeta.abbreviations.filter(a => a.abrv), annexe: cihMeta.annexe.filter(a => a.titre || a.contenu || a.image) },
                 workflow: data, enrichments: Object.fromEntries(enrichments), diagram_image: diagramBase64, options,
             };
             const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.docGenerate), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -150,6 +161,9 @@ export default function DocumentExportPanel({
     const addDef = () => setCihMeta(m => ({ ...m, definitions: [...m.definitions, { terme: '', definition: '' }] }));
     const rmDef = (i: number) => setCihMeta(m => ({ ...m, definitions: m.definitions.filter((_, j) => j !== i) }));
     const updDef = (i: number, f: keyof DefinitionItem, v: string) => { const a = [...cihMeta.definitions]; a[i] = { ...a[i], [f]: v }; setCihMeta(m => ({ ...m, definitions: a })); };
+    const addAnnexe = () => setCihMeta(m => ({ ...m, annexe: [...m.annexe, { titre: '', contenu: '' }] }));
+    const rmAnnexe = (i: number) => setCihMeta(m => ({ ...m, annexe: m.annexe.filter((_, j) => j !== i) }));
+    const updAnnexe = (i: number, f: keyof AnnexeItem, v: string) => { const a = [...cihMeta.annexe]; a[i] = { ...a[i], [f]: v }; setCihMeta(m => ({ ...m, annexe: a })); };
 
     return (
         <>
@@ -258,6 +272,39 @@ export default function DocumentExportPanel({
                         </div>
 
                         <div><label className={labelCls}>1.1 Règles de gestion</label><textarea className={textareaCls} value={cihMeta.regles_gestion} onChange={e => setCihMeta(m => ({ ...m, regles_gestion: e.target.value }))} placeholder="Une règle par ligne..." style={{ minHeight: 80 }} /></div>
+
+                        <div>
+                            <label className={labelCls}>Annexes</label>
+                            {cihMeta.annexe.map((a, i) => (
+                                <div key={i} className="flex gap-2 mb-2 items-start">
+                                    <div className="flex-1 space-y-1">
+                                        <input className={inputCls} value={a.titre} onChange={e => updAnnexe(i, 'titre', e.target.value)} placeholder="Titre de l'annexe (ex: Annexe 1 : Grille tarifaire)" />
+                                        <textarea className={textareaCls} value={a.contenu} onChange={e => updAnnexe(i, 'contenu', e.target.value)} placeholder="Contenu de l'annexe" />
+                                        <div className="flex items-center gap-2">
+                                            {a.image ? (
+                                                <div className="flex items-center gap-2 bg-gray-800 border border-gray-600 rounded px-2 py-1">
+                                                    <img src={a.image} alt="Capture annexe" className="h-10 rounded object-contain" />
+                                                    <button onClick={() => updAnnexe(i, 'image', '')} className="text-red-400 hover:text-red-300" title="Retirer l'image">
+                                                        <ImageOff className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => setCaptureTargetIdx(i)}
+                                                    disabled={captureCandidates.length === 0}
+                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 disabled:text-gray-600 disabled:cursor-not-allowed"
+                                                    title={captureCandidates.length === 0 ? "Uploadez d'abord un document source" : "Capturer une zone du document source"}
+                                                >
+                                                    <Crop className="w-3 h-3" />Capturer une image depuis le document
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button onClick={() => rmAnnexe(i)} className="text-red-400 hover:text-red-300 px-1 mt-1.5"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                            ))}
+                            <button onClick={addAnnexe} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"><Plus className="w-3 h-3" />Ajouter une annexe</button>
+                        </div>
                     </div>
                 )}
 
@@ -265,7 +312,7 @@ export default function DocumentExportPanel({
                 {showOptions && (
                     <div className="p-4 bg-gray-900 border-b border-gray-700">
                         <div className="flex gap-4 mb-3">
-                            {[{ key: 'include_diagram', label: 'Inclure le logigramme' }, { key: 'include_enrichments', label: 'Inclure les enrichissements' }].map(({ key, label }) => (
+                            {[{ key: 'include_diagram', label: 'Inclure le logigramme' }, { key: 'include_enrichments', label: 'Inclure les enrichissements' }, { key: 'include_annexes', label: 'Inclure les annexes' }].map(({ key, label }) => (
                                 <label key={key} className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
                                     <input type="checkbox" checked={options[key as keyof ExportOptions] as boolean} onChange={e => setOptions(o => ({ ...o, [key]: e.target.checked }))} className="w-4 h-4 text-blue-600 rounded" />
                                     <span>{label}</span>
@@ -300,6 +347,9 @@ export default function DocumentExportPanel({
                                     <li>• Sommaire · 1.1 Règles de gestion</li>
                                     {options.include_diagram && <li>• 1.2 Logigramme BPMN</li>}
                                     <li>• 1.3 Description des opérations ({data.length} étape{data.length > 1 ? 's' : ''})</li>
+                                    {options.include_annexes && cihMeta.annexe.filter(a => a.titre || a.contenu || a.image).length > 0 && (
+                                        <li>• Annexes ({cihMeta.annexe.filter(a => a.titre || a.contenu || a.image).length})</li>
+                                    )}
                                 </ul>
                             </div>
                             <button onClick={generateWordDocument} disabled={data.length === 0}
@@ -314,6 +364,17 @@ export default function DocumentExportPanel({
 
             {documentData && (
                 <DocumentPreviewModal isOpen={showPreview} onClose={() => setShowPreview(false)} preview={documentData.preview} filename={documentData.filename} fileSize={documentData.file_size} downloadUrl={documentData.download_url} onDownload={handleDownload} />
+            )}
+
+            {captureTargetIdx !== null && (
+                <PdfCaptureModal
+                    files={captureCandidates}
+                    onClose={() => setCaptureTargetIdx(null)}
+                    onCapture={dataUrl => {
+                        updAnnexe(captureTargetIdx, 'image', dataUrl);
+                        setCaptureTargetIdx(null);
+                    }}
+                />
             )}
         </>
     );

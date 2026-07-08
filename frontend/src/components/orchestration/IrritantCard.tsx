@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
     ChevronDown, ChevronRight, Sparkles, Trash2, Edit2,
     MessageSquare, Check, Loader2, BookOpen,
-    Zap, AlertCircle, Clock, Monitor, Users, Tag,
+    Zap, AlertCircle, Clock, Monitor,
 } from 'lucide-react';
 import { orchestrationApi } from '@/lib/orchestrationApi';
 import { API_CONFIG } from '@/lib/api-config';
@@ -12,7 +12,7 @@ import { AnalyseZone, type Finding } from './FindingCard';
 
 // ─── Types ────────────────────────────────────────────────────
 
-export type Categorie = 'Rupture d\'information' | 'Automatisation' | 'Délai / Attente' | 'Outil / Système' | 'Organisation' | 'Autre';
+export type Categorie = 'Rupture d\'information' | 'Automatisation' | 'Délai / Attente' | 'Outil / Système';
 export type Criticite = 'Majeur' | 'Moyen' | 'Mineur';
 export type Statut = 'ASIS' | 'En cours' | 'TOBE' | 'Résolu';
 
@@ -21,8 +21,6 @@ export const CATEGORIES: Categorie[] = [
     'Automatisation',
     'Délai / Attente',
     'Outil / Système',
-    'Organisation',
-    'Autre',
 ];
 export const CRITICITES: Criticite[] = ['Majeur', 'Moyen', 'Mineur'];
 export const STATUTS: Statut[] = ['ASIS', 'En cours', 'TOBE', 'Résolu'];
@@ -46,8 +44,6 @@ export const CATEGORIE_CONFIG: Record<Categorie, { icon: React.ReactNode; color:
     'Automatisation': { icon: <Zap className="w-3.5 h-3.5" />, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
     'Délai / Attente': { icon: <Clock className="w-3.5 h-3.5" />, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-200' },
     'Outil / Système': { icon: <Monitor className="w-3.5 h-3.5" />, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
-    'Organisation': { icon: <Users className="w-3.5 h-3.5" />, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200' },
-    'Autre': { icon: <Tag className="w-3.5 h-3.5" />, color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200' },
 };
 
 export const CRITICITE_STYLE: Record<Criticite, string> = {
@@ -167,7 +163,7 @@ export function IrritantCard({ irritant, procedures, onUpdated, onDeleted, numer
     const [loadingFindings, setLoadingFindings] = useState(false);
     const [autoAnalyse, setAutoAnalyse] = useState(false);
 
-    const cfg = CATEGORIE_CONFIG[local.categorie] ?? CATEGORIE_CONFIG['Autre'];
+    const cfg = CATEGORIE_CONFIG[local.categorie] ?? { icon: null, color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200' };
 
     const loadFindings = async () => {
         if (findings.length > 0 || !local.procedure_id) return;

@@ -27,6 +27,7 @@ interface ProcRaci {
 
 interface RACIMatrixProps {
   currentActor: TaskActor;
+  filterProcedureId?: string;
 }
 
 const ROLES = ['R', 'A', 'C', 'I', '-'] as const;
@@ -65,7 +66,7 @@ function mapUserToActor(user: UserProfile): TaskActor {
   };
 }
 
-export default function RACIMatrix({ currentActor }: RACIMatrixProps) {
+export default function RACIMatrix({ currentActor, filterProcedureId }: RACIMatrixProps) {
   const canEdit = currentActor.role === 'admin';
   const [procedures, setProcedures] = useState<ProcRaci[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -142,6 +143,11 @@ export default function RACIMatrix({ currentActor }: RACIMatrixProps) {
     load();
     loadUsers();
   }, [load, loadUsers]);
+
+  const visibleProcedures = useMemo(() =>
+    filterProcedureId ? procedures.filter(p => p.id === filterProcedureId) : procedures,
+    [procedures, filterProcedureId]
+  );
 
   const taskActors = useMemo(() => users.map(mapUserToActor), [users]);
 
@@ -288,28 +294,32 @@ export default function RACIMatrix({ currentActor }: RACIMatrixProps) {
   );
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Matrice RACI</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Assignez un rôle à chaque utilisateur par procédure</p>
-        </div>
-        <button type="button" onClick={load} title="Actualiser"
-          className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-gray-600">
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-3 text-xs">
-        {(Object.entries(ROLE_CFG) as [Role, typeof ROLE_CFG[Role]][]).filter(([r]) => r !== '-').map(([role, cfg]) => (
-          <div key={role} className="flex items-center gap-1.5">
-            <span className={`w-6 h-6 rounded border flex items-center justify-center font-bold text-xs ${cfg.active}`}>{role}</span>
-            <span className="text-gray-600">{cfg.label}</span>
+    <div className={filterProcedureId ? 'p-4 space-y-4' : 'p-8 space-y-6'}>
+      {!filterProcedureId && (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Matrice RACI</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Assignez un rôle à chaque utilisateur par procédure</p>
+            </div>
+            <button type="button" onClick={load} title="Actualiser"
+              className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-gray-600">
+              <RefreshCw className="w-4 h-4" />
+            </button>
           </div>
-        ))}
-      </div>
 
-      {procedures.length === 0 ? (
+          <div className="flex flex-wrap gap-3 text-xs">
+            {(Object.entries(ROLE_CFG) as [Role, typeof ROLE_CFG[Role]][]).filter(([r]) => r !== '-').map(([role, cfg]) => (
+              <div key={role} className="flex items-center gap-1.5">
+                <span className={`w-6 h-6 rounded border flex items-center justify-center font-bold text-xs ${cfg.active}`}>{role}</span>
+                <span className="text-gray-600">{cfg.label}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {visibleProcedures.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">Aucune procédure</p>
@@ -317,7 +327,7 @@ export default function RACIMatrix({ currentActor }: RACIMatrixProps) {
         </div>
       ) : (
         <div className="space-y-6">
-          {procedures.map(proc => {
+          {visibleProcedures.map(proc => {
             const isSaved = savedIds.has(proc.id);
             const matrix = localMatrix[proc.id] || {};
             const selectedUserIds = new Set(proc.people.filter(p => !p.legacy).map(p => p.user_id));
@@ -408,6 +418,7 @@ export default function RACIMatrix({ currentActor }: RACIMatrixProps) {
                                   <button
                                     key={user.id}
                                     type="button"
+                                    title={`Ajouter ${displayName(user)}`}
                                     onClick={() => addUser(proc.id, user)}
                                     className="w-full px-3 py-2 text-left hover:bg-blue-50 flex items-center gap-2 border-b border-gray-50 last:border-b-0"
                                   >
@@ -428,6 +439,7 @@ export default function RACIMatrix({ currentActor }: RACIMatrixProps) {
 
                         <button
                           type="button"
+                          title="Fermer"
                           onClick={() => { setAddingFor(null); setUserSearch(''); }}
                           className="text-gray-400 hover:text-gray-600"
                         >

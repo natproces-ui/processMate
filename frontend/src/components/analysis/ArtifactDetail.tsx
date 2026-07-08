@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, CheckSquare, ChevronDown, ChevronRight, Download, ExternalLink, Loader2, X } from 'lucide-react';
+import { BookOpen, Check, CheckSquare, ChevronDown, ChevronRight, Download, ExternalLink, Loader2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type {
   AnalysisArtifact,
@@ -70,6 +70,7 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'analyse' | 'tasks' | 'log' | 'questions'>('analyse');
+  const [itemStatuses, setItemStatuses] = useState<Record<number, 'accepted' | 'rejected'>>({});
 
   const aj = artifact.analysis_json || {};
   const summary = (aj.summary || {}) as Summary;
@@ -140,6 +141,25 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
 
   const goToTask = (taskId: string) => {
     router.push(`/orchestration?tab=tasks&task_id=${taskId}`);
+  };
+
+  const handleItemStatus = async (itemIndex: number, status: 'accepted' | 'rejected') => {
+    const current = itemStatuses[itemIndex];
+    const next = current === status ? undefined : status;
+    setItemStatuses(prev => {
+      const updated = { ...prev };
+      if (next === undefined) delete updated[itemIndex];
+      else updated[itemIndex] = next;
+      return updated;
+    });
+    const candidateStatus = next === 'accepted' ? 'selected' : next === 'rejected' ? 'dismissed' : 'suggested';
+    const itemCandidates = taskCandidates.filter(c => c.analysis_item_index === itemIndex && c.status !== 'converted');
+    for (const candidate of itemCandidates) {
+      try {
+        const updated = await analysisApi.updateTaskCandidate(artifact.id, candidate.id, { status: candidateStatus });
+        setTaskCandidates(prev => prev.map(c => c.id === candidate.id ? updated.candidate : c));
+      } catch {}
+    }
   };
 
   return (
@@ -253,9 +273,14 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
           const key = `${item.procedure_id}-${i}`;
           const expanded = expandedItem === key;
           const itemAny = item as any;
+          const itemStatus = itemStatuses[i];
 
           return (
-            <div key={key} className={`rounded-lg border transition-all ${expanded ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200 bg-white'}`}>
+            <div key={key} className={`rounded-lg border transition-all ${
+              itemStatus === 'accepted' ? 'border-green-300 bg-green-50/30' :
+              itemStatus === 'rejected' ? 'border-red-200 bg-red-50/20 opacity-60' :
+              expanded ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200 bg-white'
+            }`}>
               <button
                 type="button"
                 onClick={() => setExpandedItem(expanded ? null : key)}
@@ -328,8 +353,34 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
                     </div>
                   )}
 
-                  <div className="text-right text-xs text-slate-400">
-                    Confiance IA : {Math.round((item.confidence || 0) * 100)}%
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-slate-400">
+                      Confiance IA : {Math.round((item.confidence || 0) * 100)}%
+                    </span>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); handleItemStatus(i, 'accepted'); }}
+                        className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                          itemStatuses[i] === 'accepted'
+                            ? 'bg-green-600 text-white'
+                            : 'border border-green-300 text-green-700 hover:bg-green-50'
+                        }`}
+                      >
+                        <Check className="h-3 w-3" /> Conserver
+                      </button>
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); handleItemStatus(i, 'rejected'); }}
+                        className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                          itemStatuses[i] === 'rejected'
+                            ? 'bg-red-500 text-white'
+                            : 'border border-red-200 text-red-500 hover:bg-red-50'
+                        }`}
+                      >
+                        <X className="h-3 w-3" /> Rejeter
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

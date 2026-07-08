@@ -36,6 +36,8 @@ interface ChatMessage {
 
 interface ChatInterfaceProps {
     currentWorkflow: Table1Row[];
+    currentEnrichments?: Map<string, TaskEnrichment>;
+    currentProcedureMetadata?: Record<string, unknown> | null;
     onWorkflowGenerated: (
         workflow: Table1Row[],
         title: string,
@@ -116,6 +118,8 @@ function IntentBadge({ intent }: { intent: Intent }) {
 
 export default function ChatInterface({
     currentWorkflow,
+    currentEnrichments,
+    currentProcedureMetadata,
     onWorkflowGenerated,
     onError,
     onSuccess,
@@ -224,6 +228,16 @@ export default function ChatInterface({
 
             if (currentWorkflow && currentWorkflow.length > 0) {
                 form.append('current_workflow', JSON.stringify(currentWorkflow));
+            }
+
+            if (currentEnrichments && currentEnrichments.size > 0) {
+                const enrichObj: Record<string, unknown> = {};
+                currentEnrichments.forEach((v, k) => { enrichObj[k] = v; });
+                form.append('current_enrichments', JSON.stringify(enrichObj));
+            }
+
+            if (currentProcedureMetadata) {
+                form.append('current_procedure_metadata', JSON.stringify(currentProcedureMetadata));
             }
 
             for (const f of attachedFiles) {

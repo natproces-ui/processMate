@@ -25,9 +25,14 @@ const MODULE_LABELS: Record<ActiveModule, string> = {
 };
 
 const TAB_LABELS: Record<string, string> = {
+    procedures: 'Procédures',
+    campagnes: 'Campagnes',
+    taches: 'Suivi des tâches',
+    workspace: 'Mon espace',
+    analyser: 'Analyse',
+    'tableau-de-bord': 'Tableau de bord',
     dashboard: 'Tableau de bord',
     pipeline: 'Pipeline',
-    procedures: 'Procédures',
     workflow: 'Flux de travail',
     raci: 'Responsabilités',
     validation: 'Validation',

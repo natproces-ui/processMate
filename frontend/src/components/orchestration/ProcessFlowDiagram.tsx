@@ -119,17 +119,18 @@ export default function ProcessFlowDiagram({
 }: Props) {
 
     const LY = 260;
-    const DEBUT = 60;
-    const COLL = 180;
-    const ANAL = 320;
-    const FORM = 460;
-    const VERIF = 580;
-    const GW1X = 670;
-    const VALID = 760;
-    const GW2X = 860;
+    const DEBUT = 45;
+    const RACI_X = 145;
+    const COLL = 255;
+    const ANAL = 370;
+    const FORM = 490;
+    const VERIF = 610;
+    const GW1X = 700;
+    const VALID = 790;
+    const GW2X = 890;
 
-    const RY_NON = 130;
-    const RY_RET = 100;
+    const RY_NON = 215;
+    const RY_RET = 195;
 
     const REF_Y = 400;
     const BRY = 560;
@@ -144,9 +145,9 @@ export default function ProcessFlowDiagram({
     const AM_CY = AMY;               // centre vertical
 
     const FIN_Y = 840;
-    const DIAG = 280;
-    const GEST = FORM;   // 460
-    const LIVR = 640;
+    const DIAG = 310;
+    const GEST = FORM;   // 490
+    const LIVR = 670;
 
     // Boucle violette — sort gauche capsule
     const VIO_X = 30;
@@ -182,7 +183,7 @@ export default function ProcessFlowDiagram({
             </div>
 
             <div className="px-2 py-8 overflow-x-auto">
-                <svg width="100%" viewBox="0 0 980 900"
+                <svg width="100%" viewBox="0 0 1000 900"
                     style={{ minWidth: 760, display: 'block', margin: '0 auto' }}>
                     <Markers />
 
@@ -191,7 +192,11 @@ export default function ProcessFlowDiagram({
                     <text x={DEBUT} y={LY} textAnchor="middle" dominantBaseline="central"
                         fontSize={11} fontWeight={700} fill="white">Début</text>
 
-                    <Seg x1={DEBUT + 32} y1={LY} x2={COLL - R} y2={LY} color="blue" arrow />
+                    <Seg x1={DEBUT + 32} y1={LY} x2={RACI_X - R} y2={LY} color="blue" arrow />
+                    <Station cx={RACI_X} cy={LY} color="orange" icon="⊞"
+                        label="RACI" sublabel="Rôles & responsabilités" onClick={onRaci} />
+
+                    <Seg x1={RACI_X + R} y1={LY} x2={COLL - R} y2={LY} color="blue" arrow />
                     <Station cx={COLL} cy={LY} color="blue" icon="⬇"
                         label="Collecte" sublabel="PDF, Code, Audio…" onClick={onCollecte} />
 
@@ -235,7 +240,7 @@ export default function ProcessFlowDiagram({
                     <Lbl x={GW2X + 14} y={LY + GW + 20} text="Oui" color="green" />
 
                     <Station cx={FORM} cy={REF_Y} color="green" icon="◎"
-                        label="Référentiel procédures" sublabel="Versioning, sauvegarde" />
+                        label="Référentiel procédures" sublabel="(MEGA HOPEX, ARIS, Signavio...)" />
 
                     {/* ══ 3 FLÈCHES RÉFÉRENTIEL → BRANCHES ══ */}
                     <Seg x1={FORM} y1={REF_Y + R} x2={FORM} y2={REF_Y + 60} color="gray" sw={2} />
@@ -250,11 +255,11 @@ export default function ProcessFlowDiagram({
 
                     {/* BRANCHES */}
                     <Station cx={DIAG} cy={BRY} color="red" icon="⊙"
-                        label="Diagnostic" sublabel="Irritants, complexité" onClick={onIrritants} />
+                        label="Diagnostiquer l'existant" sublabel="Irritants, complexité" onClick={onIrritants} />
                     <Station cx={GEST} cy={BRY} color="orange" icon="⊞"
-                        label="Gestion" sublabel="RACI, tâches" onClick={onRaci} />
+                        label="Piloter la formalisation" sublabel="Tâches, suivi, décisions" onClick={onRaci} />
                     <Station cx={LIVR} cy={BRY} color="teal" icon="⊡"
-                        label="Livrables" sublabel="SFD, export" onClick={onSfd} />
+                        label="Produire les livrables" sublabel="SFD, export Word" onClick={onSfd} />
 
                     {/* ══ 3 FLÈCHES BRANCHES → CAPSULE AMÉLIORATION
                         Diag et Livr tournent à TURN_Y (80px au-dessus capsule)

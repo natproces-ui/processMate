@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   ChevronRight, ClipboardList, Download, Info,
-  Loader2, RefreshCw, Search, Upload, X,
+  Loader2, RefreshCw, Upload, X,
 } from 'lucide-react';
+
+const TaxonomyProcedureSelector = dynamic(() => import('@/components/orchestration/TaxonomyProcedureSelector'), { ssr: false });
 import {
   regulatoryImpactApi,
   type AnalysisLogEntry,
@@ -282,24 +285,13 @@ export default function RegulatoryImpactWorkspace() {
                   </div>
                 )}
                 <div>
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-500">Procédures ({selectedProcedures.length} sél.)</span>
-                    <div className="flex items-center gap-1 rounded border border-slate-200 px-2 py-0.5">
-                      <Search className="h-3 w-3 text-slate-400" />
-                      <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Filtrer..." className="w-20 text-xs outline-none bg-transparent" />
-                    </div>
-                  </div>
-                  <div className="max-h-32 overflow-y-auto space-y-1">
-                    {filteredProcedures.map(proc => (
-                      <label key={proc.id} className="flex cursor-pointer items-start gap-2 rounded border border-slate-200 px-2 py-1.5 hover:border-blue-300 hover:bg-blue-50">
-                        <input type="checkbox" checked={selectedProcedures.includes(proc.id)} onChange={() => setSelectedProcedures(prev => prev.includes(proc.id) ? prev.filter(id => id !== proc.id) : [...prev, proc.id])} className="mt-0.5 h-3 w-3 shrink-0" />
-                        <span className="min-w-0">
-                          <span className="block truncate text-xs font-medium text-slate-800">{proc.nom}</span>
-                          <span className="block truncate text-xs text-slate-400">{proc.ref || proc.category}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                  <p className="text-xs font-medium text-slate-500 mb-1.5">Procédures ({selectedProcedures.length} sél.)</p>
+                  <TaxonomyProcedureSelector
+                    procedures={procedures}
+                    selected={selectedProcedures}
+                    onChange={setSelectedProcedures}
+                    maxHeight="200px"
+                  />
                 </div>
               </div>
             )}

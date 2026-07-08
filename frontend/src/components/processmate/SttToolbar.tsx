@@ -11,7 +11,7 @@ import { useState } from 'react';
 import {
     FileText, Mic, Square, FileDown, RotateCcw, Trash2,
     Network, Loader2, Upload, Wand2, SearchCheck,
-    MessageSquare, ChevronLeft, X,
+    MessageSquare, ChevronLeft, X, Code,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -27,6 +27,7 @@ interface SttToolbarProps {
     chatOpen: boolean;
     revisionOpen: boolean;
     revisionCount: number;
+    codeSourceOpen: boolean;
     onToggleRecording: () => void;
     onCancelRecording?: () => void;
     onGenerateBPMN: () => void;
@@ -38,6 +39,7 @@ interface SttToolbarProps {
     onToggleUpload: () => void;
     onToggleChat: () => void;
     onToggleRevision: () => void;
+    onToggleCodeSource: () => void;
 }
 
 type Variant = 'default' | 'primary' | 'toggle' | 'ghost' | 'danger' | 'danger-ghost';
@@ -47,9 +49,10 @@ type Variant = 'default' | 'primary' | 'toggle' | 'ghost' | 'danger' | 'danger-g
 export default function SttToolbar({
     dataLength, recording, processing, detectingInterfaces = false,
     bpmnXml, isEditingBpmn, uploadOpen, chatOpen, revisionOpen, revisionCount,
+    codeSourceOpen,
     onToggleRecording, onCancelRecording, onGenerateBPMN, onDownloadBPMN,
     onResetToDefault, onClearTable, onDetectInterfaces, onAnalyseErrors,
-    onToggleUpload, onToggleChat, onToggleRevision,
+    onToggleUpload, onToggleChat, onToggleRevision, onToggleCodeSource,
 }: SttToolbarProps) {
     const [expanded, setExpanded] = useState(false);
 
@@ -96,6 +99,7 @@ export default function SttToolbar({
                     variant="toggle"
                     badge={revisionCount > 0 ? revisionCount : undefined}
                 />
+                <ToolBtn icon={<Code className="w-4 h-4" />} label="Code source" expanded={expanded} active={codeSourceOpen} onClick={onToggleCodeSource} variant="toggle" />
 
                 <Divider />
 

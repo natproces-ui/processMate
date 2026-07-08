@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
     AlertTriangle, Plus, RefreshCw, Filter, X, Sparkles, Loader2,
-    AlertOctagon, Clock4, TrendingUp, Layers, BarChart2, List,
+    BarChart2, List, Megaphone, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { orchestrationApi, Procedure } from '@/lib/orchestrationApi';
+import { campaignsApi, type Campaign } from '@/lib/campaignsApi';
 import { IrritantCard, IrritantForm, EMPTY_FORM, Irritant, CRITICITES, STATUTS, CATEGORIES, CATEGORIE_CONFIG } from './IrritantCard';
 import IrritantsDashboard from './IrritantsDashboard';
 import { API_CONFIG } from '@/lib/api-config';
@@ -89,10 +90,10 @@ function ProcedureRow({ procedure, irritants, score, expanded, onToggle, onDetec
                     disabled={detecting || !hasWorkflow}
                     title={!hasWorkflow ? 'Workflow non généré' : "Détecter les irritants avec l'IA"}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0 ${detecting
-                            ? 'bg-violet-100 text-violet-600 cursor-wait'
-                            : !hasWorkflow
-                                ? 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-200'
-                                : 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm'
+                        ? 'bg-violet-100 text-violet-600 cursor-wait'
+                        : !hasWorkflow
+                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed border border-gray-200'
+                            : 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm'
                         }`}>
                     {detecting
                         ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analyse… {detectCount > 0 && `(${detectCount})`}</>
@@ -138,12 +139,14 @@ interface Props {
 }
 
 export default function IrritantsPanel({ procedures: propProcedures, onInstruire }: Props) {
-    const [activeTab, setActiveTab] = useState<Tab>('overview');
+    const [activeTab, setActiveTab] = useState<Tab>('list');
     const [irritants, setIrritants] = useState<Irritant[]>([]);
     const [procedures, setProcedures] = useState<Procedure[]>(propProcedures || []);
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [expandedProcs, setExpandedProcs] = useState<Set<string>>(new Set());
+    const [expandedCamps, setExpandedCamps] = useState<Set<string>>(new Set());
     const [detectingId, setDetectingId] = useState<string | null>(null);
     const [detectCount, setDetectCount] = useState(0);
     const [showCreate, setShowCreate] = useState(false);
@@ -156,8 +159,12 @@ export default function IrritantsPanel({ procedures: propProcedures, onInstruire
     const load = useCallback(async () => {
         setLoading(true); setError(null);
         try {
-            const irrRes = await orchestrationApi.listIrritants();
+            const [irrRes, campRes] = await Promise.all([
+                orchestrationApi.listIrritants(),
+                campaignsApi.list(),
+            ]);
             setIrritants(irrRes.irritants as Irritant[]);
+            setCampaigns(campRes.campaigns ?? []);
             if (!propProcedures || propProcedures.length === 0) {
                 const procRes = await orchestrationApi.listProcedures();
                 setProcedures(procRes.procedures);
@@ -259,6 +266,48 @@ export default function IrritantsPanel({ procedures: propProcedures, onInstruire
     );
     const procList = procedures.map(p => ({ id: p.id, nom: p.nom }));
 
+    // ── Regroupement par campagne ───────────────────────────────
+    const procToCampaign = useMemo(() => {
+        const map: Record<string, Campaign> = {};
+        campaigns.forEach(c => {
+            (c.procedures ?? []).forEach(cp => { map[cp.procedure_id] = c; });
+        });
+        return map;
+    }, [campaigns]);
+
+    type CampaignGroup = {
+        campaignId: string;
+        campaign: Campaign | null;
+        procs: Procedure[];
+        totalScore: number;
+        totalIrritants: number;
+    };
+
+    const campaignGroups = useMemo((): CampaignGroup[] => {
+        const map: Record<string, CampaignGroup> = {};
+        sortedProcs.forEach(proc => {
+            const camp = procToCampaign[proc.id] ?? null;
+            const key = camp?.id ?? '__none__';
+            if (!map[key]) map[key] = { campaignId: key, campaign: camp, procs: [], totalScore: 0, totalIrritants: 0 };
+            const irrs = byProc[proc.id] ?? [];
+            map[key].procs.push(proc);
+            map[key].totalScore += scoreOf(irrs);
+            map[key].totalIrritants += irrs.length;
+        });
+        // Handle __manual__ irritants (no procedure)
+        if (byProc['__manual__']?.length) {
+            const key = '__manual__';
+            if (!map[key]) map[key] = { campaignId: key, campaign: null, procs: [], totalScore: 0, totalIrritants: 0 };
+            map[key].totalScore += scoreOf(byProc['__manual__']);
+            map[key].totalIrritants += byProc['__manual__'].length;
+        }
+        return Object.values(map).sort((a, b) => b.totalScore - a.totalScore);
+    }, [sortedProcs, procToCampaign, byProc]);
+
+    const toggleCamp = (id: string) => setExpandedCamps(prev => {
+        const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+    });
+
     const analysees = procedures.filter(p => irritants.some(i => i.procedure_id === p.id)).length;
     const stats = {
         total: irritants.length,
@@ -332,13 +381,13 @@ export default function IrritantsPanel({ procedures: propProcedures, onInstruire
             {/* ── Onglets ── */}
             <div className="flex gap-1 border-b border-gray-200">
                 {([
-                    { key: 'overview' as Tab, label: "Vue d'ensemble", icon: <BarChart2 className="w-4 h-4" />, badge: null },
                     { key: 'list' as Tab, label: 'Liste des irritants', icon: <List className="w-4 h-4" />, badge: irritants.length > 0 ? irritants.length : null },
+                    { key: 'overview' as Tab, label: "Vue d'ensemble", icon: <BarChart2 className="w-4 h-4" />, badge: null },
                 ]).map(tab => (
                     <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                         className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${activeTab === tab.key
-                                ? 'border-blue-600 text-blue-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}>
                         {tab.icon}
                         {tab.label}
@@ -438,74 +487,99 @@ export default function IrritantsPanel({ procedures: propProcedures, onInstruire
                         )}
                     </div>
 
-                    {/* Liste procédures */}
-                    <div className="space-y-3">
-                        {sortedProcs.map(proc => (
-                            <ProcedureRow
-                                key={proc.id}
-                                procedure={proc}
-                                irritants={byProc[proc.id] || []}
-                                score={scoreOf(byProc[proc.id] || [])}
-                                expanded={expandedProcs.has(proc.id)}
-                                onToggle={() => toggleProc(proc.id)}
-                                onDetect={() => handleDetect(proc)}
-                                detecting={detectingId === proc.id}
-                                detectCount={detectingId === proc.id ? detectCount : 0}
-                                onIrritantUpdated={handleUpdated}
-                                onIrritantDeleted={handleDelete}
-                                procedures={procList}
-                                onInstruire={onInstruire}
-                            />
-                        ))}
+                    {/* Liste groupée par campagne */}
+                    <div className="space-y-4">
+                        {campaignGroups.map(group => {
+                            const isNone = group.campaignId === '__none__';
+                            const isManual = group.campaignId === '__manual__';
+                            const campExpanded = expandedCamps.has(group.campaignId);
+                            const campLabel = isManual
+                                ? 'Sans procédure liée'
+                                : isNone
+                                    ? 'Sans campagne'
+                                    : group.campaign!.title;
 
-                        {/* Sans procédure */}
-                        {(byProc['__manual__']?.length || 0) > 0 && (
-                            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                                <div className="flex items-center gap-3 px-5 py-3.5 bg-gray-50 hover:bg-gray-100 transition-colors">
-                                    <button type="button" onClick={() => toggleProc('__manual__')}
-                                        className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base transition-colors ${expandedProcs.has('__manual__')
-                                                ? 'bg-blue-100 text-blue-600'
-                                                : 'bg-white text-gray-500 border border-gray-200'
-                                            }`}>
-                                        {expandedProcs.has('__manual__') ? '−' : '+'}
-                                    </button>
-                                    <button type="button" onClick={() => toggleProc('__manual__')} className="flex-1 text-left">
-                                        <p className="text-sm font-bold text-gray-700">Sans procédure liée</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">Irritants créés manuellement</p>
-                                    </button>
-                                    <ScoreBadge score={scoreOf(byProc['__manual__'])} count={byProc['__manual__'].length} />
-                                </div>
-                                {expandedProcs.has('__manual__') && (
-                                    <div className="border-t border-gray-100 bg-gray-50/30 p-3 pl-14 space-y-2">
-                                        {byProc['__manual__'].map((irritant, idx) => (
-                                            <IrritantCard
-                                                key={irritant.id}
-                                                irritant={irritant}
-                                                numero={idx + 1}
-                                                procedures={procList}
-                                                onUpdated={handleUpdated}
-                                                onDeleted={handleDelete}
-                                                onInstruire={onInstruire}
-                                            />
-                                        ))}
+                            return (
+                                <div key={group.campaignId} className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                                    {/* En-tête campagne */}
+                                    <div
+                                        className={`flex items-center gap-3 px-5 py-3.5 cursor-pointer select-none transition-colors ${campExpanded ? 'bg-orange-50 border-b border-orange-100' : 'bg-gray-50 hover:bg-gray-100'}`}
+                                        onClick={() => toggleCamp(group.campaignId)}
+                                    >
+                                        {campExpanded
+                                            ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+                                            : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                                        }
+                                        {!isNone && !isManual
+                                            ? <Megaphone className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                                            : <AlertTriangle className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+                                        }
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900 truncate">{campLabel}</p>
+                                            {!isNone && !isManual && group.campaign?.status && (
+                                                <p className="text-xs text-gray-400">{group.procs.length} procédure{group.procs.length > 1 ? 's' : ''}</p>
+                                            )}
+                                        </div>
+                                        <ScoreBadge score={group.totalScore} count={group.totalIrritants} />
                                     </div>
-                                )}
-                            </div>
-                        )}
+
+                                    {/* Contenu campagne */}
+                                    {campExpanded && (
+                                        <div className="divide-y divide-gray-100 bg-white">
+                                            {/* Procédures de la campagne */}
+                                            {group.procs.map(proc => (
+                                                <div key={proc.id} className="px-3 py-2">
+                                                    <ProcedureRow
+                                                        procedure={proc}
+                                                        irritants={byProc[proc.id] || []}
+                                                        score={scoreOf(byProc[proc.id] || [])}
+                                                        expanded={expandedProcs.has(proc.id)}
+                                                        onToggle={() => toggleProc(proc.id)}
+                                                        onDetect={() => handleDetect(proc)}
+                                                        detecting={detectingId === proc.id}
+                                                        detectCount={detectingId === proc.id ? detectCount : 0}
+                                                        onIrritantUpdated={handleUpdated}
+                                                        onIrritantDeleted={handleDelete}
+                                                        procedures={procList}
+                                                        onInstruire={onInstruire}
+                                                    />
+                                                </div>
+                                            ))}
+
+                                            {/* Irritants manuels (groupe __manual__) */}
+                                            {isManual && (byProc['__manual__'] ?? []).length > 0 && (
+                                                <div className="p-3 pl-8 space-y-2">
+                                                    {byProc['__manual__'].map((irritant, idx) => (
+                                                        <IrritantCard
+                                                            key={irritant.id}
+                                                            irritant={irritant}
+                                                            numero={idx + 1}
+                                                            procedures={procList}
+                                                            onUpdated={handleUpdated}
+                                                            onDeleted={handleDelete}
+                                                            onInstruire={onInstruire}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
 
                         {/* État vide */}
-                        {sortedProcs.every(p => (byProc[p.id] || []).length === 0) &&
-                            (byProc['__manual__']?.length || 0) === 0 && (
-                                <div className="text-center py-16 text-gray-400">
-                                    <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                                    <p className="text-sm font-medium">Aucun irritant</p>
-                                    <p className="text-xs mt-1 opacity-70">
-                                        {filterCat !== 'all' || filterCrit !== 'all' || filterStatut !== 'all'
-                                            ? 'Aucun résultat pour les filtres sélectionnés.'
-                                            : "Lancez l'analyse IA sur une procédure ou créez un irritant manuellement."}
-                                    </p>
-                                </div>
-                            )}
+                        {campaignGroups.length === 0 && (
+                            <div className="text-center py-16 text-gray-400">
+                                <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                                <p className="text-sm font-medium">Aucun irritant</p>
+                                <p className="text-xs mt-1 opacity-70">
+                                    {filterCat !== 'all' || filterCrit !== 'all' || filterStatut !== 'all'
+                                        ? 'Aucun résultat pour les filtres sélectionnés.'
+                                        : "Lancez l'analyse IA sur une procédure ou créez un irritant manuellement."}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

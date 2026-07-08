@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
 import type { Table1Row } from '@/logic/types';
-import { TaskEnrichment, DEFAULT_PROCESS_METADATA } from '@/logic/bpmnTypes';
+import { TaskEnrichment, DEFAULT_PROCESS_METADATA, mergeEnrichments, mergeProcedureMetadata } from '@/logic/bpmnTypes';
 import type { BpmnEditorHandle } from '@/components/new-way/BpmnEditor';
 import DocumentExportPanel from '@/components/DocumentExportPanel';
 import ChatInterface from '@/components/ChatInterface';
@@ -36,7 +36,7 @@ type Section = 'caracteristiques' | 'qualite' | 'diagramme' | 'descriptions' | '
 interface ExtendedMeta {
     objet: string;
     definition: string;
-    perimetre: string;
+    perimeter: string;
     proprietaire: string;
     regles_gestion: string[];
     [key: string]: unknown;
@@ -44,12 +44,16 @@ interface ExtendedMeta {
 
 function readMeta(raw: Record<string, unknown>): ExtendedMeta {
     return {
+        ...raw,
         objet: (raw.objet as string) || '',
         definition: (raw.definition as string) || '',
-        perimetre: (raw.perimetre as string) || '',
+        perimeter: (raw.perimeter as string) || (raw.perimetre as string) || '',
         proprietaire: (raw.proprietaire as string) || '',
-        regles_gestion: Array.isArray(raw.regles_gestion) ? (raw.regles_gestion as string[]) : [],
-        ...raw,
+        regles_gestion: Array.isArray(raw.regles_gestion)
+            ? (raw.regles_gestion as string[])
+            : typeof raw.regles_gestion === 'string' && raw.regles_gestion
+                ? raw.regles_gestion.split('\n').map(r => r.trim()).filter(Boolean)
+                : [],
     };
 }
 
@@ -61,18 +65,22 @@ function emptyEnrichment(id: string): TaskEnrichment {
 
 interface Props {
     procedure: Procedure;
+    hideHeader?: boolean;
 }
 
-export default function ProcedureEditor({ procedure }: Props) {
+export default function ProcedureEditor({ procedure, hideHeader }: Props) {
 
     // ─── Données ──────────────────────────────────────────────
     const [data, setData] = useState<Table1Row[]>(() => (procedure as any).workflow_json || []);
     const [enrichments, setEnrichments] = useState<Map<string, TaskEnrichment>>(() => {
         const map = new Map<string, TaskEnrichment>();
         const raw = (procedure as any).enrichments_json || {};
-        Object.entries(raw).forEach(([id, enr]: [string, any]) => map.set(id, enr));
+        Object.entries(raw).forEach(([id, enr]: [string, any]) => {
+            if (id !== '__bpmn_xml__') map.set(id, enr);
+        });
         return map;
     });
+    const savedBpmnXml = ((procedure as any).enrichments_json?.__bpmn_xml__ as string) || null;
     const [meta, setMeta] = useState<ExtendedMeta>(() =>
         readMeta((procedure.metadata || {}) as Record<string, unknown>)
     );
@@ -107,9 +115,10 @@ export default function ProcedureEditor({ procedure }: Props) {
     const showError = (msg: string) => { setError(msg); setTimeout(() => setError(null), 5000); };
     const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 4000); };
 
-    // Générer le BPMN au montage si workflow présent
+    // Charger le BPMN sauvegardé ou régénérer
     useEffect(() => {
-        if (data.length > 0) setBpmnXml(generateBPMNSimple(data, title));
+        if (savedBpmnXml) setBpmnXml(savedBpmnXml);
+        else if (data.length > 0) setBpmnXml(generateBPMNSimple(data, title));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -121,13 +130,15 @@ export default function ProcedureEditor({ procedure }: Props) {
     ) => {
         setSaving(true);
         try {
+            const currentXml = await editorRef.current?.saveXml() ?? bpmnXml ?? null;
             const enrichObj: Record<string, unknown> = {};
             e.forEach((v, k) => { enrichObj[k] = v; });
             await orchestrationApi.saveWorkflowData(
                 procedure.id,
                 d as unknown[],
                 enrichObj,
-                { ...m, nom: title },
+                { ...m, nom: title, regles_gestion: m.regles_gestion.join('\n') },
+                currentXml,
             );
         } catch (err: any) {
             showError(`Erreur : ${err.message}`);
@@ -135,7 +146,7 @@ export default function ProcedureEditor({ procedure }: Props) {
         } finally {
             setSaving(false);
         }
-    }, [procedure.id, title]);
+    }, [procedure.id, title, bpmnXml]);
 
     // ─── Sauvegarde par section ───────────────────────────────
     const handleSaveCaract = async () => {
@@ -158,14 +169,19 @@ export default function ProcedureEditor({ procedure }: Props) {
 
     const handleSaveDiagramme = async () => {
         try {
+            let xmlToSave = bpmnXml;
             if (editorRef.current) {
                 const xml = await editorRef.current.saveXml();
-                if (xml) setBpmnXml(xml);
+                if (xml) { xmlToSave = xml; setBpmnXml(xml); }
             }
-            await saveToDb(data, enrichments, meta);
+            const enrichObj: Record<string, unknown> = {};
+            enrichments.forEach((v, k) => { enrichObj[k] = v; });
+            await orchestrationApi.saveWorkflowData(
+                procedure.id, data as unknown[], enrichObj, { ...meta, nom: title }, xmlToSave,
+            );
             setEditingDiagramme(false);
             showSuccess('Diagramme enregistré');
-        } catch { /* handled */ }
+        } catch (err: any) { showError(`Erreur : ${err.message}`); }
     };
 
     const handleSaveDescriptions = async () => {
@@ -255,13 +271,18 @@ export default function ProcedureEditor({ procedure }: Props) {
         workflow: Table1Row[],
         _: string,
         newEnrichments: Map<string, TaskEnrichment>,
+        procedureMetadata?: any,
     ) => {
         setData(workflow);
         setDraftData(workflow);
         setBpmnXml(null);
         if (newEnrichments?.size > 0) {
-            setEnrichments(newEnrichments);
-            setDraftEnrichments(newEnrichments);
+            setEnrichments(prev => mergeEnrichments(prev, newEnrichments));
+            setDraftEnrichments(prev => mergeEnrichments(prev, newEnrichments));
+        }
+        if (procedureMetadata) {
+            setMeta(prev => readMeta(mergeProcedureMetadata(prev, procedureMetadata)));
+            setDraftMeta(prev => readMeta(mergeProcedureMetadata(prev, procedureMetadata)));
         }
     }, []);
 
@@ -309,16 +330,18 @@ export default function ProcedureEditor({ procedure }: Props) {
             )}
 
             {/* Header */}
-            <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4">
-                <h2 className="text-base font-bold text-slate-800 truncate">{title}</h2>
-                <button type="button" onClick={() => setChatOpen(o => !o)}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${chatOpen
-                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    {chatOpen ? 'Masquer le chat' : 'Chat IA'}
-                </button>
-            </div>
+            {!hideHeader && (
+                <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4">
+                    <h2 className="text-base font-bold text-slate-800 truncate">{title}</h2>
+                    <button type="button" onClick={() => setChatOpen(o => !o)}
+                        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${chatOpen
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        {chatOpen ? 'Masquer le chat' : 'Chat IA'}
+                    </button>
+                </div>
+            )}
 
             {/* Navigation sections */}
             <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6">
@@ -342,6 +365,8 @@ export default function ProcedureEditor({ procedure }: Props) {
                 {chatOpen && (
                     <ChatInterface
                         currentWorkflow={data}
+                        currentEnrichments={enrichments}
+                        currentProcedureMetadata={meta}
                         onWorkflowGenerated={handleWorkflowFromChat}
                         onError={showError}
                         onSuccess={showSuccess}
@@ -366,7 +391,7 @@ export default function ProcedureEditor({ procedure }: Props) {
                             {([
                                 { label: 'Objet', key: 'objet', multiline: true, placeholder: "Objet de la procédure…" },
                                 { label: 'Définition', key: 'definition', multiline: true, placeholder: "Définition et contexte…" },
-                                { label: 'Périmètre', key: 'perimetre', multiline: true, placeholder: "Périmètre d'application…" },
+                                { label: 'Périmètre', key: 'perimeter', multiline: true, placeholder: "Périmètre d'application…" },
                                 { label: 'Propriétaire', key: 'proprietaire', multiline: false, placeholder: "Direction / propriétaire…" },
                             ] as const).map(({ label, key, multiline, placeholder }) => (
                                 <div key={key} className="flex gap-6 px-5 py-4">
@@ -538,9 +563,9 @@ export default function ProcedureEditor({ procedure }: Props) {
                                             : 'Mode lecture'}
                                     </span>
                                     <div className="flex items-center gap-1.5">
-                                        <button type="button" onClick={() => setSaveModalOpen(true)} disabled={saving}
+                                        <button type="button" onClick={handleSaveDiagramme} disabled={saving}
                                             className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                                            <Save className="w-3 h-3" />Enregistrer
+                                            <Save className="w-3 h-3" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                         </button>
                                         <button type="button" onClick={() => setEditorFullscreen(f => !f)}
                                             className="p-1.5 rounded hover:bg-slate-200 transition-colors">

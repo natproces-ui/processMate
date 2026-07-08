@@ -80,6 +80,7 @@ interface Props {
   onGoToProcedures: () => void;
   onGoToWorkspace?: () => void;
   isAdmin: boolean;
+  onCreateProcedure?: (subcategoryId: string, subcategoryName: string) => void;
 }
 
 // ─── Sub-components ───────────────────────────────────────────
@@ -117,8 +118,8 @@ function CategoryBlock({
         </div>
       ) : (
         <div
-          className={`${C.catBg} ${C.catText} px-2 py-1 text-[10px] font-bold text-center flex items-center justify-between gap-1 ${isAdmin ? 'cursor-pointer group' : ''}`}
-          onClick={e => isAdmin && onTileClick(e, cat, 'category')}
+          className={`${C.catBg} ${C.catText} px-2 py-1 text-[10px] font-bold text-center flex items-center justify-between gap-1 cursor-pointer group`}
+          onClick={e => onTileClick(e, cat, 'category')}
         >
           <span className="flex-1 text-center leading-tight">{cat.name}</span>
           {isAdmin && <Edit2 className="w-2.5 h-2.5 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" />}
@@ -168,7 +169,7 @@ function CategoryBlock({
 
 // ─── Main component ───────────────────────────────────────────
 
-export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAdmin }: Props) {
+export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAdmin, onCreateProcedure }: Props) {
   const [themes, setThemes] = useState<TaxonomyNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -372,12 +373,20 @@ export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAd
               </button>
             )}
 
-            {isAdmin && (<>
+            {ctxMenu.level === 'subcategory' && (
               <button type="button"
                 className="w-full text-left px-4 py-2 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 transition-colors"
-                onClick={() => { setCtxMenu(null); onGoToProcedures(); }}>
+                onClick={() => {
+                  const node = ctxMenu.node;
+                  setCtxMenu(null);
+                  if (onCreateProcedure) onCreateProcedure(node.id, node.name);
+                  else onGoToProcedures();
+                }}>
                 <Plus className="w-3.5 h-3.5 text-emerald-500" /> Créer une procédure
               </button>
+            )}
+
+            {isAdmin && (
               <div className="border-t border-gray-100 mt-1 pt-1">
                 <button type="button"
                   className="w-full text-left px-4 py-2 hover:bg-amber-50 hover:text-amber-700 flex items-center gap-2 transition-colors"
@@ -390,7 +399,7 @@ export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAd
                   <Trash2 className="w-3.5 h-3.5 text-red-400" /> Supprimer
                 </button>
               </div>
-            </>)}
+            )}
           </div>
         </>
       )}

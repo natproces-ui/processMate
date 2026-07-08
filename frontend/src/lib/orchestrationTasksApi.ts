@@ -94,6 +94,7 @@ export interface ProcedureNotification {
 
 export interface ListTasksFilters {
   actor_id?: string;
+  assigned_by?: string;
   procedure_id?: string;
   status?: ProcedureTaskStatus;
   role?: RaciRole;
@@ -111,6 +112,15 @@ export interface CreateProcedureTaskInput {
   due_date?: string | null;
   workflow_stage_id?: string | null;
   workflow_step_id?: string | null;
+  force?: boolean;
+}
+
+export interface ActiveTaskBlock {
+  id: string;
+  title: string;
+  status: string;
+  assigned_to_name: string;
+  task_type: string;
 }
 
 export interface TransitionTaskInput {
@@ -145,7 +155,32 @@ function buildQuery(filters?: object) {
   return query ? `?${query}` : '';
 }
 
+export interface EnrichedTask extends ProcedureTask {
+  procedure_name: string;
+  taxonomy_id?: string | null;
+  taxonomy_breadcrumb?: string;
+  campaign_id?: string | null;
+  campaign_name?: string | null;
+}
+
+export interface EnrichedTaskEvent extends ProcedureTaskEvent {
+  task_title?: string;
+  task_type?: string;
+  raci_role?: string;
+  procedure_name?: string;
+}
+
 export const orchestrationTasksApi = {
+  getMyTasks: (userId: string) =>
+    fetchJSON<{ success: boolean; tasks: EnrichedTask[]; total: number }>(
+      `/api/orchestration/tasks/my?user_id=${encodeURIComponent(userId)}`
+    ),
+
+  listRecentEvents: (params?: { limit?: number; procedure_id?: string }) =>
+    fetchJSON<{ success: boolean; events: EnrichedTaskEvent[]; total: number }>(
+      `/api/orchestration/events${buildQuery(params)}`
+    ),
+
   listTasks: (filters?: ListTasksFilters) =>
     fetchJSON<{ success: boolean; tasks: ProcedureTask[]; total: number }>(
       `/api/orchestration/tasks${buildQuery(filters)}`
@@ -162,7 +197,7 @@ export const orchestrationTasksApi = {
     ),
 
   createTask: (procedureId: string, body: CreateProcedureTaskInput) =>
-    fetchJSON<{ success: boolean; task: ProcedureTask }>(
+    fetchJSON<{ success: boolean; task?: ProcedureTask; blocked?: boolean; active_tasks?: ActiveTaskBlock[]; message?: string }>(
       `/api/orchestration/procedures/${procedureId}/tasks`,
       { method: 'POST', body: JSON.stringify(body) }
     ),

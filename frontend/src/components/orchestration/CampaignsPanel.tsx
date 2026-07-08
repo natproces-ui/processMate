@@ -213,7 +213,7 @@ function TaxonomyTreeNode({
   );
 }
 
-function AddProceduresModal({
+export function AddProceduresModal({
   campaignId,
   alreadyAdded,
   onClose,

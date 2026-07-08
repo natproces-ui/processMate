@@ -51,6 +51,7 @@ export interface Procedure {
   is_finalized: boolean;
   finalized_at: string | null;
   remarks_count: number;
+  has_unsaved_changes?: boolean;
   taxonomy_id?: string | null;
   lifecycle_stages: LifecycleStage[];
   raci: RACIData;
@@ -366,10 +367,10 @@ export const orchestrationApi = {
     fetchJSON<{ success: boolean; evolution: Array<{ month: string; validated: number; inProgress: number; pending: number }> }>('/api/orchestration/evolution'),
 
   // ── Sauvegarde workflow ──
-  saveWorkflowData: (id: string, workflow_json: unknown[], enrichments_json: Record<string, unknown>, procedure_metadata_json?: Record<string, unknown>) =>
+  saveWorkflowData: (id: string, workflow_json: unknown[], enrichments_json: Record<string, unknown>, procedure_metadata_json?: Record<string, unknown>, bpmn_xml?: string | null) =>
     fetchJSON<{ success: boolean; workflow_id: string }>(`/api/orchestration/procedures/${id}/workflow`, {
       method: 'PATCH',
-      body: JSON.stringify({ workflow_json, enrichments_json, procedure_metadata_json }),
+      body: JSON.stringify({ workflow_json, enrichments_json, procedure_metadata_json, bpmn_xml }),
     }),
 
   // ── Finalisation ──

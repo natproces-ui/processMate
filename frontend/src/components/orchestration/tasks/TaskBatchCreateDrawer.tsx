@@ -5,7 +5,6 @@ import { AlertCircle, Plus, Send, Trash2, X } from 'lucide-react';
 import type { Procedure } from '@/lib/orchestrationApi';
 import {
   orchestrationTasksApi,
-  notifyTaskAssignedByEmail,
   type CreateProcedureTaskInput,
   type ProcedureTaskPriority,
   type ProcedureTaskType,
@@ -143,6 +142,8 @@ export default function TaskBatchCreateDrawer({
     due_date: item.due_date || null,
   });
 
+  const [blockedInfo, setBlockedInfo] = useState<{ procedureId: string; input: any; activeTasks: any[]; message: string } | null>(null);
+
   const submit = async () => {
     const items = canAdd
       ? [...batch, { ...draft, title: draft.title.trim(), description: draft.description.trim() }]
@@ -151,26 +152,37 @@ export default function TaskBatchCreateDrawer({
 
     setSaving(true);
     setError(null);
+    setBlockedInfo(null);
     try {
       for (const item of items) {
-        await orchestrationTasksApi.createTask(item.procedure_id, toInput(item));
-        const assignedActor = actorById.get(item.assigned_to);
-        if (assignedActor?.email) {
-          notifyTaskAssignedByEmail({
-            toEmail: assignedActor.email,
-            toName: assignedActor.name,
-            assignedByName: assignedBy.name,
-            taskTitle: item.title.trim(),
-            procedureName: procedureById.get(item.procedure_id)?.nom,
-            taskType: item.task_type,
-            dueDate: item.due_date || null,
-          });
+        const input = toInput(item);
+        const res = await orchestrationTasksApi.createTask(item.procedure_id, input);
+        if (res.blocked) {
+          setBlockedInfo({ procedureId: item.procedure_id, input, activeTasks: res.active_tasks || [], message: res.message || '' });
+          setSaving(false);
+          return;
         }
       }
       onCreated();
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur creation des taches');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const forceSubmit = async () => {
+    if (!blockedInfo) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await orchestrationTasksApi.createTask(blockedInfo.procedureId, { ...blockedInfo.input, force: true });
+      setBlockedInfo(null);
+      onCreated();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erreur creation forcée');
     } finally {
       setSaving(false);
     }
@@ -201,6 +213,38 @@ export default function TaskBatchCreateDrawer({
             <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {blockedInfo && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Tâche(s) active(s) sur cette procédure</p>
+                  <p className="text-xs text-amber-700 mt-0.5">{blockedInfo.message}</p>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {blockedInfo.activeTasks.map((t: any) => (
+                  <div key={t.id} className="flex items-center gap-2 px-3 py-2 rounded bg-white border border-amber-100 text-sm">
+                    <span className="font-medium text-gray-800">{t.assigned_to_name}</span>
+                    <span className="text-gray-400">—</span>
+                    <span className="text-gray-600">{t.title}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium ml-auto">{t.status}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={forceSubmit} disabled={saving}
+                  className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 disabled:opacity-50">
+                  Forcer l'envoi (annule les tâches actives)
+                </button>
+                <button type="button" onClick={() => setBlockedInfo(null)}
+                  className="flex-1 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50">
+                  Annuler
+                </button>
+              </div>
             </div>
           )}
 

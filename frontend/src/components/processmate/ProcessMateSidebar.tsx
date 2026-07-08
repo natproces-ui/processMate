@@ -10,22 +10,14 @@ import {
     ChevronLeft,
     BarChart3,
     FileText,
-    GitBranch,
-    Users,
-    AlertCircle,
-    TriangleAlert,
     Workflow,
-    Server,
     CheckSquare,
-    FileSearch,
-    MessageSquare,
-    Gauge,
     PenTool,
     Code2,
     Layers,
-    Map,
-    Megaphone,
     PenLine,
+    Megaphone,
+    BookOpen,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -50,8 +42,6 @@ interface NavItem {
     icon: React.ElementType;
     color: string;
     module: ActiveModule;
-    isModuleHeader?: boolean;
-    adminOnly?: boolean;
 }
 
 const MODULES: { id: ActiveModule; label: string; icon: React.ElementType; color: string }[] = [
@@ -62,23 +52,13 @@ const MODULES: { id: ActiveModule; label: string; icon: React.ElementType; color
 ];
 
 const ORCHESTRATION_ITEMS: NavItem[] = [
-    { id: 'dashboard', label: 'Tableau de Bord', icon: BarChart3, color: 'text-blue-600', module: 'orchestration' },
-    { id: 'pipeline', label: 'Pipeline', icon: Workflow, color: 'text-blue-600', module: 'orchestration' },
-    { id: 'procedures', label: 'Procédures', icon: FileText, color: 'text-blue-700', module: 'orchestration' },
-    { id: 'workflow', label: 'Flux de Travail', icon: GitBranch, color: 'text-blue-600', module: 'orchestration' },
-    { id: 'raci', label: 'Responsabilités', icon: Users, color: 'text-blue-700', module: 'orchestration' },
-    { id: 'validation', label: 'Validation', icon: AlertCircle, color: 'text-blue-600', module: 'orchestration' },
-    { id: 'tasks', label: 'Suivi des tâches', icon: CheckSquare, color: 'text-blue-600', module: 'orchestration' },
-    { id: 'irritants', label: 'Irritants', icon: TriangleAlert, color: 'text-orange-500', module: 'orchestration' },
-    { id: 'complexity', label: 'Complexité', icon: Gauge, color: 'text-orange-600', module: 'orchestration' },
-    { id: 'regulatory-impact', label: "Analyse d'impact", icon: FileSearch, color: 'text-indigo-600', module: 'orchestration' },
-    { id: 'applicatifs', label: 'Cartographie Applicative', icon: Server, color: 'text-teal-600', module: 'orchestration' },
-    { id: 'analysis', label: 'Analyse IA', icon: MessageSquare, color: 'text-purple-600', module: 'orchestration' },
-    { id: 'bian', label: 'Carte BIAN', icon: Map, color: 'text-cyan-600', module: 'orchestration' },
-    { id: 'portfolio', label: 'Portfolio', icon: BarChart3, color: 'text-orange-600', module: 'orchestration', adminOnly: true },
-    { id: 'campaigns', label: 'Projets', icon: Megaphone, color: 'text-orange-500', module: 'orchestration' },
-    { id: 'corrections', label: 'Corrections', icon: PenLine, color: 'text-rose-500', module: 'orchestration' },
-    { id: 'workspace',   label: 'Workspace',   icon: FileSearch, color: 'text-violet-600', module: 'orchestration' },
+    { id: 'procedures', label: 'Créer / Modifier', icon: FileText, color: 'text-blue-600', module: 'orchestration' },
+    { id: 'campagnes', label: 'Campagnes', icon: Megaphone, color: 'text-orange-600', module: 'orchestration' },
+    { id: 'taches', label: 'Suivi des tâches', icon: CheckSquare, color: 'text-indigo-600', module: 'orchestration' },
+    { id: 'workspace', label: 'Espace de travail personnel', icon: PenLine, color: 'text-blue-600', module: 'orchestration' },
+    { id: 'analyser', label: 'Analyse', icon: BarChart3, color: 'text-violet-600', module: 'orchestration' },
+    { id: 'tableau-de-bord', label: 'Tableau de bord', icon: BarChart3, color: 'text-emerald-600', module: 'orchestration' },
+    { id: 'specifications', label: 'Spécifications', icon: BookOpen, color: 'text-amber-600', module: 'orchestration' },
 ];
 
 // ─── Composant principal ──────────────────────────────────────
@@ -93,18 +73,9 @@ export default function ProcessMateSidebar({
     userRole,
 }: SidebarProps) {
 
-    const isAdmin = userRole === 'admin';
-    const canSeeRegulatoryImpact = userRole === 'admin' || userRole === 'validator';
-    const visibleOrchestrationItems = ORCHESTRATION_ITEMS.filter(item => {
-        if (item.adminOnly && !isAdmin) return false;
-        if (item.id === 'regulatory-impact' && !canSeeRegulatoryImpact) return false;
-        return true;
-    });
-
     const handleModuleChange = (moduleId: ActiveModule) => {
         setActiveModule(moduleId);
-        // Reset tab selon le module
-        if (moduleId === 'orchestration') setActiveTab('dashboard');
+        if (moduleId === 'orchestration') setActiveTab('procedures');
     };
 
     return (
@@ -214,7 +185,7 @@ export default function ProcessMateSidebar({
                 )}
 
                 {/* Items Orchestration */}
-                {activeModule === 'orchestration' && visibleOrchestrationItems.map(item => (
+                {activeModule === 'orchestration' && ORCHESTRATION_ITEMS.map(item => (
                     <NavButton
                         key={item.id}
                         item={item}

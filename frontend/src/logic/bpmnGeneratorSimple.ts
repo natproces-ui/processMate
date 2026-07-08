@@ -156,6 +156,35 @@ function topoSort(
 let successors_global = new Map<string, Edge[]>();
 
 // ─────────────────────────────────────────────────────────────
+// ACCESSIBILITÉ DANS LA LANE (propagation du côté d'une branche)
+// ─────────────────────────────────────────────────────────────
+
+// Renvoie tous les nœuds atteignables depuis startId en restant dans la même
+// lane (acteur), sans emprunter de back-edge (boucle arrière).
+function reachableInLane(
+    startId: string,
+    lane: string,
+    nodeMap: Map<string, NodeInfo>,
+    successors: Map<string, Edge[]>,
+    backEdges: Set<string>,
+): Set<string> {
+    const visited = new Set<string>();
+    const queue: string[] = [startId];
+    while (queue.length > 0) {
+        const id = queue.shift()!;
+        if (visited.has(id)) continue;
+        const node = nodeMap.get(id);
+        if (!node || node.acteur !== lane) continue;
+        visited.add(id);
+        const outs = (successors.get(id) ?? []).filter(e => !backEdges.has(`${id}→${e.tgt}`));
+        for (const e of outs) {
+            if (!visited.has(e.tgt)) queue.push(e.tgt);
+        }
+    }
+    return visited;
+}
+
+// ─────────────────────────────────────────────────────────────
 // CALCUL DES RANGS (premier prédécesseur = roi)
 // ─────────────────────────────────────────────────────────────
 
@@ -240,11 +269,30 @@ function computePlacements(
         }
     }
 
-    // Ensemble des nœuds qui sont des branches d'un split
+    // Premier nœud de chaque branche (immédiatement après le gateway) — sert au
+    // calcul du RANG (une seule ligne, juste sous le gateway, gauche/droite).
+    const splitEntryNodes = new Map<string, { side: 'left' | 'right'; gateway: string }>();
+    for (const [gw, { left, right }] of sameLaneSplits) {
+        splitEntryNodes.set(left, { side: 'left', gateway: gw });
+        splitEntryNodes.set(right, { side: 'right', gateway: gw });
+    }
+
+    // Ensemble ÉLARGI des nœuds d'une branche — sert au calcul du X (sous-colonne).
+    // On propage le côté (gauche/droite) à toute la branche — pas seulement au
+    // premier nœud après le gateway — jusqu'à ce qu'elle sorte de la lane ou
+    // reconverge avec l'autre branche. Un nœud atteignable depuis les DEUX
+    // côtés est un point de jonction : il reste centré (pas de côté assigné).
     const splitNodes = new Map<string, { side: 'left' | 'right'; gateway: string }>();
     for (const [gw, { left, right }] of sameLaneSplits) {
-        splitNodes.set(left, { side: 'left', gateway: gw });
-        splitNodes.set(right, { side: 'right', gateway: gw });
+        const gwLane = nodeMap.get(gw)!.acteur;
+        const leftReach = reachableInLane(left, gwLane, nodeMap, successors, backEdges);
+        const rightReach = reachableInLane(right, gwLane, nodeMap, successors, backEdges);
+        for (const id of leftReach) {
+            if (!rightReach.has(id)) splitNodes.set(id, { side: 'left', gateway: gw });
+        }
+        for (const id of rightReach) {
+            if (!leftReach.has(id)) splitNodes.set(id, { side: 'right', gateway: gw });
+        }
     }
 
     // Lanes avec split → largeur double
@@ -258,7 +306,7 @@ function computePlacements(
 
     // 5. Calcul des rangs
     const ranks = new Map<string, number>();
-    computeRanks(topoOrder, predecessors, backEdges, splitNodes, ranks);
+    computeRanks(topoOrder, predecessors, backEdges, splitEntryNodes, ranks);
 
     // 6. Re-trier par rang
     const sortedByRank = [...topoOrder].sort((a, b) => (ranks.get(a) ?? 0) - (ranks.get(b) ?? 0));

@@ -46,15 +46,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string): Promise<void> => {
+  const fetchProfile = async (userId: string, email?: string): Promise<void> => {
+    const withTimeout = (p: Promise<{ data: any }>): Promise<{ data: any }> =>
+      Promise.race([p, new Promise<{ data: null }>(r => setTimeout(() => r({ data: null }), 5_000))]);
     try {
-      const { data } = await Promise.race([
+      const { data: byId } = await withTimeout(
         supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle(),
-        new Promise<{ data: null }>((resolve) =>
-          setTimeout(() => resolve({ data: null }), 5_000)
-        ),
-      ]);
-      if (data) setProfile(data as UserProfile);
+      );
+
+      if (byId) {
+        setProfile(byId as UserProfile);
+        return;
+      }
+
+      // No profile by ID — try email fallback (pre-created profile with different ID)
+      if (email) {
+        const { data: byEmail } = await withTimeout(
+          supabase.from('user_profiles').select('*').eq('email', email).maybeSingle(),
+        );
+        if (byEmail) {
+          setProfile({ ...byEmail, id: userId } as UserProfile);
+          return;
+        }
+      }
     } catch {
       // profile unavailable — continue unauthenticated
     }
@@ -74,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         try {
-          if (session?.user) await fetchProfile(session.user.id);
+          if (session?.user) await fetchProfile(session.user.id, session.user.email ?? undefined);
         } finally {
           if (!cancelled) setLoading(false);
         }
@@ -87,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       try {
-        if (session?.user) await fetchProfile(session.user.id);
+        if (session?.user) await fetchProfile(session.user.id, session.user.email ?? undefined);
         else setProfile(null);
       } finally {
         setLoading(false);

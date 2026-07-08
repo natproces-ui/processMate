@@ -53,3 +53,10 @@ body {
 .animate-fade-in-up {
   animation: fadeInUp 0.22s ease forwards;
 }
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

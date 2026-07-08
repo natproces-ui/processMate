@@ -110,3 +110,45 @@ export const DEFAULT_ENRICHMENTS: Map<string, TaskEnrichment> = new Map([
         kpi: 'Délai de création < 1h'
     }],
 ]);
+
+/**
+ * Fusionne les métadonnées de procédure renvoyées par le chat avec celles déjà en mémoire.
+ * Un champ vide/absent dans la réponse du chat ne doit jamais effacer une valeur déjà saisie
+ * (ex: règles de gestion, périmètre) — le modèle ne voit pas toujours tout le contexte.
+ */
+export function mergeProcedureMetadata(
+    existing: Record<string, unknown> | null | undefined,
+    incoming: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+    if (!existing) return incoming || {};
+    const merged: Record<string, unknown> = { ...existing };
+    Object.entries(incoming || {}).forEach(([key, value]) => {
+        const isEmpty = value === '' || value === null || value === undefined
+            || (Array.isArray(value) && value.length === 0);
+        if (isEmpty) return;
+        merged[key] = value;
+    });
+    return merged;
+}
+
+/**
+ * Fusionne les enrichissements (descriptif, KPI...) renvoyés par le chat avec ceux déjà en
+ * mémoire, tâche par tâche, sans perdre les descriptifs existants pour les tâches non
+ * concernées par la réponse du chat.
+ */
+export function mergeEnrichments(
+    existing: Map<string, TaskEnrichment>,
+    incoming: Map<string, TaskEnrichment>,
+): Map<string, TaskEnrichment> {
+    const merged = new Map(existing);
+    incoming.forEach((enr, id) => {
+        const base = merged.get(id) || {} as TaskEnrichment;
+        const combined: Record<string, unknown> = { ...base };
+        Object.entries(enr as unknown as Record<string, unknown>).forEach(([key, value]) => {
+            if (value === '' || value === null || value === undefined) return;
+            combined[key] = value;
+        });
+        merged.set(id, combined as unknown as TaskEnrichment);
+    });
+    return merged;
+}

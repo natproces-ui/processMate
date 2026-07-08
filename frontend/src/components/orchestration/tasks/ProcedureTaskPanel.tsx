@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Plus, RefreshCw } from 'lucide-react';
 import {
   orchestrationTasksApi,
-  notifyTaskAssignedByEmail,
   type CreateProcedureTaskInput,
   type ProcedureTask,
   type TaskActor,
@@ -51,18 +50,6 @@ export default function ProcedureTaskPanel({
 
   const createTask = async (id: string, input: CreateProcedureTaskInput) => {
     await orchestrationTasksApi.createTask(id, input);
-    const assignedActor = actors.find(a => a.id === input.assigned_to);
-    if (assignedActor?.email) {
-      notifyTaskAssignedByEmail({
-        toEmail: assignedActor.email,
-        toName: assignedActor.name,
-        assignedByName: currentActor.name,
-        taskTitle: input.title,
-        procedureName: procedureName,
-        taskType: input.task_type ?? 'other',
-        dueDate: input.due_date,
-      });
-    }
     load();
   };
 

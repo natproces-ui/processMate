@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import WorkflowPipeline from '@/components/orchestration/WorkflowPipeline';
 import {
@@ -323,7 +322,6 @@ function ModuleContent({ product }: { product: ProductModule }) {
 
 export default function Home() {
   const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
   const [activeProduct, setActiveProduct] = useState(PRODUCTS[0].id);
   const tabBarRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLDivElement>(null);
@@ -429,8 +427,7 @@ export default function Home() {
               </h1>
               <p className="mt-5 text-lg text-gray-500 leading-relaxed max-w-xl">
                 Concevez, formalisez, analysez et pilotez vos procédures dans
-                une plateforme unique. Rapidité, efficacité et exploitation
-                maximale de vos sources existantes.
+                une plateforme unique, en amont de vos outils industriels.
               </p>
               <div className="flex flex-wrap items-center gap-3 mt-8">
                 <Link
@@ -534,20 +531,7 @@ export default function Home() {
             </div>
           </div>
           <div className="max-w-7xl mx-auto">
-            <WorkflowPipeline
-              onCreateAI={() => router.push('/orchestration?tab=workspace')}
-              onCreateForm={() => router.push('/orchestration?tab=procedures')}
-              onFormalize={() => router.push('/orchestration?tab=workspace')}
-              onWorkflow={() => router.push('/orchestration?tab=procedures')}
-              onValidation={() => router.push('/orchestration?tab=procedures')}
-              onIrritants={() => router.push('/orchestration?tab=analyser&subtab=irritants')}
-              onComplexity={() => router.push('/orchestration?tab=analyser&subtab=complexity')}
-              onAnalysis={() => router.push('/orchestration?tab=analyser&subtab=ia')}
-              onApplicatifs={() => router.push('/orchestration?tab=analyser&subtab=applicatifs')}
-              onRaci={() => router.push('/orchestration?tab=taches')}
-              onTasks={() => router.push('/orchestration?tab=taches')}
-              onSfd={() => router.push('/orchestration?tab=specifications')}
-            />
+            <WorkflowPipeline />
           </div>
         </section>
       </main>

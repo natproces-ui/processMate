@@ -2,7 +2,10 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { MessageSquare, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+
+const TaxonomyProcedureSelector = dynamic(() => import('@/components/orchestration/TaxonomyProcedureSelector'), { ssr: false });
 import { analysisApi, type AnalysisArtifact, type AnalysisMessage, type AnalysisSession } from '@/lib/analysisApi';
 import { regulatoryImpactApi } from '@/lib/regulatoryImpactApi';
 import type { ProcedureCandidate } from '@/lib/analysisApi';
@@ -227,36 +230,14 @@ export default function AnalysisWorkspace({ actors = [], currentActor = null }: 
               </button>
 
               {showProcedures && (
-                <>
-                  <div className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 mt-1 mb-1.5">
-                    <Search className="h-3 w-3 text-slate-400" />
-                    <input
-                      value={procQuery}
-                      onChange={e => setProcQuery(e.target.value)}
-                      placeholder="Filtrer..."
-                      className="flex-1 text-xs outline-none bg-transparent"
-                    />
-                  </div>
-                  <div className="max-h-48 overflow-y-auto space-y-0.5">
-                    {filteredProcedures.map(proc => (
-                      <label
-                        key={proc.id}
-                        className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 hover:bg-slate-50"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedProcedures.includes(proc.id)}
-                          onChange={() => toggleProcedure(proc.id)}
-                          className="mt-0.5 h-3 w-3 shrink-0"
-                        />
-                        <span className="min-w-0">
-                          <span className="block truncate text-xs font-medium text-slate-800">{proc.nom}</span>
-                          <span className="block truncate text-xs text-slate-400">{proc.ref || proc.category}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </>
+                <div className="mt-1">
+                  <TaxonomyProcedureSelector
+                    procedures={procedures}
+                    selected={selectedProcedures}
+                    onChange={setSelectedProcedures}
+                    maxHeight="250px"
+                  />
+                </div>
               )}
             </div>
           </div>

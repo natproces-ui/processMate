@@ -228,7 +228,7 @@ export default function SFDGeneratorPage() {
   // ─── Rendu ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100">
+    <div className="flex h-full overflow-hidden bg-slate-100">
 
       {/* ── Panneau gauche ── */}
       <div className="w-80 flex-shrink-0 flex flex-col shadow-xl bg-white border-r border-slate-200/80">
@@ -286,7 +286,7 @@ export default function SFDGeneratorPage() {
         {/* Contenu onglet */}
         <div className="flex-1 overflow-hidden bg-white">
           {activeTab === 'init' && (
-            <div className="h-full overflow-y-auto">
+            <div className="h-full">
               <InitForm
                 onSubmit={handleInit}
                 isLoading={isInitializing}

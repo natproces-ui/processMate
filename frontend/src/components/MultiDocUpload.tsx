@@ -30,7 +30,8 @@ export interface ProcessCard {
 }
 
 interface MultiDocUploadProps {
-    onDiscoveryComplete: (sessionId: string, cards: ProcessCard[]) => void;
+    /** `files` = tous les fichiers uploadés (références + sources), conservés pour un usage ultérieur (ex: capture d'annexe) */
+    onDiscoveryComplete: (sessionId: string, cards: ProcessCard[], files: File[]) => void;
     onError: (msg: string) => void;
     onSuccess: (msg: string) => void;
 }
@@ -260,7 +261,8 @@ export default function MultiDocUpload({
             if (processes.length === 0) throw new Error('Aucun processus détecté');
 
             onSuccess(`${processes.length} processus détecté${processes.length > 1 ? 's' : ''}`);
-            onDiscoveryComplete(discoverData.session_id, processes);
+            const allFiles = [...refFiles, ...srcFiles].map(f => f.file);
+            onDiscoveryComplete(discoverData.session_id, processes, allFiles);
             setCollapsed(true);
 
         } catch (err: any) {
@@ -286,9 +288,12 @@ export default function MultiDocUpload({
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
 
             {/* Header */}
-            <button
+            <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setCollapsed(c => !c)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setCollapsed(c => !c); } }}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100 cursor-pointer"
             >
                 <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center">
@@ -319,7 +324,7 @@ export default function MultiDocUpload({
                         : <ChevronUp className="w-4 h-4 text-slate-400" />
                     }
                 </div>
-            </button>
+            </div>
 
             {!collapsed && (
                 <div className="p-4 space-y-4">
