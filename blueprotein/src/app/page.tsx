@@ -16,8 +16,8 @@ import {
    par produit une fois les visuels de marque disponibles.
    ══════════════════════════════════════════════════════════════════ */
 
-const HERO_IMG = '/blueprotein/hero-farmer.jpg';
-const PRODUCT_PLACEHOLDER_IMG = '/blueprotein/product-placeholder.jpg';
+const HERO_IMG = '/hero-farmer.jpg';
+const PRODUCT_PLACEHOLDER_IMG = '/product-placeholder.jpg';
 
 function HeroImage({ className = '' }: { className?: string }) {
   return (
