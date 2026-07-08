@@ -53,6 +53,8 @@ async def send_message(
     session_id: str = Form(...),
     message: str = Form(...),
     current_workflow: Optional[str] = Form(None),
+    current_enrichments: Optional[str] = Form(None),
+    current_procedure_metadata: Optional[str] = Form(None),
     history: Optional[str] = Form(None),
     files: List[UploadFile] = File(default=[])
 ):
@@ -89,12 +91,30 @@ async def send_message(
             except Exception:
                 pass
 
+        # Enrichissements et métadonnées existants (pour préserver descriptifs / règles de
+        # gestion / périmètre lors d'une mise à jour via chat plutôt que de les regénérer à vide)
+        existing_enrichments = None
+        if current_enrichments:
+            try:
+                existing_enrichments = json.loads(current_enrichments)
+            except Exception:
+                pass
+
+        existing_metadata = None
+        if current_procedure_metadata:
+            try:
+                existing_metadata = json.loads(current_procedure_metadata)
+            except Exception:
+                pass
+
         # Traitement
         result = await processor.process_message(
             message=message,
             files=file_contents,
             history=history_list,
-            current_workflow=existing_workflow
+            current_workflow=existing_workflow,
+            current_enrichments=existing_enrichments,
+            current_procedure_metadata=existing_metadata,
         )
 
         intent = result.get("intent")

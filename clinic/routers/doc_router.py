@@ -5,7 +5,8 @@ Router pour la génération de documents Word — Format procédure CIH Bank
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Optional, Literal, Union
+from typing import List, Dict, Optional, Literal, Union, Tuple
+from urllib.parse import quote
 import logging
 import os
 import tempfile
@@ -28,6 +29,11 @@ class AbbreviationItem(BaseModel):
 class DefinitionItem(BaseModel):
     terme: str
     definition: str
+
+class AnnexeItem(BaseModel):
+    titre: str
+    contenu: str = ""
+    image: Optional[str] = None  # PNG base64 ("data:image/png;base64,...") capturé manuellement
 
 class OutputItem(BaseModel):
     targetId: str
@@ -60,6 +66,7 @@ class ProcessMetadataModel(BaseModel):
     definitions:                List[DefinitionItem] = Field(default=[])
     abbreviations:              List[AbbreviationItem] = Field(default=[])
     regles_gestion:             Union[str, List[str]] = Field(default="")
+    annexe:                     List[AnnexeItem] = Field(default=[])
 
     # Champs legacy (rétrocompatibilité avec l'ancien format)
     proprietaire:       Optional[str] = Field(default="")
@@ -78,10 +85,20 @@ class ProcessMetadataModel(BaseModel):
             return []
         return v
 
-    @validator('definitions', 'abbreviations', pre=True)
+    @validator('definitions', 'abbreviations', 'annexe', pre=True)
     def ensure_typed_list(cls, v):
         if v is None:
             return []
+        return v
+
+    @validator('annexe')
+    def validate_annexe_images(cls, v):
+        for item in v:
+            if item.image:
+                if not item.image.startswith('data:image/png;base64,'):
+                    raise ValueError("L'image d'annexe doit être au format 'data:image/png;base64,...'")
+                if len(item.image) > 8 * 1024 * 1024:
+                    raise ValueError("L'image d'annexe est trop volumineuse (>8MB)")
         return v
 
 
@@ -146,7 +163,7 @@ class GenerateDocumentRequest(BaseModel):
 
 
 # ── Stockage temporaire ────────────────────────────────────────────────────────
-_temp_files_storage: Dict[str, str] = {}
+_temp_files_storage: Dict[str, Tuple[str, str]] = {}  # doc_id -> (file_path, display_filename)
 
 
 # ============================================================================
@@ -171,11 +188,11 @@ async def generate_document(request: GenerateDocumentRequest):
             raise ValueError("Le fichier généré est introuvable")
 
         doc_id = os.path.basename(file_path).replace('.docx', '').replace('processmate_', '')
-        _temp_files_storage[doc_id] = file_path
 
         safe_nom = request.metadata.nom.replace(' ', '_').replace('/', '-')
         ref_or_ver = request.metadata.ref or request.metadata.version or '1'
         filename = f"Proc_{safe_nom}_{ref_or_ver}.docx"
+        _temp_files_storage[doc_id] = (file_path, filename)
         file_size = os.path.getsize(file_path)
 
         logger.info(f"✅ Document généré : {file_path} ({file_size} bytes)")
@@ -191,9 +208,10 @@ async def generate_document(request: GenerateDocumentRequest):
                 "statistics": _calculate_preview_stats(
                     request.workflow, request.enrichments,
                     options=request.options,
-                    has_diagram=bool(request.diagram_image)
+                    has_diagram=bool(request.diagram_image),
+                    metadata=request.metadata
                 ),
-                "sections": _generate_sections_preview(request.workflow, request.enrichments, request.options)
+                "sections": _generate_sections_preview(request.workflow, request.enrichments, request.options, request.metadata)
             }
         }
 
@@ -206,18 +224,22 @@ async def generate_document(request: GenerateDocumentRequest):
 
 @router.get("/download/{document_id}")
 async def download_document(document_id: str, background_tasks: BackgroundTasks):
-    file_path = _temp_files_storage.get(document_id)
-    if not file_path or not os.path.exists(file_path):
+    entry = _temp_files_storage.get(document_id)
+    if not entry or not os.path.exists(entry[0]):
         raise HTTPException(status_code=404, detail="Document introuvable ou expiré")
+    file_path, filename = entry
 
     background_tasks.add_task(cleanup_file, file_path)
     background_tasks.add_task(lambda: _temp_files_storage.pop(document_id, None))
 
+    ascii_fallback = filename.encode('ascii', 'ignore').decode('ascii') or 'document.docx'
+    disposition = f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{quote(filename)}"
+
     return FileResponse(
         path=file_path,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        filename=os.path.basename(file_path),
-        headers={"Content-Disposition": f'attachment; filename="{os.path.basename(file_path)}"'}
+        filename=filename,
+        headers={"Content-Disposition": disposition}
     )
 
 
@@ -229,7 +251,7 @@ def cleanup_file(file_path: str):
         logger.warning(f"⚠️ Nettoyage : {e}")
 
 
-def _calculate_preview_stats(workflow, enrichments, options=None, has_diagram=False):
+def _calculate_preview_stats(workflow, enrichments, options=None, has_diagram=False, metadata=None):
     actors = set(s.acteur for s in workflow if s.acteur)
     departments = set(s.département for s in workflow if s.département)
     tools = set(s.outil for s in workflow if s.outil)
@@ -244,11 +266,11 @@ def _calculate_preview_stats(workflow, enrichments, options=None, has_diagram=Fa
         "enrichments_count": len(enrichments),
         "has_diagram": has_diagram,
         "has_enrichments": len(enrichments) > 0,
-        "has_annexes": options.include_annexes if options else False,
+        "has_annexes": bool(options and options.include_annexes and metadata and metadata.annexe),
     }
 
 
-def _generate_sections_preview(workflow, enrichments, options):
+def _generate_sections_preview(workflow, enrichments, options, metadata=None):
     sections = [
         {"title": "En-tête procédure", "icon": "📋", "description": "Référence, version, dates, pôle, direction"},
         {"title": "Généralités", "icon": "📄", "description": "Objet, périmètre, responsabilités, abréviations, définitions"},
@@ -262,6 +284,13 @@ def _generate_sections_preview(workflow, enrichments, options):
         "icon": "📝",
         "description": f"{len(workflow)} opération(s) — tableaux Acteur / Description"
     })
+    annexe = getattr(metadata, 'annexe', None) if metadata else None
+    if options.include_annexes and annexe:
+        sections.append({
+            "title": "Annexes",
+            "icon": "📎",
+            "description": f"{len(annexe)} annexe(s)"
+        })
     return sections
 
 

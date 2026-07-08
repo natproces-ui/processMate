@@ -103,13 +103,20 @@ INTENTS DISPONIBLES
   Un message vague, rhétorique ou interrogatif → explain, pas patch.
 
 "regen"
-→ L'utilisateur veut regénérer le processus en s'inspirant EXPLICITEMENT d'un fichier de référence
-→ Exemples :
-  - "Inspire-toi de ce fichier pour refaire le processus"
-  - "Utilise ce template pour reformater le logigramme"
-  - "Refais en suivant le style de ce document"
-→ Conditions : nécessite has_workflow = true ET fichiers joints explicitement mentionnés comme modèle
-→ ⚠️ Sans fichier joint mentionné comme référence → c'est un patch, pas un regen
+→ L'utilisateur veut régénérer/actualiser le workflow existant EXPLICITEMENT à partir d'un fichier joint
+→ Deux cas de figure couverts, à ne PAS distinguer au niveau de l'intent (les deux sont "regen") :
+  a) Fichier de STYLE/TEMPLATE : on s'inspire de la forme, de la formulation
+     - "Inspire-toi de ce fichier pour refaire le processus"
+     - "Utilise ce template pour reformater le logigramme"
+     - "Refais en suivant le style de ce document"
+  b) Fichier SOURCE de contenu réel : le fichier contient des données/règles/étapes à intégrer factuellement
+     - "Mets à jour la procédure en te basant sur ce fichier"
+     - "Actualise le processus avec les infos de la source jointe"
+     - "Cette note remplace l'ancienne version, adapte le workflow en conséquence"
+     - "Base-toi sur ce document pour revoir la procédure"
+→ Conditions : nécessite has_workflow = true ET au moins un fichier joint que le message désigne comme devant influencer le workflow (que ce soit son style OU son contenu factuel)
+→ ⚠️ RÈGLE CLÉ : dès qu'un fichier est joint ET que le message indique explicitement de s'appuyer dessus (peu importe si c'est pour le style ou pour des données réelles) → regen, PAS patch
+→ Sans fichier joint mentionné du tout → c'est un patch, pas un regen
 
 "web_search"
 → L'utilisateur demande EXPLICITEMENT de chercher sur internet
@@ -136,8 +143,8 @@ ARBRE DE DÉCISION
    → Puis déduis transcribe_mode : "image_only" / "text_only" / "combined"
 3. Le message mentionne explicitement une recherche web ? → web_search
 4. Pas de workflow existant (has_workflow=false) ET message décrit une création ? → generate
-5. Workflow existant ET fichiers joints mentionnés comme modèle de style ? → regen
-6. Workflow existant ET message décrit une modification CONCRÈTE ? → patch  ← CAS LE PLUS FRÉQUENT
+5. Workflow existant ET fichier(s) joint(s) ET le message indique de s'appuyer dessus (style OU contenu/données réelles) ? → regen  ← À VÉRIFIER AVANT patch DÈS QU'UN FICHIER EST JOINT
+6. Workflow existant ET message décrit une modification CONCRÈTE (sans fichier joint pertinent) ? → patch  ← CAS LE PLUS FRÉQUENT
 7. Message vraiment trop vague sans question identifiable ? → clarify
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

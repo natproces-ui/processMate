@@ -5,15 +5,24 @@ Gère : sessions, messages, fichiers, workflows
 """
 
 import os
+import sys
 import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from supabase import create_client, Client
+import httpx
+from supabase import create_client, Client, ClientOptions
 
 logger = logging.getLogger(__name__)
 
 
 _supabase_client: Optional[Client] = None
+
+
+def _make_httpx_client() -> httpx.Client:
+    """Return an httpx.Client, disabling SSL verify on Windows dev when certs are missing."""
+    if sys.platform == "win32" and os.getenv("IS_PRODUCTION", "false").lower() != "true":
+        return httpx.Client(verify=False)
+    return httpx.Client()
 
 
 def get_supabase() -> Client:
@@ -23,7 +32,10 @@ def get_supabase() -> Client:
         key = os.getenv("SUPABASE_SERVICE_KEY")
         if not url or not key:
             raise ValueError("SUPABASE_URL et SUPABASE_SERVICE_KEY sont requis")
-        _supabase_client = create_client(url, key)
+        _supabase_client = create_client(
+            url, key,
+            options=ClientOptions(httpx_client=_make_httpx_client()),
+        )
         logger.info("✅ Client Supabase initialisé")
     return _supabase_client
 

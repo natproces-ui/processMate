@@ -114,6 +114,13 @@ Si un acteur externe intervient dans le processus — que ce soit par une swimla
 - Exemples : "Le montant de l'avance ne doit pas dépasser 80% du montant facturé", "Le délai minimum est de 30 jours"
 - Si aucune règle identifiable : ""
 
+**`annexe`** — Section(s) "Annexe(s)" / "Pièces jointes" / "Appendice(s)" déjà présente(s) dans le document source.
+- Ne s'applique QUE si le document contient explicitement une section ainsi nommée (ou équivalent). Ne synthétise rien, ne résume pas, ne déduis pas de contenu qui n'existe pas.
+- Recopie le contenu de chaque annexe fidèlement (même structure, même sens, même niveau de détail) — mais corrige les fautes d'orthographe, de grammaire et les erreurs de saisie/OCR évidentes. Ne reformule pas les phrases, ne résume pas, n'ajoute et n'invente aucune information.
+- Si le document a plusieurs annexes distinctes (ex: "Annexe 1 : Grille tarifaire", "Annexe 2 : Modèle de courrier"), crée un élément par annexe avec son propre titre.
+- Format : [{"titre": "Titre de l'annexe", "contenu": "Contenu recopié fidèlement, fautes corrigées"}]
+- Si aucune section annexe n'existe dans le document : []
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 PHASE 1 : IDENTIFICATION DU TITRE DU PROCESSUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -419,7 +426,8 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
     "references": "Documents de référence mentionnés, sinon \"\"",
     "definitions": [{"terme": "Terme", "definition": "Définition constituée depuis le contexte"}],
     "abbreviations": [{"abrv": "ABC", "signification": "Signification déduite du contexte"}],
-    "regles_gestion": "Règles métier constituées depuis les conditions et contraintes du document (\\n entre chaque règle)"
+    "regles_gestion": "Règles métier constituées depuis les conditions et contraintes du document (\\n entre chaque règle)",
+    "annexe": [{"titre": "Titre de l'annexe si section 'Annexe(s)' présente dans le document", "contenu": "Contenu recopié tel quel, sinon []"}]
   },
   "workflow": [
     {
@@ -470,7 +478,8 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
       {"abrv": "MCNE", "signification": "Mobilisation des Créances Nées à L'Etranger"},
       {"abrv": "OC", "signification": "Office de Change"}
     ],
-    "regles_gestion": "A la date de la mobilisation, le délai restant à courir de la créance en devises doit être supérieur ou égal à 30 jours au minimum.\\nLe montant du déblocage ne doit pas dépasser 80% du montant de la créance."
+    "regles_gestion": "A la date de la mobilisation, le délai restant à courir de la créance en devises doit être supérieur ou égal à 30 jours au minimum.\\nLe montant du déblocage ne doit pas dépasser 80% du montant de la créance.",
+    "annexe": []
   },
   "workflow": [
     {
@@ -576,6 +585,7 @@ Avant de retourner le JSON, vérifie :
 ✓ procedureMetadata.responsabilites_externes déduit des acteurs externes du workflow (y compris ceux identifiés par le contexte, sans swimlane explicite) ?
 ✓ procedureMetadata.abbreviations : toutes les abréviations du document couvertes ?
 ✓ procedureMetadata.regles_gestion : toutes les contraintes/conditions métier capturées ?
+✓ procedureMetadata.annexe : uniquement si une section "Annexe(s)" existe réellement dans le document, recopiée fidèlement avec fautes/erreurs de saisie corrigées (pas de contenu inventé, résumé ou reformulé) ?
 ✓ Toutes les formes géométriques extraites ?
 ✓ Les acteurs sont dans les swimlanes, pas les outils ?
 ✓ Chaque étape a un typeActeur renseigné ("interne" ou "externe") ?

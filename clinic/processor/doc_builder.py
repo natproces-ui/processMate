@@ -25,7 +25,6 @@ GREY_H2       = RGBColor(191, 191, 191)  # #BFBFBF — fond H2 (Objet, Périmèt
 GREY_CELL     = RGBColor(242, 242, 242)  # #F2F2F2 — fond cellule label gauche tableau opération
 WHITE         = RGBColor(255, 255, 255)
 BLACK         = RGBColor(0, 0, 0)
-GREY_TEXT     = RGBColor(89, 89, 89)
 BORDER_LIGHT  = 'E7E6E6'                 # bordures tableau header
 BORDER_TABLE  = 'A6A6A6'                 # bordures tableaux opérations
 
@@ -139,12 +138,12 @@ class DocumentBuilder:
         h1.paragraph_format.space_after = Pt(4)
         h1.paragraph_format.keep_with_next = True
 
-        # H2 — fond #BFBFBF, texte blanc
+        # H2 — fond #BFBFBF, texte noir
         h2 = styles['Heading 2']
         h2.font.name = 'Calibri'
         h2.font.size = Pt(10)
         h2.font.bold = True
-        h2.font.color.rgb = WHITE
+        h2.font.color.rgb = BLACK
         h2.paragraph_format.space_before = Pt(8)
         h2.paragraph_format.space_after = Pt(4)
         h2.paragraph_format.keep_with_next = True
@@ -156,7 +155,7 @@ class DocumentBuilder:
         h3.font.name = 'Calibri'
         h3.font.size = Pt(10)
         h3.font.bold = True
-        h3.font.color.rgb = GREY_TEXT
+        h3.font.color.rgb = BLACK
         h3.paragraph_format.space_before = Pt(8)
         h3.paragraph_format.space_after = Pt(4)
 
@@ -173,10 +172,11 @@ class DocumentBuilder:
         options: Dict[str, Any] = None
     ) -> str:
         if options is None:
-            options = {'include_diagram': True, 'include_enrichments': True, 'detail_level': 'standard'}
+            options = {'include_diagram': True, 'include_enrichments': True, 'include_annexes': True, 'detail_level': 'standard'}
 
         logger.info(f"🔨 Génération procédure '{metadata.get('nom', 'Procédure')}'")
 
+        self.doc.core_properties.title = metadata.get('nom') or 'Procédure'
         self.step_id_to_name = {s['id']: s['étape'] for s in workflow}
 
         self._add_procedure_header(metadata)
@@ -191,6 +191,9 @@ class DocumentBuilder:
             self._add_logigramme_placeholder()
 
         self._add_description_operations(workflow, enrichments, options)
+
+        if options.get('include_annexes') and metadata.get('annexe'):
+            self._add_annexes(metadata['annexe'])
 
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.docx', prefix='processmate_')
         self.doc.save(tmp.name)
@@ -267,21 +270,21 @@ class DocumentBuilder:
         if perimeter:
             self.doc.add_paragraph(perimeter)
 
-        self._add_h2("Responsabilités")
+        self._add_h2("Acteurs")
         internes = metadata.get('responsabilites_internes', [])
         externes = metadata.get('responsabilites_externes', [])
         if internes:
-            p = self.doc.add_paragraph()
-            _run(p, "Acteurs internes :", bold=True)
+            bp = self.doc.add_paragraph(style='List Bullet')
+            _run(bp, "Internes")
             for actor in internes:
-                bp = self.doc.add_paragraph(style='List Bullet')
-                _run(bp, actor)
+                sp = self.doc.add_paragraph(style='List Bullet 2')
+                _run(sp, actor)
         if externes:
-            p = self.doc.add_paragraph()
-            _run(p, "Acteurs externes :", bold=True)
+            bp = self.doc.add_paragraph(style='List Bullet')
+            _run(bp, "Externes")
             for actor in externes:
-                bp = self.doc.add_paragraph(style='List Bullet')
-                _run(bp, actor)
+                sp = self.doc.add_paragraph(style='List Bullet 2')
+                _run(sp, actor)
         if not internes and not externes:
             self.doc.add_paragraph()
 
@@ -342,7 +345,7 @@ class DocumentBuilder:
 
         note = self.doc.add_paragraph()
         _run(note, "(Clic droit → « Mettre à jour les champs » dans Word pour générer la table)",
-             italic=True, size=8, color=GREY_TEXT)
+             italic=True, size=8, color=BLACK)
 
         self.doc.add_page_break()
 
@@ -384,7 +387,7 @@ class DocumentBuilder:
     def _add_logigramme_placeholder(self):
         self._add_h2("1.2 Logigramme")
         p = self.doc.add_paragraph()
-        _run(p, "[Logigramme non inclus]", italic=True, color=GREY_TEXT)
+        _run(p, "[Logigramme non inclus]", italic=True, color=BLACK)
         self.doc.add_page_break()
 
     # ── 6. Description des opérations ────────────────────────────────────────
@@ -478,6 +481,15 @@ class DocumentBuilder:
             _run(p_app, "Applicatif : ", bold=True, size=9)
             _run(p_app, outil, size=9)
 
+        # Indicateurs (durée / fréquence / KPI) — hors du champ Description
+        if enrichment:
+            for label, key in [("Durée estimée : ", 'duree_estimee'), ("Fréquence : ", 'frequence'), ("KPI : ", 'kpi')]:
+                value = enrichment.get(key)
+                if value:
+                    p_ind = self.doc.add_paragraph()
+                    _run(p_ind, label, bold=True, size=9)
+                    _run(p_ind, value, size=9)
+
         self.doc.add_paragraph()
 
     def _build_description(self, step, enrichment):
@@ -505,15 +517,40 @@ class DocumentBuilder:
         elif type_bpmn == 'StartEvent' and not lines:
             lines.append("Début du processus.")
 
-        if enrichment:
-            if enrichment.get('duree_estimee'):
-                lines.append(f"Durée estimée : {enrichment['duree_estimee']}")
-            if enrichment.get('frequence'):
-                lines.append(f"Fréquence : {enrichment['frequence']}")
-            if enrichment.get('kpi'):
-                lines.append(f"KPI : {enrichment['kpi']}")
-
         return lines if lines else ['—']
+
+    # ── 7. Annexes ───────────────────────────────────────────────────────────
+
+    def _add_annexes(self, annexe_items: List[Dict[str, str]]):
+        self.doc.add_page_break()
+        self._add_h1("Annexes")
+        for item in annexe_items:
+            titre = item.get('titre', '').strip()
+            contenu = item.get('contenu', '').strip()
+            image = item.get('image', '')
+            if not titre and not contenu and not image:
+                continue
+            if titre:
+                self._add_h2(titre)
+            for line in contenu.split('\n'):
+                line = line.strip()
+                if line:
+                    self.doc.add_paragraph(line)
+            if image:
+                self._add_annexe_image(image)
+
+    def _add_annexe_image(self, image_base64: str):
+        try:
+            b64 = image_base64.split(',')[1] if image_base64.startswith('data:image') else image_base64
+            image_data = base64.b64decode(b64)
+            p = self.doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.add_run().add_picture(io.BytesIO(image_data), width=Inches(6.3))
+            logger.info(f"✅ Image d'annexe insérée ({len(image_data)} bytes)")
+        except Exception as e:
+            logger.error(f"❌ Erreur image d'annexe : {e}")
+            p = self.doc.add_paragraph()
+            _run(p, f"[Image d'annexe non disponible : {e}]", color=RGBColor(200, 0, 0))
 
     # ── Helpers titres ────────────────────────────────────────────────────────
 
@@ -526,9 +563,9 @@ class DocumentBuilder:
         return p
 
     def _add_h2(self, text: str):
-        """H2 avec fond #BFBFBF et texte blanc."""
+        """H2 avec fond #BFBFBF et texte noir."""
         p = self.doc.add_paragraph(style='Heading 2')
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
         _set_para_bg(p, 'BFBFBF')
-        _run(p, text, bold=True, size=10, color=WHITE)
+        _run(p, text, bold=True, size=10, color=BLACK)
         return p

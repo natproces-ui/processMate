@@ -439,13 +439,13 @@ async def stream_chat(session_id, message, artifact_id=None):
         system_content += "\n\n" + context_block
 
     gemini_contents = [
-        {"role": "user",  "parts": [system_content]},
-        {"role": "model", "parts": ["Compris. Prêt à approfondir l'analyse."]},
+        {"role": "user",  "parts": [{"text": system_content}]},
+        {"role": "model", "parts": [{"text": "Compris. Prêt à approfondir l'analyse."}]},
     ]
     for msg in history[-20:]:
         role = "user" if msg.get("role") == "user" else "model"
-        gemini_contents.append({"role": role, "parts": [msg.get("content", "")]})
-    gemini_contents.append({"role": "user", "parts": [message]})
+        gemini_contents.append({"role": role, "parts": [{"text": msg.get("content", "")}]})
+    gemini_contents.append({"role": "user", "parts": [{"text": message}]})
 
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:

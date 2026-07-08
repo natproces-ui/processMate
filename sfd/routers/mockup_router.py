@@ -55,6 +55,7 @@ async def _run_pipeline(
     logo_b64: Optional[str],
     logo_mime: str,
     engine: str = "v1",
+    instructions: str = "",
 ):
     job = _jobs[job_id]
 
@@ -113,6 +114,7 @@ async def _run_pipeline(
                     secondary_color= secondary_color,
                     logo_b64       = logo_b64,
                     logo_mime      = logo_mime,
+                    instructions   = instructions,
                 )
                 mockups.append({
                     "title": screen["title"],
@@ -169,6 +171,7 @@ async def generate_mockups(
     secondary_color: Annotated[str,  Form()],
     max_pages:       Annotated[int,  Form()] = 8,
     engine:          Annotated[str,  Form()] = "v1",
+    instructions:    Annotated[str,  Form()] = "",
     logo:            Optional[UploadFile] = File(default=None),
 ):
     """
@@ -205,6 +208,7 @@ async def generate_mockups(
         logo_b64        = logo_b64,
         logo_mime       = logo_mime,
         engine          = engine,
+        instructions    = instructions,
     )
 
     return {"job_id": job_id}

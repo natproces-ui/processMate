@@ -46,7 +46,7 @@ _LIFECYCLE_TITLE_MIGRATION = {
 }
 
 VALID_STATUSES = {
-    "Brouillon", "En cours", "En validation",
+    "Brouillon", "En cours", "En vérification", "En validation",
     "Retours reçus", "En révision", "Validée", "Rejetée", "Bloquée",
     "En pause", "En arbitrage",
 }
@@ -110,7 +110,7 @@ def _get_latest_workflows() -> List[Dict]:
     db = get_supabase()
     result = (
         db.table("workflows")
-        .select("id, session_id, title, version, procedure_metadata_json, workflow_json, enrichments_json, created_at")
+        .select("id, session_id, title, version, procedure_metadata_json, workflow_json, enrichments_json, created_at, taxonomy_id")
         .order("version", desc=True)
         .execute()
     )
@@ -152,6 +152,8 @@ def _build_procedure(wf: Dict) -> Dict:
         "is_finalized": bool(meta.get("finalized_at")),
         "finalized_at": meta.get("finalized_at"),
         "remarks_count": len(meta.get("remarks", [])),
+        "has_unsaved_changes": bool(meta.get("has_unsaved_changes")),
+        "taxonomy_id": wf.get("taxonomy_id"),
         "lifecycle_stages": meta.get("lifecycle_stages", DEFAULT_LIFECYCLE_STAGES),
         "raci": {
             "people": raci_raw.get("people", []),
@@ -770,6 +772,7 @@ class SaveWorkflowDataRequest(BaseModel):
     workflow_json: List[Dict]
     enrichments_json: Dict = {}
     procedure_metadata_json: Optional[Dict] = None
+    bpmn_xml: Optional[str] = None
 
 
 @router.patch("/procedures/{workflow_id}/workflow")
@@ -778,12 +781,24 @@ async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest):
     try:
         db = get_supabase()
         wf = _get_workflow(workflow_id)
+        existing_meta = wf.get("procedure_metadata_json") or {}
+        if body.procedure_metadata_json is not None:
+            merged = {**existing_meta, **body.procedure_metadata_json}
+            for key in ("lifecycle_stages", "raci", "remarks"):
+                if key in existing_meta and key not in body.procedure_metadata_json:
+                    merged[key] = existing_meta[key]
+        else:
+            merged = existing_meta
+        merged["has_unsaved_changes"] = True
+        merged["last_modified_at"] = datetime.utcnow().isoformat()
+        enrichments = body.enrichments_json
+        if body.bpmn_xml is not None:
+            enrichments["__bpmn_xml__"] = body.bpmn_xml
         update: Dict = {
             "workflow_json": body.workflow_json,
-            "enrichments_json": body.enrichments_json,
+            "enrichments_json": enrichments,
+            "procedure_metadata_json": merged,
         }
-        if body.procedure_metadata_json is not None:
-            update["procedure_metadata_json"] = body.procedure_metadata_json
         db.table("workflows").update(update).eq("id", workflow_id).execute()
         logger.info(f"💾 workflow_json mis à jour — {workflow_id}")
         return {"success": True, "workflow_id": workflow_id, "session_id": wf["session_id"]}
@@ -798,7 +813,15 @@ async def delete_procedure(workflow_id: str):
     try:
         db = get_supabase()
         wf = _get_workflow(workflow_id)
-        # Supprimer tous les workflows de la session
+        # Récupérer tous les IDs de la session avant suppression
+        session_workflow_ids = [
+            r["id"] for r in
+            db.table("workflows").select("id").eq("session_id", wf["session_id"]).execute().data or []
+        ]
+        # Supprimer les irritants liés
+        if session_workflow_ids:
+            db.table("irritants").delete().in_("procedure_id", session_workflow_ids).execute()
+        # Supprimer les workflows
         db.table("workflows").delete().eq("session_id", wf["session_id"]).execute()
         logger.info(f"🗑️ Procédure supprimée: session {wf['session_id']}")
         return {"success": True}
@@ -806,6 +829,7 @@ async def delete_procedure(workflow_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -828,6 +852,8 @@ async def update_status(workflow_id: str, body: StatusUpdate):
         meta["status"] = body.status
         if body.comment:
             meta["status_comment"] = body.comment
+        if body.status in ("En vérification", "En validation"):
+            meta["has_unsaved_changes"] = False
         _update_metadata(workflow_id, meta)
         _proc_event(
             procedure_id=workflow_id,

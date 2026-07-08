@@ -19,6 +19,7 @@ async def rebrand_screenshot(
     secondary_color: str,
     logo_b64: str | None = None,
     logo_mime: str = "image/png",
+    instructions: str = "",
 ) -> str:
     """
     Envoie un screenshot à Gemini Flash Vision et retourne du HTML rebrandé.
@@ -32,8 +33,16 @@ async def rebrand_screenshot(
             f"Le logo sera injecté en CSS via une image séparée.\n"
         )
 
-    prompt = f"""You are a pixel-perfect UI replication expert. Your task is to reproduce this screenshot as an EXACT HTML/CSS replica, changing ONLY the brand identity.
+    custom_instructions_block = ""
+    if instructions and instructions.strip():
+        custom_instructions_block = f"""
+═══ INSTRUCTIONS SPÉCIFIQUES DU CLIENT ═══
+{instructions.strip()}
+Ces instructions sont prioritaires sur les règles générales ci-dessous quand elles s'y appliquent.
+"""
 
+    prompt = f"""You are a pixel-perfect UI replication expert. Your task is to reproduce this screenshot as an EXACT HTML/CSS replica, changing ONLY the brand identity.
+{custom_instructions_block}
 ═══ WHAT TO CHANGE (brand only) ═══
 - Replace every occurrence of the source brand name with: {client_name}
 - Replace primary color with: {primary_color}

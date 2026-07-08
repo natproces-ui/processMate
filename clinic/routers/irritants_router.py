@@ -22,7 +22,7 @@ from processor.irritants_processor import (
 
 router = APIRouter(prefix="/api/irritants", tags=["Irritants"])
 
-CATEGORIES    = ["Rupture d'information", "Automatisation", "Délai / Attente", "Outil / Système", "Organisation", "Autre"]
+CATEGORIES    = ["Rupture d'information", "Automatisation", "Délai / Attente", "Outil / Système"]
 CRITICITES    = ["Majeur", "Moyen", "Mineur"]
 STATUTS       = ["ASIS", "En cours", "TOBE", "Résolu"]
 PISTE_STATUTS = ["proposée", "retenue", "rejetée", "en_cours"]
@@ -75,6 +75,14 @@ class CreatePisteRequest(BaseModel):
 # HELPERS ROUTER
 # ─────────────────────────────────────────────────────────────
 
+def _valid_procedure_ids() -> set:
+    rows = get_supabase().table("workflows").select("id").execute().data or []
+    return {r["id"] for r in rows}
+
+def _filter_orphans(irritants: list) -> list:
+    valid = _valid_procedure_ids()
+    return [i for i in irritants if not i.get("procedure_id") or i["procedure_id"] in valid]
+
 def _get_irritant_or_404(irritant_id: str) -> dict:
     r = get_supabase().table("irritants").select("*").eq("id", irritant_id).execute()
     if not r.data:
@@ -126,7 +134,7 @@ async def list_irritants(
         if criticite:    q = q.eq("criticite",    criticite)
         if statut:       q = q.eq("statut",       statut)
         if procedure_id: q = q.eq("procedure_id", procedure_id)
-        irritants = q.execute().data
+        irritants = _filter_orphans(q.execute().data or [])
         if with_findings:
             for irr in irritants:
                 irr["findings"] = get_findings_with_pistes(irr["id"])
@@ -139,7 +147,7 @@ async def list_irritants(
 async def list_by_procedure():
     try:
         db = get_supabase()
-        irritants = db.table("irritants").select("*").order("created_at", desc=True).execute().data
+        irritants = _filter_orphans(db.table("irritants").select("*").order("created_at", desc=True).execute().data or [])
         grouped: dict = {}
         for irr in irritants:
             pid = irr.get("procedure_id") or "__manual__"
@@ -162,7 +170,8 @@ async def list_by_procedure():
 async def get_stats():
     try:
         db = get_supabase()
-        rows = db.table("irritants").select("categorie, criticite, statut").execute().data
+        all_rows = db.table("irritants").select("categorie, criticite, statut, procedure_id").execute().data or []
+        rows = _filter_orphans(all_rows)
         by_cat, by_crit, by_stat = {}, {}, {}
         for r in rows:
             by_cat[r["categorie"]]  = by_cat.get(r["categorie"], 0)  + 1

@@ -24,7 +24,13 @@ router = APIRouter(
 class WorkflowImproveRequest(BaseModel):
     workflow: List[dict]
 
-processor = ImageProcessor()
+_processor = None
+
+def _get_processor() -> ImageProcessor:
+    global _processor
+    if _processor is None:
+        _processor = ImageProcessor()
+    return _processor
 
 
 @router.post("/analyze")
@@ -43,7 +49,7 @@ async def analyze_workflow_image(file: UploadFile = File(...)):
 
         logger.info(f"📥 Analyse de l'image: {file.filename} ({len(image_data)} bytes)")
 
-        result = await processor.extract_workflow(image_data, file.content_type)
+        result = await _get_processor().extract_workflow(image_data, file.content_type)
 
         return JSONResponse(content={
             "success": True,
@@ -72,7 +78,7 @@ async def improve_workflow(request: WorkflowImproveRequest):
 
         logger.info(f"🔄 Amélioration d'un workflow de {len(request.workflow)} étapes")
 
-        result = await processor.improve_workflow(request.workflow)
+        result = await _get_processor().improve_workflow(request.workflow)
 
         return JSONResponse(content={
             "success": True,
@@ -104,7 +110,7 @@ async def verify_extraction(file: UploadFile = File(...), workflow: str = Form(.
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=400, detail=f"JSON invalide: {str(e)}")
 
-        result = await processor.verify_extraction(image_data, file.content_type, workflow_data)
+        result = await _get_processor().verify_extraction(image_data, file.content_type, workflow_data)
 
         return JSONResponse(content={"success": True, "verification_result": result})
 
@@ -135,7 +141,7 @@ async def batch_analyze_workflow_images(files: List[UploadFile] = File(...)):
                 results.append({"filename": file.filename, "success": False, "workflow": None, "enrichments": None, "procedureMetadata": None, "error": "Fichier trop volumineux"})
                 continue
 
-            result = await processor.extract_workflow(image_data, file.content_type)
+            result = await _get_processor().extract_workflow(image_data, file.content_type)
 
             results.append({
                 "filename": file.filename,
@@ -186,6 +192,7 @@ async def get_info():
             "responsabilites_externes": "Acteurs externes déduits du workflow",
             "abbreviations": "Abréviations déduites du contexte",
             "definitions": "Définitions constituées depuis le texte",
-            "regles_gestion": "Règles métier extraites des conditions"
+            "regles_gestion": "Règles métier extraites des conditions",
+            "annexe": "Section(s) Annexe(s) recopiée(s) telle(s) quelle(s) si présente(s) dans le document"
         }
     }

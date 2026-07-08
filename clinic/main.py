@@ -9,6 +9,17 @@ API FastAPI complète pour la génération de processus BPMN
 - Découverte et génération multi-documents (PDF + Images)  ← NOUVEAU
 """
 
+import os, sys, ssl
+if sys.platform == "win32" and os.getenv("IS_PRODUCTION", "false").lower() != "true":
+    # Avast/Kaspersky MITM proxy replaces TLS certs — disable verify in dev
+    _orig_ctx = ssl.create_default_context
+    def _no_verify_ctx(*a, **kw):
+        ctx = _orig_ctx(*a, **kw)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    ssl.create_default_context = _no_verify_ctx
+
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,7 +42,7 @@ from routers import (
     quota, doc_router, stt, interface_router, revision_router, bpmn_from_document, chat_router,
     orchestration_router, irritants_router, orchestration_tasks_router, regulatory_impact_router,
     analysis_router, taxonomy_router, campaigns_router, reports_router, corrections_router,
-    workspace_router
+    workspace_router, specifications_router
 )
 
 
@@ -88,6 +99,7 @@ app.include_router(campaigns_router.router)
 app.include_router(reports_router.router)
 app.include_router(corrections_router.router)
 app.include_router(workspace_router.router)
+app.include_router(specifications_router.router)
 
 @app.head("/")
 async def head_root():

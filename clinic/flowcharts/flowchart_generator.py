@@ -271,15 +271,11 @@ Génère maintenant le flowchart Graphviz complet avec actions métier détaill�
     def _clean_graphviz_code(self, raw_code: str) -> str:
         """
         Nettoie le code Graphviz généré par Gemini
-        
-        Args:
-            raw_code: Code brut retourné par Gemini
-        
-        Returns:
-            Code Graphviz nettoyé
         """
+        import re
+
         code = raw_code.strip()
-        
+
         # Retirer les balises markdown si présentes
         if "```" in code:
             lines = code.split("\n")
@@ -288,13 +284,48 @@ Génère maintenant le flowchart Graphviz complet avec actions métier détaill�
                 if line.strip().startswith("digraph"):
                     start_idx = i
                     break
-            
             end_idx = len(lines) - 1
             for i in range(len(lines) - 1, -1, -1):
                 if lines[i].strip() == "}":
                     end_idx = i
                     break
-            
             code = "\n".join(lines[start_idx:end_idx+1])
-        
+
+        # Supprimer les vrais sauts de ligne à l'intérieur des labels
+        code = self._fix_multiline_labels(code)
+
+        # Tronquer les labels trop longs (Graphviz limite à 16384 chars)
+        code = re.sub(
+            r'label="([^"]*)"',
+            lambda m: f'label="{m.group(1)[:800]}…"' if len(m.group(1)) > 800 else m.group(0),
+            code,
+        )
+
+        # Échapper les guillemets simples problématiques dans les labels
+        def _fix_label_quotes(m: re.Match) -> str:
+            content = m.group(1)
+            content = content.replace("'", "\\'")
+            return f'label="{content}"'
+        code = re.sub(r'label="([^"]*)"', _fix_label_quotes, code)
+
         return code
+
+    @staticmethod
+    def _fix_multiline_labels(code: str) -> str:
+        """Corrige les labels qui contiennent de vrais sauts de ligne au lieu de \\n."""
+        result = []
+        in_label = False
+        for line in code.split("\n"):
+            stripped = line.strip()
+            if not in_label:
+                if 'label="' in stripped and stripped.count('"') % 2 != 0:
+                    in_label = True
+                    result.append(line)
+                else:
+                    result.append(line)
+            else:
+                prev = result[-1]
+                result[-1] = prev.rstrip() + "\\n" + stripped
+                if '"' in stripped:
+                    in_label = False
+        return "\n".join(result)

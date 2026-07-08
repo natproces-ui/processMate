@@ -19,7 +19,13 @@ router = APIRouter(
     tags=["Process Generation"]
 )
 
-processor = MultiDocProcessor()
+_processor = None
+
+def _get_processor() -> MultiDocProcessor:
+    global _processor
+    if _processor is None:
+        _processor = MultiDocProcessor()
+    return _processor
 
 
 @router.post("/generate")
@@ -65,7 +71,7 @@ async def generate_bpmn(request: GenerationRequest):
     )
 
     try:
-        result = await processor.generate_process(
+        result = await _get_processor().generate_process(
             selected_card=selected_card,
             src_files=src_files,
             ref_files=ref_files,

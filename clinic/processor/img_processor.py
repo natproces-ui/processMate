@@ -294,9 +294,20 @@ class ImageProcessor:
             if not workflow or len(workflow) == 0:
                 raise ValueError("Workflow vide retourné par Gemini")
             
-            enrichments_list = data.get("enrichments", [])
+            enrichments_raw = data.get("enrichments", [])
+            if isinstance(enrichments_raw, dict):
+                # Tolérance de format : le modèle peut renvoyer un objet {id_tache: {...}}
+                # au lieu de la liste attendue — on normalise dans les deux cas.
+                enrichments_list = [
+                    {**(v or {}), "id_tache": v.get("id_tache", k) if isinstance(v, dict) else k}
+                    for k, v in enrichments_raw.items()
+                ]
+            else:
+                enrichments_list = enrichments_raw
             enrichments_dict = {}
             for enr in enrichments_list:
+                if not isinstance(enr, dict):
+                    continue
                 task_id = enr.get("id_tache", "")
                 if task_id:
                     enrichments_dict[task_id] = {

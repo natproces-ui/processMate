@@ -60,6 +60,38 @@ def _extract_procedure_metadata(raw_text: str) -> Dict:
     return {}
 
 
+def _merge_metadata(existing: Optional[Dict], new: Optional[Dict]) -> Dict:
+    """Fusionne les métadonnées régénérées avec les existantes.
+
+    Le modèle ne voit pas toujours l'intégralité du contexte d'origine ; on ne laisse
+    donc jamais un champ vide écraser une valeur déjà renseignée.
+    """
+    if not existing:
+        return new or {}
+    merged = dict(existing)
+    for key, value in (new or {}).items():
+        if value in ("", None, [], {}):
+            continue
+        merged[key] = value
+    return merged
+
+
+def _merge_enrichments(existing: Optional[Dict], new: Optional[Dict]) -> Dict:
+    """Fusionne les enrichissements (descriptif, KPI...) par tâche, sans perdre les
+    valeurs déjà rédigées quand le modèle ne renvoie rien de nouveau pour une tâche."""
+    if not existing:
+        return new or {}
+    merged = dict(existing)
+    for task_id, enr in (new or {}).items():
+        base = dict(merged.get(task_id) or {})
+        for k, v in (enr or {}).items():
+            if v in ("", None):
+                continue
+            base[k] = v
+        merged[task_id] = base
+    return merged
+
+
 class ChatProcessor:
     def __init__(self):
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -75,7 +107,9 @@ class ChatProcessor:
         message: str,
         files: List[Dict[str, Any]],
         history: List[Dict[str, str]],
-        current_workflow: Optional[List[Dict]] = None
+        current_workflow: Optional[List[Dict]] = None,
+        current_enrichments: Optional[Dict] = None,
+        current_procedure_metadata: Optional[Dict] = None,
     ) -> Dict[str, Any]:
 
         files = _normalize_files(files)
@@ -115,13 +149,31 @@ class ChatProcessor:
             return await self._handle_transcribe(message, files, intent_result.transcribe_mode)
 
         if intent_result.intent == "patch":
+            if files:
+                # Filet de sécurité : un patch ne peut pas exploiter de fichiers joints.
+                # Si l'utilisateur a joint un fichier, on bascule vers regen plutôt que de le
+                # laisser silencieusement ignoré.
+                logger.info("🔀 Intent patch avec fichier(s) joint(s) — bascule vers regen")
+                result = await self._handle_regen(
+                    message, files, current_workflow, intent_result,
+                    current_enrichments, current_procedure_metadata,
+                )
+                result["enrichments"] = _merge_enrichments(current_enrichments, result.get("enrichments"))
+                result["procedureMetadata"] = _merge_metadata(current_procedure_metadata, result.get("procedureMetadata"))
+                return result
             return await self._handle_patch(message, current_workflow)
 
         if intent_result.intent == "web_search":
             return await self._handle_web_search(message, files, current_workflow)
 
         if intent_result.intent == "regen":
-            return await self._handle_regen(message, files, current_workflow, intent_result)
+            result = await self._handle_regen(
+                message, files, current_workflow, intent_result,
+                current_enrichments, current_procedure_metadata,
+            )
+            result["enrichments"] = _merge_enrichments(current_enrichments, result.get("enrichments"))
+            result["procedureMetadata"] = _merge_metadata(current_procedure_metadata, result.get("procedureMetadata"))
+            return result
 
         return await self._handle_generate(message, files, history)
 
@@ -277,7 +329,9 @@ class ChatProcessor:
         message: str,
         files: List[Dict[str, Any]],
         current_workflow: List[Dict],
-        intent_result: IntentResult
+        intent_result: IntentResult,
+        current_enrichments: Optional[Dict] = None,
+        current_metadata: Optional[Dict] = None,
     ) -> Dict[str, Any]:
 
         ref_files = [f for f in files if f.get("filename") in intent_result.reference_files]
@@ -296,6 +350,14 @@ class ChatProcessor:
         conventions_section = self.multi_doc._build_conventions_section(conventions)
 
         existing_json = json.dumps(current_workflow, ensure_ascii=False, indent=2)
+        # Format identique au schéma de sortie attendu (liste, clé "id_tache") pour ne pas
+        # induire le modèle à renvoyer "enrichments" sous forme d'objet au lieu d'une liste.
+        existing_enrichments_list = [
+            {"id_tache": task_id, **(enr or {})}
+            for task_id, enr in (current_enrichments or {}).items()
+        ]
+        existing_enrichments_json = json.dumps(existing_enrichments_list, ensure_ascii=False, indent=2)
+        existing_metadata_json = json.dumps(current_metadata or {}, ensure_ascii=False, indent=2)
         ref_names = ", ".join(f.get("filename", "") for f in ref_files) if ref_files else "aucun"
 
         prompt = f"""Tu es un expert en formalisation de processus métier bancaires.
@@ -306,6 +368,11 @@ class ChatProcessor:
 
 Améliorer et enrichir le workflow existant ci-dessous selon l'instruction de l'utilisateur.
 Le workflow existant est LA CIBLE à améliorer — pas un processus à remplacer.
+
+Les fichiers joints peuvent jouer deux rôles, potentiellement combinés :
+- Fichier de STYLE : sers-t'en pour la formulation, le niveau de détail, les conventions de nommage.
+- Fichier SOURCE : s'il contient des données réelles (règles de gestion, étapes, acteurs, montants, conditions...),
+  intègre-les FACTUELLEMENT dans le workflow — ce n'est pas seulement un exemple de style à imiter, c'est du contenu à reporter.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✏️ INSTRUCTION DE L'UTILISATEUR
@@ -322,6 +389,30 @@ Tu peux ajouter des étapes, clarifier des libellés, corriger des connexions, a
 
 {existing_json}
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 ENRICHISSEMENTS EXISTANTS (descriptif, durée, fréquence, KPI — par tâche)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ Ce sont les enrichissements DÉJÀ RÉDIGÉS pour ce workflow (même format de liste que celui
+attendu en sortie, "id_tache" identifie la tâche concernée).
+Reprends-les TELS QUELS dans "enrichments" pour chaque tâche conservée — même format de liste.
+N'invente PAS un nouveau descriptif pour une tâche qui en a déjà un, sauf si l'instruction
+de l'utilisateur demande explicitement de le modifier. Ne génère un nouveau descriptif que
+pour les tâches ajoutées, qui n'en ont pas encore.
+
+{existing_enrichments_json}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 MÉTADONNÉES EXISTANTES DE LA PROCÉDURE (objet, périmètre, règles de gestion, définitions...)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ Reprends ces métadonnées TELLES QUELLES dans "procedureMetadata", champ par champ,
+sauf si l'instruction de l'utilisateur demande explicitement de modifier l'un de ces champs
+(ex: "ajoute une règle de gestion", "précise le périmètre", "corrige l'objet").
+Ne laisse JAMAIS un champ vide dans ta réponse si une valeur existait déjà ci-dessous pour ce champ.
+
+{existing_metadata_json}
+
 {conventions_section}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -334,6 +425,7 @@ Tu peux ajouter des étapes, clarifier des libellés, corriger des connexions, a
 4. Adapte les acteurs, outils et connexions selon les conventions extraites
 5. Applique le même niveau de détail et de formulation que la référence
 6. Retourne le workflow COMPLET mis à jour
+7. Retourne les enrichissements et métadonnées existants inchangés, sauf demande explicite de modification
 
 {get_extraction_prompt()}"""
 

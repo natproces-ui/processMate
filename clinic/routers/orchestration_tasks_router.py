@@ -4,6 +4,7 @@ Router Suivi des taches ProcessMate.
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import threading
 import uuid
 import logging
 
@@ -11,6 +12,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from database.supabase_client import get_supabase
+from config import FRONTEND_URL
+from email_sender import send_task_email
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,7 @@ class TaskCreate(BaseModel):
     workflow_stage_id: Optional[str] = None
     workflow_step_id: Optional[str] = None
     metadata: Dict[str, Any] = {}
+    force: bool = False
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -486,6 +490,7 @@ def _ensure_validation_tasks(
                              "source_task_id": source_task.get("id")})
         _notify(validator_id, spec["notification"],
                 procedure_id, created["id"], message, "task")
+        _fire_task_email(validator_id, actor_id, created, procedure_title, spec["task_type"], spec["description"])
 
     # Sync lifecycle stage once after all tasks are created
     if spec["event_type"] == "review_task_created":
@@ -600,9 +605,11 @@ def _ensure_correction_tasks(
         if recipient_role == "C":
             _notify(responsible_id, spec["notification"],
                     procedure_id, created["id"], message, "task")
+            _fire_task_email(responsible_id, actor_id, created, procedure_title, spec["task_type"], spec["description"])
             continue
         _notify(responsible_id, f"Corrections demandées: {procedure_title}",
                 procedure_id, created["id"], message, "task")
+        _fire_task_email(responsible_id, actor_id, created, procedure_title, spec["task_type"], spec["description"])
 
     # Sync lifecycle stage — corrections go backward
     if spec["event_type"] == "correction_task_created":
@@ -659,7 +666,57 @@ def _ensure_information_tasks(
                     payload={"informed": _resolve_user_name(informed_id)})
         _notify(informed_id, f"Procédure validée: {procedure_title}",
                 procedure_id, created["id"], message, "task")
+        _fire_task_email(informed_id, actor_id, created, procedure_title, "information")
 
+
+def _fire_task_email(
+    user_id: str,
+    assigned_by_id: str,
+    task: Dict[str, Any],
+    procedure_title: str,
+    task_type: str,
+    task_description: Optional[str] = None,
+) -> None:
+    """Récupère l'email du destinataire et envoie la notification en arrière-plan."""
+    try:
+        db = get_supabase()
+        rows = db.table("user_profiles").select(
+            "display_name, full_name, email"
+        ).eq("id", user_id).execute().data
+        if not rows:
+            return
+        p = rows[0]
+        to_email = p.get("email") or ""
+        if not to_email:
+            return
+        to_name = p.get("display_name") or p.get("full_name") or to_email
+        assigned_by_name = _resolve_user_name(assigned_by_id)
+        procedure_id = task.get("procedure_id", "")
+        task_id = task.get("id", "")
+        qs = f"tab=workspace&procedure_id={procedure_id}"
+        if task_id:
+            qs += f"&taskId={task_id}"
+        ws_url = (
+            f"{FRONTEND_URL}/orchestration?{qs}"
+            if FRONTEND_URL and procedure_id else None
+        )
+        threading.Thread(
+            target=send_task_email,
+            kwargs={
+                "to_email": to_email,
+                "to_name": to_name,
+                "assigned_by_name": assigned_by_name,
+                "task_title": task.get("title", ""),
+                "procedure_name": procedure_title,
+                "task_type": task_type,
+                "due_date": task.get("due_date"),
+                "workspace_url": ws_url,
+                "task_description": task_description,
+            },
+            daemon=True,
+        ).start()
+    except Exception as exc:
+        logger.warning(f"_fire_task_email failed for user {user_id}: {exc}")
 
 
 # ─── HELPERS ──────────────────────────────────────────────────
@@ -686,9 +743,87 @@ def _enrich_tasks_with_names(db, tasks: List[Dict[str, Any]]) -> List[Dict[str, 
 
 # ─── ENDPOINTS ────────────────────────────────────────────────
 
+@router.get("/events")
+async def list_recent_events(
+    limit: int = 100,
+    procedure_id: Optional[str] = None,
+):
+    """Journal global des événements inter-RACI (admin)."""
+    try:
+        db = get_supabase()
+        query = (
+            db.table("procedure_task_events")
+            .select("*")
+            .order("created_at", desc=True)
+            .limit(limit)
+        )
+        if procedure_id:
+            query = query.eq("procedure_id", procedure_id)
+        events: List[Dict[str, Any]] = query.execute().data or []
+
+        # Batch-enrich actor names
+        actor_ids = {e.get("actor_id") for e in events if e.get("actor_id")}
+        if actor_ids:
+            profiles = (
+                db.table("user_profiles")
+                .select("id, display_name, full_name, email")
+                .in_("id", list(actor_ids))
+                .execute()
+                .data or []
+            )
+            name_map = {
+                p["id"]: p.get("display_name") or p.get("full_name") or p.get("email") or p["id"]
+                for p in profiles
+            }
+            for e in events:
+                if e.get("actor_id"):
+                    e["actor_name"] = name_map.get(e["actor_id"], e.get("actor_name") or "")
+
+        # Batch-enrich task info (title, type, raci_role, procedure_name)
+        task_ids = {e.get("task_id") for e in events if e.get("task_id")}
+        if task_ids:
+            tasks_rows = (
+                db.table("procedure_tasks")
+                .select("id, title, procedure_id, task_type, raci_role")
+                .in_("id", list(task_ids))
+                .execute()
+                .data or []
+            )
+            task_map = {t["id"]: t for t in tasks_rows}
+
+            proc_ids = {t.get("procedure_id") for t in tasks_rows if t.get("procedure_id")}
+            if proc_ids:
+                wfs = (
+                    db.table("workflows")
+                    .select("id, procedure_metadata_json")
+                    .in_("id", list(proc_ids))
+                    .execute()
+                    .data or []
+                )
+                proc_name_map = {
+                    w["id"]: (w.get("procedure_metadata_json") or {}).get("nom") or ""
+                    for w in wfs
+                }
+            else:
+                proc_name_map = {}
+
+            for e in events:
+                task_row = task_map.get(e.get("task_id", ""))
+                if task_row:
+                    e["task_title"] = task_row.get("title", "")
+                    e["task_type"] = task_row.get("task_type", "")
+                    e["raci_role"] = task_row.get("raci_role", "")
+                    e["procedure_name"] = proc_name_map.get(task_row.get("procedure_id", ""), "")
+
+        return {"success": True, "events": events, "total": len(events)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/tasks")
 async def list_tasks(
     actor_id: Optional[str] = None,
+    assigned_by: Optional[str] = None,
     procedure_id: Optional[str] = None,
     status: Optional[str] = None,
     role: Optional[str] = None,
@@ -699,6 +834,8 @@ async def list_tasks(
         query = db.table("procedure_tasks").select("*").order("created_at", desc=True)
         if actor_id:
             query = query.eq("assigned_to", actor_id)
+        if assigned_by:
+            query = query.eq("assigned_by", assigned_by)
         if procedure_id:
             query = query.eq("procedure_id", procedure_id)
         if status:
@@ -740,6 +877,47 @@ async def create_task(procedure_id: str, body: TaskCreate):
     try:
         db = get_supabase()
         now = _now()
+
+        # Vérifier s'il y a des tâches actives sur cette procédure
+        active_statuses = ["todo", "in_progress", "changes_requested"]
+        active_tasks = (
+            db.table("procedure_tasks")
+            .select("id, title, status, assigned_to, task_type")
+            .eq("procedure_id", procedure_id)
+            .in_("status", active_statuses)
+            .execute()
+            .data or []
+        )
+
+        if active_tasks and not body.force:
+            names = [_resolve_user_name(t["assigned_to"]) for t in active_tasks]
+            return {
+                "success": False,
+                "blocked": True,
+                "active_tasks": [
+                    {"id": t["id"], "title": t["title"], "status": t["status"],
+                     "assigned_to_name": _resolve_user_name(t["assigned_to"]),
+                     "task_type": t["task_type"]}
+                    for t in active_tasks
+                ],
+                "message": f"Tâche(s) active(s) chez {', '.join(names)}. Forcer l'envoi annulera ces tâches.",
+            }
+
+        if active_tasks and body.force:
+            for t in active_tasks:
+                db.table("procedure_tasks").update({
+                    "status": "cancelled", "updated_at": now,
+                }).eq("id", t["id"]).execute()
+                _event(procedure_id, "task_cancelled", t["id"], body.assigned_by,
+                       f"Tâche annulée (réassignation forcée par admin): {t['title']}", t["status"], "cancelled")
+                _proc_event(
+                    procedure_id=procedure_id, event_type="task_force_cancelled",
+                    actor_id=body.assigned_by, task_id=t["id"], to_status="cancelled",
+                    message=f"Tâche annulée par admin — réassignation vers {_resolve_user_name(body.assigned_to)}",
+                    payload={"cancelled_by": "admin_force", "new_assignee": body.assigned_to},
+                )
+            logger.info(f"⚠️ {len(active_tasks)} tâche(s) annulée(s) par force — procédure {procedure_id}")
+
         task = {
             "id": str(uuid.uuid4()),
             "procedure_id": procedure_id,
@@ -784,6 +962,9 @@ async def create_task(procedure_id: str, body: TaskCreate):
         _notify(body.assigned_to, f"Nouvelle tâche: {created['title']}",
                 procedure_id, created["id"], body.description)
 
+        procedure_title = _get_procedure_title(procedure_id)
+        _fire_task_email(body.assigned_to, body.assigned_by, created, procedure_title, body.task_type, body.description)
+
         # Formalization task → move to Formalisation stage
         if body.task_type == "formalization":
             _advance_lifecycle_to(procedure_id, 1)
@@ -793,11 +974,109 @@ async def create_task(procedure_id: str, body: TaskCreate):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.get("/tasks/my")
+async def get_my_tasks(user_id: str):
+    """All active tasks for a user, enriched with procedure + campaign info, sorted by due_date."""
+    try:
+        db = get_supabase()
+        active_statuses = ["todo", "in_progress", "submitted", "changes_requested", "waiting_info", "blocked", "completed"]
+        tasks: List[Dict[str, Any]] = (
+            db.table("procedure_tasks")
+            .select("*")
+            .eq("assigned_to", user_id)
+            .in_("status", active_statuses)
+            .execute()
+            .data or []
+        )
+        if not tasks:
+            return {"success": True, "tasks": [], "total": 0}
+
+        proc_ids = list({t["procedure_id"] for t in tasks if t.get("procedure_id")})
+        proc_rows = (
+            db.table("workflows")
+            .select("id, title, procedure_metadata_json, taxonomy_id")
+            .in_("id", proc_ids)
+            .execute()
+            .data or []
+        )
+        proc_map: Dict[str, Any] = {p["id"]: p for p in proc_rows}
+
+        cp_rows = (
+            db.table("campaign_procedures")
+            .select("procedure_id, campaign_id")
+            .in_("procedure_id", proc_ids)
+            .execute()
+            .data or []
+        )
+        proc_to_campaign: Dict[str, str] = {cp["procedure_id"]: cp["campaign_id"] for cp in cp_rows}
+
+        campaign_ids = list(set(proc_to_campaign.values()))
+        campaign_map: Dict[str, str] = {}
+        if campaign_ids:
+            c_rows = (
+                db.table("campaigns").select("id, title")
+                .in_("id", campaign_ids).execute().data or []
+            )
+            campaign_map = {c["id"]: c["title"] for c in c_rows}
+
+        tax_map: Dict[str, Any] = {}
+        if any(p.get("taxonomy_id") for p in proc_map.values()):
+            all_nodes = (
+                db.table("process_taxonomy")
+                .select("id, name, level, parent_id")
+                .execute()
+                .data or []
+            )
+            tax_map = {n["id"]: n for n in all_nodes}
+
+        def build_breadcrumb(taxonomy_id: Optional[str]) -> str:
+            if not taxonomy_id or taxonomy_id not in tax_map:
+                return ""
+            parts: List[str] = []
+            node = tax_map.get(taxonomy_id)
+            while node:
+                parts.insert(0, node["name"])
+                parent_id = node.get("parent_id")
+                node = tax_map.get(parent_id) if parent_id else None
+            return " > ".join(parts)
+
+        enriched: List[Dict[str, Any]] = []
+        for t in tasks:
+            proc = proc_map.get(t.get("procedure_id", ""), {})
+            proc_meta = proc.get("procedure_metadata_json") or {}
+            proc_name = proc_meta.get("nom") or proc.get("title") or "Procédure"
+            taxonomy_id = proc.get("taxonomy_id")
+            campaign_id = proc_to_campaign.get(t.get("procedure_id", ""))
+            enriched.append({
+                **t,
+                "procedure_name": proc_name,
+                "taxonomy_id": taxonomy_id,
+                "taxonomy_breadcrumb": build_breadcrumb(taxonomy_id),
+                "campaign_id": campaign_id,
+                "campaign_name": campaign_map.get(campaign_id) if campaign_id else None,
+            })
+
+        enriched = _enrich_tasks_with_names(db, enriched)
+        _prio = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
+
+        def _sort_key(t: Dict[str, Any]):
+            return (0 if t.get("due_date") else 1, t.get("due_date") or "9999-99-99", _prio.get(t.get("priority", "normal"), 2))
+
+        enriched.sort(key=_sort_key)
+        return {"success": True, "tasks": enriched, "total": len(enriched)}
+    except Exception as exc:
+        logger.exception("get_my_tasks failed")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/tasks/{task_id}")
 async def get_task(task_id: str):
     try:
         task = _get_task(task_id)
-        return {"success": True, "task": task}
+        task["procedure_name"] = _get_procedure_title(task.get("procedure_id", ""))
+        db = get_supabase()
+        rows = _enrich_tasks_with_names(db, [task])
+        return {"success": True, "task": rows[0]}
     except HTTPException:
         raise
     except Exception as exc:

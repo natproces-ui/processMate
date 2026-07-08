@@ -49,8 +49,14 @@ class InterfaceDetectRequest(BaseModel):
     workflow: List[dict]
 
 
-# ─── Instance unique du processor ───
-processor = InterfaceProcessor()
+# ─── Instance unique du processor (lazy) ───
+_processor = None
+
+def _get_processor() -> InterfaceProcessor:
+    global _processor
+    if _processor is None:
+        _processor = InterfaceProcessor()
+    return _processor
 
 
 # ─────────────────────────────────────────────
@@ -123,7 +129,7 @@ async def detect_interfaces(request: InterfaceDetectRequest):
             f"{len(request.workflow)} étapes reçues"
         )
 
-        result = await processor.detect_interfaces(request.workflow)
+        result = await _get_processor().detect_interfaces(request.workflow)
 
         logger.info(
             f"✅ Détection terminée — "

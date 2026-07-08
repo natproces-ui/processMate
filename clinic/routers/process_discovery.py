@@ -27,7 +27,13 @@ router = APIRouter(
 
 _session_store: dict = {}
 
-processor = MultiDocProcessor()
+_processor = None
+
+def _get_processor() -> MultiDocProcessor:
+    global _processor
+    if _processor is None:
+        _processor = MultiDocProcessor()
+    return _processor
 
 ALLOWED_TYPES = {
     "application/pdf": "pdf",
@@ -128,7 +134,7 @@ async def analyze_documents(
     )
 
     try:
-        result: DiscoveryResult = await processor.discover_processes(
+        result: DiscoveryResult = await _get_processor().discover_processes(
             files=discovery_files,
             instructions=instructions
         )
@@ -232,7 +238,7 @@ async def chat_correction(payload: dict):
         ))
 
     try:
-        result: DiscoveryResult = await processor.chat_correction(
+        result: DiscoveryResult = await _get_processor().chat_correction(
             files=session["discovery_files"],
             current_cards=current_cards,
             user_message=message
@@ -265,4 +271,131 @@ async def chat_correction(payload: dict):
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         logger.error(f"❌ Erreur chat correction : {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erreur interne : {str(e)}")
+
+
+# ─────────────────────────────────────────────────────────────
+# ENDPOINT — Découverte depuis flowchart de code source
+# ─────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel
+from typing import Dict, Any
+
+class CodeDiscoveryRequest(BaseModel):
+    dot_source: str
+    business_info: Dict[str, Any] = {}
+    statistics: Dict[str, Any] = {}
+    instructions: Optional[str] = None
+
+
+@router.post("/analyze-code")
+async def analyze_code_flowchart(body: CodeDiscoveryRequest):
+    """
+    Découverte de processus depuis un flowchart de code source (DOT + métadonnées).
+    Même pipeline que /analyze mais avec un prompt adapté au code.
+    """
+    if not body.dot_source.strip():
+        raise HTTPException(status_code=400, detail="Le flowchart DOT est requis")
+
+    logger.info(f"🔍 Découverte code — DOT {len(body.dot_source)} chars, "
+                f"{len(body.business_info.get('procedures', []))} procédures")
+
+    try:
+        from prompts.discovery_code_prompt import get_code_discovery_prompt
+        from models.discovery_models import DiscoveryResult, ProcessCard, SourceReference, SourceType, ProcessCategory
+
+        prompt = get_code_discovery_prompt(
+            dot_source=body.dot_source,
+            business_info=body.business_info,
+            instructions=body.instructions,
+        )
+
+        processor = _get_processor()
+
+        import asyncio
+        async def _task(model_name: str):
+            model = processor.model_manager.get_model(model_name)
+            response = await asyncio.wait_for(
+                asyncio.to_thread(model.generate_content, model=model_name, contents=[prompt]),
+                timeout=90,
+            )
+            return response
+
+        result = await processor.model_manager.execute_with_fallback(_task, task_name="Découverte code source")
+        if not result["success"]:
+            raise ValueError(result["message"])
+
+        discovery_data = processor._parse_discovery_response(result["result"].text)
+
+        session_id = str(uuid.uuid4())
+        process_cards = []
+        for idx, p in enumerate(discovery_data.get("processes", [])):
+            process_cards.append(ProcessCard(
+                process_id=str(uuid.uuid4()),
+                title=p.get("title", f"Processus {idx + 1}"),
+                description=p.get("description", ""),
+                sources=[SourceReference(
+                    file_id="flowchart",
+                    filename="flowchart_source",
+                    source_type=SourceType.IMAGE,
+                )],
+                confidence=p.get("confidence", 70),
+                estimated_steps=p.get("estimated_steps"),
+                category=ProcessCategory.DISCOVERED,
+            ))
+
+        discovery_result = DiscoveryResult(
+            session_id=session_id,
+            processes=process_cards,
+            total_files_analyzed=1,
+            warnings=discovery_data.get("warnings", []),
+        )
+
+        # Stocker en session pour la phase génération
+        # On crée un fichier virtuel avec le DOT pour que generate_process puisse le traiter
+        _session_store[session_id] = {
+            "ref_files": [],
+            "src_files": [],
+            "discovery_files": [{
+                "file_id": "flowchart",
+                "filename": "flowchart_source",
+                "data": body.dot_source.encode("utf-8"),
+                "type": "text",
+                "size": len(body.dot_source),
+                "role": "source",
+            }],
+            "discovery": discovery_result,
+            "code_context": {
+                "dot_source": body.dot_source,
+                "business_info": body.business_info,
+                "statistics": body.statistics,
+            },
+            "instructions": body.instructions,
+        }
+
+        logger.info(f"✅ Découverte code : {len(process_cards)} processus détectés")
+
+        return {
+            "success": True,
+            "session_id": session_id,
+            "processes": [
+                {
+                    "process_id": p.process_id,
+                    "title": p.title,
+                    "description": p.description,
+                    "sources": [{"file_id": s.file_id, "filename": s.filename, "source_type": s.source_type.value} for s in p.sources],
+                    "confidence": p.confidence,
+                    "estimated_steps": p.estimated_steps,
+                    "category": p.category.value,
+                }
+                for p in process_cards
+            ],
+            "warnings": discovery_data.get("warnings", []),
+        }
+
+    except ValueError as e:
+        logger.error(f"❌ Erreur découverte code : {e}")
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"❌ Erreur serveur découverte code : {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Erreur interne : {str(e)}")

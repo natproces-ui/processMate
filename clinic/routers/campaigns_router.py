@@ -80,7 +80,7 @@ def _lifecycle_snapshot(workflow_row: dict) -> dict:
         "stages_total": n_total,
         "formalisation_done": formalisation.get("status") == "completed" if formalisation else False,
         "formalisation_in_progress": formalisation.get("status") == "in_progress" if formalisation else False,
-        "taxonomy_id": meta.get("taxonomy_id"),
+        "taxonomy_id": workflow_row.get("taxonomy_id"),
         "category": meta.get("category", ""),
     }
 
@@ -93,7 +93,7 @@ def _enrich_campaign(campaign: dict, db, with_lifecycle: bool = True) -> dict:
 
     if with_lifecycle and procs:
         proc_ids = [p["procedure_id"] for p in procs]
-        wf_res = db.table("workflows").select("id, procedure_metadata_json").in_("id", proc_ids).execute()
+        wf_res = db.table("workflows").select("id, procedure_metadata_json, taxonomy_id").in_("id", proc_ids).execute()
         wf_map = {r["id"]: r for r in (wf_res.data or [])}
 
         for p in procs:
@@ -148,18 +148,23 @@ async def list_campaigns():
 
     for c in campaigns:
         cid = c["id"]
-        cp = db.table("campaign_procedures").select("status, procedure_id").eq("campaign_id", cid).execute()
+        cp = db.table("campaign_procedures").select("*").eq("campaign_id", cid).execute()
         procs = cp.data or []
 
-        # Récupère lifecycle pour chaque procédure
+        # Récupère lifecycle + nom/ref pour chaque procédure
         if procs:
             pids = [p["procedure_id"] for p in procs]
-            wf_res = db.table("workflows").select("id, procedure_metadata_json").in_("id", pids).execute()
+            wf_res = db.table("workflows").select("id, procedure_metadata_json, taxonomy_id").in_("id", pids).execute()
             wf_map = {r["id"]: r for r in (wf_res.data or [])}
             for p in procs:
                 wf = wf_map.get(p["procedure_id"])
                 if wf:
                     p["lifecycle"] = _lifecycle_snapshot(wf)
+                    meta = (wf.get("procedure_metadata_json") or {})
+                    if not p.get("procedure_nom"):
+                        p["procedure_nom"] = meta.get("nom", "")
+                    if not p.get("procedure_ref"):
+                        p["procedure_ref"] = meta.get("ref", "")
 
         total = len(procs)
 
@@ -173,6 +178,7 @@ async def list_campaigns():
 
         done = sum(1 for p in procs if _is_done(p))
         in_progress = sum(1 for p in procs if not _is_done(p) and _is_ip(p))
+        c["procedures"] = procs
         c["stats"] = {
             "total": total,
             "done": done,
