@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import { FileText, Trash2, Plus, Edit, Eye, EyeOff, GripVertical } from 'lucide-react';
-import { Table1Row } from '@/logic/bpmnGenerator';
+import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
 import EnrichmentModal from '@/components/DetailModal';
 
@@ -12,6 +12,9 @@ interface TableProps {
     onDataChange: (data: Table1Row[]) => void;
     onEnrichmentsChange: (enrichments: Map<string, TaskEnrichment>) => void;
     onShowSuccess: (message: string) => void;
+    /** Ids d'étapes récemment touchées par une modification IA appliquée — surlignées
+     *  jusqu'à la prochaine sauvegarde manuelle. */
+    highlightedRowIds?: Set<string>;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -71,6 +74,7 @@ export default function Table({
     onDataChange,
     onEnrichmentsChange,
     onShowSuccess,
+    highlightedRowIds,
 }: TableProps) {
     const [showTable2, setShowTable2] = useState(false);
     const [enrichmentModalOpen, setEnrichmentModalOpen] = useState(false);
@@ -192,6 +196,7 @@ export default function Table({
             typeBpmn: 'Task',
             département: '',
             acteur: '',
+            typeActeur: '',
             condition: '',
             outputs: [],
             outil: '',
@@ -279,6 +284,7 @@ export default function Table({
                                 data.map((row, i) => {
                                     const isBeingDragged = isDragging && dragIndexRef.current === i;
                                     const isDragTarget = dragOverIndex === i;
+                                    const isAiChanged = highlightedRowIds?.has(row.id) ?? false;
 
                                     return (
                                         <tr
@@ -288,12 +294,15 @@ export default function Table({
                                             onDragOver={e => handleDragOver(e, i)}
                                             onDrop={e => handleDrop(e, i)}
                                             onDragEnd={handleDragEnd}
+                                            title={isAiChanged ? 'Modifiée par l’IA' : undefined}
                                             className={`
                                                 transition-all duration-150
                                                 ${isBeingDragged ? 'opacity-30' : 'opacity-100'}
                                                 ${isDragTarget
                                                     ? 'border-t-2 border-t-blue-500 bg-blue-50'
-                                                    : 'hover:bg-gray-50'
+                                                    : isAiChanged
+                                                        ? 'bg-amber-50 border-l-4 border-l-amber-400'
+                                                        : 'hover:bg-gray-50'
                                                 }
                                             `}
                                         >
@@ -305,6 +314,7 @@ export default function Table({
                                             {/* ID */}
                                             <td className="border border-gray-300 px-2 py-1 text-center font-mono text-xs bg-gray-100 select-none">
                                                 {row.id}
+                                                {isAiChanged && <span className="ml-1 rounded-full bg-amber-400 px-1 text-[9px] font-bold text-white align-top">IA</span>}
                                             </td>
 
                                             {/* ÉTAPE */}
@@ -476,10 +486,16 @@ export default function Table({
                             <tbody>
                                 {data.map(row => {
                                     const enrichment = enrichments.get(row.id);
+                                    const isAiChanged = highlightedRowIds?.has(row.id) ?? false;
                                     return (
-                                        <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr
+                                            key={row.id}
+                                            title={isAiChanged ? 'Modifiée par l’IA' : undefined}
+                                            className={`transition-colors ${isAiChanged ? 'bg-amber-50 border-l-4 border-l-amber-400' : 'hover:bg-gray-50'}`}
+                                        >
                                             <td className="border border-gray-300 px-2 py-1 text-center font-mono text-xs bg-gray-100">
                                                 {row.id}
+                                                {isAiChanged && <span className="ml-1 rounded-full bg-amber-400 px-1 text-[9px] font-bold text-white align-top">IA</span>}
                                             </td>
                                             <td className="border border-gray-300 px-3 py-2 font-medium">
                                                 {row.étape || <span className="text-gray-400 italic">Sans nom</span>}

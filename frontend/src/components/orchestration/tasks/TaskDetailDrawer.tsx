@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Calendar, MessageSquare, RefreshCw, Send, UserRound, X } from 'lucide-react';
+import { Calendar, Check, Loader2, MessageSquare, RefreshCw, Send, UserRound, X } from 'lucide-react';
 import {
   orchestrationTasksApi,
   type ProcedureTask,
   type ProcedureTaskComment,
   type TaskActor,
 } from '@/lib/orchestrationTasksApi';
+import type { Modification, Partie } from '@/lib/analysisApi';
+import ModificationCard from '@/components/analysis/ModificationCard';
+import { applyModificationsBatch } from '@/logic/applyModification';
 import TaskActionBar from './TaskActionBar';
 import { TaskPriorityBadge, TaskStatusBadge } from './TaskStatusBadge';
 import TaskTimeline from './TaskTimeline';
@@ -38,6 +41,9 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
   const [savingComment, setSavingComment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timelineKey, setTimelineKey] = useState(0);
+  const [appliedIndexes, setAppliedIndexes] = useState<Set<number>>(new Set());
+  const [applyingAll, setApplyingAll] = useState(false);
+  const [applyAllResult, setApplyAllResult] = useState<{ appliedCount: number; skipped: { index: number; reason: string }[] } | null>(null);
 
   useEffect(() => {
     setTask(initialTask);
@@ -59,6 +65,39 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
   const canComment = useMemo(() => (
     actor.role === 'admin' || actor.id === task.assigned_to || actor.id === task.assigned_by
   ), [actor, task]);
+
+  // proposed_patch est toujours un tableau — une tâche peut regrouper une ou
+  // plusieurs modifications (ex: "Modifier le logigramme" peut en enumérer plusieurs).
+  const proposedPatch = (task.metadata?.proposed_patch as { partie: Partie; modification: Modification }[] | undefined) || [];
+
+  const applyAll = async () => {
+    setApplyingAll(true);
+    try {
+      const items = proposedPatch.map((p, index) => ({
+        index,
+        partie: p.partie,
+        target_step_id: p.modification.target_step_id,
+        target_field: p.modification.target_field,
+        operation_type: p.modification.operation_type,
+        proposed_value: p.modification.proposed_value,
+        current_value: p.modification.current_value,
+      }));
+      const result = await applyModificationsBatch(task.procedure_id, items);
+      setAppliedIndexes(prev => {
+        const next = new Set(prev);
+        result.applied.forEach(i => next.add(i));
+        return next;
+      });
+      setApplyAllResult({ appliedCount: result.applied.length, skipped: result.skipped });
+    } catch (e) {
+      setApplyAllResult({
+        appliedCount: 0,
+        skipped: [{ index: -1, reason: e instanceof Error ? e.message : 'Erreur lors de l’application' }],
+      });
+    } finally {
+      setApplyingAll(false);
+    }
+  };
 
   const handleChanged = (nextTask: ProcedureTask) => {
     setTask(nextTask);
@@ -142,6 +181,47 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
               {task.description || <span className="text-gray-400">Aucune description.</span>}
             </p>
           </div>
+
+          {proposedPatch.length > 0 && (
+            <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-semibold text-gray-900">
+                  Modification{proposedPatch.length > 1 ? 's' : ''} à apporter à la procédure
+                </h4>
+                {proposedPatch.length > 1 && appliedIndexes.size < proposedPatch.length && (
+                  <button
+                    type="button"
+                    onClick={applyAll}
+                    disabled={applyingAll}
+                    className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {applyingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    Appliquer toutes les modifications
+                  </button>
+                )}
+              </div>
+
+              {applyAllResult && (
+                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                  {applyAllResult.appliedCount} appliquée{applyAllResult.appliedCount > 1 ? 's' : ''}
+                  {applyAllResult.skipped.length > 0 && ` · ${applyAllResult.skipped.length} ignorée${applyAllResult.skipped.length > 1 ? 's' : ''} : ${applyAllResult.skipped.map(s => s.reason).join(' — ')}`}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {proposedPatch.map((p, index) => (
+                  <ModificationCard
+                    key={index}
+                    modification={p.modification}
+                    partie={p.partie}
+                    procedureId={task.procedure_id}
+                    applied={appliedIndexes.has(index)}
+                    onApplied={() => setAppliedIndexes(prev => new Set(prev).add(index))}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {task.status !== 'validated' && task.status !== 'cancelled' && (
             <div className="border border-gray-200 rounded-xl p-4 space-y-3">

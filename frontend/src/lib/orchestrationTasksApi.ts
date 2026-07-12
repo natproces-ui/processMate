@@ -112,6 +112,7 @@ export interface CreateProcedureTaskInput {
   due_date?: string | null;
   workflow_stage_id?: string | null;
   workflow_step_id?: string | null;
+  metadata?: Record<string, unknown>;
   force?: boolean;
 }
 
@@ -201,6 +202,18 @@ export const orchestrationTasksApi = {
       `/api/orchestration/procedures/${procedureId}/tasks`,
       { method: 'POST', body: JSON.stringify(body) }
     ),
+
+  // Crée plusieurs tâches en un seul appel — un seul email récapitulatif par
+  // destinataire au lieu d'un email par tâche (voir bulk_create_tasks côté backend).
+  bulkCreateTasks: (tasks: (CreateProcedureTaskInput & { procedure_id: string })[]) =>
+    fetchJSON<{
+      success: boolean;
+      created_count: number;
+      results: { success: boolean; task?: ProcedureTask; blocked?: boolean; message?: string }[];
+    }>('/api/orchestration/tasks/bulk-create', {
+      method: 'POST',
+      body: JSON.stringify({ tasks }),
+    }),
 
   updateTask: (taskId: string, body: Partial<CreateProcedureTaskInput & { status: ProcedureTaskStatus }>) =>
     fetchJSON<{ success: boolean; task: ProcedureTask }>(

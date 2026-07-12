@@ -1420,7 +1420,7 @@ function TaskDetailCenter({
           <span className="text-xs text-gray-600 font-medium truncate">{procedure.nom}</span>
         </div>
         <div className="flex-1 overflow-hidden">
-          <ProcedureEditor procedure={procedure} hideHeader />
+          <ProcedureEditor key={procedure.id} procedure={procedure} hideHeader />
         </div>
       </div>
     );
@@ -2664,7 +2664,7 @@ export default function WorkspaceShell({ openProcedureId, onNavigateBack, onOpen
           )}
           {activeTab.type === 'editor' && (
             activeTab.procedure
-              ? <ProcedureEditor procedure={activeTab.procedure} hideHeader />
+              ? <ProcedureEditor key={activeTab.procedureId} procedure={activeTab.procedure} hideHeader />
               : <div className="flex items-center justify-center h-full bg-gray-50"><Loader2 className="w-5 h-5 animate-spin text-blue-400" /></div>
           )}
         </div>

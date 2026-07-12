@@ -60,7 +60,9 @@
       "Bash(python -c \"import ast; ast.parse\\(open\\('clinic/processor/chat_processor.py', encoding='utf-8'\\).read\\(\\)\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('clinic/routers/chat_router.py', encoding='utf-8'\\).read\\(\\)\\)\")",
       "Bash(python -c \"import ast; ast.parse\\(open\\('clinic/routers/orchestration_router.py', encoding='utf-8'\\).read\\(\\)\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('clinic/processor/chat_processor.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('clinic/processor/img_processor.py', encoding='utf-8'\\).read\\(\\)\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('clinic/processor/chat_processor.py', encoding='utf-8'\\).read\\(\\)\\); ast.parse\\(open\\('clinic/processor/img_processor.py', encoding='utf-8'\\).read\\(\\)\\)\")",
+      "Bash(python -m py_compile processor/analysis_processor.py)",
+      "Bash(python -m py_compile routers/analysis_router.py)"
     ],
     "additionalDirectories": [
       "\\tmp"

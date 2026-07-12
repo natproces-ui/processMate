@@ -38,6 +38,7 @@ interface ExtendedMeta {
     definition: string;
     perimeter: string;
     proprietaire: string;
+    references: string;
     regles_gestion: string[];
     [key: string]: unknown;
 }
@@ -49,6 +50,7 @@ function readMeta(raw: Record<string, unknown>): ExtendedMeta {
         definition: (raw.definition as string) || '',
         perimeter: (raw.perimeter as string) || (raw.perimetre as string) || '',
         proprietaire: (raw.proprietaire as string) || '',
+        references: (raw.references as string) || '',
         regles_gestion: Array.isArray(raw.regles_gestion)
             ? (raw.regles_gestion as string[])
             : typeof raw.regles_gestion === 'string' && raw.regles_gestion
@@ -109,6 +111,22 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     const [draftEnrichments, setDraftEnrichments] = useState<Map<string, TaskEnrichment>>(enrichments);
     const [newRegle, setNewRegle] = useState('');
 
+    // ─── Surbrillance des modifications IA récemment appliquées ──────────
+    // Tant qu'aucune sauvegarde manuelle n'a eu lieu depuis, on surligne les étapes
+    // (diagramme/descriptions/outils) et les champs (caractéristiques/qualité) touchés
+    // par la dernière application de modification IA.
+    const [aiChangesDismissed, setAiChangesDismissed] = useState(false);
+    const recentAiChangeItems = aiChangesDismissed ? [] : (
+        ((procedure.metadata as any)?.recent_ai_changes?.items as
+            { partie: string; target_step_id: string | null; target_field: string | null }[] | undefined) || []
+    );
+    const aiChangedStepIds = new Set(
+        recentAiChangeItems.filter(i => i.target_step_id).map(i => i.target_step_id as string)
+    );
+    const aiChangedFields = new Set(
+        recentAiChangeItems.filter(i => i.target_field && !i.target_step_id).map(i => i.target_field as string)
+    );
+
     const editorRef = useRef<BpmnEditorHandle>(null);
     const modelerRef = useRef<any>(null);
 
@@ -137,9 +155,10 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 procedure.id,
                 d as unknown[],
                 enrichObj,
-                { ...m, nom: title, regles_gestion: m.regles_gestion.join('\n') },
+                { ...m, nom: title, regles_gestion: m.regles_gestion.join('\n'), recent_ai_changes: null },
                 currentXml,
             );
+            setAiChangesDismissed(true);
         } catch (err: any) {
             showError(`Erreur : ${err.message}`);
             throw err;
@@ -177,8 +196,9 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
             const enrichObj: Record<string, unknown> = {};
             enrichments.forEach((v, k) => { enrichObj[k] = v; });
             await orchestrationApi.saveWorkflowData(
-                procedure.id, data as unknown[], enrichObj, { ...meta, nom: title }, xmlToSave,
+                procedure.id, data as unknown[], enrichObj, { ...meta, nom: title, recent_ai_changes: null }, xmlToSave,
             );
+            setAiChangesDismissed(true);
             setEditingDiagramme(false);
             showSuccess('Diagramme enregistré');
         } catch (err: any) { showError(`Erreur : ${err.message}`); }
@@ -228,8 +248,9 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
             enrichments.forEach((v, k) => { enrichObj[k] = v; });
             await orchestrationApi.saveWorkflowData(
                 procedure.id, data as unknown[], enrichObj,
-                { ...meta, nom, category },
+                { ...meta, nom, category, recent_ai_changes: null },
             );
+            setAiChangesDismissed(true);
             showSuccess('Procédure sauvegardée');
         } catch (err: any) {
             showError(`Erreur : ${err.message}`);
@@ -267,6 +288,10 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
         } catch { return null; }
     }, []);
 
+    // Régénère le diagramme BPMN à partir du workflow reçu du chat au lieu de le
+    // détruire (bpmnXml: null) — évite d'obliger un clic manuel sur "Générer le diagramme".
+    // Régénération complète (pas de patch incrémental) : les positions/ajouts manuels
+    // faits directement dans l'éditeur BPMN sont donc réinitialisés à chaque modif chat.
     const handleWorkflowFromChat = useCallback((
         workflow: Table1Row[],
         _: string,
@@ -275,7 +300,13 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     ) => {
         setData(workflow);
         setDraftData(workflow);
-        setBpmnXml(null);
+        let xml: string | null = null;
+        if (workflow.length > 0) {
+            try { xml = generateBPMNSimple(workflow, title); }
+            catch (err: any) { showError(`Diagramme non régénéré : ${err.message || 'erreur inconnue'}`); }
+        }
+        setBpmnXml(xml);
+        if (xml) editorRef.current?.importXml(xml);
         if (newEnrichments?.size > 0) {
             setEnrichments(prev => mergeEnrichments(prev, newEnrichments));
             setDraftEnrichments(prev => mergeEnrichments(prev, newEnrichments));
@@ -284,7 +315,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
             setMeta(prev => readMeta(mergeProcedureMetadata(prev, procedureMetadata)));
             setDraftMeta(prev => readMeta(mergeProcedureMetadata(prev, procedureMetadata)));
         }
-    }, []);
+    }, [title]);
 
     // ─── Config sections ──────────────────────────────────────
     const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
@@ -393,10 +424,12 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                 { label: 'Définition', key: 'definition', multiline: true, placeholder: "Définition et contexte…" },
                                 { label: 'Périmètre', key: 'perimeter', multiline: true, placeholder: "Périmètre d'application…" },
                                 { label: 'Propriétaire', key: 'proprietaire', multiline: false, placeholder: "Direction / propriétaire…" },
+                                { label: 'Références', key: 'references', multiline: true, placeholder: "Textes réglementaires, circulaires, normes de référence…" },
                             ] as const).map(({ label, key, multiline, placeholder }) => (
-                                <div key={key} className="flex gap-6 px-5 py-4">
+                                <div key={key} className={`flex gap-6 px-5 py-4 ${aiChangedFields.has(key) ? 'bg-amber-50 border-l-4 border-l-amber-400' : ''}`}>
                                     <dt className="w-28 shrink-0 text-xs font-semibold text-slate-500 uppercase tracking-wide pt-0.5">
                                         {label}
+                                        {aiChangedFields.has(key) && <span className="ml-1 rounded-full bg-amber-400 px-1 text-[9px] font-bold text-white align-top">IA</span>}
                                     </dt>
                                     <dd className="flex-1">
                                         {!editingCaract ? (
@@ -446,7 +479,10 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 {activeSection === 'qualite' && (
                     <div className="max-w-3xl space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-base font-bold text-slate-800">Règles de gestion</h3>
+                            <h3 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
+                                Règles de gestion
+                                {aiChangedFields.has('regles_gestion') && <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold text-white">IA</span>}
+                            </h3>
                             <EditBtn
                                 editing={editingQualite}
                                 onEdit={() => { setDraftMeta({ ...meta, regles_gestion: [...meta.regles_gestion] }); setEditingQualite(true); }}
@@ -587,6 +623,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                         onError={showError}
                                         onReady={() => { }}
                                         onModelerReady={m => { modelerRef.current = m; }}
+                                        highlightStepIds={Array.from(aiChangedStepIds)}
                                     />
                                 </div>
                             </div>
@@ -629,13 +666,15 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                             <div className="space-y-3">
                                 {data.map((row, idx) => {
                                     const enr = (editingDescriptions ? draftEnrichments : enrichments).get(row.id);
+                                    const isAiChanged = aiChangedStepIds.has(row.id);
                                     return (
-                                        <div key={row.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                            <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 border-b border-slate-100">
+                                        <div key={row.id} className={`bg-white rounded-xl border overflow-hidden ${isAiChanged ? 'border-amber-300' : 'border-slate-200'}`}>
+                                            <div className={`flex items-center gap-3 px-5 py-3 border-b border-slate-100 ${isAiChanged ? 'bg-amber-50 border-l-4 border-l-amber-400' : 'bg-slate-50'}`}>
                                                 <span className="flex-shrink-0 w-6 h-6 bg-slate-200 text-slate-700 rounded-full flex items-center justify-center text-xs font-bold">
                                                     {idx + 1}
                                                 </span>
                                                 <span className="flex-1 text-sm font-semibold text-slate-800">{row.étape}</span>
+                                                {isAiChanged && <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold text-white">IA</span>}
                                                 {row.département && (
                                                     <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                                                         {row.département}
@@ -701,8 +740,11 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                         {(editingOutils ? draftData : data).map((row, idx) => (
-                                            <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="px-4 py-3 text-xs text-slate-400 font-mono">{idx + 1}</td>
+                                            <tr key={row.id} className={aiChangedStepIds.has(row.id) ? 'bg-amber-50 border-l-4 border-l-amber-400' : 'hover:bg-slate-50/50 transition-colors'}>
+                                                <td className="px-4 py-3 text-xs text-slate-400 font-mono">
+                                                    {idx + 1}
+                                                    {aiChangedStepIds.has(row.id) && <span className="ml-1 rounded-full bg-amber-400 px-1 text-[9px] font-bold text-white align-top">IA</span>}
+                                                </td>
                                                 <td className="px-4 py-3 text-slate-800 font-medium">{row.étape}</td>
                                                 <td className="px-4 py-3 text-slate-500 text-xs">{row.acteur || '—'}</td>
                                                 <td className="px-4 py-3">

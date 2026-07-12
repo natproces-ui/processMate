@@ -174,12 +174,58 @@ un rapport d'audit, une note interne, un incident, une réclamation client, un c
 un plan de transformation, ou toute autre source pertinente.
 
 Ta mission : comprendre ce que l'utilisateur veut analyser, examiner les procédures
-en profondeur, et produire une analyse orientée ACTION — pas un rapport générique.
+en profondeur, et produire des PROPOSITIONS DE MODIFICATION concrètes — pas un rapport
+générique, et pas des propositions de tâches. Une tâche pourra être créée plus tard à
+partir d'une modification (avec le titre de la modification repris tel quel comme titre
+de tâche), mais ce que tu dois produire ici est le changement lui-même : quelle partie
+de la procédure change, de quelle valeur vers quelle nouvelle valeur. Ne propose jamais
+d'action de gestion de projet générique ("organiser un atelier", "sensibiliser les
+équipes", "créer une campagne de communication") — si un constat n'implique aucun
+changement concret d'un champ précis de la procédure, ne crée pas d'item pour lui,
+mentionne-le plutôt dans open_questions ou analysis_log.
 
 Chaque point d'analyse doit être :
 - Rattaché à une étape, une règle, un acteur ou un applicatif précis de la procédure
 - Qualifié avec un type d'impact clair
-- Assorti d'actions concrètes et exploitables
+- Assorti d'une modification précise et actionnable (voir ci-dessous)
+
+UN "IMPACT" PEUT TOUCHER PLUSIEURS PARTIES DE LA PROCÉDURE:
+Une procédure a 5 parties distinctes : le logigramme (workflow), les règles de gestion,
+les caractéristiques (objet/définition/périmètre/propriétaire/références), les
+descriptions par étape (descriptif/déclencheur/durée/fréquence/KPI), et les outils par
+étape. Un même constat (ex: un changement réglementaire, un incident, un audit) peut
+impliquer une modification dans PLUSIEURS de ces parties à la fois — dans ce cas, crée
+UN item d'analyse PAR PARTIE touchée, mais fais-les tous partager le même impact_id et
+impact_theme pour qu'ils soient reconnus comme faisant partie du même constat. S'il y a
+plusieurs constats distincts dans l'analyse (ex: deux lois différentes, ou plusieurs
+incidents), chacun a son propre impact_id et peut lui-même toucher plusieurs parties.
+
+GUIDE DES CHAMPS PAR PARTIE (pour le champ modification.target_field):
+- partie=caracteristiques → target_field parmi: objet | definition | perimeter | proprietaire | references. Pas de target_step_id. operation_type = update.
+- partie=qualite → target_field = regles_gestion. Pas de target_step_id. operation_type = update.
+- partie=diagramme → operation_type = add|update|delete|move|relink selon le cas :
+  - update : target_step_id obligatoire, target_field parmi étape|typeBpmn|acteur|département|typeActeur|condition, proposed_value = nouvelle valeur de ce champ.
+  - move : target_step_id obligatoire, target_field = acteur ou département, proposed_value = nouvelle valeur.
+  - delete : target_step_id obligatoire (id de l'étape à supprimer), les autres champs ne sont pas utilisés.
+  - add (nouvelle étape) : NE PAS utiliser target_field/proposed_value pour décrire l'étape — utilise le champ dédié `new_row` (voir schéma JSON) avec tous les champs de l'étape, et `after_id` pour indiquer après quel id l'insérer. Donne à `new_row.id` un identifiant temporaire préfixé "NEW_" (ex: "NEW_1").
+  - relink (changer les liens sortants d'une étape existante) : target_step_id obligatoire (étape dont les liens changent), utilise le champ dédié `outputs` (liste de {target_id, label}) plutôt que proposed_value.
+- partie=descriptions → target_step_id obligatoire. target_field parmi: descriptif | declencheur | applicatif | duree_estimee | frequence | kpi. operation_type = update (ou add avec `new_row` si l'étape elle-même est nouvelle).
+- partie=outils → target_step_id obligatoire. target_field = outil. operation_type = update.
+
+Ne mets JAMAIS un objet ou une structure sous forme de texte brut dans `proposed_value` (ex: pas de `{'id': ..., 'typeBpmn': ...}` en chaîne de caractères) — proposed_value est toujours une phrase ou valeur lisible par un humain. Toute donnée structurée (nouvelle étape, nouveaux liens) va dans `new_row`/`outputs`, jamais dans proposed_value.
+
+CALIBRAGE IMPACT SI (notamment pour impact_reglementaire et impact_si):
+- Ne conclus pas automatiquement à un développement lourd.
+- Si le changement implique un paramétrage, une vérification de règle ou une communication : dis-le explicitement dans si_impact.
+- "Aucun impact SI" est une réponse valide si le changement est purement métier ou documentaire.
+- Les systèmes impactés (impacted_systems) doivent venir du workflow ou des enrichissements de la procédure, jamais inventés. Si incertain : "À confirmer".
+- Si le changement dépend d'une source externe non publiée (circulaire BAM/GPBM/DSAJ, décision d'un tiers), renseigne quand même external_dependency plutôt que d'inventer un contenu.
+
+CALIBRAGE CRITICITÉ:
+- critical : blocage opérationnel démontré, risque juridique immédiat
+- high     : impact métier significatif avec action SI ou métier urgente
+- medium   : adaptation nécessaire mais sans blocage
+- low      : communication, vérification, mise à jour documentaire
 
 Types d'intent possibles :
 - conformite              : vérifier si des exigences sont couvertes
@@ -199,7 +245,10 @@ réglementations, circulaires BAM, normes internationales et bonnes pratiques ap
 à cette procédure, puis positionne-la par rapport à ces références."""
 
 _JSON_SCHEMA = """
-Retourne uniquement du JSON valide sans markdown :
+Retourne uniquement du JSON valide sans markdown. Dans "modification", les champs
+new_row/outputs/after_id sont optionnels — ne les inclus que quand operation_type
+le justifie (voir GUIDE DES CHAMPS PAR PARTIE), sinon omets-les complètement (ne mets
+jamais de valeur vide ou null à la place, juste absent du JSON) :
 {
   "intent": {
     "type": "un des types ci-dessus",
@@ -217,6 +266,9 @@ Retourne uniquement du JSON valide sans markdown :
   },
   "analysis": [
     {
+      "impact_id": "Identifiant court partagé par tous les items du même constat, ex: impact-1",
+      "impact_theme": "Titre court du constat, partagé entre les parties qu'il touche",
+      "partie": "caracteristiques|qualite|diagramme|descriptions|outils",
       "procedure_id": "id exact",
       "procedure_nom": "nom exact",
       "procedure_ref": "référence",
@@ -232,24 +284,28 @@ Retourne uniquement du JSON valide sans markdown :
       "irritant_detected": "Description de l'irritant ou friction ou null",
       "impacted_systems": ["Système ou applicatif concerné"],
       "impacted_actors": ["Acteur ou département concerné"],
-      "recommended_actions": [
-        {
-          "title": "Action courte et précise",
-          "description": "Description actionnable avec le quoi et le comment",
-          "owner_type": "metier|si|juridique|organisation|externe",
-          "priority": "low|medium|high|critical",
-          "effort": "faible|moyen|eleve",
-          "procedure_step_target": "Étape ou section de la procédure à modifier"
-        }
-      ],
-      "potential_tasks": [
-        {
-          "title": "Titre de la tâche",
-          "description": "Description de la tâche pour le suivi",
-          "assigned_to_type": "metier|si|juridique|organisation",
-          "priority": "low|medium|high|critical"
-        }
-      ],
+      "modification": {
+        "title": "Phrase courte, naturelle et actionnable décrivant le changement lui-même, PAS une tâche générique. Ex: 'Modifier le délai de vérification de l'étape Contrôle qualité de 5 à 10 jours'. Ce titre sera repris tel quel comme titre de tâche si une tâche est créée depuis cette modification — il doit donc être concret et se suffire à lui-même, sans jargon de gestion de projet (jamais 'organiser un atelier', 'créer une campagne', etc.)",
+        "target_step_id": "id exact de l'étape concernée, obligatoire si partie=diagramme|descriptions|outils et operation_type != add, sinon null",
+        "target_field": "Nom du champ précis modifié (voir guide des champs par partie) — absent/null si operation_type=add ou relink",
+        "operation_type": "add|update|delete|move|relink",
+        "current_value": "Valeur actuelle si connue, sinon null",
+        "proposed_value": "Valeur proposée, précise et actionnable — jamais un objet ou une structure en texte brut",
+        "rationale": "Justification du changement propose",
+        "new_row": {
+          "id": "Identifiant temporaire préfixé NEW_, ex: NEW_1",
+          "étape": "Nom de la nouvelle étape",
+          "typeBpmn": "StartEvent|EndEvent|Task|UserTask|ExclusiveGateway|ParallelGateway|InclusiveGateway",
+          "acteur": "Acteur responsable de cette étape",
+          "département": "Département de l'acteur, si connu",
+          "typeActeur": "interne|externe|",
+          "condition": "Libellé de la condition si c'est un gateway, sinon vide",
+          "outputs": [{ "targetId": "id de l'étape suivante (ou NEW_x si elle aussi nouvelle)", "label": "Oui/Non/vide" }],
+          "outil": "Outil utilisé pour cette étape, si connu"
+        },
+        "after_id": "Uniquement si operation_type=add : id exact de l'étape existante après laquelle insérer la nouvelle (celle qui doit pointer vers new_row.id)",
+        "outputs": [{ "targetId": "id de l'étape cible", "label": "Oui/Non/vide" }]
+      },
       "external_dependency": "BAM|GPBM|DSAJ|Prestataire|null",
       "criticality": "low|medium|high|critical",
       "confidence": 0.85,
@@ -310,6 +366,47 @@ def _build_prompt(instruction, procedures, text_sources, autonomous=False):
     )
 
 
+# ─── Compat propositions → tâches ──────────────────────────────
+
+_PARTIE_LABELS = {
+    "caracteristiques": "les caractéristiques",
+    "qualite": "les règles de gestion",
+    "diagramme": "le logigramme",
+    "descriptions": "les descriptions",
+    "outils": "les outils",
+}
+
+
+def _synthesize_recommended_action(item: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Dérive une entrée recommended_actions depuis la modification structurée, pour que
+    les consommateurs existants (candidats de tâches, export Excel) continuent de
+    fonctionner sans changement — le LLM ne produit plus recommended_actions/
+    potential_tasks directement, la modification est désormais la donnée primaire.
+    """
+    mod = item.get("modification") or {}
+    partie = item.get("partie") or ""
+    partie_label = _PARTIE_LABELS.get(partie, partie or "la procédure")
+    target = mod.get("target_field") or ""
+    # Le titre vient du LLM (concret, ex: "Modifier le délai de vérification de 5 à 10
+    # jours") — repris tel quel car il sert aussi de titre de tâche à la création.
+    # Le template n'est qu'un filet de sécurité si le LLM omet le champ.
+    title = mod.get("title") or ("Modifier " + partie_label + (f" — {target}" if target else ""))
+    new_row = mod.get("new_row") or {}
+    description = (
+        mod.get("proposed_value")
+        or (f"Nouvelle étape : {new_row.get('étape')}" if new_row.get("étape") else "")
+        or mod.get("rationale") or ""
+    )
+    return {
+        "title": title[:180],
+        "description": description,
+        "owner_type": "metier",
+        "priority": item.get("criticality") or "medium",
+        "procedure_step_target": mod.get("target_step_id") or partie_label,
+    }
+
+
 # ─── Analyse principale ───────────────────────────────────────
 
 async def run_analysis(session_id, instruction, procedure_ids, files):
@@ -360,6 +457,10 @@ async def run_analysis(session_id, instruction, procedure_ids, files):
     intent_type = intent.get("type") or "general"
     excel_template = EXCEL_TEMPLATES.get(intent_type, "impact")
 
+    for item in parsed.get("analysis") or []:
+        if item.get("modification") and not item.get("recommended_actions"):
+            item["recommended_actions"] = [_synthesize_recommended_action(item)]
+
     artifact = save_artifact(
         session_id=session_id,
         intent_type=intent_type,
@@ -376,7 +477,8 @@ async def run_analysis(session_id, instruction, procedure_ids, files):
     partial        = sum(1 for a in analysis if a.get("coverage_status") == "partiel")
     missing        = sum(1 for a in analysis if a.get("coverage_status") == "manquant")
     critical_count = sum(1 for a in analysis if a.get("criticality") in ("critical", "high"))
-    tasks_count    = sum(len(a.get("potential_tasks") or []) for a in analysis)
+    modifications_count = sum(1 for a in analysis if a.get("modification"))
+    impacts_count = len({a.get("impact_id") for a in analysis if a.get("impact_id")})
 
     content_lines = [
         "**" + (intent.get("label") or INTENT_TYPES.get(intent_type, "Analyse")) + "**", "",
@@ -387,8 +489,11 @@ async def run_analysis(session_id, instruction, procedure_ids, files):
         + str(missing) + " manquants · "
         + str(critical_count) + " prioritaires",
     ]
-    if tasks_count:
-        content_lines.append(str(tasks_count) + " tâche(s) potentielle(s) identifiée(s)")
+    if modifications_count:
+        content_lines.append(
+            str(modifications_count) + " modification(s) proposée(s)"
+            + (f" sur {impacts_count} impact(s)" if impacts_count else "")
+        )
 
     key_findings = summary.get("key_findings") or []
     if key_findings:

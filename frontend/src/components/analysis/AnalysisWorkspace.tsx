@@ -18,7 +18,51 @@ interface Props {
   currentActor?: TaskActor | null;
 }
 
+// Panneaux redimensionnables à la souris — la taille choisie est mémorisée (localStorage)
+// pour que la disposition reste la même d'une session à l'autre, comme sur Claude/ChatGPT.
+function useResizableWidth(storageKey: string, defaultWidth: number, min: number, max: number) {
+  const [width, setWidth] = useState(() => {
+    if (typeof window === 'undefined') return defaultWidth;
+    const stored = window.localStorage.getItem(storageKey);
+    const parsed = stored ? parseInt(stored, 10) : NaN;
+    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : defaultWidth;
+  });
+
+  const startDrag = (event: React.MouseEvent) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = width;
+    const onMove = (moveEvent: MouseEvent) => {
+      setWidth(Math.min(max, Math.max(min, startWidth + (moveEvent.clientX - startX))));
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      setWidth(current => {
+        window.localStorage.setItem(storageKey, String(current));
+        return current;
+      });
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  return { width, startDrag };
+}
+
+function ResizeHandle({ onMouseDown, className = '' }: { onMouseDown: (e: React.MouseEvent) => void; className?: string }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      title="Glisser pour redimensionner"
+      className={`w-1 shrink-0 cursor-col-resize bg-transparent transition-colors hover:bg-blue-300 active:bg-blue-400 ${className}`}
+    />
+  );
+}
+
 export default function AnalysisWorkspace({ actors = [], currentActor = null }: Props) {
+  const col1Resize = useResizableWidth('analysisWorkspace.col1Width', 256, 180, 420);
+  const col2Resize = useResizableWidth('analysisWorkspace.col2Width', 380, 280, 640);
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSession, setActiveSession] = useState<AnalysisSession | null>(null);
   const [procedures, setProcedures] = useState<ProcedureCandidate[]>([]);
@@ -162,7 +206,10 @@ export default function AnalysisWorkspace({ actors = [], currentActor = null }: 
       <div className="flex min-h-0 flex-1 overflow-hidden">
 
         {/* COL 1 — Sessions + procédures */}
-        <aside className="hidden sm:flex w-56 xl:w-64 shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden">
+        <aside
+          style={{ width: col1Resize.width }}
+          className="hidden sm:flex shrink-0 flex-col border-r border-slate-200 bg-white overflow-hidden"
+        >
 
           {/* Nouvelle session */}
           <div className="shrink-0 border-b border-slate-100 p-3 space-y-2">
@@ -243,10 +290,15 @@ export default function AnalysisWorkspace({ actors = [], currentActor = null }: 
           </div>
         </aside>
 
+        <ResizeHandle onMouseDown={col1Resize.startDrag} className="hidden sm:block" />
+
         {/* COL 2 — Chat */}
         <div
           className="flex min-w-0 flex-col overflow-hidden border-r border-slate-200"
-          style={{ width: selectedArtifact ? '380px' : undefined, flex: selectedArtifact ? '0 0 380px' : '1 1 0' }}
+          style={{
+            width: selectedArtifact ? col2Resize.width : undefined,
+            flex: selectedArtifact ? `0 0 ${col2Resize.width}px` : '1 1 0',
+          }}
         >
           {activeSession ? (
             <>
@@ -303,6 +355,8 @@ export default function AnalysisWorkspace({ actors = [], currentActor = null }: 
             </div>
           )}
         </div>
+
+        {selectedArtifact && <ResizeHandle onMouseDown={col2Resize.startDrag} />}
 
         {/* COL 3 — Détail artifact */}
         {selectedArtifact && (

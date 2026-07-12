@@ -114,6 +114,113 @@ def _build_html(
 """
 
 
+def _build_digest_html(
+    to_name: str,
+    to_email: str,
+    assigned_by_name: str,
+    tasks: list,
+    workspace_url: Optional[str],
+) -> str:
+    display = to_name or to_email
+    rows = ""
+    for t in tasks:
+        proc_line = (
+            f'<p style="margin:2px 0 0;color:#6b7280;font-size:13px;">{t["procedure_name"]}</p>'
+            if t.get("procedure_name") else ""
+        )
+        rows += f"""
+        <div style="border-bottom:1px solid #e5e7eb;padding:10px 0;">
+          <p style="margin:0;font-size:15px;font-weight:bold;color:#1e40af;">{t["title"]}</p>
+          {proc_line}
+        </div>
+        """
+
+    if workspace_url:
+        cta = f"""
+        <div style="text-align:center;margin:24px 0;">
+          <a href="{workspace_url}"
+             style="display:inline-block;background:#2563eb;color:white;font-weight:bold;
+                    font-size:14px;padding:12px 28px;border-radius:8px;text-decoration:none;">
+            Ouvrir mes tâches &rarr;
+          </a>
+        </div>
+        """
+    else:
+        cta = (
+            '<p style="color:#6b7280;font-size:14px;">'
+            "Connectez-vous a ProcessMate pour consulter et traiter ces taches.</p>"
+        )
+
+    return f"""
+<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9fafb;padding:24px;">
+  <div style="background:#2563eb;padding:20px 24px;border-radius:8px 8px 0 0;">
+    <span style="color:white;font-size:18px;font-weight:bold;">ProcessMate</span>
+  </div>
+  <div style="background:white;padding:28px;border:1px solid #e5e7eb;
+              border-top:none;border-radius:0 0 8px 8px;">
+    <p style="color:#374151;font-size:15px;margin-top:0;">
+      Bonjour <strong>{display}</strong>,
+    </p>
+    <p style="color:#374151;">
+      <strong>{assigned_by_name}</strong> vous a assigne {len(tasks)} nouvelle{'s' if len(tasks) > 1 else ''}
+      modification{'s' if len(tasks) > 1 else ''} a apporter a des procedures.
+    </p>
+    <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px;
+                padding:8px 16px;margin:20px 0;">
+      {rows}
+    </div>
+    {cta}
+    <p style="color:#9ca3af;font-size:12px;margin-top:24px;
+              border-top:1px solid #f3f4f6;padding-top:12px;">
+      Cet email a ete envoye automatiquement par ProcessMate. Ne pas repondre a ce message.
+    </p>
+  </div>
+</div>
+"""
+
+
+def send_tasks_digest_email(
+    to_email: str,
+    to_name: str,
+    assigned_by_name: str,
+    tasks: list,
+    workspace_url: Optional[str] = None,
+) -> None:
+    """
+    Envoie un seul email récapitulatif pour plusieurs tâches modification assignées en
+    même temps à la même personne — évite une avalanche d'emails individuels quand un
+    lot de propositions est converti en tâches d'un coup.
+    `tasks` : liste de {"title": str, "procedure_name": str | None}.
+    """
+    if not to_email or not tasks:
+        return
+    try:
+        html = _build_digest_html(
+            to_name=to_name or "", to_email=to_email,
+            assigned_by_name=assigned_by_name, tasks=tasks,
+            workspace_url=workspace_url,
+        )
+        subject = (
+            f"[ProcessMate] {len(tasks)} nouvelles modifications assignees"
+            if len(tasks) > 1 else f"[ProcessMate] Nouvelle modification : {tasks[0]['title']}"
+        )
+
+        email_user = os.environ.get("EMAIL_USER")
+        email_pass = os.environ.get("EMAIL_PASS")
+        resend_key = os.environ.get("RESEND_API_KEY")
+
+        if email_user and email_pass:
+            _send_gmail(to_email, subject, html, email_user, email_pass)
+            logger.info(f"Email digest Gmail envoye a {to_email} — {len(tasks)} tache(s)")
+        elif resend_key:
+            _send_resend(to_email, subject, html, resend_key)
+            logger.info(f"Email digest Resend envoye a {to_email} — {len(tasks)} tache(s)")
+        else:
+            logger.warning("send_tasks_digest_email: aucun fournisseur email configure (EMAIL_USER/RESEND_API_KEY)")
+    except Exception as exc:
+        logger.warning(f"send_tasks_digest_email echec vers {to_email}: {exc}")
+
+
 def send_task_email(
     to_email: str,
     to_name: str,

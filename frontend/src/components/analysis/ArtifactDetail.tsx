@@ -1,18 +1,24 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Check, CheckSquare, ChevronDown, ChevronRight, Download, ExternalLink, Loader2, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import {
+  AlignLeft, BookOpen, Check, ChevronDown, ChevronRight,
+  Download, ExternalLink, FileText, GitBranch, Loader2, Settings2, Wrench, X,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type {
   AnalysisArtifact,
   AnalysisItem,
   CoverageStatus,
   Criticality,
+  Modification,
   OpenQuestion,
+  Partie,
   RecommendedAction,
-  TaskCandidate,
 } from '@/lib/analysisApi';
 import { analysisApi } from '@/lib/analysisApi';
+import ModificationCard from './ModificationCard';
+import { applyModificationsBatch } from '@/logic/applyModification';
 import TaskFormDrawer from '@/components/orchestration/tasks/TaskFormDrawer';
 import {
   orchestrationTasksApi,
@@ -32,21 +38,30 @@ const CRIT_STYLE: Record<Criticality, { bg: string; text: string; label: string 
   medium: { bg: 'bg-amber-100', text: 'text-amber-800', label: 'Moyen' },
   low: { bg: 'bg-slate-100', text: 'text-slate-600', label: 'Faible' },
 };
+// Même taxonomie que les onglets de ProcedureEditor.tsx (caracteristiques|qualite|diagramme|descriptions|outils)
+// pour que l'analyse et l'édition de procédure parlent le même langage.
+const PARTIE_META: Record<Partie, { label: string; icon: React.ReactNode; taskTitle: string }> = {
+  caracteristiques: { label: 'Caractéristiques', icon: <FileText className="h-3 w-3" />, taskTitle: 'Mettre à jour les caractéristiques' },
+  qualite: { label: 'Règles de gestion', icon: <Settings2 className="h-3 w-3" />, taskTitle: 'Revoir les règles de gestion' },
+  diagramme: { label: 'Logigramme', icon: <GitBranch className="h-3 w-3" />, taskTitle: 'Modifier le logigramme' },
+  descriptions: { label: 'Descriptions', icon: <AlignLeft className="h-3 w-3" />, taskTitle: 'Revoir les descriptions' },
+  outils: { label: 'Outils', icon: <Wrench className="h-3 w-3" />, taskTitle: 'Mettre à jour les outils' },
+};
 
 type ExtendedAction = RecommendedAction & { effort?: string; procedure_step_target?: string };
-type PotentialTask = { title?: string; description?: string; assigned_to_type?: string; priority?: Criticality };
 type ExtendedAnalysisItem = AnalysisItem & {
   impact_type?: string; procedure_step?: string;
   operational_risk?: string; irritant_detected?: string;
-  impacted_actors?: string[]; potential_tasks?: PotentialTask[];
+  impacted_actors?: string[];
   recommended_actions: ExtendedAction[];
 };
 type Summary = { global_assessment?: string; key_findings?: string[] };
+type Entry = { item: ExtendedAnalysisItem; index: number };
 
 interface TaskDraft {
   procedureId: string;
   input: Partial<CreateProcedureTaskInput>;
-  candidateId?: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface Props {
@@ -65,12 +80,18 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
   const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [tasksCreated, setTasksCreated] = useState<number>(0);
-  const [taskCandidates, setTaskCandidates] = useState<TaskCandidate[]>([]);
-  const [loadingCandidates, setLoadingCandidates] = useState(false);
   const [taskDraft, setTaskDraft] = useState<TaskDraft | null>(null);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'analyse' | 'tasks' | 'log' | 'questions'>('analyse');
+  const [activeTab, setActiveTab] = useState<'impacts' | 'modifications' | 'log' | 'questions'>('impacts');
   const [itemStatuses, setItemStatuses] = useState<Record<number, 'accepted' | 'rejected'>>({});
+
+  // ── Sélection de modifications (partagée entre "Créer les tâches" et "Appliquer") ──
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [appliedIndexes, setAppliedIndexes] = useState<Set<number>>(new Set());
+  const [confirmingApplyProcedureId, setConfirmingApplyProcedureId] = useState<string | null>(null);
+  const [applyingBatch, setApplyingBatch] = useState(false);
+  const [batchResult, setBatchResult] = useState<{ procedureId: string; appliedCount: number; skipped: { index: number; reason: string }[] } | null>(null);
+  const [taskResult, setTaskResult] = useState<{ procedureId: string; title: string } | null>(null);
 
   const aj = artifact.analysis_json || {};
   const summary = (aj.summary || {}) as Summary;
@@ -79,7 +100,6 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
   const questions = (aj.open_questions || []) as OpenQuestion[];
 
   const assignee = useMemo(() => actors.find(a => a.role !== 'admin') || actors[0], [actors]);
-  const canCreateTasks = currentActor?.role === 'admin';
 
   const stats = useMemo(() => ({
     points: analysis.length,
@@ -88,17 +108,127 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
     missing: analysis.filter(i => i.coverage_status === 'manquant').length,
   }), [analysis]);
 
-  // Candidats en attente
-  const pendingCount = taskCandidates.filter(c => c.status === 'suggested').length;
-  const convertedCount = taskCandidates.filter(c => c.status === 'converted').length;
+  const modificationsCount = useMemo(
+    () => analysis.filter(i => i.modification && i.partie).length,
+    [analysis]
+  );
 
-  useEffect(() => {
-    setLoadingCandidates(true);
-    analysisApi.listTaskCandidates(artifact.id)
-      .then(res => setTaskCandidates(res.candidates))
-      .catch(() => setTaskCandidates([]))
-      .finally(() => setLoadingCandidates(false));
-  }, [artifact.id]);
+  // Regroupe les points d'analyse d'abord par procédure (on ne modifie jamais qu'une
+  // procédure à la fois), puis par impact à l'intérieur (un même constat peut toucher
+  // plusieurs parties — logigramme, règles de gestion, caractéristiques...).
+  // On conserve l'index d'origine dans `analysis` car itemStatuses/sélection y sont liés.
+  const groupedByProcedure = useMemo(() => {
+    const procMap = new Map<string, { procedureId: string; procedureNom: string; entries: Entry[] }>();
+    analysis.forEach((item, index) => {
+      const pid = item.procedure_id || '__unknown';
+      if (!procMap.has(pid)) {
+        procMap.set(pid, { procedureId: pid, procedureNom: item.procedure_nom || item.procedure_ref || 'Procédure', entries: [] });
+      }
+      procMap.get(pid)!.entries.push({ item, index });
+    });
+    return Array.from(procMap.values()).map(proc => {
+      const impactMap = new Map<string, { impactId: string; impactTheme: string; entries: Entry[] }>();
+      proc.entries.forEach(entry => {
+        const impactId = entry.item.impact_id || `__solo_${entry.index}`;
+        if (!impactMap.has(impactId)) {
+          impactMap.set(impactId, {
+            impactId,
+            impactTheme: entry.item.impact_theme || entry.item.source_element || 'Constat',
+            entries: [],
+          });
+        }
+        impactMap.get(impactId)!.entries.push(entry);
+      });
+      return { ...proc, impactGroups: Array.from(impactMap.values()) };
+    });
+  }, [analysis]);
+
+  const toggleSelected = (index: number) => {
+    setSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  };
+
+  const buildTaskDefaults = (selected: Entry[]): { title: string; description: string } => {
+    const parties = new Set(selected.map(e => e.item.partie).filter(Boolean) as Partie[]);
+    const title = parties.size === 1
+      ? PARTIE_META[[...parties][0]].taskTitle
+      : 'Modifier la procédure';
+    const description = selected
+      .map(e => `- ${e.item.modification?.title || e.item.modification?.proposed_value || e.item.source_element}`)
+      .join('\n');
+    return { title, description };
+  };
+
+  const openCreateTaskForm = (procedureId: string, entries: Entry[]) => {
+    if (!assignee) return;
+    const selected = entries.filter(e => selectedIndices.has(e.index) && e.item.modification && e.item.partie);
+    if (selected.length === 0) return;
+    const { title, description } = buildTaskDefaults(selected);
+    setTaskDraft({
+      procedureId,
+      input: {
+        title, description,
+        assigned_to: assignee.id,
+        raci_role: 'R',
+        task_type: 'correction',
+        priority: 'normal',
+      },
+      metadata: {
+        source: 'analysis_modifications',
+        artifact_id: artifact.id,
+        proposed_patch: selected.map(e => ({ partie: e.item.partie, modification: e.item.modification })),
+      },
+    });
+  };
+
+  const submitTask = async (procedureId: string, input: CreateProcedureTaskInput) => {
+    const payload = taskDraft?.metadata ? { ...input, metadata: taskDraft.metadata } : input;
+    await orchestrationTasksApi.createTask(procedureId, payload);
+    setTasksCreated(prev => prev + 1);
+    setTaskResult({ procedureId, title: input.title });
+    setSelectedIndices(new Set());
+    setTaskDraft(null);
+  };
+
+  const confirmBatchApply = async (procedureId: string, entries: Entry[]) => {
+    setApplyingBatch(true);
+    try {
+      const items = entries
+        .filter(e => selectedIndices.has(e.index) && e.item.modification && e.item.partie)
+        .map(e => ({
+          index: e.index,
+          partie: e.item.partie!,
+          target_step_id: e.item.modification!.target_step_id,
+          target_field: e.item.modification!.target_field,
+          operation_type: e.item.modification!.operation_type,
+          proposed_value: e.item.modification!.proposed_value,
+          current_value: e.item.modification!.current_value,
+        }));
+      const result = await applyModificationsBatch(procedureId, items);
+      setAppliedIndexes(prev => {
+        const next = new Set(prev);
+        result.applied.forEach(i => next.add(i));
+        return next;
+      });
+      setBatchResult({ procedureId, appliedCount: result.applied.length, skipped: result.skipped });
+      setSelectedIndices(prev => {
+        const next = new Set(prev);
+        result.applied.forEach(i => next.delete(i));
+        return next;
+      });
+      setConfirmingApplyProcedureId(null);
+    } catch (e) {
+      setBatchResult({
+        procedureId, appliedCount: 0,
+        skipped: [{ index: -1, reason: e instanceof Error ? e.message : 'Erreur lors de l’application du lot' }],
+      });
+    } finally {
+      setApplyingBatch(false);
+    }
+  };
 
   const doExport = async () => {
     setExporting(true);
@@ -108,42 +238,7 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
     } finally { setExporting(false); }
   };
 
-  const openCandidateForm = (candidate: TaskCandidate) => {
-    if (candidate.status === 'converted' || !assignee) return;
-    setTaskDraft({
-      procedureId: candidate.procedure_id,
-      candidateId: candidate.id,
-      input: {
-        title: candidate.title,
-        description: candidate.description,
-        assigned_to: assignee.id,
-        raci_role: candidate.raci_role || 'R',
-        task_type: candidate.task_type || 'correction',
-        priority: candidate.priority,
-      },
-    });
-  };
-
-  const submitTask = async (procedureId: string, input: CreateProcedureTaskInput) => {
-    const result = await orchestrationTasksApi.createTask(procedureId, input);
-    if (taskDraft?.candidateId) {
-      const updated = await analysisApi.updateTaskCandidate(artifact.id, taskDraft.candidateId, {
-        status: 'converted',
-        task_id: result.task.id,
-      });
-      setTaskCandidates(prev =>
-        prev.map(c => c.id === updated.candidate.id ? updated.candidate : c)
-      );
-    }
-    setTasksCreated(prev => prev + 1);
-    setTaskDraft(null);
-  };
-
-  const goToTask = (taskId: string) => {
-    router.push(`/orchestration?tab=tasks&task_id=${taskId}`);
-  };
-
-  const handleItemStatus = async (itemIndex: number, status: 'accepted' | 'rejected') => {
+  const handleItemStatus = (itemIndex: number, status: 'accepted' | 'rejected') => {
     const current = itemStatuses[itemIndex];
     const next = current === status ? undefined : status;
     setItemStatuses(prev => {
@@ -152,14 +247,6 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
       else updated[itemIndex] = next;
       return updated;
     });
-    const candidateStatus = next === 'accepted' ? 'selected' : next === 'rejected' ? 'dismissed' : 'suggested';
-    const itemCandidates = taskCandidates.filter(c => c.analysis_item_index === itemIndex && c.status !== 'converted');
-    for (const candidate of itemCandidates) {
-      try {
-        const updated = await analysisApi.updateTaskCandidate(artifact.id, candidate.id, { status: candidateStatus });
-        setTaskCandidates(prev => prev.map(c => c.id === candidate.id ? updated.candidate : c));
-      } catch {}
-    }
   };
 
   return (
@@ -197,18 +284,15 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
             {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
             Excel
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('tasks')}
-            disabled={analysis.length === 0}
-            className="inline-flex h-8 items-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-          >
-            <CheckSquare className="h-3.5 w-3.5" />
-            {tasksCreated > 0
-              ? `${tasksCreated} tâche${tasksCreated > 1 ? 's' : ''} créée${tasksCreated > 1 ? 's' : ''}`
-              : `Suggestions de tâches${pendingCount > 0 ? ` (${pendingCount})` : ''}`
-            }
-          </button>
+          {tasksCreated > 0 && (
+            <button
+              type="button"
+              onClick={() => router.push('/orchestration?tab=tasks')}
+              className="inline-flex h-8 items-center gap-1.5 rounded border border-green-200 bg-green-50 px-3 text-xs font-medium text-green-700 hover:bg-green-100"
+            >
+              {tasksCreated} tâche{tasksCreated > 1 ? 's' : ''} créée{tasksCreated > 1 ? 's' : ''} <ExternalLink className="h-3 w-3" />
+            </button>
+          )}
         </div>
 
         {/* Ligne 4 : stats */}
@@ -243,8 +327,8 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
         {/* Tabs */}
         <div className="-mb-px flex gap-0 pt-1">
           {([
-            { key: 'analyse', label: `Analyse (${analysis.length})` },
-            { key: 'tasks', label: `Tâches (${taskCandidates.length})${convertedCount > 0 ? ` · ${convertedCount} créée${convertedCount > 1 ? 's' : ''}` : ''}` },
+            { key: 'impacts', label: `Impacts identifiés (${analysis.length})` },
+            { key: 'modifications', label: `Modifications proposées (${modificationsCount})` },
             { key: 'log', label: `Journal (${log.length})` },
             { key: 'questions', label: `Questions (${questions.length})` },
           ] as const).map(tab => (
@@ -266,171 +350,232 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
       {/* ── CONTENU ────────────────────────────────────── */}
       <div className="space-y-2 px-4 py-3">
 
-        {/* Tab: Analyse */}
-        {activeTab === 'analyse' && analysis.map((item, i) => {
-          const cov = COVERAGE_STYLE[item.coverage_status] || COVERAGE_STYLE.manquant;
-          const crit = CRIT_STYLE[item.criticality] || CRIT_STYLE.medium;
-          const key = `${item.procedure_id}-${i}`;
-          const expanded = expandedItem === key;
-          const itemAny = item as any;
-          const itemStatus = itemStatuses[i];
+        {/* Tab: Impacts identifiés — regroupé par procédure puis par impact */}
+        {activeTab === 'impacts' && groupedByProcedure.map(proc => (
+          <div key={proc.procedureId} className="mb-4 space-y-1.5">
+            <p className="px-1 pt-2 text-sm font-bold text-slate-800">{proc.procedureNom}</p>
+
+            {proc.impactGroups.map(group => (
+              <div key={group.impactId} className="space-y-1.5">
+                {group.entries.length > 1 && (
+                  <p className="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    {group.impactTheme} · {group.entries.length} partie{group.entries.length > 1 ? 's' : ''} touchée{group.entries.length > 1 ? 's' : ''}
+                  </p>
+                )}
+                {group.entries.map(({ item, index: i }) => {
+                  const cov = COVERAGE_STYLE[item.coverage_status] || COVERAGE_STYLE.manquant;
+                  const crit = CRIT_STYLE[item.criticality] || CRIT_STYLE.medium;
+                  const partieMeta = item.partie ? PARTIE_META[item.partie] : null;
+                  const key = `${item.procedure_id}-${i}`;
+                  const expanded = expandedItem === key;
+                  const itemAny = item as any;
+                  const itemStatus = itemStatuses[i];
+
+                  return (
+                    <div key={key} className={`rounded-lg border transition-all ${
+                      itemStatus === 'accepted' ? 'border-green-300 bg-green-50/30' :
+                      itemStatus === 'rejected' ? 'border-red-200 bg-red-50/20 opacity-60' :
+                      expanded ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200 bg-white'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedItem(expanded ? null : key)}
+                        className="flex w-full items-start gap-2 p-3 text-left"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                            {partieMeta && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                                {partieMeta.icon} {partieMeta.label}
+                              </span>
+                            )}
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cov.bg} ${cov.text}`}>{cov.label}</span>
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${crit.bg} ${crit.text}`}>{crit.label}</span>
+                            {itemAny.impact_type && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{itemAny.impact_type}</span>}
+                            {item.external_dependency && <span className="text-xs font-medium text-amber-600">⚠ {item.external_dependency}</span>}
+                          </div>
+                          <p className="text-sm font-semibold leading-snug text-slate-900">{item.source_element}</p>
+                          <p className="mt-0.5 truncate text-xs text-slate-400">
+                            {item.procedure_ref} {item.procedure_nom} · {itemAny.procedure_step || item.procedure_section}
+                          </p>
+                        </div>
+                        {expanded ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />}
+                      </button>
+
+                      {expanded && (
+                        <div className="space-y-3 border-t border-slate-200 px-3 pb-3 pt-2">
+                          {itemAny.operational_risk && (
+                            <div className="rounded border border-red-200 bg-red-50 px-2.5 py-2">
+                              <p className="mb-0.5 text-xs font-semibold text-red-700">⚠ Risque opérationnel</p>
+                              <p className="text-xs text-red-800">{itemAny.operational_risk}</p>
+                            </div>
+                          )}
+                          {itemAny.irritant_detected && (
+                            <div className="rounded border border-orange-200 bg-orange-50 px-2.5 py-2">
+                              <p className="mb-0.5 text-xs font-semibold text-orange-700">⚡ Irritant détecté</p>
+                              <p className="text-xs text-orange-800">{itemAny.irritant_detected}</p>
+                            </div>
+                          )}
+                          {item.gap && <DetailRow label="Écart identifié" value={item.gap} highlight />}
+                          <DetailRow label="Réf. source" value={item.source_ref} />
+                          <DetailRow label="Impact métier" value={item.business_impact} />
+                          <DetailRow label="Impact SI" value={item.si_impact} />
+                          <DetailRow label="Étape / Règle" value={itemAny.procedure_step || item.procedure_section} />
+                          <DetailRow label="Justification" value={item.rationale} />
+
+                          {(itemAny.impacted_actors || []).length > 0 && (
+                            <ChipList label="Acteurs" values={itemAny.impacted_actors} tone="purple" />
+                          )}
+                          {(item.impacted_systems || []).length > 0 && (
+                            <ChipList label="Systèmes" values={item.impacted_systems} />
+                          )}
+
+                          {(item.recommended_actions || []).length > 0 && (
+                            <div>
+                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Actions</p>
+                              <div className="space-y-1.5">
+                                {item.recommended_actions.map((a, ai) => (
+                                  <ActionCard key={ai} action={a} />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-xs text-slate-400">
+                              Confiance IA : {Math.round((item.confidence || 0) * 100)}%
+                            </span>
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                onClick={e => { e.stopPropagation(); handleItemStatus(i, 'accepted'); }}
+                                className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  itemStatuses[i] === 'accepted'
+                                    ? 'bg-green-600 text-white'
+                                    : 'border border-green-300 text-green-700 hover:bg-green-50'
+                                }`}
+                              >
+                                <Check className="h-3 w-3" /> Conserver
+                              </button>
+                              <button
+                                type="button"
+                                onClick={e => { e.stopPropagation(); handleItemStatus(i, 'rejected'); }}
+                                className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                                  itemStatuses[i] === 'rejected'
+                                    ? 'bg-red-500 text-white'
+                                    : 'border border-red-200 text-red-500 hover:bg-red-50'
+                                }`}
+                              >
+                                <X className="h-3 w-3" /> Rejeter
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        ))}
+        {activeTab === 'impacts' && analysis.length === 0 && <EmptyTab text="Aucun impact identifié." />}
+
+        {/* Tab: Modifications proposées — regroupé par procédure, sélection persistante */}
+        {activeTab === 'modifications' && groupedByProcedure.map(proc => {
+          const modEntries = proc.entries.filter(e => e.item.modification && e.item.partie);
+          if (modEntries.length === 0) return null;
+          const selectedCount = modEntries.filter(e => selectedIndices.has(e.index)).length;
 
           return (
-            <div key={key} className={`rounded-lg border transition-all ${
-              itemStatus === 'accepted' ? 'border-green-300 bg-green-50/30' :
-              itemStatus === 'rejected' ? 'border-red-200 bg-red-50/20 opacity-60' :
-              expanded ? 'border-blue-300 bg-blue-50/30' : 'border-slate-200 bg-white'
-            }`}>
-              <button
-                type="button"
-                onClick={() => setExpandedItem(expanded ? null : key)}
-                className="flex w-full items-start gap-2 p-3 text-left"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cov.bg} ${cov.text}`}>{cov.label}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${crit.bg} ${crit.text}`}>{crit.label}</span>
-                    {itemAny.impact_type && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">{itemAny.impact_type}</span>}
-                    {item.external_dependency && <span className="text-xs font-medium text-amber-600">⚠ {item.external_dependency}</span>}
-                  </div>
-                  <p className="text-sm font-semibold leading-snug text-slate-900">{item.source_element}</p>
-                  <p className="mt-0.5 truncate text-xs text-slate-400">
-                    {item.procedure_ref} {item.procedure_nom} · {itemAny.procedure_step || item.procedure_section}
-                  </p>
-                </div>
-                {expanded ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />}
-              </button>
+            <div key={proc.procedureId} className="mb-4 space-y-1.5">
+              <p className="px-1 pt-2 text-sm font-bold text-slate-800">{proc.procedureNom}</p>
 
-              {expanded && (
-                <div className="space-y-3 border-t border-slate-200 px-3 pb-3 pt-2">
-                  {itemAny.operational_risk && (
-                    <div className="rounded border border-red-200 bg-red-50 px-2.5 py-2">
-                      <p className="mb-0.5 text-xs font-semibold text-red-700">⚠ Risque opérationnel</p>
-                      <p className="text-xs text-red-800">{itemAny.operational_risk}</p>
-                    </div>
-                  )}
-                  {itemAny.irritant_detected && (
-                    <div className="rounded border border-orange-200 bg-orange-50 px-2.5 py-2">
-                      <p className="mb-0.5 text-xs font-semibold text-orange-700">⚡ Irritant détecté</p>
-                      <p className="text-xs text-orange-800">{itemAny.irritant_detected}</p>
-                    </div>
-                  )}
-                  {item.gap && <DetailRow label="Écart identifié" value={item.gap} highlight />}
-                  <DetailRow label="Réf. source" value={item.source_ref} />
-                  <DetailRow label="Impact métier" value={item.business_impact} />
-                  <DetailRow label="Impact SI" value={item.si_impact} />
-                  <DetailRow label="Étape / Règle" value={itemAny.procedure_step || item.procedure_section} />
-                  <DetailRow label="Justification" value={item.rationale} />
-
-                  {(itemAny.impacted_actors || []).length > 0 && (
-                    <ChipList label="Acteurs" values={itemAny.impacted_actors} tone="purple" />
-                  )}
-                  {(item.impacted_systems || []).length > 0 && (
-                    <ChipList label="Systèmes" values={item.impacted_systems} />
-                  )}
-
-                  {(item.recommended_actions || []).length > 0 && (
-                    <div>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Actions</p>
-                      <div className="space-y-1.5">
-                        {item.recommended_actions.map((a, ai) => (
-                          <ActionCard key={ai} action={a} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {(itemAny.potential_tasks || []).length > 0 && (
-                    <div>
-                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Tâches potentielles ({itemAny.potential_tasks.length})
-                      </p>
-                      <div className="space-y-1">
-                        {(itemAny.potential_tasks as PotentialTask[]).map((t, ti) => (
-                          <PotentialTaskCard key={ti} task={t} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs text-slate-400">
-                      Confiance IA : {Math.round((item.confidence || 0) * 100)}%
-                    </span>
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        onClick={e => { e.stopPropagation(); handleItemStatus(i, 'accepted'); }}
-                        className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                          itemStatuses[i] === 'accepted'
-                            ? 'bg-green-600 text-white'
-                            : 'border border-green-300 text-green-700 hover:bg-green-50'
-                        }`}
-                      >
-                        <Check className="h-3 w-3" /> Conserver
-                      </button>
-                      <button
-                        type="button"
-                        onClick={e => { e.stopPropagation(); handleItemStatus(i, 'rejected'); }}
-                        className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium transition-colors ${
-                          itemStatuses[i] === 'rejected'
-                            ? 'bg-red-500 text-white'
-                            : 'border border-red-200 text-red-500 hover:bg-red-50'
-                        }`}
-                      >
-                        <X className="h-3 w-3" /> Rejeter
-                      </button>
-                    </div>
-                  </div>
+              {batchResult && batchResult.procedureId === proc.procedureId && (
+                <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  {batchResult.appliedCount} modification{batchResult.appliedCount > 1 ? 's' : ''} appliquée{batchResult.appliedCount > 1 ? 's' : ''}
+                  {batchResult.skipped.length > 0 && ` · ${batchResult.skipped.length} ignorée${batchResult.skipped.length > 1 ? 's' : ''} : ${batchResult.skipped.map(s => s.reason).join(' — ')}`}
                 </div>
               )}
+              {taskResult && taskResult.procedureId === proc.procedureId && (
+                <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+                  Tâche « {taskResult.title} » créée
+                </div>
+              )}
+
+              {proc.impactGroups.map(group => {
+                const groupModEntries = group.entries.filter(e => e.item.modification && e.item.partie);
+                if (groupModEntries.length === 0) return null;
+                return (
+                  <div key={group.impactId} className="space-y-1.5">
+                    {group.entries.length > 1 && (
+                      <p className="px-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {group.impactTheme}
+                      </p>
+                    )}
+                    {groupModEntries.map(({ item, index: i }) => (
+                      <ModificationCard
+                        key={i}
+                        modification={item.modification as Modification}
+                        partie={item.partie}
+                        procedureId={item.procedure_id}
+                        applied={appliedIndexes.has(i)}
+                        selectable
+                        selected={selectedIndices.has(i)}
+                        onToggleSelected={() => toggleSelected(i)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+
+              <div className="flex items-center gap-2 pt-1">
+                {confirmingApplyProcedureId === proc.procedureId ? (
+                  <>
+                    <span className="text-xs font-medium text-blue-800">Confirmer l'application de {selectedCount} modification(s) ?</span>
+                    <button
+                      type="button"
+                      onClick={() => confirmBatchApply(proc.procedureId, proc.entries)}
+                      disabled={applyingBatch}
+                      className="inline-flex items-center gap-1 rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {applyingBatch ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                      Confirmer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingApplyProcedureId(null)}
+                      disabled={applyingBatch}
+                      className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500 hover:bg-slate-50"
+                    >
+                      Annuler
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openCreateTaskForm(proc.procedureId, proc.entries)}
+                      disabled={selectedCount === 0 || !assignee}
+                      className="inline-flex items-center gap-1 rounded border border-blue-300 bg-white px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {selectedCount === 0 ? 'Sélectionner au moins une modification' : `Créer les tâches (${selectedCount})`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingApplyProcedureId(proc.procedureId)}
+                      disabled={selectedCount === 0}
+                      className="inline-flex items-center gap-1 rounded border border-blue-300 bg-white px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {selectedCount === 0 ? 'Sélectionner au moins une modification' : `Appliquer les modifications (${selectedCount})`}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           );
         })}
-
-        {/* Tab: Tâches */}
-        {activeTab === 'tasks' && (
-          loadingCandidates ? (
-            <div className="flex items-center justify-center gap-2 py-8 text-xs text-slate-400">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Chargement des suggestions...
-            </div>
-          ) : taskCandidates.length === 0 ? (
-            <EmptyTab text="Aucune suggestion de tâche disponible." />
-          ) : (
-            <div className="space-y-2">
-              {/* Résumé en haut */}
-              {convertedCount > 0 && (
-                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 flex items-center justify-between gap-2">
-                  <p className="text-xs text-green-800 font-medium">
-                    {convertedCount} tâche{convertedCount > 1 ? 's' : ''} créée{convertedCount > 1 ? 's' : ''} · {pendingCount} suggestion{pendingCount > 1 ? 's' : ''} restante{pendingCount > 1 ? 's' : ''}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => router.push('/orchestration?tab=tasks')}
-                    className="inline-flex items-center gap-1 text-xs text-green-700 font-medium hover:underline shrink-0"
-                  >
-                    Voir dans Tâches <ExternalLink className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-
-              {taskCandidates.map(candidate => (
-                <TaskCandidateCard
-                  key={candidate.id}
-                  candidate={candidate}
-                  canCreate={Boolean(canCreateTasks && assignee)}
-                  onCreate={() => openCandidateForm(candidate)}
-                  onGoToTask={goToTask}
-                  onDismiss={async () => {
-                    const updated = await analysisApi.updateTaskCandidate(artifact.id, candidate.id, { status: 'dismissed' });
-                    setTaskCandidates(prev => prev.map(c => c.id === candidate.id ? updated.candidate : c));
-                  }}
-                />
-              ))}
-            </div>
-          )
-        )}
+        {activeTab === 'modifications' && modificationsCount === 0 && <EmptyTab text="Aucune modification proposée." />}
 
         {/* Tab: Journal */}
         {activeTab === 'log' && (
@@ -487,104 +632,6 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
 
 // ── Sous-composants ───────────────────────────────────────────
 
-function TaskCandidateCard({
-  candidate, canCreate, onCreate, onGoToTask, onDismiss,
-}: {
-  candidate: TaskCandidate;
-  canCreate: boolean;
-  onCreate: () => void;
-  onGoToTask: (taskId: string) => void;
-  onDismiss: () => void;
-}) {
-  const isConverted = candidate.status === 'converted';
-  const isDismissed = candidate.status === 'dismissed';
-
-  return (
-    <div className={`rounded-lg border p-3 transition-colors ${isConverted ? 'border-green-200 bg-green-50' :
-        isDismissed ? 'border-slate-200 bg-slate-50 opacity-60' :
-          'border-slate-200 bg-white'
-      }`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {/* Badges */}
-          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            {isConverted && (
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                ✓ Tâche créée
-              </span>
-            )}
-            {isDismissed && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                Ignorée
-              </span>
-            )}
-            {!isConverted && !isDismissed && (
-              <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-                À traiter
-              </span>
-            )}
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-              {candidate.owner_type || 'métier'}
-            </span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${CRIT_STYLE[normalizePriority(candidate.priority) as Criticality]?.bg} ${CRIT_STYLE[normalizePriority(candidate.priority) as Criticality]?.text}`}>
-              {candidate.priority}
-            </span>
-          </div>
-
-          {/* Titre */}
-          <p className="text-sm font-semibold text-slate-900">{candidate.title}</p>
-
-          {/* Procédure + section */}
-          <p className="mt-0.5 text-xs text-slate-400">
-            {[candidate.procedure_ref, candidate.procedure_nom].filter(Boolean).join(' ')}
-            {candidate.procedure_section ? ` · ${candidate.procedure_section}` : ''}
-          </p>
-
-          {/* Description */}
-          {candidate.description && !isConverted && (
-            <p className="mt-1.5 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-slate-600">
-              {candidate.description}
-            </p>
-          )}
-
-          {/* Lien vers tâche créée */}
-          {isConverted && candidate.task_id && (
-            <button
-              type="button"
-              onClick={() => onGoToTask(candidate.task_id!)}
-              className="mt-2 inline-flex items-center gap-1 text-xs text-green-700 font-medium hover:underline"
-            >
-              Voir la tâche dans Suivi des tâches <ExternalLink className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-
-        {/* Boutons action */}
-        {!isConverted && !isDismissed && (
-          <div className="flex shrink-0 flex-col gap-1">
-            <button
-              type="button"
-              onClick={onCreate}
-              disabled={!canCreate}
-              title={!canCreate ? 'Seul un admin peut créer une tâche' : 'Ouvrir le formulaire prérempli'}
-              className="rounded border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Créer
-            </button>
-            <button
-              type="button"
-              onClick={onDismiss}
-              className="rounded border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
-            >
-              Ignorer
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function ActionCard({ action }: { action: ExtendedAction }) {
   const style = CRIT_STYLE[normalizePriority(action.priority)];
   return (
@@ -596,20 +643,6 @@ function ActionCard({ action }: { action: ExtendedAction }) {
       </div>
       {action.description && <p className="mt-1 text-xs leading-5 text-slate-600">{action.description}</p>}
       {action.procedure_step_target && <p className="mt-0.5 text-xs text-blue-600">→ {action.procedure_step_target}</p>}
-    </div>
-  );
-}
-
-function PotentialTaskCard({ task }: { task: PotentialTask }) {
-  const style = CRIT_STYLE[normalizePriority(task.priority)];
-  return (
-    <div className="rounded border border-blue-100 bg-blue-50 px-2.5 py-1.5">
-      <div className="flex items-center gap-1.5">
-        <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${style.bg} ${style.text}`}>{task.priority || 'medium'}</span>
-        <span className="text-xs font-medium text-slate-800">{task.title}</span>
-        {task.assigned_to_type && <span className="ml-auto text-xs text-slate-400">{task.assigned_to_type}</span>}
-      </div>
-      {task.description && <p className="mt-0.5 text-xs text-slate-600">{task.description}</p>}
     </div>
   );
 }

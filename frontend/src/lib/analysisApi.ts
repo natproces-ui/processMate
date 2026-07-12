@@ -4,6 +4,7 @@ const BASE = API_CONFIG.baseUrl;
 export type IntentType = 'regulatory_impact' | 'compliance_check' | 'gap_analysis' | 'comparison' | 'coverage_check' | 'general_analysis';
 export type CoverageStatus = 'couvert' | 'partiel' | 'manquant' | 'non_applicable';
 export type Criticality = 'low' | 'medium' | 'high' | 'critical';
+export type Partie = 'caracteristiques' | 'qualite' | 'diagramme' | 'descriptions' | 'outils';
 
 export interface ProcedureCandidate {
     id: string;
@@ -41,40 +42,45 @@ export interface AnalysisJSON {
     open_questions?: OpenQuestion[];
 }
 export interface AnalysisItem {
+    impact_id?: string; impact_theme?: string; partie?: Partie;
     procedure_id: string; procedure_nom: string; procedure_ref: string;
     source_element: string; source_ref: string; coverage_status: CoverageStatus;
     procedure_section: string; gap?: string | null; business_impact: string;
     si_impact: string; impacted_systems: string[];
+    modification?: Modification;
     recommended_actions: RecommendedAction[];
     external_dependency?: string | null; criticality: Criticality;
     confidence: number; rationale: string;
 }
+export interface Modification {
+    title?: string;
+    target_step_id?: string | null;
+    target_field?: string;
+    operation_type?: 'add' | 'update' | 'delete' | 'move' | 'relink';
+    current_value?: string | null;
+    proposed_value?: string;
+    rationale?: string;
+    // Uniquement si operation_type=add : description complète de la nouvelle étape,
+    // trop riche pour tenir dans le champ scalaire proposed_value.
+    new_row?: NewRow;
+    after_id?: string;
+    // Uniquement si operation_type=relink : nouveaux liens sortants de l'étape.
+    outputs?: { targetId: string; label: string }[];
+}
+export interface NewRow {
+    id: string;
+    étape: string;
+    typeBpmn: 'StartEvent' | 'EndEvent' | 'Task' | 'UserTask' | 'ExclusiveGateway' | 'ParallelGateway' | 'InclusiveGateway';
+    acteur: string;
+    département?: string;
+    typeActeur?: 'interne' | 'externe' | '';
+    condition?: string;
+    outputs?: { targetId: string; label: string }[];
+    outil?: string;
+}
 export interface RecommendedAction { title: string; description?: string; owner_type?: string; priority?: Criticality; }
 export interface AnalysisLogEntry { procedure_id?: string; procedure_nom?: string; examined_sections?: string[]; findings?: string; points_analyzed?: number; rationale?: string; }
 export interface OpenQuestion { question: string; target?: string; blocking?: boolean; }
-export type TaskCandidateStatus = 'suggested' | 'selected' | 'converted' | 'dismissed';
-export interface TaskCandidate {
-    id: string;
-    source_key: string;
-    artifact_id: string;
-    analysis_item_index: number;
-    task_index: number;
-    procedure_id: string;
-    procedure_nom?: string;
-    procedure_ref?: string;
-    procedure_section?: string;
-    title: string;
-    description: string;
-    owner_type?: string;
-    raci_role?: 'R' | 'A' | 'C' | 'I';
-    task_type?: 'formalization' | 'review' | 'validation' | 'consultation' | 'information' | 'correction' | 'other';
-    priority: 'low' | 'normal' | 'high' | 'urgent';
-    criticality?: Criticality;
-    status: TaskCandidateStatus;
-    task_id?: string | null;
-    dismissed_reason?: string | null;
-}
-
 async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
     const res = await fetch(`${BASE}${path}`, { headers: { 'Content-Type': 'application/json' }, ...options });
     if (!res.ok) { const err = await res.json().catch(() => ({ detail: res.statusText })); throw new Error(err.detail ?? `Erreur ${res.status}`); }
@@ -108,15 +114,6 @@ export const analysisApi = {
 
     listArtifacts: (sessionId: string) => fetchJSON<{ success: boolean; artifacts: AnalysisArtifact[] }>(`/api/analysis/sessions/${sessionId}/artifacts`),
     getArtifact: (artifactId: string) => fetchJSON<{ success: boolean; artifact: AnalysisArtifact }>(`/api/analysis/artifacts/${artifactId}`),
-    listTaskCandidates: (artifactId: string) =>
-        fetchJSON<{ success: boolean; candidates: TaskCandidate[]; total: number }>(
-            `/api/analysis/artifacts/${artifactId}/task-candidates`
-        ),
-    updateTaskCandidate: (artifactId: string, candidateId: string, body: { status?: TaskCandidateStatus; task_id?: string; dismissed_reason?: string }) =>
-        fetchJSON<{ success: boolean; candidate: TaskCandidate }>(
-            `/api/analysis/artifacts/${artifactId}/task-candidates/${candidateId}`,
-            { method: 'PATCH', body: JSON.stringify(body) }
-        ),
 
     createTasks: async (
         artifactId: string,

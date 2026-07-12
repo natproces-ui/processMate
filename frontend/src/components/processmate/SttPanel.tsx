@@ -4,7 +4,7 @@
 // Contenu BPMN Studio dans le shell ProcessMate.
 // SttToolbar positionnée à GAUCHE (avant le contenu).
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
 import type { Table1Row } from '@/logic/types';
@@ -269,6 +269,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const activeInitialMeta = instances.length > 0 && activeInst ? activeInst.initialMeta : initialMeta;
     const activeMetadata = instances.length > 0 && activeInst ? activeInst.metadata : processMetadata;
 
+    // Étapes touchées par la dernière application de modification IA — surlignées dans
+    // le tableau et le diagramme jusqu'à la prochaine sauvegarde manuelle du Studio.
+    const recentAiChangedStepIds = useMemo(() => {
+        const items = (activeInitialMeta as any)?.recent_ai_changes?.items as { target_step_id?: string | null }[] | undefined;
+        return new Set((items || []).map(i => i.target_step_id).filter((id): id is string => Boolean(id)));
+    }, [activeInitialMeta]);
+
     const updateActiveData = (d: Table1Row[]) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: d } : inst));
     const updateActiveEnrichments = (e: Map<string, TaskEnrichment>) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, enrichments: e } : inst));
 
@@ -329,7 +336,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             if (inst?.workflow_db_id) {
                 const enrichObj: Record<string, unknown> = {};
                 inst.enrichments.forEach((v, k) => { enrichObj[k] = v; });
-                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, inst.data as unknown[], enrichObj, undefined, currentXml);
+                // Une sauvegarde manuelle depuis le Studio efface le tampon "modifications
+                // récentes de l'IA" — l'utilisateur a vu et repris la main sur la procédure.
+                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, inst.data as unknown[], enrichObj, { recent_ai_changes: null }, currentXml);
+                setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, initialMeta: { ...i.initialMeta, recent_ai_changes: null } } : i));
             } else {
                 const res = await orchestrationApi.createProcedure({ nom, category, taxonomy_id: taxonomyId });
                 const newId = res.procedure.id;
@@ -409,24 +419,45 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         } catch { return null; }
     }, [activeTab, instances]);
 
+    // Régénère le diagramme BPMN à partir du workflow reçu du chat — évite de le
+    // détruire (bpmnXml: null) et d'obliger un clic manuel sur "Générer le diagramme".
+    // Régénération complète (pas de patch incrémental) : les positions/ajouts manuels
+    // faits directement dans l'éditeur BPMN sont donc réinitialisés à chaque modif chat.
+    const safeGenerateBpmn = useCallback((workflow: Table1Row[], title: string): string | null => {
+        if (workflow.length === 0) return null;
+        try {
+            return generateBPMNSimple(workflow, title);
+        } catch (err: any) {
+            showError(`Diagramme non régénéré : ${err.message || 'erreur inconnue'}`);
+            return null;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleWorkflowFromChat = useCallback((
         workflow: Table1Row[], title: string,
         newEnrichments: Map<string, TaskEnrichment>, procedureMetadata?: any,
     ) => {
         if (instances.length > 0) {
+            const newTitle = title || activeInst?.title || '';
+            const xml = safeGenerateBpmn(workflow, newTitle);
             setInstances(prev => prev.map((inst, i) => i === activeTab ? {
                 ...inst, data: workflow, title: title || inst.title,
-                enrichments: mergeEnrichments(inst.enrichments, newEnrichments), bpmnXml: null,
+                enrichments: mergeEnrichments(inst.enrichments, newEnrichments), bpmnXml: xml,
                 initialMeta: mergeProcedureMetadata(inst.initialMeta, procedureMetadata),
             } : inst));
+            if (xml) editorRefs.current[activeTab]?.importXml(xml);
         } else {
             setData(workflow);
+            const newTitle = title || processTitle;
             if (title) setProcessTitle(title);
-            setBpmnXml(null);
+            const xml = safeGenerateBpmn(workflow, newTitle);
+            setBpmnXml(xml);
+            if (xml) editorRef.current?.importXml(xml);
             if (newEnrichments?.size > 0) setEnrichments(prev => mergeEnrichments(prev, newEnrichments));
             if (procedureMetadata) setInitialMeta((prev: any) => mergeProcedureMetadata(prev, procedureMetadata));
         }
-    }, [activeTab, instances]);
+    }, [activeTab, instances, activeInst, processTitle, safeGenerateBpmn]);
 
     const toggleRecording = async () => {
         if (!recording) {
@@ -700,8 +731,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 <Library modelerRef={modelerRef} />
                                 <div className="flex-1 min-w-0">
                                     {instances.length > 0
-                                        ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst))} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} />
-                                        : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => setBpmnXml(xml)} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} />
+                                        ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst))} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
+                                        : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => setBpmnXml(xml)} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
                                     }
                                 </div>
                             </div>
@@ -720,6 +751,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             onDataChange={instances.length > 0 ? updateActiveData : setData}
                             onEnrichmentsChange={instances.length > 0 ? updateActiveEnrichments : setEnrichments}
                             onShowSuccess={showSuccess}
+                            highlightedRowIds={recentAiChangedStepIds}
                         />
                     )}
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Table1Row } from '@/logic/bpmnGenerator';
+import type { Table1Row } from '@/logic/types';
+import { applyOperations } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
 import {
     Wand2, Send, Loader2, CheckCircle2, AlertCircle,
@@ -11,18 +12,6 @@ import {
 // ─────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────
-
-interface Operation {
-    type: 'add' | 'update' | 'delete' | 'move' | 'relink';
-    id?: string;
-    after_id?: string;
-    row?: Partial<Table1Row>;
-    fields?: Partial<Table1Row>;
-    acteur?: string;
-    département?: string;
-    outputs?: { targetId: string; label: string }[];
-    reconnect?: boolean;
-}
 
 interface RevisionEntry {
     id: string;
@@ -53,143 +42,6 @@ const EXAMPLES = [
     "Transforme l'étape 6 en gateway — si conforme vers 7, sinon retour vers 3",
     "Déplace l'étape 9 dans la swimlane Back Office",
 ];
-
-// ─────────────────────────────────────────────────────────────
-// APPLICATEUR DE PATCH (côté frontend)
-// ─────────────────────────────────────────────────────────────
-
-function applyOperations(workflow: Table1Row[], operations: Operation[]): Table1Row[] {
-    let result = [...workflow];
-
-    // Calculer le prochain ID numérique disponible
-    const maxId = result.reduce((max, row) => {
-        const num = parseInt(row.id, 10);
-        return isNaN(num) ? max : Math.max(max, num);
-    }, 0);
-    let nextId = maxId + 1;
-
-    // Map NEW_x → vrai ID séquentiel
-    const idMapping: Record<string, string> = {};
-
-    // Pré-passe : résoudre les IDs "NEW_x"
-    operations.forEach(op => {
-        if (op.type === 'add' && op.row?.id?.startsWith('NEW_')) {
-            idMapping[op.row.id] = String(nextId++);
-        }
-    });
-
-    const resolveId = (id: string): string => idMapping[id] || id;
-
-    // Résoudre les IDs dans les outputs
-    const resolveOutputs = (outputs?: { targetId: string; label: string }[]) =>
-        outputs?.map(o => ({ ...o, targetId: resolveId(o.targetId) })) || [];
-
-    for (const op of operations) {
-        switch (op.type) {
-
-            // ── ADD ──────────────────────────────────────────
-            case 'add': {
-                if (!op.row) break;
-                const newRow: Table1Row = {
-                    id: resolveId(op.row.id || 'NEW_0'),
-                    étape: op.row.étape || '',
-                    typeBpmn: op.row.typeBpmn || 'Task',
-                    département: op.row.département || '',
-                    acteur: op.row.acteur || '',
-                    condition: op.row.condition || '',
-                    outputs: resolveOutputs(op.row.outputs as any),
-                    outil: op.row.outil || '',
-                };
-
-                if (!op.after_id) {
-                    result = [newRow, ...result];
-                } else {
-                    const idx = result.findIndex(r => r.id === op.after_id);
-                    if (idx === -1) {
-                        result = [...result, newRow];
-                    } else {
-                        result = [
-                            ...result.slice(0, idx + 1),
-                            newRow,
-                            ...result.slice(idx + 1)
-                        ];
-                    }
-                }
-                break;
-            }
-
-            // ── UPDATE ───────────────────────────────────────
-            case 'update': {
-                if (!op.id || !op.fields) break;
-                result = result.map(row => {
-                    if (row.id !== op.id) return row;
-                    const updated = { ...row };
-                    Object.entries(op.fields!).forEach(([key, value]) => {
-                        if (key === 'outputs') {
-                            (updated as any)[key] = resolveOutputs(value as any);
-                        } else {
-                            (updated as any)[key] = value;
-                        }
-                    });
-                    return updated;
-                });
-                break;
-            }
-
-            // ── DELETE ───────────────────────────────────────
-            case 'delete': {
-                if (!op.id) break;
-                const toDelete = result.find(r => r.id === op.id);
-
-                if (op.reconnect && toDelete) {
-                    // Trouver les étapes qui pointaient vers celle supprimée
-                    // et les rediriger vers les cibles de l'étape supprimée
-                    const deletedTargets = toDelete.outputs.map(o => o.targetId);
-                    result = result.map(row => {
-                        const pointsToDeleted = row.outputs.some(o => o.targetId === op.id);
-                        if (!pointsToDeleted) return row;
-                        // Remplacer les outputs pointant vers l'étape supprimée
-                        const newOutputs = row.outputs.flatMap(o =>
-                            o.targetId === op.id
-                                ? deletedTargets.map(t => ({ targetId: t, label: o.label }))
-                                : [o]
-                        );
-                        return { ...row, outputs: newOutputs };
-                    });
-                }
-
-                result = result.filter(r => r.id !== op.id);
-                break;
-            }
-
-            // ── MOVE ─────────────────────────────────────────
-            case 'move': {
-                if (!op.id) break;
-                result = result.map(row => {
-                    if (row.id !== op.id) return row;
-                    return {
-                        ...row,
-                        acteur: op.acteur ?? row.acteur,
-                        département: op.département ?? row.département,
-                    };
-                });
-                break;
-            }
-
-            // ── RELINK ───────────────────────────────────────
-            case 'relink': {
-                if (!op.id) break;
-                result = result.map(row => {
-                    if (row.id !== op.id) return row;
-                    return { ...row, outputs: resolveOutputs(op.outputs) };
-                });
-                break;
-            }
-        }
-    }
-
-    return result;
-}
 
 // ─────────────────────────────────────────────────────────────
 // COMPOSANT PRINCIPAL

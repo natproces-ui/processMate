@@ -23,6 +23,9 @@ interface BpmnEditorProps {
     onReady?: () => void;
     onError?: (err: string) => void;
     onModelerReady?: (modeler: any) => void; // ← expose l'instance modeler à Library
+    /** Ids de Table1Row (pas d'éléments BPMN) récemment touchés par une modification IA
+     *  appliquée — surlignés à l'ouverture du diagramme. */
+    highlightStepIds?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -82,6 +85,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
     onReady,
     onError,
     onModelerReady,
+    highlightStepIds,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const modelerRef = useRef<any>(null);
@@ -631,6 +635,20 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
 
 
                 const canvas = modeler.get('canvas');
+
+                // Surligne les éléments correspondant aux étapes récemment modifiées par
+                // l'IA — l'id d'un élément BPMN est toujours "{préfixe}_{id de la ligne}"
+                // (voir bpmnGeneratorSimple.ts), donc un suffixe exact suffit à le retrouver
+                // sans avoir besoin de connaître son type.
+                if (highlightStepIds && highlightStepIds.length > 0) {
+                    const elementRegistry = modeler.get('elementRegistry') as any;
+                    elementRegistry.getAll().forEach((el: any) => {
+                        if (highlightStepIds.some(id => el.id.endsWith(`_${id}`))) {
+                            canvas.addMarker(el.id, 'ai-changed-highlight');
+                        }
+                    });
+                }
+
                 canvas.zoom('fit-viewport');
                 setTimeout(() => {
                     const currentZoom = canvas.zoom();
@@ -831,6 +849,15 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                 .djs-shape[data-element-id^="Tool_"].selected .djs-outline {
                     stroke: #1a7a5e !important;
                     stroke-dasharray: 3,2 !important;
+                }
+
+                /* ── Surbrillance : élément récemment modifié par l'IA ── */
+                .djs-element.ai-changed-highlight .djs-visual > rect,
+                .djs-element.ai-changed-highlight .djs-visual > circle,
+                .djs-element.ai-changed-highlight .djs-visual > polygon {
+                    stroke: #f59e0b !important;
+                    stroke-width: 3px !important;
+                    filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.5));
                 }
             `}</style>
         </div>

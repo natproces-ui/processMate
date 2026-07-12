@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from database.supabase_client import get_supabase
 from config import FRONTEND_URL
-from email_sender import send_task_email
+from email_sender import send_task_email, send_tasks_digest_email
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,12 @@ class TaskCreate(BaseModel):
     workflow_step_id: Optional[str] = None
     metadata: Dict[str, Any] = {}
     force: bool = False
+
+class BulkTaskItem(TaskCreate):
+    procedure_id: str
+
+class BulkTaskCreateRequest(BaseModel):
+    tasks: List[BulkTaskItem]
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -871,23 +877,35 @@ async def get_procedure_tasks(procedure_id: str):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.post("/procedures/{procedure_id}/tasks")
-async def create_task(procedure_id: str, body: TaskCreate):
+def _create_task_core(procedure_id: str, body: TaskCreate, send_email: bool = True) -> Dict[str, Any]:
     _validate_task_input(body)
     try:
         db = get_supabase()
         now = _now()
 
-        # Vérifier s'il y a des tâches actives sur cette procédure
-        active_statuses = ["todo", "in_progress", "changes_requested"]
-        active_tasks = (
-            db.table("procedure_tasks")
-            .select("id, title, status, assigned_to, task_type")
-            .eq("procedure_id", procedure_id)
-            .in_("status", active_statuses)
-            .execute()
-            .data or []
-        )
+        # Une tâche "modification" (créée depuis une proposition de l'analyse IA, porte
+        # metadata.proposed_patch) n'est qu'un changement de champ précis et ciblé — pas
+        # une prise en main de toute la procédure. Contrairement aux tâches de cycle de
+        # vie (formalisation/vérification/validation/correction), plusieurs modifications
+        # peuvent être en cours en parallèle, y compris pour des personnes différentes :
+        # la règle "une seule tâche active à la fois" ne s'applique qu'aux tâches de cycle
+        # de vie, où une seule personne doit travailler sur la procédure à la fois.
+        is_modification_task = bool((body.metadata or {}).get("proposed_patch"))
+
+        active_tasks: list = []
+        if not is_modification_task:
+            # Vérifier s'il y a des tâches de cycle de vie actives sur cette procédure —
+            # les tâches modification en cours ne comptent pas comme un blocage.
+            active_statuses = ["todo", "in_progress", "changes_requested"]
+            active_tasks_raw = (
+                db.table("procedure_tasks")
+                .select("id, title, status, assigned_to, task_type, metadata")
+                .eq("procedure_id", procedure_id)
+                .in_("status", active_statuses)
+                .execute()
+                .data or []
+            )
+            active_tasks = [t for t in active_tasks_raw if not (t.get("metadata") or {}).get("proposed_patch")]
 
         if active_tasks and not body.force:
             names = [_resolve_user_name(t["assigned_to"]) for t in active_tasks]
@@ -963,15 +981,76 @@ async def create_task(procedure_id: str, body: TaskCreate):
                 procedure_id, created["id"], body.description)
 
         procedure_title = _get_procedure_title(procedure_id)
-        _fire_task_email(body.assigned_to, body.assigned_by, created, procedure_title, body.task_type, body.description)
+        if send_email:
+            _fire_task_email(body.assigned_to, body.assigned_by, created, procedure_title, body.task_type, body.description)
 
         # Formalization task → move to Formalisation stage
         if body.task_type == "formalization":
             _advance_lifecycle_to(procedure_id, 1)
 
-        return {"success": True, "task": created}
+        return {"success": True, "task": created, "procedure_title": procedure_title}
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/procedures/{procedure_id}/tasks")
+async def create_task(procedure_id: str, body: TaskCreate):
+    return _create_task_core(procedure_id, body, send_email=True)
+
+
+@router.post("/tasks/bulk-create")
+async def bulk_create_tasks(body: BulkTaskCreateRequest):
+    """
+    Crée plusieurs tâches en un seul appel (ex: sélection de plusieurs modifications
+    proposées par l'analyse IA). Chaque tâche est créée indépendamment (résultat par
+    item, un échec n'annule pas les autres), mais l'email n'est jamais envoyé tâche par
+    tâche ici : si une même personne reçoit plusieurs tâches dans ce lot, un seul email
+    récapitulatif lui est envoyé à la fin, groupé par destinataire.
+    """
+    results: List[Dict[str, Any]] = []
+    created_by_assignee: Dict[str, List[Dict[str, Any]]] = {}
+    assigned_by_id = body.tasks[0].assigned_by if body.tasks else None
+
+    for item in body.tasks:
+        try:
+            result = _create_task_core(item.procedure_id, item, send_email=False)
+            results.append(result)
+            if result.get("success") and result.get("task"):
+                created_by_assignee.setdefault(item.assigned_to, []).append({
+                    "title": result["task"]["title"],
+                    "procedure_name": result.get("procedure_title"),
+                })
+        except HTTPException as exc:
+            results.append({"success": False, "message": exc.detail})
+
+    if assigned_by_id:
+        assigned_by_name = _resolve_user_name(assigned_by_id)
+        workspace_url = f"{FRONTEND_URL}/orchestration?tab=workspace" if FRONTEND_URL else None
+        for assignee_id, tasks_for_user in created_by_assignee.items():
+            db = get_supabase()
+            rows = db.table("user_profiles").select("display_name, full_name, email").eq("id", assignee_id).execute().data
+            if not rows or not rows[0].get("email"):
+                continue
+            p = rows[0]
+            to_email = p["email"]
+            to_name = p.get("display_name") or p.get("full_name") or to_email
+            threading.Thread(
+                target=send_tasks_digest_email,
+                kwargs={
+                    "to_email": to_email, "to_name": to_name,
+                    "assigned_by_name": assigned_by_name,
+                    "tasks": tasks_for_user, "workspace_url": workspace_url,
+                },
+                daemon=True,
+            ).start()
+
+    return {
+        "success": True,
+        "results": results,
+        "created_count": sum(1 for r in results if r.get("success")),
+    }
 
 
 @router.get("/tasks/my")
