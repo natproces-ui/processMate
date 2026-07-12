@@ -39,6 +39,7 @@ const TaskOrchestrationHub = dynamic(
 );
 const DashboardPanel = dynamic(() => import('@/components/orchestration/DashboardPanel'), { loading: PanelSkeleton });
 const SpecificationsPanel = dynamic(() => import('@/components/orchestration/SpecificationsPanel'), { loading: PanelSkeleton });
+const GuidePanel = dynamic(() => import('@/components/orchestration/GuidePanel'), { loading: PanelSkeleton });
 
 // ── Legacy panels (accessible via deep-link or internal navigation) ──
 const Dashboard         = dynamic(() => import('@/components/orchestration/Dashboard'),               { loading: PanelSkeleton });
@@ -57,7 +58,7 @@ const ClinicPanel = dynamic(() => import('@/components/processmate/ClinicPanel')
 
 type OrchestraTab =
     // Primary navigation (sidebar)
-    | 'procedures' | 'campagnes' | 'analyser' | 'taches' | 'workspace' | 'tableau-de-bord' | 'specifications'
+    | 'procedures' | 'campagnes' | 'analyser' | 'taches' | 'workspace' | 'tableau-de-bord' | 'specifications' | 'guide'
     // Legacy deep-links (no sidebar item, still accessible via URL)
     | 'dashboard' | 'campaigns' | 'corrections' | 'portfolio' | 'taxonomy'
     | 'pipeline' | 'irritants' | 'complexity' | 'applicatifs'
@@ -428,6 +429,7 @@ function ProcessMateInner() {
                                 </LazyPanel>
                                 <LazyPanel active={activeTab === 'tableau-de-bord'}><DashboardPanel /></LazyPanel>
                                 <LazyPanel active={activeTab === 'specifications'}><SpecificationsPanel /></LazyPanel>
+                                <LazyPanel active={activeTab === 'guide'}><GuidePanel /></LazyPanel>
 
                                 {/* ─ Legacy / deep-link panels ─ */}
                                 <LazyPanel active={activeTab === 'dashboard'}><Dashboard /></LazyPanel>

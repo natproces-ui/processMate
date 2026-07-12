@@ -43,6 +43,7 @@ const TAB_LABELS: Record<string, string> = {
     applicatifs: 'Cartographie applicative',
     analysis: 'Analyse IA',
     settings: 'Paramètres',
+    guide: "Guide d'utilisation",
 };
 
 export default function ProcessMateHeader({

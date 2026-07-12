@@ -18,6 +18,7 @@ import {
     PenLine,
     Megaphone,
     BookOpen,
+    Compass,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -77,6 +78,8 @@ export default function ProcessMateSidebar({
         setActiveModule(moduleId);
         if (moduleId === 'orchestration') setActiveTab('procedures');
     };
+
+    const isGuideActive = activeModule === 'orchestration' && activeTab === 'guide';
 
     return (
         <div className={`
@@ -235,6 +238,26 @@ export default function ProcessMateSidebar({
                 )}
 
             </nav>
+
+            {/* ── Guide d'utilisation — épinglé, visible depuis tous les modules ── */}
+            <div className={`shrink-0 border-t border-gray-100 ${sidebarOpen ? 'p-2' : 'p-1.5'}`}>
+                <button
+                    type="button"
+                    onClick={() => { setActiveModule('orchestration'); setActiveTab('guide'); }}
+                    title="Guide d'utilisation"
+                    className={`
+            w-full flex items-center gap-3 rounded-lg transition-all duration-150 text-sm font-medium
+            ${sidebarOpen ? 'px-3 py-2' : 'px-0 py-2.5 justify-center'}
+            ${isGuideActive
+                            ? 'bg-sky-50 text-sky-900 border-l-4 border-sky-600 pl-2'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }
+          `}
+                >
+                    <Compass className={`w-4 h-4 shrink-0 ${isGuideActive ? 'text-sky-600' : 'text-gray-400'}`} />
+                    {sidebarOpen && <span className="truncate text-left">Guide d&apos;utilisation</span>}
+                </button>
+            </div>
 
         </div>
     );
