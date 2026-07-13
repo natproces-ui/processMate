@@ -8,6 +8,7 @@ import {
   FileText, Code2, MessageSquare, Mic, Table2, Waypoints, PencilLine,
   Save, Send, Download, FileOutput, ChevronRight, Info, AlertTriangle,
   CheckCircle2, ClipboardList, Megaphone, Sparkles, LayoutGrid,
+  TriangleAlert, Gauge, Server, FolderOpen,
 } from 'lucide-react';
 
 // ─── Petits composants de mise en page ─────────────────────────
@@ -159,6 +160,7 @@ const TOC = [
   { id: 'guide-overview', label: "Vue d'ensemble" },
   { id: 'guide-nav', label: 'Se connecter et naviguer' },
   { id: 'guide-formaliser', label: 'Formaliser un processus' },
+  { id: 'guide-analyse', label: "Diagnostiquer et analyser" },
   { id: 'guide-piloter', label: 'Piloter les processus' },
   { id: 'guide-roles', label: 'Qui peut faire quoi' },
   { id: 'guide-memo', label: 'Aide-mémoire' },
@@ -214,8 +216,14 @@ export default function GuidePanel() {
           <Section id="guide-overview" kicker="01 — Panorama" title="Deux métiers, un seul atelier"
             dek="ProcessMate répond à deux besoins qui se suivent naturellement : faire émerger un processus à partir de ce qui existe déjà, puis le faire vivre dans le temps.">
             <p className="text-sm text-gray-700 max-w-2xl">
-              <strong>Formaliser</strong> prend en entrée à peu près tout ce qui décrit déjà un processus dans l&apos;entreprise — documents (PDF, images, notes), dictée vocale, ou même une application legacy (COBOL, WinDev, ABAP…) — et s&apos;appuie sur l&apos;IA pour en extraire un organigramme de processus (BPMN) éditable, puis au besoin une spécification fonctionnelle détaillée.
-              {' '}<strong>Piloter</strong> prend le relais une fois le processus formalisé : c&apos;est là qu&apos;on l&apos;assigne, qu&apos;on suit son avancement, qu&apos;on le fait évoluer.
+              ProcessMate existe pour <strong>accélérer la formalisation</strong> de vos procédures métier. On part de ce qui existe déjà dans l&apos;entreprise — un code applicatif legacy, un enregistrement vocal, un document, une prise de notes, une image — et l&apos;IA fait remonter le chemin classique de l&apos;état actuel (<strong>AS-IS</strong>) vers l&apos;état cible formalisé (<strong>TO-BE</strong>), avec un vrai gain de temps et d&apos;efficacité, et un suivi complet du travail et de son historique.
+            </p>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Une fois formalisée, une procédure est prête à rejoindre vos outils métier existants (MEGA, ARIS, etc.) via ses exports — BPMN, Word. Rien n&apos;oblige pour autant à en sortir : ProcessMate héberge tout aussi bien vos procédures dans la durée, avec ses propres campagnes, son suivi de tâches et son Analyse IA.
+            </p>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              <strong>Formaliser</strong> et <strong>Piloter</strong> sont les deux métiers qui portent cette promesse. Formaliser s&apos;appuie sur l&apos;IA pour extraire un organigramme de processus (BPMN) éditable des sources collectées, puis au besoin une spécification fonctionnelle détaillée.
+              {' '}Piloter prend le relais une fois le processus formalisé : c&apos;est là qu&apos;on l&apos;assigne, qu&apos;on le diagnostique, qu&apos;on suit son avancement, qu&apos;on le fait évoluer.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
               Les deux métiers vivent dans le <em>même</em> atelier : seule la barre latérale change de panneau. On ne quitte jamais ProcessMate pour passer de l&apos;un à l&apos;autre.
@@ -303,8 +311,45 @@ export default function GuidePanel() {
             </Callout>
           </Section>
 
+          {/* Analyse */}
+          <Section id="guide-analyse" kicker="04 — Module Analyse" title="Diagnostiquer et analyser l'existant"
+            dek="Un seul écran, quatre loupes différentes sur vos procédures déjà formalisées — pour prioriser ce qui mérite d'être amélioré.">
+
+            <SubHeading><TriangleAlert className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Irritants</SubHeading>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Les irritants sont les points de friction d&apos;une procédure — ce qui ralentit, coûte cher ou fait courir un risque. Le bouton <Kbd>Détecter les irritants avec l&apos;IA</Kbd> les fait remonter automatiquement à partir de l&apos;organigramme déjà généré ; on peut aussi en créer manuellement.
+            </p>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Chaque irritant se qualifie par une criticité (<strong>Majeur</strong>, <strong>Moyen</strong>, <strong>Mineur</strong>), un statut (<strong>ASIS</strong>, <strong>En cours</strong>, <strong>TOBE</strong>, <strong>Résolu</strong>) et une catégorie. Depuis la fiche d&apos;un irritant, on rouvre directement la procédure dans le Studio pour corriger le point relevé.
+            </p>
+
+            <SubHeading><Gauge className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Complexité</SubHeading>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Un score structurel sur 12 est calculé pour chaque procédure à partir du nombre d&apos;étapes, d&apos;acteurs et d&apos;outils impliqués, puis classé en niveau <strong>Faible</strong>, <strong>Moyenne</strong> ou <strong>Élevée</strong>. Utile pour prioriser les procédures qui gagneraient à être simplifiées.
+            </p>
+
+            <SubHeading><Server className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Cartographie applicative</SubHeading>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Vue d&apos;ensemble des applications et outils utilisés à travers toutes les procédures — qui utilise quoi, et où. Un clic sur une procédure l&apos;ouvre directement dans le Studio.
+            </p>
+
+            <SubHeading><Sparkles className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Analyse IA</SubHeading>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              À ne pas confondre avec Formaliser : ici on ne crée pas une procédure, on <strong>vérifie une procédure existante</strong> face à un nouveau document — une circulaire, une réglementation, un rapport d&apos;audit. C&apos;est aussi ici que se traite l&apos;<strong>impact réglementaire</strong> : ce n&apos;est pas un écran à part, mais l&apos;une des intentions que l&apos;IA sait identifier.
+            </p>
+            <Flow steps={[
+              { icon: LayoutGrid, title: 'Session', desc: 'Attacher des procédures, déposer les documents sources et une instruction.' },
+              { icon: Sparkles, title: 'Analyse', desc: 'L’IA identifie l’intention (conformité, impact réglementaire, risque, etc.).' },
+              { icon: ClipboardList, title: 'Artefact', desc: 'Impacts et modifications proposées, classés par section de la procédure.' },
+              { icon: CheckCircle2, title: 'Décision', desc: 'Conserver ou rejeter, puis créer des tâches ou appliquer directement.' },
+            ]} />
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Le résultat se consulte en quatre onglets — <strong>Impacts identifiés</strong>, <strong>Modifications proposées</strong>, <strong>Journal</strong>, <strong>Questions</strong> — et se referme par <Kbd>Créer les tâches</Kbd> (assigner, avec notification automatique par e-mail à chaque destinataire) ou <Kbd>Appliquer les modifications</Kbd> (intégrer immédiatement).
+            </p>
+          </Section>
+
           {/* Piloter */}
-          <Section id="guide-piloter" kicker="04 — Module Piloter (Orchestration)" title="Piloter et gérer les processus"
+          <Section id="guide-piloter" kicker="05 — Module Piloter (Orchestration)" title="Piloter et gérer les processus"
             dek="Une fois formalisée, une procédure devient vivante : on l'assigne, on la suit, on la fait évoluer.">
 
             <SubHeading>Les procédures</SubHeading>
@@ -317,6 +362,12 @@ export default function GuidePanel() {
               <li><strong>Outils</strong> — l&apos;application ou l&apos;outil associé à chaque étape.</li>
             </ul>
             <p className="text-sm text-gray-700 max-w-2xl">Un chat IA est intégré à l&apos;éditeur de procédure : les mêmes corrections que dans Formaliser peuvent s&apos;y faire à la conversation.</p>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              Depuis la bibliothèque <Kbd>Créer / Modifier</Kbd>, chaque procédure ouvre aussi sa <strong>matrice RACI</strong> : pour chaque étape, on assigne à chaque personne un rôle — <strong>R</strong>esponsable, <strong>A</strong>pprobateur, <strong>C</strong>onsulté ou <strong>I</strong>nformé. C&apos;est ce même rôle qui qualifie ensuite les tâches liées à l&apos;étape.
+            </p>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              <Kbd>Créer / Modifier</Kbd> donne aussi accès à la <strong>Carte BIAN</strong> : le référentiel BIAN v4.0 sert de carte pour situer vos procédures dans le métier bancaire standard. Depuis un service de la carte, on peut créer directement une nouvelle procédure rattachée à ce point du référentiel, ou naviguer vers une procédure déjà liée.
+            </p>
 
             <SubHeading>Les tâches</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">Une tâche assigne une action précise sur une procédure, avec un type, un statut et un rôle RACI :</p>
@@ -361,31 +412,21 @@ export default function GuidePanel() {
 
             <SubHeading>Les campagnes</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Une campagne regroupe plusieurs procédures dans un même projet. Son cycle de vie se pilote avec <Kbd>Lancer</Kbd>, <Kbd>Pause</Kbd>, <Kbd>Reprendre</Kbd>, <Kbd>Bloquer</Kbd>, <Kbd>Clôturer</Kbd> et <Kbd>Synchroniser</Kbd>. Les procédures s&apos;y ajoutent via un sélecteur de taxonomie hiérarchique.
+              Une campagne regroupe plusieurs procédures dans un même projet. Son cycle de vie se pilote avec <Kbd>Lancer</Kbd>, <Kbd>Pause</Kbd>, <Kbd>Reprendre</Kbd>, <Kbd>Bloquer</Kbd>, <Kbd>Clôturer</Kbd> et <Kbd>Synchroniser</Kbd>.
             </p>
+            <ul className="space-y-2 text-sm text-gray-700 max-w-2xl">
+              <li className="flex gap-2"><FolderOpen className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Assigner des procédures</strong> — depuis une campagne, <Kbd>Ajouter des procédures</Kbd> ouvre un sélecteur de taxonomie hiérarchique (thème, catégorie, sous-catégorie) pour rattacher en une fois tout un périmètre.</span></li>
+              <li className="flex gap-2"><Download className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Générer un rapport</strong> — le bouton <Kbd>Rapport</Kbd> produit et télécharge un document Word récapitulant l&apos;avancement du projet : procédures, statuts, jalons.</span></li>
+            </ul>
 
             <SubHeading>Les spécifications</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
               L&apos;écran <Kbd>Spécifications</Kbd> génère un document de spécification fonctionnelle détaillée à partir d&apos;un périmètre de procédures déjà formalisées — un thème, une catégorie, une sous-catégorie ou une sélection précise. On peut préciser des instructions libres, joindre des sources complémentaires (PDF, image, Excel) ou des URLs, puis laisser l&apos;IA rédiger le document ; il reste ensuite modifiable en conversation avant export.
             </p>
-
-            <SubHeading>L&apos;Analyse IA</SubHeading>
-            <p className="text-sm text-gray-700 max-w-2xl">
-              À ne pas confondre avec Formaliser : ici on ne crée pas une procédure, on <strong>vérifie une procédure existante</strong> face à un nouveau document — une circulaire, une réglementation, un rapport d&apos;audit.
-            </p>
-            <Flow steps={[
-              { icon: LayoutGrid, title: 'Session', desc: 'Attacher des procédures, déposer les documents sources et une instruction.' },
-              { icon: Sparkles, title: 'Analyse', desc: 'L’IA identifie l’intention (conformité, impact réglementaire, risque, etc.).' },
-              { icon: ClipboardList, title: 'Artefact', desc: 'Impacts et modifications proposées, classés par section de la procédure.' },
-              { icon: CheckCircle2, title: 'Décision', desc: 'Conserver ou rejeter, puis créer des tâches ou appliquer directement.' },
-            ]} />
-            <p className="text-sm text-gray-700 max-w-2xl">
-              Le résultat se consulte en quatre onglets — <strong>Impacts identifiés</strong>, <strong>Modifications proposées</strong>, <strong>Journal</strong>, <strong>Questions</strong> — et se referme par <Kbd>Créer les tâches</Kbd> (assigner) ou <Kbd>Appliquer les modifications</Kbd> (intégrer immédiatement).
-            </p>
           </Section>
 
           {/* Rôles */}
-          <Section id="guide-roles" kicker="05 — Accès" title="Qui peut faire quoi"
+          <Section id="guide-roles" kicker="06 — Accès" title="Qui peut faire quoi"
             dek="Tout le monde voit les mêmes écrans ; les différences se jouent à l'intérieur des panneaux.">
             <DataTable
               head={['Rôle', 'Ce qu’il change concrètement']}
@@ -403,7 +444,7 @@ export default function GuidePanel() {
           </Section>
 
           {/* Aide-mémoire */}
-          <Section id="guide-memo" kicker="06 — Référence rapide" title="Aide-mémoire"
+          <Section id="guide-memo" kicker="07 — Référence rapide" title="Aide-mémoire"
             dek="Le chemin le plus court pour les besoins les plus courants.">
             <div className="grid sm:grid-cols-2 gap-3">
               <Cheat q="Formaliser un nouveau processus" path={['BPMN Studio', 'déposer / dicter', 'générer', 'enregistrer', 'soumettre']} />
@@ -415,6 +456,11 @@ export default function GuidePanel() {
               <Cheat q="Faire évoluer un vieux programme legacy" path={['BPMN Studio', 'Code legacy', 'déposer le fichier', 'générer']} />
               <Cheat q="Générer une spécification fonctionnelle" path={['Spécifications', 'choisir un périmètre', 'générer le document']} />
               <Cheat q="Grouper des procédures dans un projet" path={['Campagnes', 'créer', 'ajouter des procédures']} />
+              <Cheat q="Assigner un rôle RACI par étape" path={['Créer / Modifier', 'ouvrir une procédure', 'RACI']} />
+              <Cheat q="Détecter les irritants d'une procédure" path={['Analyse', 'Irritants', 'Détecter avec l’IA']} />
+              <Cheat q="Évaluer la complexité d'une procédure" path={['Analyse', 'Complexité']} />
+              <Cheat q="Créer une procédure depuis le référentiel BIAN" path={['Créer / Modifier', 'Carte BIAN', 'clic sur un service', 'Créer une procédure']} />
+              <Cheat q="Générer le rapport d'une campagne" path={['Campagnes', 'ouvrir une campagne', 'Rapport']} />
             </div>
           </Section>
 
