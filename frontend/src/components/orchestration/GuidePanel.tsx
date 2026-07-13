@@ -1,7 +1,7 @@
 'use client';
 
 // components/orchestration/GuidePanel.tsx
-// Guide d'utilisation interne de ProcessMate — formaliser (STT) + piloter (Orchestration).
+// Guide d'utilisation interne de ProcessMate — formaliser (BPMN Studio) + piloter (Orchestration).
 
 import React from 'react';
 import {
@@ -198,7 +198,7 @@ export default function GuidePanel() {
             <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Guide d&apos;utilisation interne</p>
             <h1 className="text-3xl font-bold text-gray-900 mb-3">Naviguer dans ProcessMate</h1>
             <p className="text-base text-gray-500 max-w-2xl mb-4">
-              Un seul atelier, deux métiers : transformer des documents en processus formalisés, puis piloter ces processus jusqu&apos;à leur validation.
+              ProcessMate formalise, gère et pilote vos procédures métier de bout en bout : de la collecte des sources à la publication, en passant par l&apos;analyse et le suivi des tâches.
             </p>
             <div className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
@@ -214,7 +214,7 @@ export default function GuidePanel() {
           <Section id="guide-overview" kicker="01 — Panorama" title="Deux métiers, un seul atelier"
             dek="ProcessMate répond à deux besoins qui se suivent naturellement : faire émerger un processus à partir de ce qui existe déjà, puis le faire vivre dans le temps.">
             <p className="text-sm text-gray-700 max-w-2xl">
-              <strong>Formaliser</strong> prend en entrée des documents sources — PDF, images, dictée vocale, ou même un ancien code applicatif — et s&apos;appuie sur l&apos;IA pour en extraire un organigramme de processus (BPMN) éditable.
+              <strong>Formaliser</strong> prend en entrée à peu près tout ce qui décrit déjà un processus dans l&apos;entreprise — documents (PDF, images, notes), dictée vocale, ou même une application legacy (COBOL, WinDev, ABAP…) — et s&apos;appuie sur l&apos;IA pour en extraire un organigramme de processus (BPMN) éditable, puis au besoin une spécification fonctionnelle détaillée.
               {' '}<strong>Piloter</strong> prend le relais une fois le processus formalisé : c&apos;est là qu&apos;on l&apos;assigne, qu&apos;on suit son avancement, qu&apos;on le fait évoluer.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
@@ -236,7 +236,7 @@ export default function GuidePanel() {
             </div>
 
             <Callout tone="note" label="À savoir">
-              Le module <Kbd>Clinic</Kbd> (rétro-ingénierie de code legacy en organigramme) alimente parfois <em>Formaliser</em> : depuis Clinic, le bouton « Générer le workflow BPMN » transmet directement le résultat au studio de formalisation.
+              Transformer du code legacy en organigramme, ou générer une spécification fonctionnelle détaillée à partir d&apos;une procédure, ne sont <strong>pas des outils à part</strong> : ce sont des capacités natives de ProcessMate, respectivement l&apos;entrée « Code legacy » du studio de formalisation et l&apos;écran <Kbd>Spécifications</Kbd> du pilotage.
             </Callout>
           </Section>
 
@@ -245,7 +245,7 @@ export default function GuidePanel() {
             dek="Un point d'entrée unique, une barre latérale qui fait tout le reste.">
             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 max-w-2xl">
               <li>Depuis la page d&apos;accueil, cliquez sur <Kbd>Mon espace</Kbd> (déjà connecté) ou <Kbd>Démarrer maintenant</Kbd>. Les deux mènent au même atelier.</li>
-              <li>La barre latérale gauche propose plusieurs modules : <strong>Orchestration</strong> (le pilotage, ouvert par défaut), <strong>BPMN Studio</strong> (la formalisation), <strong>SFD Generator</strong> et <strong>Clinic</strong>.</li>
+              <li>La barre latérale gauche donne accès aux deux métiers de ProcessMate : <strong>Orchestration</strong> (le pilotage, ouvert par défaut) et <strong>BPMN Studio</strong> (la formalisation). Deux raccourcis complémentaires y figurent aussi — ils ouvrent en plein écran des outils autonomes dont les capacités clés sont par ailleurs déjà intégrées dans ProcessMate même (code legacy dans le Studio, spécifications dans l&apos;écran dédié).</li>
               <li>Dans le module Orchestration, la navigation donne accès à : <Kbd>Créer / Modifier</Kbd>, <Kbd>Campagnes</Kbd>, <Kbd>Analyse</Kbd>, <Kbd>Suivi des tâches</Kbd>, <Kbd>Espace de travail personnel</Kbd>, <Kbd>Tableau de bord</Kbd>, <Kbd>Spécifications</Kbd>, et — pour les administrateurs — <Kbd>Réglages</Kbd>.</li>
             </ol>
             <p className="text-sm text-gray-700 max-w-2xl">Retenez simplement : <strong>tout part de là</strong>. Les sections qui suivent décrivent ce que vous trouverez derrière chaque écran.</p>
@@ -255,14 +255,14 @@ export default function GuidePanel() {
           <Section id="guide-formaliser" kicker="03 — Module Formaliser (BPMN Studio)" title="Transformer un document en processus"
             dek="Le studio de formalisation prend un ou plusieurs documents en entrée et en fait ressortir un organigramme éditable, prêt à être enregistré comme procédure.">
             <p className="text-sm text-gray-700 max-w-2xl">
-              Ce module est aussi désigné « STT » à cause d&apos;une de ses fonctionnalités — la dictée vocale — mais ce n&apos;est qu&apos;une porte d&apos;entrée parmi quatre. En pratique, c&apos;est un véritable atelier de formalisation, pas seulement un outil de transcription.
+              Ce n&apos;est pas qu&apos;un outil de dictée vocale : c&apos;est un véritable atelier de formalisation, qui accepte quatre types de sources en entrée.
             </p>
 
             <SubHeading>Quatre façons d&apos;alimenter le studio</SubHeading>
             <Flow steps={[
-              { icon: FileText, title: 'Documents', desc: 'Dépôt multiple de PDF, PNG, JPG ou WEBP.' },
-              { icon: Code2, title: 'Code source', desc: 'Fichiers .wl, .swift, .txt, .windev — même pipeline que Clinic.' },
-              { icon: MessageSquare, title: 'Assistant / chat', desc: 'Décrire à l’assistant, jusqu’à 3 PDF ou images joints.' },
+              { icon: FileText, title: 'Documents', desc: 'Dépôt multiple de PDF, images ou notes numérisées.' },
+              { icon: Code2, title: 'Code legacy', desc: 'Applications historiques — COBOL, WinDev, ABAP… — retravaillées en organigramme.' },
+              { icon: MessageSquare, title: 'Assistant / chat', desc: 'Décrire ou coller ses notes à l’assistant, jusqu’à 3 PDF ou images joints.' },
               { icon: Mic, title: 'Dictée vocale', desc: 'Transcription puis extraction automatique des étapes.' },
             ]} />
 
@@ -364,6 +364,11 @@ export default function GuidePanel() {
               Une campagne regroupe plusieurs procédures dans un même projet. Son cycle de vie se pilote avec <Kbd>Lancer</Kbd>, <Kbd>Pause</Kbd>, <Kbd>Reprendre</Kbd>, <Kbd>Bloquer</Kbd>, <Kbd>Clôturer</Kbd> et <Kbd>Synchroniser</Kbd>. Les procédures s&apos;y ajoutent via un sélecteur de taxonomie hiérarchique.
             </p>
 
+            <SubHeading>Les spécifications</SubHeading>
+            <p className="text-sm text-gray-700 max-w-2xl">
+              L&apos;écran <Kbd>Spécifications</Kbd> génère un document de spécification fonctionnelle détaillée à partir d&apos;un périmètre de procédures déjà formalisées — un thème, une catégorie, une sous-catégorie ou une sélection précise. On peut préciser des instructions libres, joindre des sources complémentaires (PDF, image, Excel) ou des URLs, puis laisser l&apos;IA rédiger le document ; il reste ensuite modifiable en conversation avant export.
+            </p>
+
             <SubHeading>L&apos;Analyse IA</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
               À ne pas confondre avec Formaliser : ici on ne crée pas une procédure, on <strong>vérifie une procédure existante</strong> face à un nouveau document — une circulaire, une réglementation, un rapport d&apos;audit.
@@ -407,7 +412,8 @@ export default function GuidePanel() {
               <Cheat q="Exporter le document final" path={['Onglet Diagramme', 'Générer la procédure Word']} />
               <Cheat q="Corriger un PDF annoté à la main" path={['Espace de travail', 'tâche', 'Corrections PDF']} />
               <Cheat q="Auditer une procédure en un clic" path={['Espace de travail', 'tâche', 'Révision IA']} />
-              <Cheat q="Faire évoluer un vieux programme legacy" path={['Clinic', 'Générer le workflow BPMN', 'BPMN Studio']} />
+              <Cheat q="Faire évoluer un vieux programme legacy" path={['BPMN Studio', 'Code legacy', 'déposer le fichier', 'générer']} />
+              <Cheat q="Générer une spécification fonctionnelle" path={['Spécifications', 'choisir un périmètre', 'générer le document']} />
               <Cheat q="Grouper des procédures dans un projet" path={['Campagnes', 'créer', 'ajouter des procédures']} />
             </div>
           </Section>
