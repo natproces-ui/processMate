@@ -334,6 +334,8 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                     }
                 }
 
+                (LaneHeaderRenderer as any).$inject = ['eventBus', 'bpmnRenderer'];
+
                 // ── LinkRenderer : association "link" → ligne pleine noire sans flèche ──
                 class LinkRenderer extends BaseRenderer {
                     bpmnRenderer: any;
