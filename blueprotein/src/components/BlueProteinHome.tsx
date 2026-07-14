@@ -62,7 +62,7 @@ type Audience = 'agriculteurs' | 'fournisseurs';
 
 const AUDIENCE_CONTENT: Record<Audience, { title: string; desc: string; bullets: string[]; cta: string }> = {
   agriculteurs: {
-    title: 'Pour les agriculteurs',
+    title: 'Pour les agriculteurs marocains et africains',
     desc: 'Commandez directement vos intrants en ligne, sans passer par un revendeur, et suivez vos livraisons en temps réel.',
     bullets: [
       'Catalogue complet accessible 24/7',
