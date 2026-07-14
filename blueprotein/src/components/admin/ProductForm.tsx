@@ -1,0 +1,223 @@
+'use client';
+
+import { useState, type FormEvent } from 'react';
+import { ArrowLeft, Save } from 'lucide-react';
+import { createProduct, updateProduct } from '@/lib/products';
+import type { Product, ProductFamily, ProductInput } from '@/types/product';
+
+const KNOWN_CATEGORIES = ['Biostimulants organiques', 'Amendements organiques', 'Correcteurs de carences'];
+
+function toFormState(product?: Product) {
+  return {
+    slug: product?.slug ?? '',
+    name: product?.name ?? '',
+    family: (product?.family ?? 'liquide') as ProductFamily,
+    category: product?.category ?? KNOWN_CATEGORIES[0],
+    tagline: product?.tagline ?? '',
+    summary: product?.summary ?? '',
+    description: product?.description ?? '',
+    dosage: product?.dosage ?? '',
+    conditioning: product?.conditioning ?? '',
+    precautions: product?.precautions ?? '',
+    advantagesText: (product?.advantages ?? []).join('\n'),
+    composition_summary: product?.composition_summary ?? '',
+    variantsText: product?.variants && product.variants.length > 0 ? JSON.stringify(product.variants, null, 2) : '',
+    organic_certified: product?.organic_certified ?? false,
+    badge: product?.badge ?? '',
+    image_url: product?.image_url ?? '/product-placeholder.jpg',
+    sort_order: product?.sort_order ?? 0,
+    published: product?.published ?? true,
+  };
+}
+
+export default function ProductForm({
+  product,
+  onSaved,
+  onCancel,
+}: {
+  product?: Product;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState(toFormState(product));
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    let variants: ProductInput['variants'] = [];
+    if (form.variantsText.trim()) {
+      try {
+        variants = JSON.parse(form.variantsText);
+        if (!Array.isArray(variants)) throw new Error('doit être un tableau');
+      } catch {
+        setError('Le champ "Variantes" doit être du JSON valide (tableau d\'objets), ou vide.');
+        return;
+      }
+    }
+
+    const input: ProductInput = {
+      slug: form.slug.trim(),
+      name: form.name.trim(),
+      family: form.family,
+      category: form.category.trim(),
+      tagline: form.tagline.trim() || null,
+      summary: form.summary.trim(),
+      description: form.description.trim() || null,
+      dosage: form.dosage.trim() || null,
+      conditioning: form.conditioning.trim() || null,
+      precautions: form.precautions.trim() || null,
+      advantages: form.advantagesText.split('\n').map((s) => s.trim()).filter(Boolean),
+      composition_summary: form.composition_summary.trim() || null,
+      variants,
+      organic_certified: form.organic_certified,
+      badge: form.badge.trim() || null,
+      image_url: form.image_url.trim() || '/product-placeholder.jpg',
+      sort_order: Number(form.sort_order) || 0,
+      published: form.published,
+    };
+
+    setSaving(true);
+    const { error: saveError } = product
+      ? await updateProduct(product.id, input)
+      : await createProduct(input);
+    setSaving(false);
+
+    if (saveError) {
+      setError(saveError.message);
+      return;
+    }
+    onSaved();
+  }
+
+  const inputClass = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500';
+  const labelClass = 'block text-xs font-medium text-slate-600 mb-1.5';
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <button type="button" onClick={onCancel} className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-emerald-700">
+        <ArrowLeft className="w-4 h-4" /> Retour à la liste
+      </button>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Nom du produit</label>
+          <input required value={form.name} onChange={(e) => set('name', e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Slug (URL — ex. blue-stimulant)</label>
+          <input required value={form.slug} onChange={(e) => set('slug', e.target.value)} className={inputClass} pattern="[a-z0-9]+(-[a-z0-9]+)*" title="Minuscules, chiffres et tirets uniquement" />
+        </div>
+        <div>
+          <label className={labelClass}>Gamme</label>
+          <select value={form.family} onChange={(e) => set('family', e.target.value as ProductFamily)} className={inputClass}>
+            <option value="liquide">Liquide</option>
+            <option value="solide">Solide</option>
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Catégorie</label>
+          <input required list="categories" value={form.category} onChange={(e) => set('category', e.target.value)} className={inputClass} />
+          <datalist id="categories">
+            {KNOWN_CATEGORIES.map((c) => <option key={c} value={c} />)}
+          </datalist>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Accroche (tagline)</label>
+        <input value={form.tagline} onChange={(e) => set('tagline', e.target.value)} className={inputClass} />
+      </div>
+
+      <div>
+        <label className={labelClass}>Résumé (affiché sur la carte produit)</label>
+        <textarea required rows={2} value={form.summary} onChange={(e) => set('summary', e.target.value)} className={inputClass} />
+      </div>
+
+      <div>
+        <label className={labelClass}>Description complète</label>
+        <textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} className={inputClass} />
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Dosage et application</label>
+          <textarea rows={3} value={form.dosage} onChange={(e) => set('dosage', e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Conditionnement</label>
+          <textarea rows={3} value={form.conditioning} onChange={(e) => set('conditioning', e.target.value)} className={inputClass} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className={labelClass}>Précautions d&apos;emploi</label>
+          <textarea rows={2} value={form.precautions} onChange={(e) => set('precautions', e.target.value)} className={inputClass} />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Avantages (un par ligne)</label>
+        <textarea rows={4} value={form.advantagesText} onChange={(e) => set('advantagesText', e.target.value)} className={inputClass} />
+      </div>
+
+      <div>
+        <label className={labelClass}>Composition — résumé texte (laisser vide si vous utilisez le tableau de variantes ci-dessous)</label>
+        <textarea rows={3} value={form.composition_summary} onChange={(e) => set('composition_summary', e.target.value)} className={inputClass} />
+      </div>
+
+      <div>
+        <label className={labelClass}>
+          Variantes — JSON (pour les gammes à plusieurs % comme Blue Humus / Matorg), sinon laisser vide
+        </label>
+        <textarea
+          rows={4}
+          value={form.variantsText}
+          onChange={(e) => set('variantsText', e.target.value)}
+          className={`${inputClass} font-mono text-xs`}
+          placeholder='[{"name":"Blue Humus 15","Acide fulvique":"15%"}]'
+        />
+      </div>
+
+      <div className="grid sm:grid-cols-3 gap-4 items-end">
+        <div>
+          <label className={labelClass}>Badge (ex. Best-seller, Nouveau)</label>
+          <input value={form.badge} onChange={(e) => set('badge', e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Ordre d&apos;affichage</label>
+          <input type="number" value={form.sort_order} onChange={(e) => set('sort_order', Number(e.target.value))} className={inputClass} />
+        </div>
+        <div className="flex items-center gap-2 pb-2">
+          <input id="organic" type="checkbox" checked={form.organic_certified} onChange={(e) => set('organic_certified', e.target.checked)} className="w-4 h-4" />
+          <label htmlFor="organic" className="text-sm text-slate-700">Certifié bio (CCPB)</label>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass}>Image (URL — laisser tel quel pour l&apos;instant, une seule photo sert de visuel provisoire)</label>
+        <input value={form.image_url} onChange={(e) => set('image_url', e.target.value)} className={inputClass} />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input id="published" type="checkbox" checked={form.published} onChange={(e) => set('published', e.target.checked)} className="w-4 h-4" />
+        <label htmlFor="published" className="text-sm text-slate-700">Publié sur le site</label>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      <div className="flex gap-3">
+        <button type="submit" disabled={saving} className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors">
+          <Save className="w-4 h-4" /> {saving ? 'Enregistrement...' : 'Enregistrer'}
+        </button>
+        <button type="button" onClick={onCancel} className="text-sm font-medium text-slate-500 hover:text-slate-700 px-3">
+          Annuler
+        </button>
+      </div>
+    </form>
+  );
+}
