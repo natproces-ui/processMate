@@ -5,8 +5,8 @@ import Link from 'next/link';
 import {
   FlaskConical, Truck, ShieldCheck, Users, ArrowRight, Check,
   Star, Phone, Mail, MapPin, Coins, Package,
-  Tractor, Building2, ChevronRight, Quote, ClipboardList, Award, Clock,
-  Sprout, Globe,
+  Tractor, Building2, ChevronRight, ChevronDown, Quote, ClipboardList, Award, Clock,
+  Sprout, Globe, Wallet, CloudRain,
 } from 'lucide-react';
 import { HeroImage, ProductImage } from './media';
 import ContactForm from './ContactForm';
@@ -19,6 +19,36 @@ const WHY_ITEMS = [
   { icon: <Truck className="w-5 h-5" />, title: 'Livraison rapide', desc: "Un réseau logistique au Maroc et en Afrique de l'Ouest, sans intermédiaire." },
   { icon: <Coins className="w-5 h-5" />, title: 'Prix accessibles', desc: 'Une nutrition efficace à prix producteur, pour réduire durablement vos coûts.' },
   { icon: <Package className="w-5 h-5" />, title: 'Formulations sur mesure', desc: 'Conditionnements et dosages adaptés aux besoins des distributeurs et coopératives.' },
+];
+
+const NEEDS_ITEMS = [
+  { icon: <Wallet className="w-4 h-4" />, text: "Des coûts d'intrants imprévisibles qui rongent la rentabilité" },
+  { icon: <Sprout className="w-4 h-4" />, text: 'Des sols fatigués et des rendements qui stagnent' },
+  { icon: <CloudRain className="w-4 h-4" />, text: 'Un climat de plus en plus sec et instable' },
+  { icon: <Package className="w-4 h-4" />, text: 'Des produits pensés ailleurs, mal adaptés au terrain local' },
+];
+
+const METHODOLOGY = [
+  {
+    title: 'Diagnostic terrain',
+    summary: "On part de votre sol, pas d'une fiche produit.",
+    detail: "Avant toute recommandation, nous analysons le sol, la culture et les conditions climatiques de votre exploitation, pour identifier ce qui limite réellement le rendement.",
+  },
+  {
+    title: 'Formulation adaptée',
+    summary: "Des produits pensés pour le Maroc et l'Afrique, pas importés tels quels.",
+    detail: "Chaque formulation Blue Protein est conçue pour répondre aux besoins précis des cultures et des sols locaux, plutôt qu'adaptée après coup d'un produit pensé pour un autre climat.",
+  },
+  {
+    title: 'Test & validation terrain',
+    summary: "Rien n'est commercialisé sans preuve sur le terrain.",
+    detail: "Chaque produit est testé en conditions réelles, sur des parcelles locales, avant sa mise sur le marché — pas seulement en laboratoire.",
+  },
+  {
+    title: 'Accompagnement continu',
+    summary: 'Un suivi agronomique après la vente, pas juste une livraison.',
+    detail: "Nos agronomes suivent les résultats dans la durée et ajustent les recommandations selon les cycles de culture et les retours du terrain.",
+  },
 ];
 
 const STATS = [
@@ -76,6 +106,7 @@ const FAMILY_LABELS: Record<Product['family'], string> = {
 export default function BlueProteinHome({ products }: { products: Product[] }) {
   const [activeCategory, setActiveCategory] = useState('Tous');
   const [activeAudience, setActiveAudience] = useState<Audience>('agriculteurs');
+  const [openMethod, setOpenMethod] = useState<number | null>(0);
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category)));
@@ -230,6 +261,63 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
                 <p className="text-sm text-slate-600">{it.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Vos besoins, notre méthode ─────────────────────────── */}
+      <section id="besoins" className="max-w-7xl mx-auto px-6 py-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
+          <div>
+            <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
+              <span className="w-6 h-px bg-emerald-600" /> On comprend vos besoins
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">Vos contraintes, pas une fiche produit générique</h2>
+            <p className="text-slate-600 mb-6">
+              Trop de solutions agricoles sont pensées ailleurs, puis vendues telles quelles au Maroc et en Afrique. Blue Protein part de vos contraintes réelles, pas l&apos;inverse.
+            </p>
+            <ul className="space-y-3">
+              {NEEDS_ITEMS.map((n) => (
+                <li key={n.text} className="flex items-center gap-3 text-sm text-slate-700">
+                  <span className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">{n.icon}</span>
+                  {n.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <ProductImage className="relative h-80 rounded-2xl" />
+        </div>
+
+        <div>
+          <h3 className="text-xl font-bold mb-2">Notre méthodologie</h3>
+          <p className="text-slate-600 mb-6">Cliquez sur une étape pour voir comment on s&apos;y prend concrètement.</p>
+          <div className="space-y-3">
+            {METHODOLOGY.map((m, i) => {
+              const isOpen = openMethod === i;
+              return (
+                <div key={m.title} className="border border-slate-200 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMethod(isOpen ? null : i)}
+                    aria-expanded={isOpen}
+                    className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left bg-white hover:bg-slate-50 transition-colors"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-emerald-700 mb-0.5">ÉTAPE {i + 1}</div>
+                      <div className="font-semibold text-slate-900">{m.title}</div>
+                      <div className="text-sm text-slate-500">{m.summary}</div>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-5 text-sm text-slate-600 bg-white">
+                      {m.detail}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

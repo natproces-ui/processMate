@@ -33,7 +33,7 @@ create table if not exists public.products (
   variants jsonb not null default '[]'::jsonb,
   organic_certified boolean not null default false,
   badge text,
-  image_url text not null default '/blueprotein/product-placeholder.jpg',
+  image_url text not null default '/product-placeholder.jpg',
   sort_order integer not null default 0,
   published boolean not null default true,
   created_at timestamptz not null default now(),
