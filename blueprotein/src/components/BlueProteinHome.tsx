@@ -10,114 +10,66 @@ import {
 } from 'lucide-react';
 import { HeroImage, ProductImage } from './media';
 import ContactForm from './ContactForm';
+import { useLanguage, localizedField } from '@/lib/i18n';
 import type { Product } from '@/types/product';
 
-const WHY_ITEMS = [
-  { icon: <FlaskConical className="w-5 h-5" />, title: 'Testé avant validation', desc: "Chaque formulation est éprouvée en conditions réelles avant sa mise sur le marché." },
-  { icon: <ShieldCheck className="w-5 h-5" />, title: 'Traçabilité complète', desc: 'Chaque lot est suivi de la production à la livraison, avec fiches techniques disponibles.' },
-  { icon: <Users className="w-5 h-5" />, title: 'Agronomes de terrain', desc: 'Une équipe locale disponible pour vous accompagner dans le choix des produits.' },
-  { icon: <Truck className="w-5 h-5" />, title: 'Livraison rapide', desc: "Un réseau logistique au Maroc et en Afrique de l'Ouest, sans intermédiaire." },
-  { icon: <Coins className="w-5 h-5" />, title: 'Prix accessibles', desc: 'Une nutrition efficace à prix producteur, pour réduire durablement vos coûts.' },
-  { icon: <Package className="w-5 h-5" />, title: 'Formulations sur mesure', desc: 'Conditionnements et dosages adaptés aux besoins des distributeurs et coopératives.' },
+const VALUE_ICONS = [
+  <Sprout key="sol" className="w-5 h-5 text-emerald-700" />,
+  <Coins key="prix" className="w-5 h-5 text-emerald-700" />,
+  <Globe key="afrique" className="w-5 h-5 text-emerald-700" />,
 ];
 
-const NEEDS_ITEMS = [
-  { icon: <Wallet className="w-4 h-4" />, text: "Des coûts d'intrants imprévisibles qui rongent la rentabilité" },
-  { icon: <Sprout className="w-4 h-4" />, text: 'Des sols fatigués et des rendements qui stagnent' },
-  { icon: <CloudRain className="w-4 h-4" />, text: 'Un climat de plus en plus sec et instable' },
-  { icon: <Package className="w-4 h-4" />, text: 'Des produits pensés ailleurs, mal adaptés au terrain local' },
+const WHY_ICONS = [
+  <FlaskConical key="teste" className="w-5 h-5" />,
+  <ShieldCheck key="tracabilite" className="w-5 h-5" />,
+  <Users key="agronomes" className="w-5 h-5" />,
+  <Truck key="livraison" className="w-5 h-5" />,
+  <Coins key="prix" className="w-5 h-5" />,
+  <Package key="mesure" className="w-5 h-5" />,
 ];
 
-const METHODOLOGY = [
-  {
-    title: 'Diagnostic terrain',
-    summary: "On part de votre sol, pas d'une fiche produit.",
-    detail: "Avant toute recommandation, nous analysons le sol, la culture et les conditions climatiques de votre exploitation, pour identifier ce qui limite réellement le rendement.",
-  },
-  {
-    title: 'Formulation adaptée',
-    summary: "Des produits pensés pour le Maroc et l'Afrique, pas importés tels quels.",
-    detail: "Chaque formulation Blue Protein est conçue pour répondre aux besoins précis des cultures et des sols locaux, plutôt qu'adaptée après coup d'un produit pensé pour un autre climat.",
-  },
-  {
-    title: 'Test & validation terrain',
-    summary: "Rien n'est commercialisé sans preuve sur le terrain.",
-    detail: "Chaque produit est testé en conditions réelles, sur des parcelles locales, avant sa mise sur le marché — pas seulement en laboratoire.",
-  },
-  {
-    title: 'Accompagnement continu',
-    summary: 'Un suivi agronomique après la vente, pas juste une livraison.',
-    detail: "Nos agronomes suivent les résultats dans la durée et ajustent les recommandations selon les cycles de culture et les retours du terrain.",
-  },
+const NEEDS_ICONS = [
+  <Wallet key="cout" className="w-4 h-4" />,
+  <Sprout key="sol" className="w-4 h-4" />,
+  <CloudRain key="climat" className="w-4 h-4" />,
+  <Package key="produits" className="w-4 h-4" />,
 ];
 
-const STATS = [
-  { value: '13', label: 'produits au catalogue' },
-  { value: '100 %', label: 'formulations à base organique' },
-  { value: '3', label: 'certifiées CCPB bio' },
-  { value: '2', label: 'gammes : liquide & solide' },
+const ORDER_ICONS = [
+  <ClipboardList key="compte" className="w-5 h-5" />,
+  <Package key="catalogue" className="w-5 h-5" />,
+  <Check key="commander" className="w-5 h-5" />,
+  <Truck key="livraison" className="w-5 h-5" />,
 ];
 
-type Audience = 'agriculteurs' | 'fournisseurs';
-
-const AUDIENCE_CONTENT: Record<Audience, { title: string; desc: string; bullets: string[]; cta: string }> = {
-  agriculteurs: {
-    title: 'Pour les agriculteurs marocains et africains',
-    desc: 'Commandez directement vos intrants en ligne, sans passer par un revendeur, et suivez vos livraisons en temps réel.',
-    bullets: [
-      'Catalogue complet accessible 24/7',
-      'Conseils agronomiques personnalisés',
-      'Prix producteur, sans marge intermédiaire',
-      'Réassort simplifié en un clic',
-    ],
-    cta: 'Créer mon compte agriculteur',
-  },
-  fournisseurs: {
-    title: 'Pour les fournisseurs & distributeurs',
-    desc: 'Approvisionnez votre réseau avec des formulations en volume et des conditions commerciales dédiées aux professionnels.',
-    bullets: [
-      'Tarifs dégressifs par palier de volume',
-      'Conditionnements et marque blanche possibles',
-      'Interlocuteur commercial dédié',
-      'Support logistique et export',
-    ],
-    cta: 'Devenir partenaire distributeur',
-  },
-};
-
+// Direct testimonial quotes stay in French only — translating an attributed
+// quote into a different dialect than the person actually spoke would be
+// putting words in their mouth.
 const TESTIMONIALS = [
   { name: 'Youssef El Amrani', role: 'Maraîcher, Souss-Massa, Maroc', quote: "Avec les produits Blue Protein, la structure de nos terres s'est nettement améliorée. Et le coût de nutrition a baissé par rapport à nos anciens engrais." },
   { name: 'Moussa Traoré', role: 'Exploitant, 40 ha — céréales, Burkina Faso', quote: "Depuis qu'on est passés à Blue Stimulant, la reprise de végétation est nettement plus rapide. Et je commande tout depuis mon téléphone." },
   { name: 'Fatou Cissé', role: 'Coopérative agricole, 12 membres, Burkina Faso', quote: 'Le support agronomique nous a aidés à choisir les bons dosages. Les livraisons sont toujours dans les délais annoncés.' },
 ];
 
-const STEPS = [
-  { icon: <ClipboardList className="w-5 h-5" />, title: 'Créer un compte', desc: 'Inscription gratuite en 2 minutes, agriculteur ou distributeur.' },
-  { icon: <Package className="w-5 h-5" />, title: 'Parcourir le catalogue', desc: 'Filtrez par gamme, catégorie ou objectif agronomique.' },
-  { icon: <Check className="w-5 h-5" />, title: 'Commander en ligne', desc: 'Paiement sécurisé, devis instantané pour les gros volumes.' },
-  { icon: <Truck className="w-5 h-5" />, title: 'Livraison & suivi', desc: "Suivi de commande en temps réel jusqu'à la parcelle." },
-];
-
-const FAMILY_LABELS: Record<Product['family'], string> = {
-  liquide: 'Liquide',
-  solide: 'Solide',
-};
+type Audience = 'agriculteurs' | 'fournisseurs';
 
 export default function BlueProteinHome({ products }: { products: Product[] }) {
+  const { lang, t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState('Tous');
   const [activeAudience, setActiveAudience] = useState<Audience>('agriculteurs');
   const [openMethod, setOpenMethod] = useState<number | null>(0);
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category)));
-    return ['Tous', ...unique];
-  }, [products]);
+    return [t.products.all, ...unique];
+  }, [products, t.products.all]);
 
-  const filteredProducts = activeCategory === 'Tous'
+  const filteredProducts = activeCategory === t.products.all
     ? products
     : products.filter((p) => p.category === activeCategory);
 
-  const audience = AUDIENCE_CONTENT[activeAudience];
+  const audience = t.audience[activeAudience];
+  const familyLabels = { liquide: t.products.familyLiquide, solide: t.products.familySolide };
 
   return (
     <>
@@ -126,26 +78,26 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
         <div className="max-w-7xl mx-auto px-6 pt-16 pb-24 md:pt-20 md:pb-28 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
             <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
-              <span className="w-6 h-px bg-emerald-600" /> Biostimulants pour le Maroc &amp; l&apos;Afrique
+              <span className="w-6 h-px bg-emerald-600" /> {t.hero.badge}
             </div>
             <h1 className="text-3xl md:text-[2.75rem] font-bold text-slate-900 leading-[1.15] mb-5">
-              Améliorer le sol. Nourrir vos cultures. <span className="text-emerald-700">À moindre coût.</span>
+              {t.hero.title} <span className="text-emerald-700">{t.hero.titleHighlight}</span>
             </h1>
             <p className="text-slate-600 text-base md:text-lg mb-8 max-w-lg">
-              Blue Protein conçoit des biostimulants durables et des engrais adaptés aux besoins réels des agriculteurs marocains et africains — testés sur le terrain, validés avant commercialisation.
+              {t.hero.subtitle}
             </p>
             <div className="flex flex-wrap gap-3 mb-9">
               <Link href="#produits" className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-3 rounded-lg transition-colors">
-                Découvrir les produits <ArrowRight className="w-4 h-4" />
+                {t.hero.ctaProducts} <ArrowRight className="w-4 h-4" />
               </Link>
               <Link href="#pourquoi" className="inline-flex items-center gap-1.5 text-slate-700 font-semibold px-5 py-3 rounded-lg border border-slate-300 hover:border-emerald-600 hover:text-emerald-700 transition-colors">
-                Devenir distributeur
+                {t.hero.ctaDistrib}
               </Link>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {['Testé sur le terrain', 'Prix producteur', 'Adapté au climat local'].map((t) => (
-                <span key={t} className="inline-flex items-center gap-1.5 text-sm text-slate-500">
-                  <Check className="w-4 h-4 text-emerald-600" /> {t}
+              {t.hero.trust.map((tr) => (
+                <span key={tr} className="inline-flex items-center gap-1.5 text-sm text-slate-500">
+                  <Check className="w-4 h-4 text-emerald-600" /> {tr}
                 </span>
               ))}
             </div>
@@ -158,8 +110,8 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
                 <Coins className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-lg font-bold text-slate-900 leading-none">-30 %</div>
-                <div className="text-xs text-slate-500">coût moyen de nutrition</div>
+                <div className="text-lg font-bold text-slate-900 leading-none">{t.hero.statValue}</div>
+                <div className="text-xs text-slate-500">{t.hero.statLabel}</div>
               </div>
             </div>
           </div>
@@ -169,13 +121,9 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       {/* ── Valeurs clés ───────────────────────────────────────── */}
       <section className="border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
-          {[
-            { icon: <Sprout className="w-5 h-5 text-emerald-700" />, title: 'Nous améliorons le sol', desc: 'Des biostimulants qui régénèrent la structure et la vie du sol, pour une fertilité qui dure.' },
-            { icon: <Coins className="w-5 h-5 text-emerald-700" />, title: 'Nourrir vos plantes, moins cher', desc: "Une nutrition efficace à prix producteur, sans marge d'intermédiaire ni de distributeur." },
-            { icon: <Globe className="w-5 h-5 text-emerald-700" />, title: "Pensé pour l'Afrique", desc: 'Formulations testées et validées sur les cultures et climats marocains et africains.' },
-          ].map((v) => (
-            <div key={v.title} className="flex gap-4">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">{v.icon}</div>
+          {t.values.map((v, i) => (
+            <div key={v.id} className="flex gap-4">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">{VALUE_ICONS[i]}</div>
               <div>
                 <h3 className="font-semibold mb-1">{v.title}</h3>
                 <p className="text-sm text-slate-600">{v.desc}</p>
@@ -188,8 +136,8 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       {/* ── Produits ───────────────────────────────────────────── */}
       <section id="produits" className="max-w-7xl mx-auto px-6 py-20">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">Notre gamme de produits</h2>
-          <p className="text-slate-600">Des solutions professionnelles pour la nutrition, la structure du sol et la vitalité des cultures.</p>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.products.title}</h2>
+          <p className="text-slate-600">{t.products.subtitle}</p>
         </div>
 
         <div className="flex flex-wrap justify-center gap-2 mb-10">
@@ -209,7 +157,7 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
         </div>
 
         {filteredProducts.length === 0 ? (
-          <p className="text-center text-slate-500">Aucun produit publié pour cette catégorie pour l&apos;instant.</p>
+          <p className="text-center text-slate-500">{t.products.empty}</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map((p) => (
@@ -226,18 +174,18 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
                     </span>
                   )}
                   <span className="absolute top-3 right-3 bg-white/90 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-                    {FAMILY_LABELS[p.family]}
+                    {familyLabels[p.family]}
                   </span>
                   <div className="absolute bottom-3 left-4 right-4">
                     <span className="text-emerald-200 text-xs font-semibold uppercase tracking-wide">{p.category}</span>
-                    <h3 className="text-white text-xl font-bold">{p.name}</h3>
+                    <h3 className="text-white text-xl font-bold">{localizedField(lang, p.name, p.name_dar)}</h3>
                   </div>
                 </div>
                 <div className="p-5">
-                  {p.tagline && <p className="text-sm font-semibold text-emerald-700 mb-1.5">{p.tagline}</p>}
-                  <p className="text-sm text-slate-600 mb-4">{p.summary}</p>
+                  {p.tagline && <p className="text-sm font-semibold text-emerald-700 mb-1.5">{localizedField(lang, p.tagline, p.tagline_dar)}</p>}
+                  <p className="text-sm text-slate-600 mb-4">{localizedField(lang, p.summary, p.summary_dar)}</p>
                   <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 group-hover:gap-2 transition-all">
-                    Voir la fiche produit <ChevronRight className="w-4 h-4" />
+                    {t.products.viewSheet} <ChevronRight className="w-4 h-4" />
                   </span>
                 </div>
               </Link>
@@ -250,13 +198,13 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       <section id="pourquoi" className="bg-slate-50 border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-20">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Pourquoi Blue Protein</h2>
-            <p className="text-slate-600">Une marque pensée pour les professionnels de l&apos;agriculture, du champ à la coopérative.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.why.title}</h2>
+            <p className="text-slate-600">{t.why.subtitle}</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {WHY_ITEMS.map((it) => (
-              <div key={it.title} className="bg-white rounded-xl border border-slate-200 p-6">
-                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 mb-4">{it.icon}</div>
+            {t.why.items.map((it, i) => (
+              <div key={it.id} className="bg-white rounded-xl border border-slate-200 p-6">
+                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 mb-4">{WHY_ICONS[i]}</div>
                 <h3 className="font-semibold mb-1.5">{it.title}</h3>
                 <p className="text-sm text-slate-600">{it.desc}</p>
               </div>
@@ -270,16 +218,14 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
         <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
           <div>
             <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
-              <span className="w-6 h-px bg-emerald-600" /> On comprend vos besoins
+              <span className="w-6 h-px bg-emerald-600" /> {t.needs.eyebrow}
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">Vos contraintes, pas une fiche produit générique</h2>
-            <p className="text-slate-600 mb-6">
-              Trop de solutions agricoles sont pensées ailleurs, puis vendues telles quelles au Maroc et en Afrique. Blue Protein part de vos contraintes réelles, pas l&apos;inverse.
-            </p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">{t.needs.title}</h2>
+            <p className="text-slate-600 mb-6">{t.needs.subtitle}</p>
             <ul className="space-y-3">
-              {NEEDS_ITEMS.map((n) => (
-                <li key={n.text} className="flex items-center gap-3 text-sm text-slate-700">
-                  <span className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">{n.icon}</span>
+              {t.needs.items.map((n, i) => (
+                <li key={n.id} className="flex items-center gap-3 text-sm text-slate-700">
+                  <span className="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">{NEEDS_ICONS[i]}</span>
                   {n.text}
                 </li>
               ))}
@@ -290,13 +236,13 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
         </div>
 
         <div>
-          <h3 className="text-xl font-bold mb-2">Notre méthodologie</h3>
-          <p className="text-slate-600 mb-6">Cliquez sur une étape pour voir comment on s&apos;y prend concrètement.</p>
+          <h3 className="text-xl font-bold mb-2">{t.needs.methodTitle}</h3>
+          <p className="text-slate-600 mb-6">{t.needs.methodSubtitle}</p>
           <div className="space-y-3">
-            {METHODOLOGY.map((m, i) => {
+            {t.needs.steps.map((m, i) => {
               const isOpen = openMethod === i;
               return (
-                <div key={m.title} className="border border-slate-200 rounded-xl overflow-hidden">
+                <div key={m.id} className="border border-slate-200 rounded-xl overflow-hidden">
                   <button
                     type="button"
                     onClick={() => setOpenMethod(isOpen ? null : i)}
@@ -325,8 +271,8 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       {/* ── Stats ──────────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-emerald-800 to-emerald-950">
         <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {STATS.map((s) => (
-            <div key={s.label}>
+          {t.stats.map((s) => (
+            <div key={s.id}>
               <div className="text-3xl md:text-4xl font-extrabold text-white mb-1">{s.value}</div>
               <div className="text-sm text-emerald-200">{s.label}</div>
             </div>
@@ -345,7 +291,7 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
                   activeAudience === 'agriculteurs' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
                 }`}
               >
-                <Tractor className="w-4 h-4" /> Agriculteurs
+                <Tractor className="w-4 h-4" /> {t.audience.tabAgri}
               </button>
               <button
                 onClick={() => setActiveAudience('fournisseurs')}
@@ -353,7 +299,7 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
                   activeAudience === 'fournisseurs' ? 'bg-white shadow text-emerald-800' : 'text-slate-500'
                 }`}
               >
-                <Building2 className="w-4 h-4" /> Fournisseurs & distributeurs
+                <Building2 className="w-4 h-4" /> {t.audience.tabFourn}
               </button>
             </div>
 
@@ -379,14 +325,14 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       <section id="commander" className="bg-slate-50 border-y border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-20">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Comment commander</h2>
-            <p className="text-slate-600">Quatre étapes entre votre inscription et la réception de votre commande.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.howToOrder.title}</h2>
+            <p className="text-slate-600">{t.howToOrder.subtitle}</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {STEPS.map((s, i) => (
-              <div key={s.title} className="relative bg-white rounded-xl border border-slate-200 p-6">
+            {t.howToOrder.steps.map((s, i) => (
+              <div key={s.id} className="relative bg-white rounded-xl border border-slate-200 p-6">
                 <div className="text-xs font-bold text-orange-600 mb-3">ÉTAPE {i + 1}</div>
-                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 mb-4">{s.icon}</div>
+                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 mb-4">{ORDER_ICONS[i]}</div>
                 <h3 className="font-semibold mb-1.5">{s.title}</h3>
                 <p className="text-sm text-slate-600">{s.desc}</p>
               </div>
@@ -398,20 +344,20 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       {/* ── Témoignages ────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">Ils utilisent Blue Protein</h2>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.testimonials.title}</h2>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((t) => (
-            <div key={t.name} className="bg-white rounded-xl border border-slate-200 p-6">
+          {TESTIMONIALS.map((te) => (
+            <div key={te.name} className="bg-white rounded-xl border border-slate-200 p-6">
               <Quote className="w-6 h-6 text-emerald-200 mb-3" />
               <div className="flex gap-0.5 mb-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <p className="text-sm text-slate-700 mb-4">&ldquo;{t.quote}&rdquo;</p>
-              <div className="text-sm font-semibold">{t.name}</div>
-              <div className="text-xs text-slate-500">{t.role}</div>
+              <p className="text-sm text-slate-700 mb-4">&ldquo;{te.quote}&rdquo;</p>
+              <div className="text-sm font-semibold">{te.name}</div>
+              <div className="text-xs text-slate-500">{te.role}</div>
             </div>
           ))}
         </div>
@@ -421,14 +367,14 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       <section className="bg-gradient-to-br from-emerald-800 to-emerald-950">
         <div className="max-w-5xl mx-auto px-6 py-16 text-center">
           <Award className="w-8 h-8 text-orange-300 mx-auto mb-4" />
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">Prêt à améliorer votre sol et réduire vos coûts ?</h2>
-          <p className="text-emerald-200 mb-8 max-w-xl mx-auto">Rejoignez les exploitations et distributeurs qui font confiance à Blue Protein pour leurs intrants.</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">{t.ctaBanner.title}</h2>
+          <p className="text-emerald-200 mb-8 max-w-xl mx-auto">{t.ctaBanner.subtitle}</p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link href="#produits" className="inline-flex items-center gap-1.5 bg-white text-emerald-900 font-semibold px-5 py-3 rounded-lg hover:bg-slate-100 transition-colors">
-              Voir les produits <ArrowRight className="w-4 h-4" />
+              {t.ctaBanner.ctaProducts} <ArrowRight className="w-4 h-4" />
             </Link>
             <Link href="#contact" className="inline-flex items-center gap-1.5 bg-white/10 text-white font-semibold px-5 py-3 rounded-lg border border-white/30 hover:bg-white/20 transition-colors">
-              Parler à un conseiller
+              {t.ctaBanner.ctaContact}
             </Link>
           </div>
         </div>
@@ -438,8 +384,8 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
       <section id="contact" className="max-w-7xl mx-auto px-6 py-20">
         <div className="grid lg:grid-cols-2 gap-12">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">Contactez-nous</h2>
-            <p className="text-slate-600 mb-8">Une question sur un produit, une commande en volume ou un partenariat distributeur ? Notre équipe vous répond sous 24h.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.contact.title}</h2>
+            <p className="text-slate-600 mb-8">{t.contact.subtitle}</p>
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-sm text-slate-700">
                 <Phone className="w-4 h-4 text-emerald-700" /> +212 5 26 11 22 77
@@ -451,7 +397,7 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
                 <MapPin className="w-4 h-4 text-emerald-700" /> Maroc
               </div>
               <div className="flex items-center gap-3 text-sm text-slate-700">
-                <Clock className="w-4 h-4 text-emerald-700" /> Lun–Ven, 8h–18h
+                <Clock className="w-4 h-4 text-emerald-700" /> {t.contact.hours}
               </div>
             </div>
           </div>

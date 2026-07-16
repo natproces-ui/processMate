@@ -16,6 +16,10 @@ function toFormState(product?: Product) {
     tagline: product?.tagline ?? '',
     summary: product?.summary ?? '',
     description: product?.description ?? '',
+    name_dar: product?.name_dar ?? '',
+    tagline_dar: product?.tagline_dar ?? '',
+    summary_dar: product?.summary_dar ?? '',
+    description_dar: product?.description_dar ?? '',
     dosage: product?.dosage ?? '',
     conditioning: product?.conditioning ?? '',
     precautions: product?.precautions ?? '',
@@ -70,6 +74,10 @@ export default function ProductForm({
       tagline: form.tagline.trim() || null,
       summary: form.summary.trim(),
       description: form.description.trim() || null,
+      name_dar: form.name_dar.trim() || null,
+      tagline_dar: form.tagline_dar.trim() || null,
+      summary_dar: form.summary_dar.trim() || null,
+      description_dar: form.description_dar.trim() || null,
       dosage: form.dosage.trim() || null,
       conditioning: form.conditioning.trim() || null,
       precautions: form.precautions.trim() || null,
@@ -143,6 +151,29 @@ export default function ProductForm({
       <div>
         <label className={labelClass}>Description complète</label>
         <textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} className={inputClass} />
+      </div>
+
+      <div className="border border-orange-200 bg-orange-50/40 rounded-xl p-4 space-y-4">
+        <div>
+          <h4 className="text-sm font-semibold text-orange-800">Darija (optionnel)</h4>
+          <p className="text-xs text-orange-700/80">Écriture latine (arabizi). Laisser vide pour afficher automatiquement la version française. Ne concerne pas le dosage, la composition ni les précautions — gardés en français uniquement.</p>
+        </div>
+        <div>
+          <label className={labelClass}>Nom du produit (darija)</label>
+          <input value={form.name_dar} onChange={(e) => set('name_dar', e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Accroche (darija)</label>
+          <input value={form.tagline_dar} onChange={(e) => set('tagline_dar', e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Résumé (darija)</label>
+          <textarea rows={2} value={form.summary_dar} onChange={(e) => set('summary_dar', e.target.value)} className={inputClass} />
+        </div>
+        <div>
+          <label className={labelClass}>Description complète (darija)</label>
+          <textarea rows={4} value={form.description_dar} onChange={(e) => set('description_dar', e.target.value)} className={inputClass} />
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">

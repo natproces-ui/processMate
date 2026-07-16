@@ -12,7 +12,7 @@ export default async function Page() {
     <div className="min-h-screen bg-white text-slate-900">
       <SiteHeader />
       <BlueProteinHome products={products} />
-      <SiteFooter />
+      <SiteFooter products={products} />
     </div>
   );
 }

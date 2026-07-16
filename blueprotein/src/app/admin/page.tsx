@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Leaf, LogOut, Plus, Pencil, Trash2, Mail, Package, CheckCircle2, Circle,
+  LogOut, Plus, Pencil, Trash2, Mail, Package, CheckCircle2, Circle,
 } from 'lucide-react';
 import { getCurrentAdminEmail, signOut } from '@/lib/auth';
 import {
@@ -84,10 +84,9 @@ export default function AdminPage() {
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-emerald-700 flex items-center justify-center">
-              <Leaf className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold"><span className="text-blue-700">Blue</span>Protein <span className="text-slate-400 font-normal">· admin</span></span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Blue Protein" className="h-8 w-auto" />
+            <span className="text-slate-400 font-normal text-sm">· admin</span>
           </Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-500 hidden sm:inline">{adminEmail}</span>

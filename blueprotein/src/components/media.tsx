@@ -1,4 +1,4 @@
-const HERO_IMG = '/hero-farmer.jpg';
+const HERO_IMG = '/hero-farmer.png';
 const PRODUCT_PLACEHOLDER_IMG = '/product-placeholder.jpg';
 
 export function HeroImage({ className = '' }: { className?: string }) {

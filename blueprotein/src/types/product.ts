@@ -14,6 +14,10 @@ export interface Product {
   tagline: string | null;
   summary: string;
   description: string | null;
+  name_dar: string | null;
+  tagline_dar: string | null;
+  summary_dar: string | null;
+  description_dar: string | null;
   dosage: string | null;
   conditioning: string | null;
   precautions: string | null;

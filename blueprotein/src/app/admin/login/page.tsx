@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Leaf } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminLoginPage() {
@@ -29,11 +29,9 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <Link href="/" className="flex items-center gap-2 justify-center mb-8">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-emerald-700 flex items-center justify-center">
-            <Leaf className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-lg font-bold"><span className="text-blue-700">Blue</span>Protein</span>
+        <Link href="/" className="flex items-center justify-center mb-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Blue Protein" className="h-9 w-auto" />
         </Link>
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <h1 className="text-lg font-bold mb-1">Espace administrateur</h1>
