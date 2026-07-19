@@ -14,7 +14,7 @@ import {
 import { getAllSectionsAdmin, deleteSection } from '@/lib/sections';
 import ProductForm from '@/components/admin/ProductForm';
 import SectionForm from '@/components/admin/SectionForm';
-import Modal from '@/components/admin/Modal';
+import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import type { ContactMessage, Product } from '@/types/product';
 import type { SectionWithCards } from '@/types/section';
