@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 
-/** Uploads a product image to the public `images` bucket and returns its public URL, or null on failure. */
-export async function uploadProductImage(file: File): Promise<string | null> {
+/** Uploads an image to the public `images` bucket and returns its public URL, or null on failure. */
+export async function uploadImage(file: File): Promise<string | null> {
   const ext = file.name.split('.').pop() || 'jpg';
   const path = `${crypto.randomUUID()}.${ext}`;
 

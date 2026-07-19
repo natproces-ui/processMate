@@ -3,15 +3,17 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  FlaskConical, Truck, ShieldCheck, Users, ArrowRight, Check,
+  ArrowRight, Check,
   Star, Phone, Mail, MapPin, Coins, Package,
-  Tractor, Building2, ChevronRight, ChevronDown, Quote, ClipboardList, Award, Clock,
+  Tractor, Building2, ChevronRight, Quote, Award, Clock,
   Sprout, Globe, Wallet, CloudRain,
 } from 'lucide-react';
 import { HeroImage, ProductImage } from './media';
 import ContactForm from './ContactForm';
+import DynamicSection from './DynamicSection';
 import { useLanguage, localizedField } from '@/lib/i18n';
 import type { Product } from '@/types/product';
+import type { SectionWithCards } from '@/types/section';
 
 const VALUE_ICONS = [
   <Sprout key="sol" className="w-5 h-5 text-emerald-700" />,
@@ -19,27 +21,11 @@ const VALUE_ICONS = [
   <Globe key="afrique" className="w-5 h-5 text-emerald-700" />,
 ];
 
-const WHY_ICONS = [
-  <FlaskConical key="teste" className="w-5 h-5" />,
-  <ShieldCheck key="tracabilite" className="w-5 h-5" />,
-  <Users key="agronomes" className="w-5 h-5" />,
-  <Truck key="livraison" className="w-5 h-5" />,
-  <Coins key="prix" className="w-5 h-5" />,
-  <Package key="mesure" className="w-5 h-5" />,
-];
-
 const NEEDS_ICONS = [
   <Wallet key="cout" className="w-4 h-4" />,
   <Sprout key="sol" className="w-4 h-4" />,
   <CloudRain key="climat" className="w-4 h-4" />,
   <Package key="produits" className="w-4 h-4" />,
-];
-
-const ORDER_ICONS = [
-  <ClipboardList key="compte" className="w-5 h-5" />,
-  <Package key="catalogue" className="w-5 h-5" />,
-  <Check key="commander" className="w-5 h-5" />,
-  <Truck key="livraison" className="w-5 h-5" />,
 ];
 
 // Direct testimonial quotes stay in French only — translating an attributed
@@ -53,11 +39,10 @@ const TESTIMONIALS = [
 
 type Audience = 'agriculteurs' | 'fournisseurs';
 
-export default function BlueProteinHome({ products }: { products: Product[] }) {
+export default function BlueProteinHome({ products, sections }: { products: Product[]; sections: SectionWithCards[] }) {
   const { lang, t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState('Tous');
   const [activeAudience, setActiveAudience] = useState<Audience>('agriculteurs');
-  const [openMethod, setOpenMethod] = useState<number | null>(0);
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category)));
@@ -194,28 +179,9 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
         )}
       </section>
 
-      {/* ── Pourquoi Blue Protein ──────────────────────────────── */}
-      <section id="pourquoi" className="bg-slate-50 border-y border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-20">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.why.title}</h2>
-            <p className="text-slate-600">{t.why.subtitle}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {t.why.items.map((it, i) => (
-              <div key={it.id} className="bg-white rounded-xl border border-slate-200 p-6">
-                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 mb-4">{WHY_ICONS[i]}</div>
-                <h3 className="font-semibold mb-1.5">{it.title}</h3>
-                <p className="text-sm text-slate-600">{it.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Vos besoins, notre méthode ─────────────────────────── */}
+      {/* ── Vos besoins ────────────────────────────────────────── */}
       <section id="besoins" className="max-w-7xl mx-auto px-6 py-20">
-        <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
               <span className="w-6 h-px bg-emerald-600" /> {t.needs.eyebrow}
@@ -234,39 +200,18 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
 
           <ProductImage className="relative h-80 rounded-2xl" />
         </div>
-
-        <div>
-          <h3 className="text-xl font-bold mb-2">{t.needs.methodTitle}</h3>
-          <p className="text-slate-600 mb-6">{t.needs.methodSubtitle}</p>
-          <div className="space-y-3">
-            {t.needs.steps.map((m, i) => {
-              const isOpen = openMethod === i;
-              return (
-                <div key={m.id} className="border border-slate-200 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenMethod(isOpen ? null : i)}
-                    aria-expanded={isOpen}
-                    className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left bg-white hover:bg-slate-50 transition-colors"
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-emerald-700 mb-0.5">ÉTAPE {i + 1}</div>
-                      <div className="font-semibold text-slate-900">{m.title}</div>
-                      <div className="text-sm text-slate-500">{m.summary}</div>
-                    </div>
-                    <ChevronDown className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {isOpen && (
-                    <div className="px-5 pb-5 text-sm text-slate-600 bg-white">
-                      {m.detail}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </section>
+
+      {/* ── Sections dynamiques (gérées depuis l'admin) ─────────── */}
+      {sections.length > 0 && (
+        <section id="pourquoi" className="bg-slate-50 border-y border-slate-200">
+          <div className="max-w-7xl mx-auto px-6 py-20 space-y-20">
+            {sections.map((s) => (
+              <DynamicSection key={s.id} section={s} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Stats ──────────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-emerald-800 to-emerald-950">
@@ -318,26 +263,6 @@ export default function BlueProteinHome({ products }: { products: Product[] }) {
           </div>
 
           <ProductImage className="relative h-80 rounded-2xl" />
-        </div>
-      </section>
-
-      {/* ── Comment commander ──────────────────────────────────── */}
-      <section id="commander" className="bg-slate-50 border-y border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-20">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.howToOrder.title}</h2>
-            <p className="text-slate-600">{t.howToOrder.subtitle}</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {t.howToOrder.steps.map((s, i) => (
-              <div key={s.id} className="relative bg-white rounded-xl border border-slate-200 p-6">
-                <div className="text-xs font-bold text-orange-600 mb-3">ÉTAPE {i + 1}</div>
-                <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 mb-4">{ORDER_ICONS[i]}</div>
-                <h3 className="font-semibold mb-1.5">{s.title}</h3>
-                <p className="text-sm text-slate-600">{s.desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

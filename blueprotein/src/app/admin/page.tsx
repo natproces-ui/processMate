@@ -4,19 +4,22 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  LogOut, Plus, Pencil, Trash2, Mail, Package, CheckCircle2, Circle, ExternalLink,
+  LogOut, Plus, Pencil, Trash2, Mail, Package, CheckCircle2, Circle, ExternalLink, LayoutGrid,
 } from 'lucide-react';
 import { getCurrentAdminEmail, signOut } from '@/lib/auth';
 import {
   getAllProductsAdmin, deleteProduct,
   getContactMessagesAdmin, markMessageHandled, deleteContactMessage,
 } from '@/lib/products';
+import { getAllSectionsAdmin, deleteSection } from '@/lib/sections';
 import ProductForm from '@/components/admin/ProductForm';
+import SectionForm from '@/components/admin/SectionForm';
 import Modal from '@/components/admin/Modal';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import type { ContactMessage, Product } from '@/types/product';
+import type { SectionWithCards } from '@/types/section';
 
-type Tab = 'produits' | 'messages';
+type Tab = 'produits' | 'sections' | 'messages';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -25,14 +28,21 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('produits');
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [sections, setSections] = useState<SectionWithCards[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
 
   const [productModal, setProductModal] = useState<{ open: boolean; product?: Product }>({ open: false });
+  const [sectionModal, setSectionModal] = useState<{ open: boolean; section?: SectionWithCards }>({ open: false });
   const [deleteProductTarget, setDeleteProductTarget] = useState<Product | null>(null);
+  const [deleteSectionTarget, setDeleteSectionTarget] = useState<SectionWithCards | null>(null);
   const [deleteMessageTarget, setDeleteMessageTarget] = useState<ContactMessage | null>(null);
 
   const loadProducts = useCallback(async () => {
     setProducts(await getAllProductsAdmin());
+  }, []);
+
+  const loadSections = useCallback(async () => {
+    setSections(await getAllSectionsAdmin());
   }, []);
 
   const loadMessages = useCallback(async () => {
@@ -48,9 +58,9 @@ export default function AdminPage() {
       }
       setAdminEmail(email);
       setChecking(false);
-      await Promise.all([loadProducts(), loadMessages()]);
+      await Promise.all([loadProducts(), loadSections(), loadMessages()]);
     })();
-  }, [router, loadProducts, loadMessages]);
+  }, [router, loadProducts, loadSections, loadMessages]);
 
   async function handleLogout() {
     await signOut();
@@ -66,6 +76,17 @@ export default function AdminPage() {
       return;
     }
     await loadProducts();
+  }
+
+  async function confirmDeleteSection() {
+    if (!deleteSectionTarget) return;
+    const { error } = await deleteSection(deleteSectionTarget.id);
+    setDeleteSectionTarget(null);
+    if (error) {
+      alert(`Erreur : ${error.message}`);
+      return;
+    }
+    await loadSections();
   }
 
   async function confirmDeleteMessage() {
@@ -105,6 +126,15 @@ export default function AdminPage() {
           >
             <Package className="w-4 h-4" /> Produits
             <span className="ml-auto text-xs text-slate-400">{products.length}</span>
+          </button>
+          <button
+            onClick={() => setTab('sections')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              tab === 'sections' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" /> Sections
+            <span className="ml-auto text-xs text-slate-400">{sections.length}</span>
           </button>
           <button
             onClick={() => setTab('messages')}
@@ -194,6 +224,63 @@ export default function AdminPage() {
           </div>
         )}
 
+        {tab === 'sections' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="font-semibold">Sections de la page d&apos;accueil</h2>
+                <p className="text-xs text-slate-500 mt-0.5">«&nbsp;Pourquoi Blue Protein&nbsp;», «&nbsp;Notre méthodologie&nbsp;» et «&nbsp;Comment commander&nbsp;» en font partie — vous pouvez aussi en ajouter de nouvelles.</p>
+              </div>
+              <button
+                onClick={() => setSectionModal({ open: true })}
+                className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold px-4 py-2 rounded-lg shrink-0"
+              >
+                <Plus className="w-4 h-4" /> Nouvelle section
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs font-semibold text-slate-500 border-b border-slate-200">
+                    <th className="py-2 pr-4">Titre</th>
+                    <th className="py-2 pr-4">Cartes</th>
+                    <th className="py-2 pr-4">Statut</th>
+                    <th className="py-2 pr-4" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {sections.map((s) => (
+                    <tr key={s.id} className="border-b border-slate-100">
+                      <td className="py-3 pr-4 font-medium text-slate-900">{s.title}</td>
+                      <td className="py-3 pr-4 text-slate-600">{s.cards.length}</td>
+                      <td className="py-3 pr-4">
+                        {s.published ? (
+                          <span className="text-emerald-700 text-xs font-semibold">Publié</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs font-semibold">Brouillon</span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => setSectionModal({ open: true, section: s })} className="text-slate-500 hover:text-emerald-700" title="Modifier">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeleteSectionTarget(s)} className="text-slate-500 hover:text-red-600" title="Supprimer">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {sections.length === 0 && (
+                    <tr><td colSpan={4} className="py-6 text-center text-slate-400">Aucune section pour l&apos;instant.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {tab === 'messages' && (
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="font-semibold mb-5">Demandes de contact</h2>
@@ -236,6 +323,19 @@ export default function AdminPage() {
         />
       </Modal>
 
+      <Modal
+        open={sectionModal.open}
+        onClose={() => setSectionModal({ open: false })}
+        title={sectionModal.section ? 'Modifier la section' : 'Nouvelle section'}
+        wide
+      >
+        <SectionForm
+          section={sectionModal.section}
+          onCancel={() => setSectionModal({ open: false })}
+          onSaved={async () => { setSectionModal({ open: false }); await loadSections(); }}
+        />
+      </Modal>
+
       <ConfirmDialog
         open={deleteProductTarget !== null}
         title="Supprimer ce produit ?"
@@ -244,6 +344,16 @@ export default function AdminPage() {
         danger
         onConfirm={confirmDeleteProduct}
         onCancel={() => setDeleteProductTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={deleteSectionTarget !== null}
+        title="Supprimer cette section ?"
+        message={deleteSectionTarget ? `"${deleteSectionTarget.title}" et ses ${deleteSectionTarget.cards.length} carte(s) seront définitivement supprimées.` : ''}
+        confirmLabel="Supprimer"
+        danger
+        onConfirm={confirmDeleteSection}
+        onCancel={() => setDeleteSectionTarget(null)}
       />
 
       <ConfirmDialog

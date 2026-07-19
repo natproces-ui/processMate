@@ -11,12 +11,9 @@ interface Translations {
   hero: { badge: string; title: string; titleHighlight: string; subtitle: string; ctaProducts: string; ctaDistrib: string; trust: string[]; statValue: string; statLabel: string };
   values: { id: string; title: string; desc: string }[];
   products: { title: string; subtitle: string; all: string; empty: string; viewSheet: string; familyLiquide: string; familySolide: string };
-  why: { title: string; subtitle: string; items: { id: string; title: string; desc: string }[] };
   needs: {
     eyebrow: string; title: string; subtitle: string;
     items: { id: string; text: string }[];
-    methodTitle: string; methodSubtitle: string;
-    steps: { id: string; title: string; summary: string; detail: string }[];
   };
   stats: { id: string; value: string; label: string }[];
   audience: {
@@ -24,7 +21,6 @@ interface Translations {
     agriculteurs: { title: string; desc: string; bullets: string[]; cta: string };
     fournisseurs: { title: string; desc: string; bullets: string[]; cta: string };
   };
-  howToOrder: { title: string; subtitle: string; steps: { id: string; title: string; desc: string }[] };
   testimonials: { title: string };
   ctaBanner: { title: string; subtitle: string; ctaProducts: string; ctaContact: string };
   contact: {
@@ -82,18 +78,6 @@ export const translations: Record<Lang, Translations> = {
       familyLiquide: 'Liquide',
       familySolide: 'Solide',
     },
-    why: {
-      title: 'Pourquoi Blue Protein',
-      subtitle: "Une marque pensée pour les professionnels de l'agriculture, du champ à la coopérative.",
-      items: [
-        { id: 'teste', title: 'Testé avant validation', desc: 'Chaque formulation est éprouvée en conditions réelles avant sa mise sur le marché.' },
-        { id: 'tracabilite', title: 'Traçabilité complète', desc: 'Chaque lot est suivi de la production à la livraison, avec fiches techniques disponibles.' },
-        { id: 'agronomes', title: 'Agronomes de terrain', desc: 'Une équipe locale disponible pour vous accompagner dans le choix des produits.' },
-        { id: 'livraison', title: 'Livraison rapide', desc: "Un réseau logistique au Maroc et en Afrique de l'Ouest, sans intermédiaire." },
-        { id: 'prix', title: 'Prix accessibles', desc: 'Une nutrition efficace à prix producteur, pour réduire durablement vos coûts.' },
-        { id: 'mesure', title: 'Formulations sur mesure', desc: 'Conditionnements et dosages adaptés aux besoins des distributeurs et coopératives.' },
-      ],
-    },
     needs: {
       eyebrow: 'On comprend vos besoins',
       title: 'Vos contraintes, pas une fiche produit générique',
@@ -103,14 +87,6 @@ export const translations: Record<Lang, Translations> = {
         { id: 'sol', text: 'Des sols fatigués et des rendements qui stagnent' },
         { id: 'climat', text: 'Un climat de plus en plus sec et instable' },
         { id: 'produits', text: 'Des produits pensés ailleurs, mal adaptés au terrain local' },
-      ],
-      methodTitle: 'Notre méthodologie',
-      methodSubtitle: "Cliquez sur une étape pour voir comment on s'y prend concrètement.",
-      steps: [
-        { id: 'diagnostic', title: 'Diagnostic terrain', summary: "On part de votre sol, pas d'une fiche produit.", detail: "Avant toute recommandation, nous analysons le sol, la culture et les conditions climatiques de votre exploitation, pour identifier ce qui limite réellement le rendement." },
-        { id: 'formulation', title: 'Formulation adaptée', summary: "Des produits pensés pour le Maroc et l'Afrique, pas importés tels quels.", detail: "Chaque formulation Blue Protein est conçue pour répondre aux besoins précis des cultures et des sols locaux, plutôt qu'adaptée après coup d'un produit pensé pour un autre climat." },
-        { id: 'test', title: 'Test & validation terrain', summary: "Rien n'est commercialisé sans preuve sur le terrain.", detail: 'Chaque produit est testé en conditions réelles, sur des parcelles locales, avant sa mise sur le marché — pas seulement en laboratoire.' },
-        { id: 'suivi', title: 'Accompagnement continu', summary: 'Un suivi agronomique après la vente, pas juste une livraison.', detail: 'Nos agronomes suivent les résultats dans la durée et ajustent les recommandations selon les cycles de culture et les retours du terrain.' },
       ],
     },
     stats: [
@@ -134,16 +110,6 @@ export const translations: Record<Lang, Translations> = {
         bullets: ['Tarifs dégressifs par palier de volume', 'Conditionnements et marque blanche possibles', 'Interlocuteur commercial dédié', 'Support logistique et export'],
         cta: 'Devenir partenaire distributeur',
       },
-    },
-    howToOrder: {
-      title: 'Comment commander',
-      subtitle: 'Quatre étapes entre votre inscription et la réception de votre commande.',
-      steps: [
-        { id: 'compte', title: 'Créer un compte', desc: 'Inscription gratuite en 2 minutes, agriculteur ou distributeur.' },
-        { id: 'catalogue', title: 'Parcourir le catalogue', desc: 'Filtrez par gamme, catégorie ou objectif agronomique.' },
-        { id: 'commander', title: 'Commander en ligne', desc: 'Paiement sécurisé, devis instantané pour les gros volumes.' },
-        { id: 'livraison', title: 'Livraison & suivi', desc: "Suivi de commande en temps réel jusqu'à la parcelle." },
-      ],
     },
     testimonials: { title: 'Ils utilisent Blue Protein' },
     ctaBanner: {
@@ -231,18 +197,6 @@ export const translations: Record<Lang, Translations> = {
       familyLiquide: 'Siyal',
       familySolide: 'Yabsa',
     },
-    why: {
-      title: '3lash Blue Protein',
-      subtitle: 'Marque li khddama l les professionnels dyal la agriculture, mn l7ayt l lcoopérative.',
-      items: [
-        { id: 'teste', title: 'Mjarreb qbel matban validation', desc: 'Kola formule kat-jarrab fl’ard bnnia9i, qbel matban f sou9.' },
-        { id: 'tracabilite', title: 'Traçabilité kamla', desc: 'Kola lot mtabba3 mn lproduction 7ta l livraison, m3a fiches techniques.' },
-        { id: 'agronomes', title: 'Agronomes dyal l’ard', desc: 'Equipe m7alliya mawjouda bach tsa3dek tkhtar les produits.' },
-        { id: 'livraison', title: 'Livraison sri3a', desc: 'Réseau logistique fLmeghrib w Afriqya dyal lwst, bla wassit.' },
-        { id: 'prix', title: 'Taman fdisss', desc: 'Taghdiya mzyana b taman dyal producteur, bach ynqes taman 3likom 3la tawil.' },
-        { id: 'mesure', title: 'Formulations 3la ma9as', desc: 'Conditionnements w dosages monasibin l distributeurs w coopératives.' },
-      ],
-    },
     needs: {
       eyebrow: 'Kanfhmou l7ajat dyalkom',
       title: 'La contrainte dyalkom, machi fiche produit 3amma',
@@ -252,14 +206,6 @@ export const translations: Record<Lang, Translations> = {
         { id: 'sol', text: 'Lard 3eyya w rendement wa9ef' },
         { id: 'climat', text: 'Klima ghadi ynqes lma w maytabe3ch' },
         { id: 'produits', text: 'Produits mesnou3in f blad okhra, machi monasibin l’l’ard dyalna' },
-      ],
-      methodTitle: 'La méthode dyalna',
-      methodSubtitle: 'Klik 3la chi étape bach tchouf kifach kandirou fl’wa9i3.',
-      steps: [
-        { id: 'diagnostic', title: 'Diagnostic dyal l’ard', summary: 'Kanbdaw men lard dyalek, machi men fiche produit.', detail: 'Qbel ma n9oulou chi 7aja, kanhalalou lard, zra3a, w klima dyal l’ard dyalek, bach nchoufou chno rah 7abes rendement bjjihd.' },
-        { id: 'formulation', title: 'Formule monasiba', summary: 'Produits mesnou3in l Lmeghrib w Afriqya, machi mjabin men blad okhra.', detail: 'Kola formule dyal Blue Protein mesnou3a bach tjaweb l7ajat dyal zra3a w lard m7alliya, machi produit dyal blad okhra li dartou fih chi ta3dil.' },
-        { id: 'test', title: 'Test w validation fl’ard', summary: 'Hta chi produit maykhrojch l sou9 bla dalil fl’ard.', detail: 'Kola produit kayt-jarreb fwa9i3 7a9i9i, f par9at m7alliya, qbel mayban fsou9 — machi ghi flaboratoire.' },
-        { id: 'suivi', title: 'Mouwakaba mostamirra', summary: 'Suivi agronomique mora lbi3, machi ghi livraison.', detail: 'Agronomes dyalna kaytab3ou nataij 3la tawil w kaybaddlou nasa2i7 3la 7sab dawrat zra3a w rj3 dyal l’ard.' },
       ],
     },
     stats: [
@@ -283,16 +229,6 @@ export const translations: Record<Lang, Translations> = {
         bullets: ['Tarifs kaynaqsou 3la 7sab lkmiya', 'Conditionnements w marque blanche mumkinin', 'Chi wa7ed commercial khass bik', 'Support logistique w export'],
         cta: 'Bghit nkoun partenaire distributeur',
       },
-    },
-    howToOrder: {
-      title: 'Kifach tcommandi',
-      subtitle: 'Rba3 étapes bin ma tsajjel w ma toslek commande dyalek.',
-      steps: [
-        { id: 'compte', title: 'Dir compte', desc: 'Inscription free f 2 minutes, fellah wla distributeur.' },
-        { id: 'catalogue', title: 'Chouf catalogue', desc: 'Filtri 3la 7sab gamme, catégorie wla hadaf agronomique.' },
-        { id: 'commander', title: 'Commandi online', desc: 'Paiement sécurisé, devis fl’wa9t l lkmiyat kbar.' },
-        { id: 'livraison', title: 'Livraison w suivi', desc: 'Tabe3 commande dyalek fl’wa9t 7a9i9i 7ta l’par9a.' },
-      ],
     },
     testimonials: { title: 'Kaykhedmou b Blue Protein' },
     ctaBanner: {

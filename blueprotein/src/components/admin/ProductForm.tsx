@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { ChevronDown, ImagePlus, Loader2, Save } from 'lucide-react';
 import { createProduct, updateProduct } from '@/lib/products';
-import { uploadProductImage } from '@/lib/storage';
+import { uploadImage } from '@/lib/storage';
 import type { Product, ProductFamily, ProductInput } from '@/types/product';
 
 const KNOWN_CATEGORIES = ['Biostimulants organiques', 'Amendements organiques', 'Correcteurs de carences'];
@@ -73,7 +73,7 @@ export default function ProductForm({
     if (!file) return;
     setUploading(true);
     setError(null);
-    const url = await uploadProductImage(file);
+    const url = await uploadImage(file);
     setUploading(false);
     if (!url) {
       setError("L'envoi de l'image a échoué. Vérifiez que le bucket \"images\" existe (voir supabase/create_images_bucket.sql).");
