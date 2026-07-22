@@ -39,17 +39,19 @@ const TESTIMONIALS = [
 
 type Audience = 'agriculteurs' | 'fournisseurs';
 
+const ALL_CATEGORIES = '__all__';
+
 export default function BlueProteinHome({ products, sections }: { products: Product[]; sections: SectionWithCards[] }) {
   const { lang, t } = useLanguage();
-  const [activeCategory, setActiveCategory] = useState('Tous');
+  const [activeCategory, setActiveCategory] = useState(ALL_CATEGORIES);
   const [activeAudience, setActiveAudience] = useState<Audience>('agriculteurs');
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category)));
-    return [t.products.all, ...unique];
-  }, [products, t.products.all]);
+    return [ALL_CATEGORIES, ...unique];
+  }, [products]);
 
-  const filteredProducts = activeCategory === t.products.all
+  const filteredProducts = activeCategory === ALL_CATEGORIES
     ? products
     : products.filter((p) => p.category === activeCategory);
 
@@ -136,7 +138,7 @@ export default function BlueProteinHome({ products, sections }: { products: Prod
                   : 'bg-white text-slate-600 border-slate-300 hover:border-orange-400 hover:text-orange-600'
               }`}
             >
-              {cat}
+              {cat === ALL_CATEGORIES ? t.products.all : cat}
             </button>
           ))}
         </div>
