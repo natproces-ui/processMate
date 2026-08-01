@@ -56,9 +56,8 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
   return (
     <>
       {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50/70 to-white">
-        <LeafPattern opacity={0.05} />
-        <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-24 md:pt-20 md:pb-28 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <section className="bg-gradient-to-b from-emerald-50/70 to-white">
+        <div className="max-w-7xl mx-auto px-6 pt-16 pb-24 md:pt-20 md:pb-28 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
             <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
               <span className="w-6 h-px bg-emerald-600" /> {t.hero.badge}
@@ -202,9 +201,8 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
 
       {/* ── Sections dynamiques (gérées depuis l'admin) ─────────── */}
       {sections.length > 0 && (
-        <section id="pourquoi" className="relative overflow-hidden bg-[#faf7f1] border-y border-slate-200">
-          <LeafPattern opacity={0.05} />
-          <div className="relative max-w-7xl mx-auto px-6 py-20 space-y-20">
+        <section id="pourquoi" className="bg-[#faf7f1] border-y border-slate-200">
+          <div className="max-w-7xl mx-auto px-6 py-20 space-y-20">
             {sections.map((s) => (
               <DynamicSection key={s.id} section={s} />
             ))}
@@ -213,9 +211,8 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
       )}
 
       {/* ── Stats ──────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-800 to-emerald-950">
-        <LeafPattern opacity={0.06} color="#ffffff" size={70} />
-        <div className="relative max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <section className="bg-gradient-to-br from-emerald-800 to-emerald-950">
+        <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {t.stats.map((s) => (
             <div key={s.id}>
               <div className="text-3xl md:text-4xl font-extrabold text-white mb-1">{s.value}</div>
