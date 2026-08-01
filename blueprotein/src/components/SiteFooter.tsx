@@ -2,14 +2,16 @@
 
 import Link from 'next/link';
 import { useLanguage, localizedField } from '@/lib/i18n';
+import LeafPattern from './LeafPattern';
 import type { Product } from '@/types/product';
 
 export default function SiteFooter({ products }: { products: Product[] }) {
   const { lang, t } = useLanguage();
 
   return (
-    <footer className="bg-emerald-950 text-slate-300">
-      <div className="max-w-7xl mx-auto px-6 py-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+    <footer className="relative overflow-hidden bg-emerald-950 text-slate-300">
+      <LeafPattern opacity={0.05} color="#ffffff" size={70} />
+      <div className="relative max-w-7xl mx-auto px-6 py-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
         <div>
           <Link href="/" className="flex items-center mb-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -46,7 +48,7 @@ export default function SiteFooter({ products }: { products: Product[] }) {
           </ul>
         </div>
       </div>
-      <div className="border-t border-emerald-900 py-6 text-center text-xs text-slate-500">
+      <div className="relative border-t border-emerald-900 py-6 text-center text-xs text-slate-500">
         © {new Date().getFullYear()} Blue Protein. {t.footer.rights}
       </div>
     </footer>

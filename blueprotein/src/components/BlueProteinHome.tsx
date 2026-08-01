@@ -4,16 +4,20 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight, Check,
-  Star, Phone, Mail, MapPin, Coins, Package,
-  Tractor, Building2, ChevronRight, Quote, Award, Clock,
+  Phone, Mail, MapPin, Coins, Package,
+  Tractor, Building2, ChevronRight, Award, Clock,
   Sprout, Globe, Wallet, CloudRain,
 } from 'lucide-react';
 import { HeroImage, ProductImage } from './media';
 import ContactForm from './ContactForm';
 import DynamicSection from './DynamicSection';
+import TestimonialCard from './TestimonialCard';
+import LeafPattern from './LeafPattern';
+import OrganicDivider from './OrganicDivider';
 import { useLanguage, localizedField } from '@/lib/i18n';
 import type { Product } from '@/types/product';
 import type { SectionWithCards } from '@/types/section';
+import type { Testimonial } from '@/types/testimonial';
 
 const VALUE_ICONS = [
   <Sprout key="sol" className="w-5 h-5 text-emerald-700" />,
@@ -28,20 +32,11 @@ const NEEDS_ICONS = [
   <Package key="produits" className="w-4 h-4" />,
 ];
 
-// Direct testimonial quotes stay in French only — translating an attributed
-// quote into a different dialect than the person actually spoke would be
-// putting words in their mouth.
-const TESTIMONIALS = [
-  { name: 'Youssef El Amrani', role: 'Maraîcher, Souss-Massa, Maroc', quote: "Avec les produits Blue Protein, la structure de nos terres s'est nettement améliorée. Et le coût de nutrition a baissé par rapport à nos anciens engrais." },
-  { name: 'Moussa Traoré', role: 'Exploitant, 40 ha — céréales, Burkina Faso', quote: "Depuis qu'on est passés à Blue Stimulant, la reprise de végétation est nettement plus rapide. Et je commande tout depuis mon téléphone." },
-  { name: 'Fatou Cissé', role: 'Coopérative agricole, 12 membres, Burkina Faso', quote: 'Le support agronomique nous a aidés à choisir les bons dosages. Les livraisons sont toujours dans les délais annoncés.' },
-];
-
 type Audience = 'agriculteurs' | 'fournisseurs';
 
 const ALL_CATEGORIES = '__all__';
 
-export default function BlueProteinHome({ products, sections }: { products: Product[]; sections: SectionWithCards[] }) {
+export default function BlueProteinHome({ products, sections, testimonials }: { products: Product[]; sections: SectionWithCards[]; testimonials: Testimonial[] }) {
   const { lang, t } = useLanguage();
   const [activeCategory, setActiveCategory] = useState(ALL_CATEGORIES);
   const [activeAudience, setActiveAudience] = useState<Audience>('agriculteurs');
@@ -61,8 +56,9 @@ export default function BlueProteinHome({ products, sections }: { products: Prod
   return (
     <>
       {/* ── Hero ───────────────────────────────────────────────── */}
-      <section className="bg-gradient-to-b from-emerald-50/70 to-white">
-        <div className="max-w-7xl mx-auto px-6 pt-16 pb-24 md:pt-20 md:pb-28 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50/70 to-white">
+        <LeafPattern opacity={0.05} />
+        <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-24 md:pt-20 md:pb-28 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
             <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
               <span className="w-6 h-px bg-emerald-600" /> {t.hero.badge}
@@ -206,8 +202,9 @@ export default function BlueProteinHome({ products, sections }: { products: Prod
 
       {/* ── Sections dynamiques (gérées depuis l'admin) ─────────── */}
       {sections.length > 0 && (
-        <section id="pourquoi" className="bg-slate-50 border-y border-slate-200">
-          <div className="max-w-7xl mx-auto px-6 py-20 space-y-20">
+        <section id="pourquoi" className="relative overflow-hidden bg-[#faf7f1] border-y border-slate-200">
+          <LeafPattern opacity={0.05} />
+          <div className="relative max-w-7xl mx-auto px-6 py-20 space-y-20">
             {sections.map((s) => (
               <DynamicSection key={s.id} section={s} />
             ))}
@@ -216,8 +213,9 @@ export default function BlueProteinHome({ products, sections }: { products: Prod
       )}
 
       {/* ── Stats ──────────────────────────────────────────────── */}
-      <section className="bg-gradient-to-br from-emerald-800 to-emerald-950">
-        <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-800 to-emerald-950">
+        <LeafPattern opacity={0.06} color="#ffffff" size={70} />
+        <div className="relative max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {t.stats.map((s) => (
             <div key={s.id}>
               <div className="text-3xl md:text-4xl font-extrabold text-white mb-1">{s.value}</div>
@@ -225,6 +223,7 @@ export default function BlueProteinHome({ products, sections }: { products: Prod
             </div>
           ))}
         </div>
+        <OrganicDivider fill="#ffffff" />
       </section>
 
       {/* ── Onglets de conversion (agriculteurs / fournisseurs) ─── */}
@@ -269,30 +268,23 @@ export default function BlueProteinHome({ products, sections }: { products: Prod
       </section>
 
       {/* ── Témoignages ────────────────────────────────────────── */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.testimonials.title}</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {TESTIMONIALS.map((te) => (
-            <div key={te.name} className="bg-white rounded-xl border border-slate-200 p-6">
-              <Quote className="w-6 h-6 text-emerald-200 mb-3" />
-              <div className="flex gap-0.5 mb-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-              <p className="text-sm text-slate-700 mb-4">&ldquo;{te.quote}&rdquo;</p>
-              <div className="text-sm font-semibold">{te.name}</div>
-              <div className="text-xs text-slate-500">{te.role}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {testimonials.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 py-20">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.testimonials.title}</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((te) => (
+              <TestimonialCard key={te.id} testimonial={te} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── CTA banner ─────────────────────────────────────────── */}
-      <section className="bg-gradient-to-br from-emerald-800 to-emerald-950">
-        <div className="max-w-5xl mx-auto px-6 py-16 text-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-800 to-emerald-950">
+        <LeafPattern opacity={0.06} color="#ffffff" size={70} />
+        <div className="relative max-w-5xl mx-auto px-6 py-16 text-center">
           <Award className="w-8 h-8 text-orange-300 mx-auto mb-4" />
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">{t.ctaBanner.title}</h2>
           <p className="text-emerald-200 mb-8 max-w-xl mx-auto">{t.ctaBanner.subtitle}</p>
@@ -305,6 +297,7 @@ export default function BlueProteinHome({ products, sections }: { products: Prod
             </Link>
           </div>
         </div>
+        <OrganicDivider fill="#ffffff" />
       </section>
 
       {/* ── Contact ────────────────────────────────────────────── */}

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  LogOut, Plus, Pencil, Trash2, Mail, Package, CheckCircle2, Circle, ExternalLink, LayoutGrid,
+  LogOut, Plus, Pencil, Trash2, Mail, Package, CheckCircle2, Circle, ExternalLink, LayoutGrid, MessageSquareQuote,
 } from 'lucide-react';
 import { getCurrentAdminEmail, signOut } from '@/lib/auth';
 import {
@@ -12,14 +12,23 @@ import {
   getContactMessagesAdmin, markMessageHandled, deleteContactMessage,
 } from '@/lib/products';
 import { getAllSectionsAdmin, deleteSection } from '@/lib/sections';
+import { getAllTestimonialsAdmin, deleteTestimonial } from '@/lib/testimonials';
 import ProductForm from '@/components/admin/ProductForm';
 import SectionForm from '@/components/admin/SectionForm';
+import TestimonialForm from '@/components/admin/TestimonialForm';
 import Modal from '@/components/Modal';
 import ConfirmDialog from '@/components/admin/ConfirmDialog';
 import type { ContactMessage, Product } from '@/types/product';
 import type { SectionWithCards } from '@/types/section';
+import type { Testimonial } from '@/types/testimonial';
 
-type Tab = 'produits' | 'sections' | 'messages';
+type Tab = 'produits' | 'sections' | 'temoignages' | 'messages';
+
+const TESTIMONIAL_TYPE_LABELS: Record<Testimonial['type'], string> = {
+  text: 'Texte',
+  photo: 'Photo',
+  video: 'Vidéo',
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -29,12 +38,15 @@ export default function AdminPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [sections, setSections] = useState<SectionWithCards[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [messages, setMessages] = useState<ContactMessage[]>([]);
 
   const [productModal, setProductModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [sectionModal, setSectionModal] = useState<{ open: boolean; section?: SectionWithCards }>({ open: false });
+  const [testimonialModal, setTestimonialModal] = useState<{ open: boolean; testimonial?: Testimonial }>({ open: false });
   const [deleteProductTarget, setDeleteProductTarget] = useState<Product | null>(null);
   const [deleteSectionTarget, setDeleteSectionTarget] = useState<SectionWithCards | null>(null);
+  const [deleteTestimonialTarget, setDeleteTestimonialTarget] = useState<Testimonial | null>(null);
   const [deleteMessageTarget, setDeleteMessageTarget] = useState<ContactMessage | null>(null);
 
   const loadProducts = useCallback(async () => {
@@ -43,6 +55,10 @@ export default function AdminPage() {
 
   const loadSections = useCallback(async () => {
     setSections(await getAllSectionsAdmin());
+  }, []);
+
+  const loadTestimonials = useCallback(async () => {
+    setTestimonials(await getAllTestimonialsAdmin());
   }, []);
 
   const loadMessages = useCallback(async () => {
@@ -58,9 +74,9 @@ export default function AdminPage() {
       }
       setAdminEmail(email);
       setChecking(false);
-      await Promise.all([loadProducts(), loadSections(), loadMessages()]);
+      await Promise.all([loadProducts(), loadSections(), loadTestimonials(), loadMessages()]);
     })();
-  }, [router, loadProducts, loadSections, loadMessages]);
+  }, [router, loadProducts, loadSections, loadTestimonials, loadMessages]);
 
   async function handleLogout() {
     await signOut();
@@ -87,6 +103,17 @@ export default function AdminPage() {
       return;
     }
     await loadSections();
+  }
+
+  async function confirmDeleteTestimonial() {
+    if (!deleteTestimonialTarget) return;
+    const { error } = await deleteTestimonial(deleteTestimonialTarget.id);
+    setDeleteTestimonialTarget(null);
+    if (error) {
+      alert(`Erreur : ${error.message}`);
+      return;
+    }
+    await loadTestimonials();
   }
 
   async function confirmDeleteMessage() {
@@ -135,6 +162,15 @@ export default function AdminPage() {
           >
             <LayoutGrid className="w-4 h-4" /> Sections
             <span className="ml-auto text-xs text-slate-400">{sections.length}</span>
+          </button>
+          <button
+            onClick={() => setTab('temoignages')}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              tab === 'temoignages' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <MessageSquareQuote className="w-4 h-4" /> Témoignages
+            <span className="ml-auto text-xs text-slate-400">{testimonials.length}</span>
           </button>
           <button
             onClick={() => setTab('messages')}
@@ -281,6 +317,62 @@ export default function AdminPage() {
           </div>
         )}
 
+        {tab === 'temoignages' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-semibold">Témoignages</h2>
+              <button
+                onClick={() => setTestimonialModal({ open: true })}
+                className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold px-4 py-2 rounded-lg"
+              >
+                <Plus className="w-4 h-4" /> Nouveau témoignage
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs font-semibold text-slate-500 border-b border-slate-200">
+                    <th className="py-2 pr-4">Nom</th>
+                    <th className="py-2 pr-4">Type</th>
+                    <th className="py-2 pr-4">Rôle</th>
+                    <th className="py-2 pr-4">Statut</th>
+                    <th className="py-2 pr-4" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {testimonials.map((te) => (
+                    <tr key={te.id} className="border-b border-slate-100">
+                      <td className="py-3 pr-4 font-medium text-slate-900">{te.name}</td>
+                      <td className="py-3 pr-4 text-slate-600">{TESTIMONIAL_TYPE_LABELS[te.type]}</td>
+                      <td className="py-3 pr-4 text-slate-600">{te.role}</td>
+                      <td className="py-3 pr-4">
+                        {te.published ? (
+                          <span className="text-emerald-700 text-xs font-semibold">Publié</span>
+                        ) : (
+                          <span className="text-slate-400 text-xs font-semibold">Brouillon</span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => setTestimonialModal({ open: true, testimonial: te })} className="text-slate-500 hover:text-emerald-700" title="Modifier">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setDeleteTestimonialTarget(te)} className="text-slate-500 hover:text-red-600" title="Supprimer">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {testimonials.length === 0 && (
+                    <tr><td colSpan={5} className="py-6 text-center text-slate-400">Aucun témoignage pour l&apos;instant.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {tab === 'messages' && (
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h2 className="font-semibold mb-5">Demandes de contact</h2>
@@ -336,6 +428,19 @@ export default function AdminPage() {
         />
       </Modal>
 
+      <Modal
+        open={testimonialModal.open}
+        onClose={() => setTestimonialModal({ open: false })}
+        title={testimonialModal.testimonial ? 'Modifier le témoignage' : 'Nouveau témoignage'}
+        wide
+      >
+        <TestimonialForm
+          testimonial={testimonialModal.testimonial}
+          onCancel={() => setTestimonialModal({ open: false })}
+          onSaved={async () => { setTestimonialModal({ open: false }); await loadTestimonials(); }}
+        />
+      </Modal>
+
       <ConfirmDialog
         open={deleteProductTarget !== null}
         title="Supprimer ce produit ?"
@@ -354,6 +459,16 @@ export default function AdminPage() {
         danger
         onConfirm={confirmDeleteSection}
         onCancel={() => setDeleteSectionTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={deleteTestimonialTarget !== null}
+        title="Supprimer ce témoignage ?"
+        message={deleteTestimonialTarget ? `Le témoignage de "${deleteTestimonialTarget.name}" sera définitivement supprimé.` : ''}
+        confirmLabel="Supprimer"
+        danger
+        onConfirm={confirmDeleteTestimonial}
+        onCancel={() => setDeleteTestimonialTarget(null)}
       />
 
       <ConfirmDialog
