@@ -76,7 +76,7 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
     <>
       {/* ── Hero ───────────────────────────────────────────────── */}
       <section className="bg-gradient-to-b from-emerald-50/70 to-white">
-        <div className="max-w-7xl mx-auto px-6 pt-16 pb-24 md:pt-20 md:pb-28 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="max-w-7xl mx-auto px-6 pt-16 pb-16 md:pt-20 md:pb-20 grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
           <div>
             <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
               <span className="w-6 h-px bg-emerald-600" /> {t.hero.badge}
@@ -122,8 +122,6 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
                       </button>
                     );
                   })}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/plante1.png" alt="" className="w-9 h-9 rounded-full object-cover border border-white shadow-sm ml-1" />
                 </div>
               </div>
             )}
