@@ -143,8 +143,50 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                     return (
                         is(element, 'bpmn:ServiceTask') &&
                         typeof element.id === 'string' &&
-                        element.id.startsWith('Tool_')
+                        // Tool_ = satellite annoté sous une tâche métier (comportement
+                        // existant, ToolConnectionBehavior plus bas le convertit en
+                        // association dès qu'une connexion le touche). ToolNode_ = nœud
+                        // principal de la Vue outillage (generateBPMNOutillage.ts) — un
+                        // préfixe DÉLIBÉRÉMENT différent : s'il partageait "Tool_", chaque
+                        // sequenceFlow réel touchant ce nœud se ferait supprimer et
+                        // remplacer par une association auto-routée (ligne diagonale) par
+                        // ToolConnectionBehavior, qui ne sait pas faire la distinction.
+                        (element.id.startsWith('Tool_') || element.id.startsWith('ToolNode_'))
                     );
+                }
+
+                // Un Tool_ "satellite" (annoté sous une tâche métier, ~140×28) contre un
+                // Tool_ "nœud principal" (Vue outillage : generateBPMNOutillage.ts, taille
+                // d'une tâche) — même id/type, styles volontairement différents : le
+                // satellite reste discret sous la tâche, le nœud principal doit se voir de
+                // loin comme "ce n'est pas une tâche".
+                function isLargeToolNode(element: any): boolean {
+                    return (element.height || 0) > 40;
+                }
+
+                // Couleur par identité d'outil — mêmes noms connus que
+                // ApplicatifsPanel.tsx/GrapheApplicatifs.tsx (à garder cohérent visuellement
+                // avec la Cartographie applicative), plus un repli par hash de nom pour tout
+                // outil non répertorié, pour ne pas retomber sur une couleur unique partout.
+                const KNOWN_TOOL_COLORS: [string, string][] = [
+                    ['nov@', '#059669'], ['nova', '#059669'],
+                    ['swift', '#1e40af'],
+                    ['ti+', '#7c3aed'], ['tiplus', '#7c3aed'],
+                    ['evolan', '#0891b2'],
+                    ['email', '#d97706'], ['mail', '#d97706'], ['outlook', '#d97706'],
+                    ['sap', '#ca8a04'],
+                    ['docflow', '#db2777'],
+                    ['crm', '#4f46e5'],
+                ];
+                const FALLBACK_PALETTE = ['#0d9488', '#65a30d', '#9333ea', '#e11d48', '#0369a1', '#a16207'];
+                function colorForTool(name: string): string {
+                    const lower = (name || '').toLowerCase();
+                    for (const [key, color] of KNOWN_TOOL_COLORS) {
+                        if (lower.includes(key)) return color;
+                    }
+                    let hash = 0;
+                    for (let i = 0; i < lower.length; i++) hash = (hash * 31 + lower.charCodeAt(i)) >>> 0;
+                    return FALLBACK_PALETTE[hash % FALLBACK_PALETTE.length];
                 }
 
                 // Détecte si une lane est externe via la convention Lane_ext_
@@ -183,7 +225,47 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                     }
 
                     drawShape(parentNode: SVGElement, element: any) {
-                        // ── Outil : barre verticale verte + roue en haut + texte noir ──
+                        // ── Outil, nœud principal (Vue outillage) : capsule colorée sans
+                        // bordure — pas un rectangle de tâche. Couleur par identité d'outil,
+                        // roue blanche, texte blanc centré.
+                        if (isToolElement(element) && isLargeToolNode(element)) {
+                            while (parentNode.firstChild) parentNode.removeChild(parentNode.firstChild);
+                            const w = element.width || 220;
+                            const h = element.height || 60;
+                            const label = element.businessObject?.name || '';
+                            const color = colorForTool(label);
+
+                            const capsule = svgCreate('rect') as SVGRectElement;
+                            svgAttr(capsule, {
+                                x: 0, y: 0, width: w, height: h,
+                                rx: h / 2, ry: h / 2, // capsule, pas un rectangle à angles droits
+                                fill: color,
+                                stroke: 'none',
+                            });
+                            parentNode.appendChild(capsule);
+
+                            const gearGroup = svgCreate('g') as SVGGElement;
+                            svgAttr(gearGroup, { transform: `translate(${h / 2 - 8}, ${h / 2 - 8}) scale(1.3)`, 'pointer-events': 'none' });
+                            const gearIcon = svgCreate('path') as SVGPathElement;
+                            svgAttr(gearIcon, { d: GEAR_PATH, fill: '#ffffff', 'fill-opacity': '0.85' });
+                            gearGroup.appendChild(gearIcon);
+                            parentNode.appendChild(gearGroup);
+
+                            const text = svgCreate('text') as SVGTextElement;
+                            svgAttr(text, {
+                                x: w / 2 + 8, y: h / 2 + 1,
+                                fill: '#ffffff', 'font-size': '13', 'font-weight': '700',
+                                'font-family': 'system-ui, sans-serif',
+                                'text-anchor': 'middle', 'dominant-baseline': 'central',
+                                'pointer-events': 'none',
+                            });
+                            text.textContent = label;
+                            parentNode.appendChild(text);
+
+                            return parentNode as any;
+                        }
+                        // ── Outil, satellite (annoté sous une tâche métier) : barre verte +
+                        // roue + texte noir ──
                         if (isToolElement(element)) {
                             while (parentNode.firstChild) {
                                 parentNode.removeChild(parentNode.firstChild);
@@ -732,29 +814,48 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                         e.dataTransfer.dropEffect = 'copy';
                     }
                 }}
-                onDrop={(e) => {
+                onDrop={async (e) => {
                     if (!e.dataTransfer.types.includes('processmate/tool')) return;
                     e.preventDefault();
 
                     const modeler = modelerRef.current;
                     if (!modeler) return;
 
+                    // Convertir coordonnées écran → coordonnées canvas — capturé avant
+                    // le prompt (synchrone) pour rester valide après l'attente async.
+                    const canvas = modeler.get('canvas');
+                    const rect = containerRef.current!.getBoundingClientRect();
+                    const viewbox = canvas.viewbox();
+                    const canvasX = (e.clientX - rect.left) / viewbox.scale + viewbox.x;
+                    const canvasY = (e.clientY - rect.top) / viewbox.scale + viewbox.y;
+
+                    // Résolution contre le référentiel (voir referentiel-outils.md) —
+                    // pas de shape "Outil" générique à renommer à la main : on demande
+                    // le nom tout de suite et on le fait passer par
+                    // toolsApi.createOrGet, qui dédoublonne (recherche insensible à la
+                    // casse côté backend) plutôt que de laisser passer du texte libre.
+                    const typed = window.prompt('Nom de l\'outil :', '');
+                    if (!typed || !typed.trim()) return; // annulé — ne rien créer
+
+                    let toolName = typed.trim();
                     try {
-                        const canvas = modeler.get('canvas');
+                        const { toolsApi } = await import('@/lib/toolsApi');
+                        const res = await toolsApi.createOrGet(toolName);
+                        toolName = res.tool.name;
+                    } catch {
+                        // Référentiel indisponible — on garde la saisie plutôt que de
+                        // bloquer l'utilisateur (même repli que ToolPicker.tsx).
+                    }
+
+                    try {
                         const modeling = modeler.get('modeling');
                         const elementFactory = modeler.get('elementFactory');
                         const moddle = modeler.get('moddle');
 
-                        // Convertir coordonnées écran → coordonnées canvas
-                        const rect = containerRef.current!.getBoundingClientRect();
-                        const viewbox = canvas.viewbox();
-                        const canvasX = (e.clientX - rect.left) / viewbox.scale + viewbox.x;
-                        const canvasY = (e.clientY - rect.top) / viewbox.scale + viewbox.y;
-
                         const toolId = `Tool_${Date.now()}`;
                         const bo = moddle.create('bpmn:ServiceTask', {
                             id: toolId,
-                            name: 'Outil',
+                            name: toolName,
                         });
 
                         const shape = elementFactory.createShape({
@@ -765,8 +866,6 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                             height: 28,
                         });
 
-                        // Trouver le parent (lane ou process)
-                        const elementRegistry = modeler.get('elementRegistry');
                         const rootElement = canvas.getRootElement();
 
                         modeling.createShape(shape, {

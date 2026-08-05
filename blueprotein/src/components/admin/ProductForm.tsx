@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { ChevronDown, ImagePlus, Loader2, Save } from 'lucide-react';
+import { ChevronDown, FileText, ImagePlus, Loader2, Save } from 'lucide-react';
 import { createProduct, updateProduct } from '@/lib/products';
 import { uploadImage } from '@/lib/storage';
 import type { Product, ProductFamily, ProductInput } from '@/types/product';
 
 const KNOWN_CATEGORIES = ['Biostimulants organiques', 'Amendements organiques', 'Correcteurs de carences'];
+
+function familyDefaultImage(family: ProductFamily): string {
+  return family === 'liquide' ? '/produit_bouteille.png' : '/produit_sachet.png';
+}
 
 function slugify(text: string): string {
   return text
@@ -38,7 +42,8 @@ function toFormState(product?: Product) {
     variantsText: product?.variants && product.variants.length > 0 ? JSON.stringify(product.variants, null, 2) : '',
     organic_certified: product?.organic_certified ?? false,
     badge: product?.badge ?? '',
-    image_url: product?.image_url ?? '/product-placeholder.jpg',
+    image_url: product?.image_url ?? '',
+    spec_sheet_url: product?.spec_sheet_url ?? null as string | null,
     sort_order: product?.sort_order ?? 0,
     published: product?.published ?? true,
   };
@@ -57,6 +62,7 @@ export default function ProductForm({
   const [slugTouched, setSlugTouched] = useState(Boolean(product));
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingSpecSheet, setUploadingSpecSheet] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -80,6 +86,20 @@ export default function ProductForm({
       return;
     }
     set('image_url', url);
+  }
+
+  async function handleSpecSheetChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSpecSheet(true);
+    setError(null);
+    const url = await uploadImage(file);
+    setUploadingSpecSheet(false);
+    if (!url) {
+      setError("L'envoi du PDF a échoué. Vérifiez que le bucket \"images\" existe (voir supabase/create_images_bucket.sql).");
+      return;
+    }
+    set('spec_sheet_url', url);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -117,7 +137,8 @@ export default function ProductForm({
       variants,
       organic_certified: form.organic_certified,
       badge: form.badge.trim() || null,
-      image_url: form.image_url.trim() || '/product-placeholder.jpg',
+      image_url: form.image_url.trim() || familyDefaultImage(form.family),
+      spec_sheet_url: form.spec_sheet_url,
       sort_order: Number(form.sort_order) || 0,
       published: form.published,
     };
@@ -184,14 +205,14 @@ export default function ProductForm({
         <label className={labelClass}>Image</label>
         <div className="flex items-center gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={form.image_url} alt="" className="w-16 h-16 rounded-lg object-cover border border-slate-200 shrink-0" />
+          <img src={form.image_url || familyDefaultImage(form.family)} alt="" className="w-16 h-16 rounded-lg object-cover border border-slate-200 shrink-0" />
           <label className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-2 cursor-pointer transition-colors">
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
             {uploading ? 'Envoi...' : 'Charger une image'}
             <input type="file" accept="image/*" onChange={handleImageChange} disabled={uploading} className="hidden" />
           </label>
         </div>
-        <p className="text-xs text-slate-400 mt-1.5">Optionnel — la photo par défaut reste utilisée tant qu&apos;aucune image n&apos;est chargée.</p>
+        <p className="text-xs text-slate-400 mt-1.5">Optionnel — tant qu&apos;aucune image n&apos;est chargée, la photo par défaut correspondant à la gamme (bouteille pour liquide, sachet pour solide) est utilisée.</p>
       </div>
 
       <div className="flex items-center gap-2">
@@ -282,6 +303,22 @@ export default function ProductForm({
               />
             </div>
 
+            <div>
+              <label className={labelClass}>Fiche technique (PDF, optionnel)</label>
+              <div className="flex items-center gap-3">
+                {form.spec_sheet_url && (
+                  <a href={form.spec_sheet_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:underline">
+                    <FileText className="w-3.5 h-3.5" /> Voir le PDF actuel
+                  </a>
+                )}
+                <label className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 rounded-lg px-3 py-1.5 cursor-pointer transition-colors">
+                  {uploadingSpecSheet ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                  {form.spec_sheet_url ? 'Remplacer' : 'Charger un PDF'}
+                  <input type="file" accept="application/pdf" onChange={handleSpecSheetChange} disabled={uploadingSpecSheet} className="hidden" />
+                </label>
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-4 items-end">
               <div>
                 <label className={labelClass}>Badge (ex. Best-seller, Nouveau)</label>
@@ -303,7 +340,7 @@ export default function ProductForm({
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex gap-3 border-t border-slate-200 pt-5">
-        <button type="submit" disabled={saving || uploading} className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors">
+        <button type="submit" disabled={saving || uploading || uploadingSpecSheet} className="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg transition-colors">
           <Save className="w-4 h-4" /> {saving ? 'Enregistrement...' : 'Enregistrer'}
         </button>
         <button type="button" onClick={onCancel} className="text-sm font-medium text-slate-500 hover:text-slate-700 px-3">

@@ -39,7 +39,7 @@ interface Translations {
   productDetail: {
     back: string; requestQuote: string; seeOthers: string; advantages: string; dosage: string;
     conditioning: string; precautions: string; composition: string; certified: string; reference: string;
-    familyLiquide: string; familySolide: string;
+    familyLiquide: string; familySolide: string; presentation: string; downloadSpecSheet: string;
   };
 }
 
@@ -161,6 +161,8 @@ export const translations: Record<Lang, Translations> = {
       reference: 'Référence',
       familyLiquide: 'Fertilisant liquide',
       familySolide: 'Fertilisant solide',
+      presentation: 'Présentation',
+      downloadSpecSheet: 'Télécharger la fiche technique',
     },
   },
   dar: {
@@ -280,6 +282,8 @@ export const translations: Record<Lang, Translations> = {
       reference: 'Référence',
       familyLiquide: 'Smad siyal',
       familySolide: 'Smad yabes',
+      presentation: 'Taqdim',
+      downloadSpecSheet: 'Sifet fiche technique',
     },
   },
 };

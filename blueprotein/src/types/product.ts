@@ -27,6 +27,7 @@ export interface Product {
   organic_certified: boolean;
   badge: string | null;
   image_url: string;
+  spec_sheet_url: string | null;
   sort_order: number;
   published: boolean;
   created_at: string;

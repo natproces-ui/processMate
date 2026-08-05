@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileText, Clock, Calendar, Target } from 'lucide-react';
-import { TaskEnrichment, FREQUENCE_OPTIONS } from '@/logic/bpmnTypes';
+import { X, FileText, Clock } from 'lucide-react';
+import { TaskEnrichment } from '@/logic/bpmnTypes';
 
 interface EnrichmentModalProps {
     isOpen: boolean;
@@ -114,39 +114,6 @@ export default function EnrichmentModal({
                         />
                     </div>
 
-                    {/* Fréquence */}
-                    <div>
-                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                            <Calendar className="w-4 h-4 text-purple-600" />
-                            Fréquence
-                        </label>
-                        <select
-                            value={formData.frequence}
-                            onChange={(e) => handleChange('frequence', e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                            {FREQUENCE_OPTIONS.map(option => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* KPI */}
-                    <div>
-                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                            <Target className="w-4 h-4 text-orange-600" />
-                            KPI / Indicateur de performance
-                        </label>
-                        <input
-                            type="text"
-                            value={formData.kpi}
-                            onChange={(e) => handleChange('kpi', e.target.value)}
-                            placeholder="Ex: Taux d'erreur < 2%, Délai < 24h"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                    </div>
                 </div>
 
                 {/* Footer */}

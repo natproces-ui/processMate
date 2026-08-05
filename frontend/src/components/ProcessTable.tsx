@@ -4,6 +4,9 @@ import { FileText, Trash2, Plus, Edit, Eye, EyeOff, GripVertical } from 'lucide-
 import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
 import EnrichmentModal from '@/components/DetailModal';
+import ToolPicker from '@/components/orchestration/ToolPicker';
+import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
+import { Settings2 } from 'lucide-react';
 
 interface TableProps {
     data: Table1Row[];
@@ -79,6 +82,7 @@ export default function Table({
     const [showTable2, setShowTable2] = useState(false);
     const [enrichmentModalOpen, setEnrichmentModalOpen] = useState(false);
     const [selectedTaskForEnrichment, setSelectedTaskForEnrichment] = useState<{ id: string; name: string } | null>(null);
+    const [managingTool, setManagingTool] = useState<string | null>(null);
 
     // ── Drag state ────────────────────────────────────────────
     const dragIndexRef = useRef<number | null>(null);
@@ -392,14 +396,25 @@ export default function Table({
                                                 />
                                             </td>
 
-                                            {/* OUTIL */}
+                                            {/* OUTIL — picker chercher-ou-créer sur le référentiel,
+                                                voir referentiel-outils.md. outil reste un string ici :
+                                                le picker garantit juste qu'il vient du référentiel. */}
                                             <td className="border border-gray-300 p-1">
-                                                <input
-                                                    type="text"
-                                                    value={row.outil}
-                                                    onChange={e => handleChange(i, 'outil', e.target.value)}
-                                                    className="w-full px-2 py-1 border border-gray-300 rounded"
-                                                />
+                                                <div className="flex items-center gap-1">
+                                                    <div className="flex-1 min-w-0">
+                                                        <ToolPicker
+                                                            value={row.outil}
+                                                            onChange={name => handleChange(i, 'outil', name)}
+                                                        />
+                                                    </div>
+                                                    {row.outil && (
+                                                        <button type="button" onClick={() => setManagingTool(row.outil)}
+                                                            title="Gérer les écrans/champs/codes de cet outil"
+                                                            className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg shrink-0">
+                                                            <Settings2 className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
 
                                             {/* ACTIONS */}
@@ -478,8 +493,6 @@ export default function Table({
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Nom Tâche</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Descriptif</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Durée estimée</th>
-                                    <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Fréquence</th>
-                                    <th className="border border-gray-600 px-3 py-2 text-left font-semibold">KPI</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Actions</th>
                                 </tr>
                             </thead>
@@ -508,12 +521,6 @@ export default function Table({
                                             <td className="border border-gray-300 px-3 py-2">
                                                 {enrichment?.duree_estimee || <span className="text-gray-400">-</span>}
                                             </td>
-                                            <td className="border border-gray-300 px-3 py-2">
-                                                {enrichment?.frequence || <span className="text-gray-400">-</span>}
-                                            </td>
-                                            <td className="border border-gray-300 px-3 py-2">
-                                                {enrichment?.kpi || <span className="text-gray-400">-</span>}
-                                            </td>
                                             <td className="border border-gray-300 p-1 text-center">
                                                 <button
                                                     onClick={() => openEnrichmentModal(row.id, row.étape)}
@@ -541,6 +548,10 @@ export default function Table({
                 onSave={handleSaveEnrichment}
                 onClose={closeEnrichmentModal}
             />
+
+            {managingTool && (
+                <ToolDetailPanel toolName={managingTool} onClose={() => setManagingTool(null)} />
+            )}
         </>
     );
 }

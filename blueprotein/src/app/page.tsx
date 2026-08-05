@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import SiteHeader from '@/components/SiteHeader';
 import SiteFooter from '@/components/SiteFooter';
 import BlueProteinHome from '@/components/BlueProteinHome';
@@ -16,8 +17,10 @@ export default async function Page() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <SiteHeader />
-      <BlueProteinHome products={products} sections={sections} testimonials={testimonials} />
+      <SiteHeader products={products} />
+      <Suspense fallback={null}>
+        <BlueProteinHome products={products} sections={sections} testimonials={testimonials} />
+      </Suspense>
       <SiteFooter products={products} />
     </div>
   );

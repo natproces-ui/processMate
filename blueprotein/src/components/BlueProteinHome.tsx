@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowRight, Check,
@@ -12,9 +13,11 @@ import { HeroImage, ProductImage } from './media';
 import ContactForm from './ContactForm';
 import DynamicSection from './DynamicSection';
 import TestimonialCard from './TestimonialCard';
+import CropGallery from './CropGallery';
 import LeafPattern from './LeafPattern';
 import OrganicDivider from './OrganicDivider';
 import { useLanguage, localizedField } from '@/lib/i18n';
+import { categoryIcon } from '@/lib/categoryIcons';
 import type { Product } from '@/types/product';
 import type { SectionWithCards } from '@/types/section';
 import type { Testimonial } from '@/types/testimonial';
@@ -38,13 +41,24 @@ const ALL_CATEGORIES = '__all__';
 
 export default function BlueProteinHome({ products, sections, testimonials }: { products: Product[]; sections: SectionWithCards[]; testimonials: Testimonial[] }) {
   const { lang, t } = useLanguage();
+  const searchParams = useSearchParams();
   const [activeCategory, setActiveCategory] = useState(ALL_CATEGORIES);
   const [activeAudience, setActiveAudience] = useState<Audience>('agriculteurs');
+
+  // Lets the header mega-menu and hero audience picker drive the filter via ?categorie=
+  // (cross-component navigation), while in-page clicks (pills, hero icons) just call
+  // setActiveCategory directly without touching the URL.
+  useEffect(() => {
+    const fromUrl = searchParams.get('categorie');
+    setActiveCategory(fromUrl && fromUrl.length > 0 ? fromUrl : ALL_CATEGORIES);
+  }, [searchParams]);
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(products.map((p) => p.category)));
     return [ALL_CATEGORIES, ...unique];
   }, [products]);
+
+  const realCategories = useMemo(() => categories.filter((c) => c !== ALL_CATEGORIES), [categories]);
 
   const filteredProducts = activeCategory === ALL_CATEGORIES
     ? products
@@ -52,6 +66,11 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
 
   const audience = t.audience[activeAudience];
   const familyLabels = { liquide: t.products.familyLiquide, solide: t.products.familySolide };
+
+  function selectCategoryAndScroll(cat: string) {
+    setActiveCategory(cat);
+    document.getElementById('produits')?.scrollIntoView({ behavior: 'smooth' });
+  }
 
   return (
     <>
@@ -83,6 +102,31 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
                 </span>
               ))}
             </div>
+
+            {realCategories.length > 0 && (
+              <div className="mt-8 p-4 rounded-xl bg-[#f4f5e9] border border-[#e2e4c8]">
+                <p className="text-xs font-semibold text-[#5c6a2f] uppercase tracking-wide mb-3">Votre besoin</p>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {realCategories.map((cat) => {
+                    const Icon = categoryIcon(cat);
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => selectCategoryAndScroll(cat)}
+                        className="inline-flex items-center gap-2 bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded-full pl-2 pr-3.5 py-1.5 text-xs font-medium text-slate-700 hover:text-emerald-700 transition-colors"
+                      >
+                        <span className="w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0">
+                          <Icon className="w-3.5 h-3.5" />
+                        </span>
+                        {cat}
+                      </button>
+                    );
+                  })}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/plante1.png" alt="" className="w-9 h-9 rounded-full object-cover border border-white shadow-sm ml-1" />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="relative mb-6">
@@ -149,13 +193,13 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
                 className="group rounded-xl overflow-hidden border border-slate-200 hover:shadow-lg transition-shadow bg-white"
               >
                 <div className="relative h-48">
-                  <ProductImage src={p.image_url} className="absolute inset-0" />
+                  <ProductImage src={p.image_url} family={p.family} className="absolute inset-0" />
                   {p.badge && (
                     <span className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
                       {p.badge}
                     </span>
                   )}
-                  <span className="absolute top-3 right-3 bg-white/90 text-slate-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                  <span className="absolute top-3 right-3 bg-[#eef0df] text-[#5c6a2f] text-xs font-semibold px-2.5 py-1 rounded-full">
                     {familyLabels[p.family]}
                   </span>
                   <div className="absolute bottom-3 left-4 right-4">
@@ -195,7 +239,7 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
             </ul>
           </div>
 
-          <ProductImage className="relative h-80 rounded-2xl" />
+          <ProductImage src="/sol.png" className="relative h-80 rounded-2xl" />
         </div>
       </section>
 
@@ -211,8 +255,10 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
       )}
 
       {/* ── Stats ──────────────────────────────────────────────── */}
-      <section className="bg-gradient-to-br from-emerald-800 to-emerald-950">
-        <div className="max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-800 to-emerald-950">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/sol.png" alt="" className="absolute inset-0 w-full h-full object-cover opacity-10" />
+        <div className="relative max-w-7xl mx-auto px-6 py-14 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {t.stats.map((s) => (
             <div key={s.id}>
               <div className="text-3xl md:text-4xl font-extrabold text-white mb-1">{s.value}</div>
@@ -277,6 +323,9 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
           </div>
         </section>
       )}
+
+      {/* ── Cultures adaptées (galerie filtrable) ─────────────────── */}
+      <CropGallery />
 
       {/* ── CTA banner ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-gradient-to-br from-emerald-800 to-emerald-950">

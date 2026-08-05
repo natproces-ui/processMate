@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/*
+ * Palette de marque (voir design-rework-prompts.md, prompt 5)
+ * - Vert primaire (emerald-700/800/950 Tailwind) : #047857 / #065f46 / #022c22 — boutons, liens, fonds sombres
+ * - Orange accent (orange-500/600 Tailwind) : #f97316 / #ea580c — badges, pastilles actives, "pop"
+ * - Kaki/olive secondaire (hors palette Tailwind, valeurs custom) : #5c6a2f (texte), #eef0df / #f4f5e9 (fonds
+ *   clairs), #e2e4c8 (bordure) — accent ponctuel (badge gamme, encart "Votre besoin"), pour casser la
+ *   monotonie du vert seul, inspiré des sites du secteur (Fertitrade notamment).
+ * - Crème/sol (#faf7f1) : fond de la zone des sections dynamiques (Pourquoi/Méthodologie/Comment commander).
+ * - Noir/gris très foncé (slate-900/950) : titres — volontairement pas de titre en vert, pour un rendu
+ *   plus sérieux/professionnel (Aptus, Culterra).
+ */
+
 .rich-content p {
   margin-bottom: 0.75em;
 }

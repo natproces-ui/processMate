@@ -32,7 +32,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <SiteHeader />
+      <SiteHeader products={products} />
       <ProductDetailView product={product} />
       <SiteFooter products={products} />
     </div>

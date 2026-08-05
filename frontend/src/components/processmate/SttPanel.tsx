@@ -7,6 +7,9 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
+import { generateBPMNOutillage } from '@/logic/bpmnGeneratorOutillage';
+import { parseWorkflowFromModeler, type ParseResult } from '@/logic/bpmnParser';
+import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import type { Table1Row } from '@/logic/types';
 import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeProcedureMetadata, mergeEnrichments } from '@/logic/bpmnTypes';
 import type { BpmnEditorHandle } from '@/components/new-way/BpmnEditor';
@@ -21,7 +24,7 @@ import SaveToBiblioModal from '@/components/SaveToBiblioModal';
 import Library from '@/components/new-way/Library';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
-    Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code,
+    Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { orchestrationApi } from '@/lib/orchestrationApi';
@@ -110,6 +113,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const modelerRef = useRef<any>(null);
     const vizRef = useRef<VizInstance | null>(null);
     const cancelledRef = useRef(false);
+    // XML métier connu-correct, capturé juste avant de basculer en Vue outillage — sert
+    // à restaurer le diagramme métier au retour, indépendamment de ce que `onChange` de
+    // BpmnEditor a pu écrire dans le state pendant que la vue outillage était affichée
+    // (le XML outillage ne doit jamais remplacer durablement le XML métier).
+    const businessXmlSnapshotRef = useRef<string | null>(null);
 
     const showError = (msg: string) => { setError(msg); setTimeout(() => setError(null), 5000); };
     const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 4000); };
@@ -279,6 +287,89 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const updateActiveData = (d: Table1Row[]) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: d } : inst));
     const updateActiveEnrichments = (e: Map<string, TaskEnrichment>) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, enrichments: e } : inst));
 
+    // ── Synchronisation diagramme → tableau (voir synchronise.md) ──
+    // Le canevas (new-way/BpmnEditor.tsx + Library.tsx) permet de créer des tâches et
+    // des outils directement sur le diagramme, mais rien ne relisait ce diagramme pour
+    // mettre à jour le tableau — la Cartographie applicative et le score de complexité
+    // ne voient que ce qui est tapé dans le tableau. `runParser` relit l'état actuel du
+    // modeler bpmn-js et reconstruit Table1Row[] à partir de ce qui est réellement sur
+    // le canevas, en préservant les ids/enrichments existants.
+    const [syncPreview, setSyncPreview] = useState<ParseResult | null>(null);
+
+    const runParser = useCallback((): ParseResult | null => {
+        const modeler = modelerRef.current;
+        if (!modeler) return null;
+        const rows = instances.length > 0 ? (activeInst?.data ?? []) : data;
+        const enrichMap = instances.length > 0 ? (activeInst?.enrichments ?? new Map<string, TaskEnrichment>()) : enrichments;
+        return parseWorkflowFromModeler(modeler, rows, enrichMap);
+    }, [instances, activeInst, data, enrichments]);
+
+    const applySyncResult = useCallback((parsed: ParseResult) => {
+        if (instances.length > 0) {
+            setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, data: parsed.rows, enrichments: parsed.enrichments } : i));
+        } else {
+            setData(parsed.rows);
+            setEnrichments(parsed.enrichments);
+        }
+    }, [instances, activeTab]);
+
+    const handleSyncClick = useCallback(() => {
+        const parsed = runParser();
+        if (!parsed) { showError('Diagramme non chargé — impossible de synchroniser.'); return; }
+        if (parsed.rows.length === 0) { showError(parsed.warnings[0] || 'Rien à synchroniser depuis le diagramme.'); return; }
+        setSyncPreview(parsed);
+    }, [runParser]);
+
+    const confirmSyncPreview = () => {
+        if (!syncPreview) return;
+        applySyncResult(syncPreview);
+        showSuccess('Tableau synchronisé depuis le diagramme');
+        setSyncPreview(null);
+    };
+
+    // ── Vue outillage (lecture seule) — voir la discussion sur "l'envers du vêtement" ──
+    // Même diagramme métier (mêmes lanes/positions/flux), seul le texte des tâches
+    // change : outil en titre + étape en sous-titre, "(Manuel)" si aucun outil. Généré à
+    // la volée depuis Table1Row[] à chaque bascule — rien n'est stocké, rien à
+    // synchroniser. Enregistrer/Synchroniser sont désactivés tant qu'elle est affichée :
+    // le XML outillage ne doit jamais être confondu avec le XML métier réel.
+    const [viewMode, setViewMode] = useState<'metier' | 'outillage'>('metier');
+    const [outillageTool, setOutillageTool] = useState<string | null>(null);
+
+    const toggleViewMode = useCallback(async () => {
+        const ref = instances.length > 0 ? editorRefs.current[activeTab] : editorRef.current;
+        const modeler = modelerRef.current;
+        if (!ref || !modeler) return;
+
+        if (viewMode === 'metier') {
+            businessXmlSnapshotRef.current = activeBpmnXml ?? null;
+            const xml = generateBPMNOutillage(activeData, activeTitle);
+            await ref.importXml(xml);
+            setViewMode('outillage');
+
+            const eventBus = modeler.get('eventBus');
+            const onClick = (e: any) => {
+                const id: string = e.element?.id || '';
+                const m = id.match(/^Task_(.+)$/);
+                if (!m) return;
+                const row = activeData.find(r => r.id === m[1]);
+                if (row?.outil) setOutillageTool(row.outil);
+            };
+            eventBus.on('element.click', onClick);
+            modeler.__outillageClickHandler = onClick; // retrouvé pour le détacher au retour
+        } else {
+            const modeler2 = modelerRef.current;
+            if (modeler2?.__outillageClickHandler) {
+                modeler2.get('eventBus').off('element.click', modeler2.__outillageClickHandler);
+                delete modeler2.__outillageClickHandler;
+            }
+            const xml = businessXmlSnapshotRef.current ?? activeBpmnXml;
+            if (xml) await ref.importXml(xml);
+            setViewMode('metier');
+            setOutillageTool(null);
+        }
+    }, [viewMode, instances, activeTab, activeData, activeTitle, activeBpmnXml]);
+
     const handleDiscoveryComplete = (sid: string, detected: ProcessCard[], files: File[]) => {
         setSessionId(sid); setCards(detected); setPhase('discovery'); setUploadOpen(false);
         setSourceFiles(files);
@@ -333,26 +424,46 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 ? (await editorRefs.current[activeTab]?.saveXml() ?? activeInst?.bpmnXml ?? null)
                 : (await editorRef.current?.saveXml() ?? bpmnXml ?? null);
 
+            // Le diagramme qu'on vient de figer dans currentXml EST la source qu'on
+            // s'apprête à persister — on le reparse pour que workflow_json ne puisse
+            // jamais diverger durablement du XML sauvegardé (tâches/outils ajoutés à la
+            // main sur le canevas depuis le dernier chargement). Silencieux ici (pas de
+            // confirmation) : contrairement au bouton "Synchroniser", on n'affiche pas
+            // un tableau périmé à l'utilisateur au moment où il sauvegarde — le résultat
+            // du parseur reflète ce qui va réellement être enregistré. Un diagramme vide
+            // (parsed.rows.length === 0) ne remplace jamais les données existantes.
+            let saveRows = inst ? inst.data : data;
+            let saveEnrichments = inst ? inst.enrichments : enrichments;
+            const parsed = runParser();
+            if (parsed && parsed.rows.length > 0) {
+                saveRows = parsed.rows;
+                saveEnrichments = parsed.enrichments;
+                if (parsed.warnings.length > 0) {
+                    showError(`Synchronisation diagramme→tableau : ${parsed.warnings[0]}${parsed.warnings.length > 1 ? ` (+${parsed.warnings.length - 1} autre(s))` : ''}`);
+                }
+                applySyncResult(parsed);
+            }
+
             if (inst?.workflow_db_id) {
                 const enrichObj: Record<string, unknown> = {};
-                inst.enrichments.forEach((v, k) => { enrichObj[k] = v; });
+                saveEnrichments.forEach((v, k) => { enrichObj[k] = v; });
                 // Une sauvegarde manuelle depuis le Studio efface le tampon "modifications
                 // récentes de l'IA" — l'utilisateur a vu et repris la main sur la procédure.
-                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, inst.data as unknown[], enrichObj, { recent_ai_changes: null }, currentXml);
+                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, saveRows as unknown[], enrichObj, { recent_ai_changes: null }, currentXml);
                 setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, initialMeta: { ...i.initialMeta, recent_ai_changes: null } } : i));
             } else {
                 const res = await orchestrationApi.createProcedure({ nom, category, taxonomy_id: taxonomyId });
                 const newId = res.procedure.id;
                 const enrichObj: Record<string, unknown> = {};
-                (inst ? inst.enrichments : enrichments).forEach((v, k) => { enrichObj[k] = v; });
-                await orchestrationApi.saveWorkflowData(newId, (inst ? inst.data : data) as unknown[], enrichObj, { nom, category }, currentXml);
+                saveEnrichments.forEach((v, k) => { enrichObj[k] = v; });
+                await orchestrationApi.saveWorkflowData(newId, saveRows as unknown[], enrichObj, { nom, category }, currentXml);
                 if (inst) setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, workflow_db_id: newId, title: nom } : i));
                 invalidate();
             }
             showSuccess('Procédure enregistrée');
         } catch (err: any) { showError(`Erreur : ${err.message}`); throw err; }
         finally { setSaving(false); }
-    }, [activeInst, activeTab, instances, data, enrichments, invalidate]);
+    }, [activeInst, activeTab, instances, data, enrichments, invalidate, runParser, applySyncResult]);
 
     const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
@@ -702,9 +813,20 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         } else {
                                             setSaveModalOpen(true);
                                         }
-                                    }} disabled={saving}
+                                    }} disabled={saving || viewMode === 'outillage'}
+                                        title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                         <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
+                                    </button>
+                                    <button type="button" onClick={handleSyncClick} disabled={viewMode === 'outillage'}
+                                        title={viewMode === 'outillage' ? 'Repassez en vue métier pour synchroniser' : 'Relire le diagramme pour mettre à jour le tableau (tâches/outils ajoutés directement sur le canevas)'}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 disabled:opacity-40 transition-colors">
+                                        <RotateCw className="w-3.5 h-3.5" />Synchroniser
+                                    </button>
+                                    <button type="button" onClick={toggleViewMode}
+                                        title="Vue outillage : lecture seule, l'outil devient le titre de chaque tâche"
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${viewMode === 'outillage' ? 'bg-violet-600 text-white' : 'bg-white border border-violet-300 text-violet-700 hover:bg-violet-50'}`}>
+                                        <Wrench className="w-3.5 h-3.5" />{viewMode === 'outillage' ? 'Vue outillage (lecture seule)' : 'Vue outillage'}
                                     </button>
                                     {activeInst?.workflow_db_id && currentActorId && (
                                         <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
@@ -770,6 +892,52 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             </div>
 
             <SaveToBiblioModal open={saveModalOpen} initialNom={activeTitle} onClose={() => setSaveModalOpen(false)} onConfirm={handleSave} />
+
+            {outillageTool && (
+                <ToolDetailPanel toolName={outillageTool} onClose={() => setOutillageTool(null)} />
+            )}
+
+            {syncPreview && (
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-lg rounded-xl shadow-xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
+                            <RotateCw className="w-4 h-4 text-blue-600" />
+                            <h3 className="font-bold text-slate-900">Synchroniser depuis le diagramme</h3>
+                        </div>
+                        <div className="px-5 py-4 space-y-3 max-h-96 overflow-y-auto">
+                            <p className="text-sm text-slate-700">
+                                {syncPreview.rows.length} étape(s) détectée(s) dans le diagramme
+                                {syncPreview.newRowIds.size > 0 && (
+                                    <> — dont <strong>{syncPreview.newRowIds.size} nouvelle(s)</strong> (créée(s) directement sur le canevas)</>
+                                )}.
+                            </p>
+                            {syncPreview.warnings.length > 0 && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+                                    <p className="text-xs font-semibold text-amber-700">À vérifier après application :</p>
+                                    <ul className="text-xs text-amber-700 list-disc list-inside space-y-0.5">
+                                        {syncPreview.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            <p className="text-xs text-slate-400">
+                                Cette action remplace le contenu du tableau par ce qui est lu sur le canevas.
+                                Les ids et les détails déjà saisis (colonne « Détails ») sont conservés pour
+                                les étapes reconnues.
+                            </p>
+                        </div>
+                        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2">
+                            <button type="button" onClick={() => setSyncPreview(null)}
+                                className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+                                Annuler
+                            </button>
+                            <button type="button" onClick={confirmSyncPreview}
+                                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                                Appliquer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {submitModalOpen && activeInst?.workflow_db_id && (
                 <RecipientPicker
                     title="Soumettre pour vérification"

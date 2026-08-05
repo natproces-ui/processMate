@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
     RefreshCw, AlertCircle, ExternalLink,
     Layers, ChevronRight, X, Search,
-    Wrench, FileText, Share2,
+    Wrench, FileText, Share2, Settings2,
 } from 'lucide-react';
 import { useProceduresStore } from '@/store/proceduresStore';
 import { Procedure } from '@/lib/orchestrationApi';
 import GrapheApplicatifs from '@/components/orchestration/GrapheApplicatifs';
 import GrapheLiaisons from '@/components/orchestration/GrapheLiaisons';
+import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -219,6 +220,7 @@ function DetailView({ toolUsages, selectedOutil, onSelectTool, onClearTool, onOp
 }) {
     const [expandedProc, setExpandedProc] = useState<string | null>(null);
     const [search, setSearch] = useState('');
+    const [managingTool, setManagingTool] = useState<string | null>(null);
 
     const selected = selectedOutil ? toolUsages.find(tu => tu.outil === selectedOutil) : null;
     const filteredTools = toolUsages.filter(tu =>
@@ -308,12 +310,22 @@ function DetailView({ toolUsages, selectedOutil, onSelectTool, onClearTool, onOp
                                         ))}
                                     </div>
                                 </div>
-                                <button type="button" onClick={onClearTool}
-                                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-                                    <X className="w-4 h-4 text-gray-400" />
-                                </button>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button type="button" onClick={() => setManagingTool(selected.outil)}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-medium hover:bg-violet-100 transition-colors">
+                                        <Settings2 className="w-3.5 h-3.5" />Gérer l&apos;outil
+                                    </button>
+                                    <button type="button" onClick={onClearTool}
+                                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                                        <X className="w-4 h-4 text-gray-400" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
+                        {managingTool && (
+                            <ToolDetailPanel toolName={managingTool} onClose={() => setManagingTool(null)} />
+                        )}
 
                         {/* Procédures concernées */}
                         <div className="space-y-3">

@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
+import { parseWorkflowFromModeler, type ParseResult } from '@/logic/bpmnParser';
 import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment, DEFAULT_PROCESS_METADATA, mergeEnrichments, mergeProcedureMetadata } from '@/logic/bpmnTypes';
 import type { BpmnEditorHandle } from '@/components/new-way/BpmnEditor';
@@ -11,10 +12,12 @@ import ChatInterface from '@/components/ChatInterface';
 import SaveToBiblioModal from '@/components/SaveToBiblioModal';
 import { Procedure } from '@/lib/orchestrationApi';
 import { orchestrationApi } from '@/lib/orchestrationApi';
+import ToolPicker from '@/components/orchestration/ToolPicker';
+import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import {
     Download, Save, Maximize2, X, MessageSquare,
     CheckCircle, AlertCircle, Loader2,
-    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench,
+    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench, RotateCw,
 } from 'lucide-react';
 
 const BpmnEditor = dynamic(() => import('@/components/new-way/BpmnEditor'), {
@@ -97,6 +100,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     const [saveModalOpen, setSaveModalOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [managingTool, setManagingTool] = useState<string | null>(null);
 
     // ─── Modes édition ────────────────────────────────────────
     const [editingCaract, setEditingCaract] = useState(false);
@@ -132,6 +136,39 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
 
     const showError = (msg: string) => { setError(msg); setTimeout(() => setError(null), 5000); };
     const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 4000); };
+
+    // ── Synchronisation diagramme → tableau (voir synchronise.md) ──
+    // Même logique que SttPanel.tsx : le canevas permet d'ajouter des tâches/outils
+    // que la section Outils/Descriptions ne voit jamais tant que rien ne relit le
+    // diagramme. `runParser` ne touche que `data`/`enrichments` (l'état confirmé), pas
+    // les drafts en cours d'édition d'une autre section, pour ne pas écraser une saisie
+    // en cours ailleurs dans l'éditeur.
+    const [syncPreview, setSyncPreview] = useState<ParseResult | null>(null);
+
+    const runParser = useCallback((): ParseResult | null => {
+        const modeler = modelerRef.current;
+        if (!modeler) return null;
+        return parseWorkflowFromModeler(modeler, data, enrichments);
+    }, [data, enrichments]);
+
+    const applySyncResult = useCallback((parsed: ParseResult) => {
+        setData(parsed.rows);
+        setEnrichments(parsed.enrichments);
+    }, []);
+
+    const handleSyncClick = useCallback(() => {
+        const parsed = runParser();
+        if (!parsed) { showError('Diagramme non chargé — impossible de synchroniser.'); return; }
+        if (parsed.rows.length === 0) { showError(parsed.warnings[0] || 'Rien à synchroniser depuis le diagramme.'); return; }
+        setSyncPreview(parsed);
+    }, [runParser]);
+
+    const confirmSyncPreview = () => {
+        if (!syncPreview) return;
+        applySyncResult(syncPreview);
+        showSuccess('Tableau synchronisé depuis le diagramme');
+        setSyncPreview(null);
+    };
 
     // Charger le BPMN sauvegardé ou régénérer
     useEffect(() => {
@@ -193,10 +230,28 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 const xml = await editorRef.current.saveXml();
                 if (xml) { xmlToSave = xml; setBpmnXml(xml); }
             }
+
+            // Le diagramme qu'on vient de figer dans xmlToSave EST la source qu'on
+            // s'apprête à persister — le reparser ici garantit que workflow_json ne
+            // diverge jamais du XML sauvegardé (voir synchronise.md). Silencieux (pas de
+            // confirmation), contrairement au bouton "Synchroniser" : un diagramme vide
+            // ne remplace jamais data/enrichments existants.
+            let saveRows = data;
+            let saveEnrichments = enrichments;
+            const parsed = runParser();
+            if (parsed && parsed.rows.length > 0) {
+                saveRows = parsed.rows;
+                saveEnrichments = parsed.enrichments;
+                if (parsed.warnings.length > 0) {
+                    showError(`Synchronisation diagramme→tableau : ${parsed.warnings[0]}${parsed.warnings.length > 1 ? ` (+${parsed.warnings.length - 1} autre(s))` : ''}`);
+                }
+                applySyncResult(parsed);
+            }
+
             const enrichObj: Record<string, unknown> = {};
-            enrichments.forEach((v, k) => { enrichObj[k] = v; });
+            saveEnrichments.forEach((v, k) => { enrichObj[k] = v; });
             await orchestrationApi.saveWorkflowData(
-                procedure.id, data as unknown[], enrichObj, { ...meta, nom: title, recent_ai_changes: null }, xmlToSave,
+                procedure.id, saveRows as unknown[], enrichObj, { ...meta, nom: title, recent_ai_changes: null }, xmlToSave,
             );
             setAiChangesDismissed(true);
             setEditingDiagramme(false);
@@ -603,6 +658,11 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                             className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors">
                                             <Save className="w-3 h-3" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                         </button>
+                                        <button type="button" onClick={handleSyncClick}
+                                            title="Relire le diagramme pour mettre à jour le tableau (tâches/outils ajoutés directement sur le canevas)"
+                                            className="flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-300 text-slate-700 rounded text-xs font-medium hover:bg-slate-50 transition-colors">
+                                            <RotateCw className="w-3 h-3" />Synchroniser
+                                        </button>
                                         <button type="button" onClick={() => setEditorFullscreen(f => !f)}
                                             className="p-1.5 rounded hover:bg-slate-200 transition-colors">
                                             <Maximize2 className="w-3.5 h-3.5 text-slate-500" />
@@ -736,6 +796,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Étape</th>
                                             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">Acteur</th>
                                             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-56">Outil</th>
+                                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10" />
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -755,14 +816,22 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                                             {row.outil || 'Non renseigné'}
                                                         </span>
                                                     ) : (
-                                                        <input type="text"
+                                                        <ToolPicker
                                                             value={row.outil || ''}
-                                                            onChange={e => setDraftData(prev =>
-                                                                prev.map(r => r.id === row.id ? { ...r, outil: e.target.value } : r)
+                                                            onChange={name => setDraftData(prev =>
+                                                                prev.map(r => r.id === row.id ? { ...r, outil: name } : r)
                                                             )}
                                                             placeholder="Ex: SAP, Core Banking…"
-                                                            className="w-full text-sm px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
                                                         />
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {row.outil && (
+                                                        <button type="button" onClick={() => setManagingTool(row.outil)}
+                                                            title="Gérer les écrans/champs/codes de cet outil"
+                                                            className="p-1.5 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg">
+                                                            <Settings2 className="w-3.5 h-3.5" />
+                                                        </button>
                                                     )}
                                                 </td>
                                             </tr>
@@ -782,6 +851,52 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 onClose={() => setSaveModalOpen(false)}
                 onConfirm={handleSave}
             />
+
+            {managingTool && (
+                <ToolDetailPanel toolName={managingTool} onClose={() => setManagingTool(null)} />
+            )}
+
+            {syncPreview && (
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-lg rounded-xl shadow-xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
+                            <RotateCw className="w-4 h-4 text-blue-600" />
+                            <h3 className="font-bold text-slate-900">Synchroniser depuis le diagramme</h3>
+                        </div>
+                        <div className="px-5 py-4 space-y-3 max-h-96 overflow-y-auto">
+                            <p className="text-sm text-slate-700">
+                                {syncPreview.rows.length} étape(s) détectée(s) dans le diagramme
+                                {syncPreview.newRowIds.size > 0 && (
+                                    <> — dont <strong>{syncPreview.newRowIds.size} nouvelle(s)</strong> (créée(s) directement sur le canevas)</>
+                                )}.
+                            </p>
+                            {syncPreview.warnings.length > 0 && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+                                    <p className="text-xs font-semibold text-amber-700">À vérifier après application :</p>
+                                    <ul className="text-xs text-amber-700 list-disc list-inside space-y-0.5">
+                                        {syncPreview.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            <p className="text-xs text-slate-400">
+                                Cette action remplace le contenu des sections Descriptions/Outils par ce qui
+                                est lu sur le canevas. Les ids et les détails déjà saisis sont conservés pour
+                                les étapes reconnues.
+                            </p>
+                        </div>
+                        <div className="px-5 py-4 border-t border-slate-100 flex justify-end gap-2">
+                            <button type="button" onClick={() => setSyncPreview(null)}
+                                className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+                                Annuler
+                            </button>
+                            <button type="button" onClick={confirmSyncPreview}
+                                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                                Appliquer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

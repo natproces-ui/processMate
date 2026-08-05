@@ -1,30 +1,43 @@
 // src/logic/bpmnGeneratorSimple.ts
 import type { Table1Row } from './types';
+import {
+    type NodeType,
+    type GraphEdge as Edge,
+    isGateway,
+    elementId,
+    toolId,
+    toolAssocId,
+    laneId,
+    buildAdjacency,
+    detectBackEdges,
+    topoSort,
+    reachableInLane,
+    computeRanks,
+} from './bpmnGraphModel';
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTES
 // ─────────────────────────────────────────────────────────────
 
-const POOL_Y = -98;   // Y du pool (bpmn-js convention)
+export const POOL_Y = -98;   // Y du pool (bpmn-js convention)
 const LANE_HEADER = 100;   // hauteur de l'en-tête de lane (label)
-const START_Y = 80;    // Y du premier élément
-const STEP_Y = 130;   // espacement vertical entre rangs
-const LANE_W = 280;   // largeur d'une lane normale
-const SPLIT_LANE_W = 560;   // largeur d'une lane avec split gateway (2 sous-colonnes)
-const NODE_W = 220;
-const NODE_H = 60;
-const GW_SIZE = 50;
-const EV_SIZE = 36;
-const TOOL_H = 28;
-const TOOL_OFFSET = 8;     // espace entre tâche et outil en dessous
+export const START_Y = 80;    // Y du premier élément
+export const STEP_Y = 130;   // espacement vertical entre rangs
+export const LANE_W = 280;   // largeur d'une lane normale
+export const SPLIT_LANE_W = 560;   // largeur d'une lane avec split gateway (2 sous-colonnes)
+export const NODE_W = 220;
+export const NODE_H = 60;
+export const GW_SIZE = 50;
+export const EV_SIZE = 36;
+export const TOOL_H = 28;
+export const TOOL_OFFSET = 8;     // espace entre tâche et outil en dessous
 
 // ─────────────────────────────────────────────────────────────
-// TYPES INTERNES
+// TYPES INTERNES — exportés : réutilisés par bpmnGeneratorOutillage.ts, qui a besoin du
+// même calcul de placement (lanes/rangs/positions) sans dupliquer computePlacements.
 // ─────────────────────────────────────────────────────────────
 
-type NodeType = 'StartEvent' | 'EndEvent' | 'Task' | 'ExclusiveGateway' | 'ParallelGateway' | 'InclusiveGateway';
-
-interface NodeInfo {
+export interface NodeInfo {
     id: string;
     type: NodeType;
     acteur: string;
@@ -32,13 +45,7 @@ interface NodeInfo {
     outil: string;
 }
 
-interface Edge {
-    src: string;
-    tgt: string;
-    label: string;
-}
-
-interface Position {
+export interface Position {
     x: number;
     y: number;
     w: number;
@@ -51,7 +58,7 @@ interface Position {
 // UTILITAIRES
 // ─────────────────────────────────────────────────────────────
 
-function escapeXml(str: string): string {
+export function escapeXml(str: string): string {
     if (!str) return '';
     return str
         .replace(/&/g, '&amp;')
@@ -61,168 +68,26 @@ function escapeXml(str: string): string {
         .replace(/'/g, '&apos;');
 }
 
-function isGateway(type: NodeType): boolean {
-    return type === 'ExclusiveGateway' || type === 'ParallelGateway' || type === 'InclusiveGateway';
-}
-
-function elementId(id: string, type: NodeType): string {
-    const prefix: Record<NodeType, string> = {
-        StartEvent: 'Start', EndEvent: 'End', Task: 'Task',
-        ExclusiveGateway: 'Gateway', ParallelGateway: 'ParGateway', InclusiveGateway: 'IncGateway',
-    };
-    return `${prefix[type]}_${id}`;
-}
-
-function toolId(id: string): string { return `Tool_${id}`; }
-function toolAssocId(id: string): string { return `ToolAssoc_${id}`; }
-
-// Convention : Lane_ext_ pour externe, Lane_int_ pour interne
-// Le renderer détecte le préfixe pour appliquer le bon style visuel
-function laneId(acteur: string, typeActeur: 'interne' | 'externe' | ''): string {
-    const prefix = typeActeur === 'externe' ? 'Lane_ext_' : 'Lane_int_';
-    return prefix + acteur.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
-}
-
-function nodeW(type: NodeType): number {
+export function nodeW(type: NodeType): number {
     if (type === 'StartEvent' || type === 'EndEvent') return EV_SIZE;
     if (isGateway(type)) return GW_SIZE;
     return NODE_W;
 }
-function nodeH(type: NodeType): number {
+export function nodeH(type: NodeType): number {
     if (type === 'StartEvent' || type === 'EndEvent') return EV_SIZE;
     if (isGateway(type)) return GW_SIZE;
     return NODE_H;
 }
 
 // ─────────────────────────────────────────────────────────────
-// DÉTECTION DES BOUCLES ARRIÈRE (DFS tricolore)
-// ─────────────────────────────────────────────────────────────
-
-function detectBackEdges(
-    nodes: NodeInfo[],
-    successors: Map<string, Edge[]>,
-): Set<string> {
-    const color = new Map<string, 0 | 1 | 2>(nodes.map(n => [n.id, 0]));
-    const back = new Set<string>();
-
-    function dfs(id: string) {
-        color.set(id, 1);
-        for (const e of successors.get(id) ?? []) {
-            const c = color.get(e.tgt) ?? 0;
-            if (c === 1) back.add(`${id}→${e.tgt}`);
-            else if (c === 0) dfs(e.tgt);
-        }
-        color.set(id, 2);
-    }
-
-    for (const n of nodes) {
-        if ((color.get(n.id) ?? 0) === 0) dfs(n.id);
-    }
-    return back;
-}
-
-// ─────────────────────────────────────────────────────────────
-// TRI TOPOLOGIQUE (Kahn)
-// ─────────────────────────────────────────────────────────────
-
-function topoSort(
-    nodes: NodeInfo[],
-    edges: Edge[],
-    backEdges: Set<string>,
-): string[] {
-    const inDeg = new Map<string, number>(nodes.map(n => [n.id, 0]));
-    for (const e of edges) {
-        if (!backEdges.has(`${e.src}→${e.tgt}`)) {
-            inDeg.set(e.tgt, (inDeg.get(e.tgt) ?? 0) + 1);
-        }
-    }
-    const queue = nodes.filter(n => (inDeg.get(n.id) ?? 0) === 0).map(n => n.id);
-    const result: string[] = [];
-    while (queue.length > 0) {
-        queue.sort();
-        const id = queue.shift()!;
-        result.push(id);
-        for (const e of (successors_global.get(id) ?? [])) {
-            if (backEdges.has(`${id}→${e.tgt}`)) continue;
-            const deg = (inDeg.get(e.tgt) ?? 1) - 1;
-            inDeg.set(e.tgt, deg);
-            if (deg === 0) queue.push(e.tgt);
-        }
-    }
-    return result;
-}
-
-// Variable globale temporaire pour le tri topo (nécessaire car closure)
-let successors_global = new Map<string, Edge[]>();
-
-// ─────────────────────────────────────────────────────────────
-// ACCESSIBILITÉ DANS LA LANE (propagation du côté d'une branche)
-// ─────────────────────────────────────────────────────────────
-
-// Renvoie tous les nœuds atteignables depuis startId en restant dans la même
-// lane (acteur), sans emprunter de back-edge (boucle arrière).
-function reachableInLane(
-    startId: string,
-    lane: string,
-    nodeMap: Map<string, NodeInfo>,
-    successors: Map<string, Edge[]>,
-    backEdges: Set<string>,
-): Set<string> {
-    const visited = new Set<string>();
-    const queue: string[] = [startId];
-    while (queue.length > 0) {
-        const id = queue.shift()!;
-        if (visited.has(id)) continue;
-        const node = nodeMap.get(id);
-        if (!node || node.acteur !== lane) continue;
-        visited.add(id);
-        const outs = (successors.get(id) ?? []).filter(e => !backEdges.has(`${id}→${e.tgt}`));
-        for (const e of outs) {
-            if (!visited.has(e.tgt)) queue.push(e.tgt);
-        }
-    }
-    return visited;
-}
-
-// ─────────────────────────────────────────────────────────────
-// CALCUL DES RANGS (premier prédécesseur = roi)
-// ─────────────────────────────────────────────────────────────
-
-function computeRanks(
-    topoOrder: string[],
-    predecessors: Map<string, Edge[]>,
-    backEdges: Set<string>,
-    splitNodes: Map<string, { side: 'left' | 'right'; gateway: string }>,
-    ranks: Map<string, number>,
-): void {
-    for (const id of topoOrder) {
-        // Branche split : rang gateway + 1 (en dessous, côte à côte horizontalement)
-        if (splitNodes.has(id)) {
-            const { gateway } = splitNodes.get(id)!;
-            ranks.set(id, (ranks.get(gateway) ?? 0) + 1);
-            continue;
-        }
-
-        // Prédécesseurs valides (pas back-edge, déjà rankés)
-        const validPreds = (predecessors.get(id) ?? []).filter(
-            e => !backEdges.has(`${e.src}→${id}`) && ranks.has(e.src)
-        );
-
-        if (validPreds.length === 0) {
-            ranks.set(id, 0);
-        } else {
-            // Premier prédécesseur dans l'ordre original = roi
-            const firstPred = validPreds[0].src;
-            ranks.set(id, (ranks.get(firstPred) ?? 0) + 1);
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────
 // ALGORITHME PRINCIPAL DE PLACEMENT
 // ─────────────────────────────────────────────────────────────
+//
+// isGateway/elementId/toolId/toolAssocId/laneId/detectBackEdges/topoSort/
+// reachableInLane/computeRanks viennent maintenant de bpmnGraphModel.ts
+// (modèle de graphe partagé avec bpmnParser.ts — voir synchronise.md).
 
-interface PlacementResult {
+export interface PlacementResult {
     positions: Map<string, Position>;
     laneX: Map<string, number>;
     laneWidth: Map<string, number>;
@@ -231,19 +96,13 @@ interface PlacementResult {
     sameLaneSplits: Map<string, { left: string; right: string }>;
 }
 
-function computePlacements(
+export function computePlacements(
     nodes: NodeInfo[],
     edges: Edge[],
     acteurs: string[],
 ): PlacementResult {
     // 1. Construire successeurs et prédécesseurs
-    const successors = new Map<string, Edge[]>();
-    const predecessors = new Map<string, Edge[]>();
-    for (const e of edges) {
-        successors.set(e.src, [...(successors.get(e.src) ?? []), e]);
-        predecessors.set(e.tgt, [...(predecessors.get(e.tgt) ?? []), e]);
-    }
-    successors_global = successors;
+    const { successors, predecessors } = buildAdjacency(edges);
 
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
@@ -302,7 +161,7 @@ function computePlacements(
     }
 
     // 4. Tri topologique
-    const topoOrder = topoSort(nodes, edges, backEdges);
+    const topoOrder = topoSort(nodes, successors, backEdges);
 
     // 5. Calcul des rangs
     const ranks = new Map<string, number>();
