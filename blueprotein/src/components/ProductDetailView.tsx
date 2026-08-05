@@ -41,7 +41,7 @@ export default function ProductDetailView({ product }: { product: Product }) {
 
       <section className="max-w-5xl mx-auto px-6 pt-6 pb-16">
         <div className="grid lg:grid-cols-2 gap-10 items-start">
-          <ProductImage src={product.image_url} family={product.family} className="relative h-72 lg:h-96 rounded-2xl shadow-lg" />
+          <ProductImage src={product.image_url} family={product.family} variant="contain" className="relative h-72 lg:h-96 rounded-2xl border border-slate-200 shadow-lg" />
 
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-4">

@@ -190,10 +190,10 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
               <Link
                 key={p.id}
                 href={`/produits/${p.slug}`}
-                className="group rounded-xl overflow-hidden border border-slate-200 hover:shadow-lg transition-shadow bg-white"
+                className="group rounded-xl overflow-hidden border border-slate-200 hover:border-emerald-300 hover:shadow-lg transition-all bg-white"
               >
-                <div className="relative h-48">
-                  <ProductImage src={p.image_url} family={p.family} className="absolute inset-0" />
+                <div className="relative h-48 border-b border-slate-100">
+                  <ProductImage src={p.image_url} family={p.family} variant="contain" className="absolute inset-0" />
                   {p.badge && (
                     <span className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
                       {p.badge}
@@ -202,13 +202,11 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
                   <span className="absolute top-3 right-3 bg-[#eef0df] text-[#5c6a2f] text-xs font-semibold px-2.5 py-1 rounded-full">
                     {familyLabels[p.family]}
                   </span>
-                  <div className="absolute bottom-3 left-4 right-4">
-                    <span className="text-emerald-200 text-xs font-semibold uppercase tracking-wide">{p.category}</span>
-                    <h3 className="text-white text-xl font-bold">{localizedField(lang, p.name, p.name_dar)}</h3>
-                  </div>
                 </div>
                 <div className="p-5">
-                  {p.tagline && <p className="text-sm font-semibold text-emerald-700 mb-1.5">{localizedField(lang, p.tagline, p.tagline_dar)}</p>}
+                  <span className="text-emerald-700 text-xs font-semibold uppercase tracking-wide">{p.category}</span>
+                  <h3 className="text-slate-950 text-xl font-bold mb-1.5">{localizedField(lang, p.name, p.name_dar)}</h3>
+                  {p.tagline && <p className="text-sm font-semibold text-slate-600 mb-1.5">{localizedField(lang, p.tagline, p.tagline_dar)}</p>}
                   <p className="text-sm text-slate-600 mb-4">{localizedField(lang, p.summary, p.summary_dar)}</p>
                   <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 group-hover:gap-2 transition-all">
                     {t.products.viewSheet} <ChevronRight className="w-4 h-4" />
