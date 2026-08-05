@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -23,10 +23,25 @@ import type { SectionWithCards } from '@/types/section';
 import type { Testimonial } from '@/types/testimonial';
 
 const VALUE_ICONS = [
-  <Sprout key="sol" className="w-5 h-5 text-emerald-700" />,
-  <Coins key="prix" className="w-5 h-5 text-emerald-700" />,
-  <Globe key="afrique" className="w-5 h-5 text-emerald-700" />,
+  <Sprout key="sol" className="w-6 h-6" />,
+  <Coins key="prix" className="w-6 h-6" />,
+  <Globe key="afrique" className="w-6 h-6" />,
 ];
+
+// emerald / orange / kaki — casse la monotonie du vert seul (cf. globals.css)
+const VALUE_ACCENTS = [
+  { bar: 'bg-emerald-600', icon: 'bg-emerald-50 text-emerald-700' },
+  { bar: 'bg-orange-500', icon: 'bg-orange-50 text-orange-600' },
+  { bar: 'bg-[#5c6a2f]', icon: 'bg-[#eef0df] text-[#5c6a2f]' },
+];
+
+function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full mb-5">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" /> {children}
+    </span>
+  );
+}
 
 const NEEDS_ICONS = [
   <Wallet key="cout" className="w-4 h-4" />,
@@ -78,9 +93,7 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
       <section className="bg-gradient-to-b from-emerald-50/70 to-white">
         <div className="max-w-7xl mx-auto px-6 pt-16 pb-16 md:pt-20 md:pb-20 grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
           <div>
-            <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
-              <span className="w-6 h-px bg-emerald-600" /> {t.hero.badge}
-            </div>
+            <Eyebrow>{t.hero.badge}</Eyebrow>
             <h1 className="text-3xl md:text-[2.75rem] font-bold text-slate-900 leading-[1.15] mb-5">
               {t.hero.title} <span className="text-emerald-700">{t.hero.titleHighlight}</span>
             </h1>
@@ -143,17 +156,19 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
       </section>
 
       {/* ── Valeurs clés ───────────────────────────────────────── */}
-      <section className="border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
-          {t.values.map((v, i) => (
-            <div key={v.id} className="flex gap-4">
-              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">{VALUE_ICONS[i]}</div>
-              <div>
-                <h3 className="font-semibold mb-1">{v.title}</h3>
-                <p className="text-sm text-slate-600">{v.desc}</p>
+      <section className="bg-gradient-to-b from-white to-emerald-50/50 border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-6 py-14 grid md:grid-cols-3 gap-6">
+          {t.values.map((v, i) => {
+            const accent = VALUE_ACCENTS[i];
+            return (
+              <div key={v.id} className="relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 p-6">
+                <span className={`absolute top-0 left-0 right-0 h-1 ${accent.bar}`} />
+                <div className={`w-12 h-12 rounded-xl ${accent.icon} flex items-center justify-center mb-4`}>{VALUE_ICONS[i]}</div>
+                <h3 className="font-bold text-slate-900 mb-1.5">{v.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{v.desc}</p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -184,34 +199,44 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
           <p className="text-center text-slate-500">{t.products.empty}</p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProducts.map((p) => (
-              <Link
-                key={p.id}
-                href={`/produits/${p.slug}`}
-                className="group rounded-xl overflow-hidden border border-slate-200 hover:border-emerald-300 hover:shadow-lg transition-all bg-white"
-              >
-                <div className="relative h-48 border-b border-slate-100">
-                  <ProductImage src={p.image_url} family={p.family} variant="contain" className="absolute inset-0" />
-                  {p.badge && (
-                    <span className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                      {p.badge}
+            {filteredProducts.map((p) => {
+              const CategoryIcon = categoryIcon(p.category);
+              return (
+                <Link
+                  key={p.id}
+                  href={`/produits/${p.slug}`}
+                  className="group flex flex-col rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-emerald-300 transition-all duration-200 bg-white"
+                >
+                  <div className="relative h-52 border-b border-slate-100 bg-slate-50 overflow-hidden">
+                    <ProductImage
+                      src={p.image_url}
+                      family={p.family}
+                      variant="contain"
+                      className="absolute inset-0 group-hover:scale-[1.04] transition-transform duration-300"
+                    />
+                    {p.badge && (
+                      <span className="absolute top-3 left-3 bg-orange-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
+                        {p.badge}
+                      </span>
+                    )}
+                    <span className="absolute top-3 right-3 bg-[#eef0df] text-[#5c6a2f] text-xs font-semibold px-2.5 py-1 rounded-full shadow-sm">
+                      {familyLabels[p.family]}
                     </span>
-                  )}
-                  <span className="absolute top-3 right-3 bg-[#eef0df] text-[#5c6a2f] text-xs font-semibold px-2.5 py-1 rounded-full">
-                    {familyLabels[p.family]}
-                  </span>
-                </div>
-                <div className="p-5">
-                  <span className="text-emerald-700 text-xs font-semibold uppercase tracking-wide">{p.category}</span>
-                  <h3 className="text-slate-950 text-xl font-bold mb-1.5">{localizedField(lang, p.name, p.name_dar)}</h3>
-                  {p.tagline && <p className="text-sm font-semibold text-slate-600 mb-1.5">{localizedField(lang, p.tagline, p.tagline_dar)}</p>}
-                  <p className="text-sm text-slate-600 mb-4">{localizedField(lang, p.summary, p.summary_dar)}</p>
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 group-hover:gap-2 transition-all">
-                    {t.products.viewSheet} <ChevronRight className="w-4 h-4" />
-                  </span>
-                </div>
-              </Link>
-            ))}
+                  </div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <span className="inline-flex items-center gap-1.5 text-emerald-700 text-xs font-semibold uppercase tracking-wide mb-2">
+                      <CategoryIcon className="w-3.5 h-3.5" /> {p.category}
+                    </span>
+                    <h3 className="text-slate-950 text-xl font-bold mb-1.5">{localizedField(lang, p.name, p.name_dar)}</h3>
+                    {p.tagline && <p className="text-sm font-semibold text-slate-600 mb-1.5">{localizedField(lang, p.tagline, p.tagline_dar)}</p>}
+                    <p className="text-sm text-slate-600 mb-4 flex-1">{localizedField(lang, p.summary, p.summary_dar)}</p>
+                    <span className="inline-flex items-center justify-center gap-1.5 w-full bg-emerald-50 group-hover:bg-emerald-700 text-emerald-700 group-hover:text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors">
+                      {t.products.viewSheet} <ChevronRight className="w-4 h-4" />
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>
@@ -220,9 +245,7 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
       <section id="besoins" className="max-w-7xl mx-auto px-6 py-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-5">
-              <span className="w-6 h-px bg-emerald-600" /> {t.needs.eyebrow}
-            </div>
+            <Eyebrow>{t.needs.eyebrow}</Eyebrow>
             <h2 className="text-2xl md:text-3xl font-bold mb-4">{t.needs.title}</h2>
             <p className="text-slate-600 mb-6">{t.needs.subtitle}</p>
             <ul className="space-y-3">
