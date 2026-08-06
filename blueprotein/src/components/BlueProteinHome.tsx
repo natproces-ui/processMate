@@ -173,7 +173,8 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
       </section>
 
       {/* ── Produits ───────────────────────────────────────────── */}
-      <section id="produits" className="max-w-7xl mx-auto px-6 py-20">
+      <section id="produits" className="bg-gradient-to-b from-white via-emerald-50/40 to-white">
+      <div className="max-w-7xl mx-auto px-6 py-20">
         <div className="text-center max-w-2xl mx-auto mb-10">
           <h2 className="text-2xl md:text-3xl font-bold mb-3">{t.products.title}</h2>
           <p className="text-slate-600">{t.products.subtitle}</p>
@@ -224,7 +225,7 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
                     </span>
                   </div>
                   <div className="p-5 flex flex-col flex-1">
-                    <span className="inline-flex items-center gap-1.5 text-emerald-700 text-xs font-semibold uppercase tracking-wide mb-2">
+                    <span className="inline-flex items-center gap-1.5 self-start bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full mb-2.5">
                       <CategoryIcon className="w-3.5 h-3.5" /> {p.category}
                     </span>
                     <h3 className="text-slate-950 text-xl font-bold mb-1.5">{localizedField(lang, p.name, p.name_dar)}</h3>
@@ -239,10 +240,12 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
             })}
           </div>
         )}
+      </div>
       </section>
 
       {/* ── Vos besoins ────────────────────────────────────────── */}
-      <section id="besoins" className="max-w-7xl mx-auto px-6 py-20">
+      <section id="besoins" className="bg-gradient-to-br from-emerald-50/50 to-white">
+      <div className="max-w-7xl mx-auto px-6 py-20">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <Eyebrow>{t.needs.eyebrow}</Eyebrow>
@@ -260,6 +263,7 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
 
           <ProductImage src="/sol.png" className="relative h-80 rounded-2xl" />
         </div>
+      </div>
       </section>
 
       {/* ── Sections dynamiques (gérées depuis l'admin) ─────────── */}
@@ -289,7 +293,8 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
       </section>
 
       {/* ── Onglets de conversion (agriculteurs / fournisseurs) ─── */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
+      <section className="bg-gradient-to-b from-emerald-50/40 to-white">
+      <div className="max-w-7xl mx-auto px-6 py-20">
         <div className="grid lg:grid-cols-2 gap-10 items-center">
           <div>
             <div className="inline-flex bg-slate-100 rounded-lg p-1 mb-8">
@@ -327,6 +332,7 @@ export default function BlueProteinHome({ products, sections, testimonials }: { 
 
           <ProductImage className="relative h-80 rounded-2xl" />
         </div>
+      </div>
       </section>
 
       {/* ── Témoignages ────────────────────────────────────────── */}
