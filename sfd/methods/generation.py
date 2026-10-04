@@ -18,9 +18,10 @@ from session_store import (
 )
 from methods.sfd_methods import extract_files_content
 from methods.web_explorer import explore_website
+from config import GEMINI_MODEL_FLASH
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL   = "gemini-2.5-flash"
+GEMINI_MODEL   = GEMINI_MODEL_FLASH
 
 ProgressCallback = Callable[[str, str], Awaitable[None]]
 

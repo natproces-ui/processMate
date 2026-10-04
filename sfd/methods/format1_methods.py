@@ -7,11 +7,12 @@ from typing import Union
 from fastapi import UploadFile
 from schemas.format1_schema import Format1SFD
 from datetime import datetime
+from config import GEMINI_MODEL_LITE
 
 
 # Configuration Gemini
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL = 'gemini-2.5-flash-lite'
+GEMINI_MODEL = GEMINI_MODEL_LITE
 _client = genai.Client(api_key=GOOGLE_API_KEY)
 
 

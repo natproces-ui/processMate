@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from schemas.sfd_schema import SFD
 from methods.sfd_methods import process_sfd
+from config import GEMINI_MODEL_FLASH
 
 router = APIRouter(
     prefix="/api/sfd",
@@ -221,7 +222,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "sfd-generator",
-        "model": "gemini-2.5-flash",
+        "model": GEMINI_MODEL_FLASH,
         "playwright_available": playwright_available,
         "scraping_mode": "playwright" if playwright_available else "httpx (fallback)",
         "max_files": 5,

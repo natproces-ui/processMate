@@ -20,6 +20,12 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").strip().rstrip
 
 # 🔑 Clé API Google Gemini (obligatoire)
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+# Modèles Gemini — Google retire régulièrement des modèles (toute la gamme 2.x en 10/2026) :
+# on les surcharge par variable d'environnement sans toucher au code.
+GEMINI_MODEL_PRO = os.getenv("GEMINI_MODEL_PRO", "gemini-3.1-pro-preview")
+GEMINI_MODEL_FLASH = os.getenv("GEMINI_MODEL_FLASH", "gemini-3.8-flash")
+GEMINI_MODEL_LITE = os.getenv("GEMINI_MODEL_LITE", "gemini-3.5-flash-lite")
 if not GOOGLE_API_KEY:
     raise ValueError("❌ GOOGLE_API_KEY manquante dans .env !")
 

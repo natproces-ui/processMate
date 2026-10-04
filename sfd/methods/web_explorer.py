@@ -8,6 +8,7 @@ import re
 from io import BytesIO
 from typing import Optional, Callable, Awaitable
 from PIL import Image, ImageDraw
+from config import GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE
 
 PLAYWRIGHT_AVAILABLE = False
 try:
@@ -168,7 +169,7 @@ Actions : click, scroll_down, scroll_up, type, goto, done.
 
     response = await asyncio.to_thread(
         client.models.generate_content,
-        model="gemini-2.5-flash",
+        model=GEMINI_MODEL_FLASH,
         contents=contents
     )
 
@@ -589,7 +590,7 @@ Réponds UNIQUEMENT avec l'URL exacte choisie. Rien d'autre."""
     try:
         response = await asyncio.to_thread(
             client.models.generate_content,
-            model="gemini-2.5-flash",
+            model=GEMINI_MODEL_LITE,  # lite : pas de "thinking" qui consomme les 200 tokens
             contents=contents,
             config={"max_output_tokens": 200, "temperature": 0.1},
         )
@@ -829,7 +830,7 @@ async def explore_for_mockup_v2(
 
     # ── LLM ──────────────────────────────────────────────────────────────────
     llm = ChatGoogle(
-        model="gemini-2.5-flash",
+        model=GEMINI_MODEL_FLASH,
         api_key=gemini_api_key,
         temperature=0.1,
     )

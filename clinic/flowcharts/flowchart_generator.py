@@ -10,6 +10,7 @@ from pathlib import Path
 import tempfile
 from typing import Dict, Tuple, Optional
 import os
+from config import GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE
 
 class FlowchartGenerator:
     """Générateur de flowcharts métier avec Gemini"""
@@ -180,8 +181,8 @@ Réponds UNIQUEMENT avec le code Graphviz complet.
             raise ValueError("La clé API Gemini est requise")
         
         self.client = genai.Client(api_key=api_key)
-        self.model_name = 'gemini-2.5-flash'
-        self.fallback_model_name = 'gemini-2.5-flash-lite'
+        self.model_name = GEMINI_MODEL_FLASH
+        self.fallback_model_name = GEMINI_MODEL_LITE
         self.generation_config = {'temperature': 0.3, 'top_p': 0.9, 'top_k': 40, 'max_output_tokens': 8192}
             
     def generate_flowchart(
@@ -229,7 +230,7 @@ JSON à analyser :
 Génère maintenant le flowchart Graphviz complet avec actions métier détaillées.
 """
         
-        # Génération avec Gemini (fallback sur gemini-2.5-flash-lite si 503)
+        # Génération avec Gemini (fallback sur le modèle lite si 503)
         try:
             response = self.client.models.generate_content(model=self.model_name, contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
             graphviz_code = self._clean_graphviz_code(response.text)

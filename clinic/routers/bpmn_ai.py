@@ -10,6 +10,7 @@ from typing import List
 from google import  genai
 import os
 import json
+from config import GEMINI_MODEL_FLASH
 router = APIRouter(prefix="/api/bpmn-ai", tags=["BPMN AI"])
 
 # Configuration Gemini
@@ -219,7 +220,7 @@ class BPMNAIEnricher:
         genai.configure(api_key=api_key)
         
         self.model = genai.GenerativeModel(
-            model_name='gemini-2.5-flash',
+            model_name=GEMINI_MODEL_FLASH,
             generation_config={
                 'temperature': 0.1,  # ✅ Très bas pour cohérence maximale
                 'top_p': 0.8,

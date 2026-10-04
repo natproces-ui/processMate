@@ -9,6 +9,7 @@ from graphviz import Source
 import tempfile
 from typing import Dict, Tuple, Optional
 import os
+from config import GEMINI_MODEL_FLASH
 
 class CobolFlowchartGenerator:
     """Générateur de flowcharts métier - Traduction intelligente par Gemini"""
@@ -299,7 +300,7 @@ Réponds UNIQUEMENT avec le code Graphviz DOT complet.
             raise ValueError("La clé API Gemini est requise")
         
         self.client = genai.Client(api_key=api_key)
-        self.model_name = 'gemini-2.5-flash'
+        self.model_name = GEMINI_MODEL_FLASH
         self.generation_config = {'temperature': 0.4, 'top_p': 0.95, 'top_k': 40, 'max_output_tokens': 8192}
     
     def generate_flowchart(

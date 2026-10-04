@@ -11,6 +11,7 @@ import json
 import os
 from google import genai
 from datetime import datetime
+from config import GEMINI_MODEL_FLASH
 
 logger = logging.getLogger(__name__)
 
@@ -443,7 +444,7 @@ def dot_to_table_with_gemini(dot_source: str) -> List[Table1Row]:
         prompt = PROMPT_TEMPLATE.format(dot_source=dot_source)
         
         logger.info("🤖 Gemini transforme le .dot en tableau BPMN...")
-        response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+        response = client.models.generate_content(model=GEMINI_MODEL_FLASH, contents=prompt)
         result_text = response.text.strip()
         
         # Nettoyage
@@ -533,7 +534,7 @@ async def dot_parser_info():
     return {
         "module": "DOT to Table Converter",
         "version": "5.0.0 - BPMN Swimlanes",
-        "model": "gemini-2.5-flash",
+        "model": GEMINI_MODEL_FLASH,
         "description": "Transformation avec swimlanes BPMN correctes (Département/Acteur/Outil distincts)",
         "swimlanes": {
             "département": "Direction/Service organisationnel (Direction RH, IT, Commercial...)",

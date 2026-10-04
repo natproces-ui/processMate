@@ -13,6 +13,7 @@ from google import genai
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+from config import GEMINI_MODEL_FLASH
 
 
 class BPMNGenerator:
@@ -67,7 +68,7 @@ class BPMNGenerator:
         
         # Appeler Gemini avec tous les fichiers
         try:
-            response = self.client.models.generate_content(model='gemini-2.5-flash', contents=content_parts)
+            response = self.client.models.generate_content(model=GEMINI_MODEL_FLASH, contents=content_parts)
             response_text = response.text
             
             # Parser la réponse JSON

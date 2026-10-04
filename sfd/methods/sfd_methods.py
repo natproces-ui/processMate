@@ -18,13 +18,14 @@ from schemas.sfd_schema import (
     SerieStatistique, CasUtilisation, ApiEndpoint, ExigenceNonFonctionnelle
 )
 from methods.web_explorer import explore_website
+from config import GEMINI_MODEL_FLASH
 
 # ============================================================================
 # CONFIG
 # ============================================================================
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL   = "gemini-2.5-flash"
+GEMINI_MODEL   = GEMINI_MODEL_FLASH
 OUTPUT_DIR     = "./tmp/outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 

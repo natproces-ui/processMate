@@ -8,6 +8,7 @@ import base64
 import re
 from google import genai
 from google.genai import types
+from config import GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE
 
 
 async def rebrand_screenshot(
@@ -90,7 +91,7 @@ Return ONLY the HTML code. No markdown, no explanation, no comments outside the 
     ]
 
     # Retry sur 503 : 3 tentatives par modèle, fallback Flash Lite
-    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
+    models_to_try = [GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE]
     response = None
 
     for model in models_to_try:

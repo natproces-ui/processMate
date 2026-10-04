@@ -16,11 +16,12 @@ from google import genai
 from google.genai import types
 
 from .schema import SFDDocument
+from config import GEMINI_MODEL_FLASH
 
 logger = logging.getLogger(__name__)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL   = "gemini-2.5-flash"
+GEMINI_MODEL   = GEMINI_MODEL_FLASH
 
 
 # ─── HELPERS JSON REPAIR ──────────────────────────────────────────────────────

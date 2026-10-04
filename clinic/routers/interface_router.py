@@ -109,7 +109,7 @@ async def detect_interfaces(request: InterfaceDetectRequest):
     │      "taches_sans_interface": ["3","4","5"]     │
     │    },                                           │
     │    "metadata": {                                │
-    │      "model_used": "gemini-2.5-flash",          │
+    │      "model_used": "gemini-3.8-flash",          │
     │      "attempts": 1,                             │
     │      "taches_analysees": 28,                    │
     │      "total_etapes_workflow": 34                │

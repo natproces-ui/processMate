@@ -10,14 +10,15 @@ import time
 from google import genai
 from google.genai import errors as genai_errors
 from google.api_core import exceptions as google_exceptions
+from config import GEMINI_MODEL_PRO, GEMINI_MODEL_LITE
 
 logger = logging.getLogger(__name__)
 
 
 class GeminiModel(Enum):
     """Modèles Gemini disponibles"""
-    FLASH = "gemini-2.5-pro"
-    FLASH_LITE = "gemini-3.1-flash-lite-preview"
+    FLASH = GEMINI_MODEL_PRO
+    FLASH_LITE = GEMINI_MODEL_LITE
 
 
 class ModelRetryStrategy:
@@ -116,7 +117,7 @@ class ModelRetryStrategy:
 
                 except genai_errors.ServerError as e:
                     # 503 UNAVAILABLE ou autres erreurs serveur temporaires
-                    status = getattr(e, 'status_code', 503)
+                    status = getattr(e, 'code', None) or 503  # APIError expose le code HTTP dans .code
                     logger.warning(f"⚠️ Erreur serveur {status} sur {model.value}: {str(e)[:100]}")
 
                     if model == GeminiModel.FLASH:
@@ -134,8 +135,12 @@ class ModelRetryStrategy:
 
                 except genai_errors.ClientError as e:
                     # Erreurs client (4xx autres que 429)
-                    status = getattr(e, 'status_code', 400)
+                    status = getattr(e, 'code', None) or 400
                     logger.error(f"❌ Erreur client {status} sur {model.value}: {str(e)[:200]}")
+                    if status == 404 and model == GeminiModel.FLASH:
+                        # Modèle retiré par Google → on bascule sur le secours plutôt que d'échouer
+                        logger.info("🔄 Modèle introuvable (404) → Switch vers Flash Lite")
+                        break
                     return {
                         "success": False,
                         "error": "client_error",
