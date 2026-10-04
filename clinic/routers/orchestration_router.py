@@ -510,9 +510,14 @@ async def create_procedure(body: CreateProcedureRequest):
         }
         if body.taxonomy_id:
             wf_row["taxonomy_id"] = body.taxonomy_id
-        result = db.table("workflows").insert(wf_row).execute()
-        if not result.data:
-            raise HTTPException(status_code=500, detail="Échec création workflow")
+        try:
+            result = db.table("workflows").insert(wf_row).execute()
+            if not result.data:
+                raise HTTPException(status_code=500, detail="Échec création workflow")
+        except Exception:
+            # Pas de session orpheline si le workflow n'a pas pu être créé
+            db.table("sessions").delete().eq("id", session_id).execute()
+            raise
         
         _proc_event(
             procedure_id=result.data[0]["id"],
@@ -808,23 +813,71 @@ async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _delete_procedure_cascade(session_id: str) -> Dict[str, int]:
+    """Supprime une procédure (toutes ses versions) et tout ce qui la référence.
+
+    Les IDs de procédure sont stockés en TEXT sans FK : rien ne cascade côté base,
+    d'où ce nettoyage explicite. Enfants d'abord — procedure_events.task_id a une
+    vraie FK vers procedure_tasks. Les workflows ne partent qu'à la fin, pour qu'un
+    échec en cours de route laisse la procédure visible (et re-supprimable).
+    """
+    db = get_supabase()
+    counts: Dict[str, int] = {}
+
+    def _delete(table: str, column: str, values: List[str]) -> None:
+        if values:
+            res = db.table(table).delete().in_(column, values).execute()
+            counts[table] = counts.get(table, 0) + len(res.data or [])
+
+    wf_ids = [r["id"] for r in db.table("workflows").select("id").eq("session_id", session_id).execute().data or []]
+    if wf_ids:
+        task_ids = [r["id"] for r in db.table("procedure_tasks").select("id").in_("procedure_id", wf_ids).execute().data or []]
+        cp_ids = [r["id"] for r in db.table("campaign_procedures").select("id").in_("procedure_id", wf_ids).execute().data or []]
+
+        # Liens Jira : entity_id = id de tâche ou de campaign_procedure
+        try:
+            _delete("jira_links", "entity_id", task_ids + cp_ids)
+        except Exception as e:  # table absente si la migration Jira n'est pas appliquée
+            logger.warning(f"delete_procedure: jira_links ignoré ({e})")
+
+        for table in ("procedure_task_events", "procedure_task_comments", "procedure_events"):
+            _delete(table, "procedure_id", wf_ids)
+            _delete(table, "task_id", task_ids)
+        for table in ("procedure_notifications", "procedure_tasks", "procedure_assignments",
+                      "procedure_validation_reviews", "campaign_procedures", "irritants"):
+            _delete(table, "procedure_id", wf_ids)
+
+        # Références en tableau : on retire l'ID, on garde l'analyse / la spec
+        spec_rows = db.table("specifications").select("id, procedure_ids").overlaps("procedure_ids", wf_ids).execute().data or []
+        analysis_rows: Dict[str, Dict] = {}
+        for wid in wf_ids:  # analysis_sessions.procedure_ids est en jsonb
+            for r in db.table("analysis_sessions").select("id, procedure_ids").filter("procedure_ids", "cs", json.dumps([wid])).execute().data or []:
+                analysis_rows[r["id"]] = r
+        for table, rows in (("specifications", spec_rows), ("analysis_sessions", list(analysis_rows.values()))):
+            for r in rows:
+                db.table(table).update({"procedure_ids": [p for p in r["procedure_ids"] if p not in wf_ids]}).eq("id", r["id"]).execute()
+            if rows:
+                counts[f"{table} (id retiré)"] = len(rows)
+
+        # Scénario BIAN importé → redevient importable
+        try:
+            db.table("bian_scenarios").update({"imported_as_workflow_id": None}).in_("imported_as_workflow_id", wf_ids).execute()
+        except Exception as e:  # table absente si la migration BIAN n'est pas appliquée
+            logger.warning(f"delete_procedure: bian_scenarios ignoré ({e})")
+
+    _delete("workflows", "session_id", [session_id])
+    _delete("messages", "session_id", [session_id])
+    _delete("sessions", "id", [session_id])
+    return counts
+
+
 @router.delete("/procedures/{workflow_id}")
 async def delete_procedure(workflow_id: str):
     try:
-        db = get_supabase()
         wf = _get_workflow(workflow_id)
-        # Récupérer tous les IDs de la session avant suppression
-        session_workflow_ids = [
-            r["id"] for r in
-            db.table("workflows").select("id").eq("session_id", wf["session_id"]).execute().data or []
-        ]
-        # Supprimer les irritants liés
-        if session_workflow_ids:
-            db.table("irritants").delete().in_("procedure_id", session_workflow_ids).execute()
-        # Supprimer les workflows
-        db.table("workflows").delete().eq("session_id", wf["session_id"]).execute()
-        logger.info(f"🗑️ Procédure supprimée: session {wf['session_id']}")
-        return {"success": True}
+        counts = _delete_procedure_cascade(wf["session_id"])
+        logger.info(f"🗑️ Procédure supprimée: session {wf['session_id']} — {counts}")
+        return {"success": True, "deleted": counts}
     except HTTPException:
         raise
     except Exception as e:

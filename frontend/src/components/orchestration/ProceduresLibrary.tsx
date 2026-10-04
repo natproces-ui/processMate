@@ -82,6 +82,8 @@ function ContextMenu({ pos, target, isAdmin, onAction, onClose }: {
             { label: 'Flux de travail', action: 'show-workflow', icon: <Workflow className="w-3.5 h-3.5" /> },
             { label: 'Voir les tâches', action: 'show-tasks', icon: <ListChecks className="w-3.5 h-3.5" /> },
             { label: 'Assigner à une campagne', action: 'assign-campaign', icon: <Megaphone className="w-3.5 h-3.5" />, admin: true, divider: true },
+            { label: 'Renommer', action: 'rename', icon: <Pencil className="w-3.5 h-3.5" />, admin: true },
+            { label: 'Supprimer', action: 'delete', icon: <Trash2 className="w-3.5 h-3.5" />, admin: true },
         );
     } else {
         items.push(
@@ -202,7 +204,7 @@ function RaciModalLazy({ procedureId, procedureName, isAdmin, onClose, currentAc
 
 export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignToCampaign, onOpenStudio, expandToNodeId }: ProceduresLibraryProps) {
     const { profile } = useAuth();
-    const { procedures, fetchProcedures } = useProceduresStore();
+    const { procedures, fetchProcedures, removeProcedure } = useProceduresStore();
     const isAdmin = profile?.global_role === 'admin';
 
     const [tree, setTree] = useState<TaxonomyNode[]>([]);
@@ -363,6 +365,12 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
 
     const handleRename = async (newName: string) => {
         if (modal?.type !== 'rename-node' || !newName.trim()) return;
+        if (modal.level === 'procedure') {
+            await orchestrationApi.updateProcedure(modal.nodeId, { nom: newName.trim() });
+            setModal(null);
+            await fetchProcedures(true);
+            return;
+        }
         await taxonomyApi.update(modal.nodeId, { name: newName.trim() });
         setModal(null);
         await loadTree();
@@ -370,6 +378,13 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
 
     const handleDelete = async () => {
         if (modal?.type !== 'confirm-delete') return;
+        if (modal.level === 'procedure') {
+            await orchestrationApi.deleteProcedure(modal.nodeId);
+            removeProcedure(modal.nodeId);
+            setModal(null);
+            await fetchProcedures(true);
+            return;
+        }
         await taxonomyApi.delete(modal.nodeId);
         setModal(null);
         await loadTree();
@@ -647,7 +662,11 @@ function ConfirmDeleteModal({ name, level, onConfirm, onCancel }: { name: string
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
                 <h3 className="text-base font-bold text-gray-900 mb-2">Supprimer</h3>
-                <p className="text-sm text-gray-500 mb-6">Supprimer « {name} » ? Les procédures liées ne seront pas supprimées.</p>
+                <p className="text-sm text-gray-500 mb-6">
+                    {level === 'procedure'
+                        ? <>Supprimer définitivement « {name} » ? Ses versions, tâches, affectations, irritants et historique seront aussi supprimés. Action irréversible.</>
+                        : <>Supprimer « {name} » ? Les procédures liées ne seront pas supprimées.</>}
+                </p>
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button>
                     <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">Supprimer</button>
