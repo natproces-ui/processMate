@@ -287,7 +287,7 @@ export function ArtifactDetail({ artifact, actors, currentActor, onClose }: Prop
           {tasksCreated > 0 && (
             <button
               type="button"
-              onClick={() => router.push('/orchestration?tab=tasks')}
+              onClick={() => router.push('/orchestration?tab=taches')}
               className="inline-flex h-8 items-center gap-1.5 rounded border border-green-200 bg-green-50 px-3 text-xs font-medium text-green-700 hover:bg-green-100"
             >
               {tasksCreated} tâche{tasksCreated > 1 ? 's' : ''} créée{tasksCreated > 1 ? 's' : ''} <ExternalLink className="h-3 w-3" />

@@ -7,7 +7,7 @@ import { MessageSquare, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 
 const TaxonomyProcedureSelector = dynamic(() => import('@/components/orchestration/TaxonomyProcedureSelector'), { ssr: false });
 import { analysisApi, type AnalysisArtifact, type AnalysisMessage, type AnalysisSession } from '@/lib/analysisApi';
-import { regulatoryImpactApi } from '@/lib/regulatoryImpactApi';
+import { orchestrationApi } from '@/lib/orchestrationApi';
 import type { ProcedureCandidate } from '@/lib/analysisApi';
 import type { TaskActor } from '@/lib/orchestrationTasksApi';
 import { AnalysisChatPanel } from '@/components/analysis/AnalysisChatPanel';
@@ -89,7 +89,7 @@ export default function AnalysisWorkspace({ actors = [], currentActor = null }: 
     try {
       const [sRes, pRes] = await Promise.all([
         analysisApi.listSessions(),
-        regulatoryImpactApi.listProcedures(),
+        orchestrationApi.listProcedures(),
       ]);
       setSessions(sRes.sessions);
       setProcedures(pRes.procedures);

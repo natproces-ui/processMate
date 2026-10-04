@@ -106,7 +106,7 @@ export default function NotificationBell({ actorId }: Props) {
         }
         const taskId = notif.metadata?.task_id;
         if (taskId) {
-            router.push(`/orchestration?tab=tasks&task_id=${taskId}`);
+            router.push(`/orchestration?tab=taches&task_id=${taskId}`);
             setOpen(false);
         }
     };
@@ -274,7 +274,7 @@ export default function NotificationBell({ actorId }: Props) {
                         <div className="shrink-0 border-t border-gray-100 px-4 py-2 text-center">
                             <button
                                 type="button"
-                                onClick={() => { router.push('/orchestration?tab=tasks'); setOpen(false); }}
+                                onClick={() => { router.push('/orchestration?tab=taches'); setOpen(false); }}
                                 className="text-xs text-blue-600 hover:underline font-medium"
                             >
                                 Voir toutes les tâches →
