@@ -1,7 +1,6 @@
 // src/components/orchestration/tasks/ActorSwitcher.tsx
 'use client';
 
-import React from 'react';
 import { ChevronDown, UserRound } from 'lucide-react';
 import type { TaskActor } from '@/lib/orchestrationTasksApi';
 

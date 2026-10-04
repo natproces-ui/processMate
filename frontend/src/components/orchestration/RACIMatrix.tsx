@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Users, Plus, X, RefreshCw, Lock, AlertCircle, Save, Check, Search } from 'lucide-react';
 import { orchestrationApi, UserProfile } from '@/lib/orchestrationApi';
 import type { TaskActor } from '@/lib/orchestrationTasksApi';

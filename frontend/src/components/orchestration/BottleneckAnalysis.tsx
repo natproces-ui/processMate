@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { orchestrationApi, Procedure } from '@/lib/orchestrationApi';
 

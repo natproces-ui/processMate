@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ChevronRight, ChevronDown, Plus, Pencil, Trash2,
-  Check, X, Loader2, FolderOpen, Folder, FileText,
-  AlertTriangle, RefreshCw, Database,
+  Check, X, Loader2, FolderOpen, FileText,
+  RefreshCw, Database,
 } from 'lucide-react';
 import {
   taxonomyApi, TaxonomyNode, TaxonomyLevel,

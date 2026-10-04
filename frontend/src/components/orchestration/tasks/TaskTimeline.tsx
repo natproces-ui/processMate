@@ -1,7 +1,7 @@
 // src/components/orchestration/tasks/TaskTimeline.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Clock, MessageSquare, RefreshCw } from 'lucide-react';
 import {
   orchestrationTasksApi,

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import '@/app/clinic/css/style.css';
 import FlowchartResults from '@/components/clinic/FlowchartResults';
 import { initializeViz, VizInstance } from '@/components/clinic/flowchartUtils';

@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 
 interface Props {
     onCollecte?: () => void;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertCircle, Plus, Send, Trash2, X } from 'lucide-react';
 import type { Procedure } from '@/lib/orchestrationApi';
 import {

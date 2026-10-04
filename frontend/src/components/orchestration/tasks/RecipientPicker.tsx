@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, Search } from 'lucide-react';
 import { orchestrationApi, type UserProfile } from '@/lib/orchestrationApi';
 

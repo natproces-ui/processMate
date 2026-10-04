@@ -5,7 +5,7 @@ import { API_CONFIG } from '@/lib/api-config';
 import type { ProcessCard } from '@/components/MultiDocUpload';
 import {
     Loader2, Send, CheckSquare, Square, Sparkles,
-    FileText, MessageSquare, ChevronDown, ChevronUp, Merge
+    FileText, MessageSquare, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 interface ChatMsg {

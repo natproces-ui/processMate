@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronRight, ChevronDown, FolderOpen, Tag, Layers, FileText, Search, Loader2 } from 'lucide-react';
 import { taxonomyApi, type TaxonomyNode } from '@/lib/taxonomyApi';
 

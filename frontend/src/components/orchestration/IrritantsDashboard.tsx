@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
-import { Irritant, CATEGORIES, CATEGORIE_CONFIG, CRITICITE_STYLE } from './IrritantCard';
+import { Irritant, CATEGORIES, CATEGORIE_CONFIG } from './IrritantCard';
 
 // ─── Types ────────────────────────────────────────────────────
 

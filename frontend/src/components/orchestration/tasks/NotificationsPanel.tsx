@@ -1,7 +1,7 @@
 // src/components/orchestration/tasks/NotificationsPanel.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell, CheckCheck, RefreshCw } from 'lucide-react';
 import {
   orchestrationTasksApi,

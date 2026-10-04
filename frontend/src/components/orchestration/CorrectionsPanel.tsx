@@ -3,7 +3,7 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
 import {
   AlertTriangle, CheckCircle2, ChevronRight, Download, FileText,
-  Loader2, Upload, X, RotateCcw, Eye, EyeOff, Filter,
+  Loader2, Upload, X, RotateCcw, EyeOff, Filter,
 } from 'lucide-react';
 import {
   correctionsApi,

@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BookOpen, Clock, Download, Eye,
   Loader2, MessageSquare, RefreshCw, Search, Sparkles,
-  Trash2, X, AlertCircle, Send, ChevronRight,
+  Trash2, X, AlertCircle, Send,
   Link, Paperclip, Plus,
 } from 'lucide-react';
 import {

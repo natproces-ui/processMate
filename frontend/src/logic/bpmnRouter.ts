@@ -1,7 +1,7 @@
 // bpmnRouter.ts - VERSION AVEC CÔTÉS GATEWAY RÉSERVÉS (Oui/Non jamais même angle)
 import type { Table1Row, NodePosition } from './bpmnLayoutEngine';
 import { BPMNLayoutEngine } from './bpmnLayoutEngine';
-import { BPMN_TYPES, DEFAULT_DIMENSIONS } from './bpmnConstants';
+import { BPMN_TYPES } from './bpmnConstants';
 
 export interface Arrow {
     id: string;

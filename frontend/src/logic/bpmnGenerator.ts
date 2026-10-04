@@ -11,8 +11,7 @@ import {
     escapeXml,
     getElementId,
     getElementIdFromString,
-    formatLaneNameForDisplay,
-    getCenterPosition
+    formatLaneNameForDisplay
 } from './bpmnUtils';
 import { BPMNRouter } from './bpmnRouter';
 

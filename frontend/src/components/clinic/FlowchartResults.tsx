@@ -1,4 +1,3 @@
-import React from 'react';
 import FlowchartViewer from '@/components/clinic/FlowchartViewer';
 import EditorView from '@/components/clinic/EditorView';
 import TableComponent from '@/components/clinic/Table';

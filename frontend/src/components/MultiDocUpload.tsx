@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { API_CONFIG } from '@/lib/api-config';
 import {
-    Upload, X, FileText, Image as ImageIcon,
+    Upload, X, FileText,
     Loader2, Sparkles, RotateCcw, BookOpen, Target,
     ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';

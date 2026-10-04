@@ -1,4 +1,3 @@
-import React from 'react';
 import { AlertCircle, CheckCircle2, Clock, AlertTriangle, BarChart3, RefreshCw } from 'lucide-react';
 import KPICard from './KPICard';
 import EvolutionChart from './EvolutionChart';

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { TrendingUp, RefreshCw } from 'lucide-react';
 import BarColumn from './BarColumn';
 import { orchestrationApi } from '@/lib/orchestrationApi';

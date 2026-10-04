@@ -9,7 +9,7 @@ import {
   Layers, Loader2, Megaphone, PenLine, Plus, RefreshCw, RotateCcw, Search,
   Tag, Trash2, Upload, Wand2, X,
 } from 'lucide-react';
-import { orchestrationApi, type Procedure, type LifecycleStage, type Remark as OrcheRemark } from '@/lib/orchestrationApi';
+import { orchestrationApi, type Procedure } from '@/lib/orchestrationApi';
 import {
   orchestrationTasksApi,
   type EnrichedTask, type EnrichedTaskEvent, type ProcedureTask,
@@ -17,8 +17,7 @@ import {
 } from '@/lib/orchestrationTasksApi';
 import TaskTimeline from '@/components/orchestration/tasks/TaskTimeline';
 import {
-  campaignsApi, type Campaign, type CampaignProcedure, type CampaignProcedureStatus,
-  type CampaignStatus,
+  campaignsApi, type Campaign,
   CAMPAIGN_STATUS_LABELS, CAMPAIGN_STATUS_COLORS, PROC_STATUS_LABELS, PROC_STATUS_COLORS,
 } from '@/lib/campaignsApi';
 import { taxonomyApi, type TaxonomyNode } from '@/lib/taxonomyApi';
