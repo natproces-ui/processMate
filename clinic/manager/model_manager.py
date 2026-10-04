@@ -181,31 +181,3 @@ class GeminiModelManager:
         Wrapper pour exécuter une tâche avec fallback automatique
         """
         return await self.retry_strategy.execute_with_retry(task_func, task_name)
-
-
-def get_gemini_quota_usage(project_id: str, service_account_file: str):
-    from google.cloud import service_usage_v1
-    from google.oauth2 import service_account
-
-    credentials = service_account.Credentials.from_service_account_file(
-        service_account_file,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
-
-    client = service_usage_v1.ServiceUsageClient(credentials=credentials)
-
-    parent = f"projects/{project_id}/services/generativelanguage.googleapis.com"
-    service = client.get_service(name=parent)
-
-    quotas = {}
-
-    for metric in service.consumer_quota_metrics:
-        for limit in metric.consumer_quota_limits:
-            limit_name = limit.name.split("/")[-1]
-            quotas[limit_name] = {
-                "used": limit.quota_consumed,
-                "limit": limit.limit,
-                "remaining": max(0, limit.limit - limit.quota_consumed),
-            }
-
-    return {"success": True, "quotas": quotas}

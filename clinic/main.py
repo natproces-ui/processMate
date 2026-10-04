@@ -21,7 +21,7 @@ if sys.platform == "win32" and os.getenv("IS_PRODUCTION", "false").lower() != "t
     ssl.create_default_context = _no_verify_ctx
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import logging
@@ -35,12 +35,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from config import API_CONFIG, CORS_CONFIG, HTML_FILE, IS_PRODUCTION, FRONTEND_URL, GOOGLE_API_KEY
+from config import API_CONFIG, CORS_CONFIG, IS_PRODUCTION, FRONTEND_URL, GOOGLE_API_KEY
 from routers import (
     parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn,
     dot_to_table, cobol_flowchart,
-    quota, doc_router, stt, interface_router, revision_router, bpmn_from_document, chat_router,
-    orchestration_router, irritants_router, orchestration_tasks_router, regulatory_impact_router,
+    doc_router, stt, interface_router, revision_router, chat_router,
+    orchestration_router, irritants_router, orchestration_tasks_router,
     analysis_router, taxonomy_router, campaigns_router, reports_router, corrections_router,
     workspace_router, specifications_router, tools_router
 )
@@ -78,11 +78,9 @@ app.include_router(bpmn.router)
 app.include_router(bpmn_ai.router)
 app.include_router(img_to_bpmn.router)
 app.include_router(dot_to_table.router)
-app.include_router(bpmn_from_document.router)
 app.include_router(irritants_router.router)
 
 app.include_router(stt.router)
-app.include_router(quota.router)
 app.include_router(doc_router.router)
 app.include_router(interface_router.router)
 app.include_router(revision_router.router)
@@ -92,7 +90,6 @@ app.include_router(process_generation.router)
 app.include_router(chat_router.router)  # Router pour le chat (sessions + messages)
 app.include_router(orchestration_router.router)
 app.include_router(orchestration_tasks_router.router)
-app.include_router(regulatory_impact_router.router)
 app.include_router(analysis_router.router)
 app.include_router(taxonomy_router.router)
 app.include_router(campaigns_router.router)
@@ -107,13 +104,9 @@ async def head_root():
     return JSONResponse(content={}, status_code=200)
 
 
-@app.get("/", response_class=HTMLResponse)
-async def serve_html():
-    if not HTML_FILE.exists():
-        return HTMLResponse(content="<h1>Erreur: index.html non trouvé</h1>", status_code=404)
-    with open(HTML_FILE, "r", encoding="utf-8") as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content)
+@app.get("/")
+async def root():
+    return {"service": "BPMN Process Generator API", "status": "ok", "health": "/health"}
 
 
 @app.head("/health")
