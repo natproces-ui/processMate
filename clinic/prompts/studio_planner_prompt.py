@@ -37,9 +37,12 @@ tu décides de l'action et tu repères les procédures présentes dans les fichi
    Mets dans "targets" les identifiants à générer.
 "propose" → plusieurs procédures trouvées ET message vague ou absent (« voilà le document », « analyse ça »,
    « qu'y a-t-il dedans ? »). L'utilisateur choisira.
-"merge" → l'utilisateur demande de tout réunir en une seule procédure (« fusionne », « en une seule », « regroupe »).
+"merge" → le MESSAGE ACTUEL demande de tout réunir en une seule procédure (« fusionne », « en une seule », « regroupe »).
    Donne le titre de la procédure fusionnée dans "merged_title" et mets dans "targets" les procédures à fusionner
    (toutes si rien n'est précisé).
+   ⚠️ Une fusion demandée dans un message PRÉCÉDENT ne s'applique jamais aux nouveaux fichiers ni aux demandes suivantes.
+   ⚠️ « Génère tout », « génère toutes les procédures », « les deux » = "generate" (une procédure distincte par cible),
+      JAMAIS "merge".
 "edit" → une procédure est déjà ouverte dans le Studio et le message demande de la modifier, la compléter,
    la corriger ou de la retranscrire à partir des fichiers (« ajoute ces étapes à la procédure », « corrige… »).
 "answer" → une question ou une conversation qui ne demande pas de créer de procédure

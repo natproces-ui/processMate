@@ -270,15 +270,19 @@ class ImageProcessor:
         """Parse la réponse JSON de Gemini et retourne (workflow, title, enrichments_dict)"""
         try:
             text = text.strip()
-            
+
             json_match = re.search(r'\{[\s\S]*\}', text)
             if json_match:
                 text = json_match.group(0)
-            
+
             text = re.sub(r'```json\s*', '', text)
             text = re.sub(r'```\s*', '', text)
-            
-            data = json.loads(text)
+
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                # Tolérance : virgules en trop avant } ou ] (erreur fréquente des modèles rapides)
+                data = json.loads(re.sub(r',\s*([}\]])', r'\1', text))
             
             title = data.get("title", "").strip()
             if not title:

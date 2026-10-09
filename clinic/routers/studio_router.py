@@ -175,9 +175,11 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
                 logger.info("⏹️ Génération Studio interrompue par l'utilisateur")
                 break
     finally:
-        for t in tasks:
-            if not t.done():
-                t.cancel()
+        pending = [t for t in tasks if not t.done()]
+        for t in pending:
+            t.cancel()
+        if pending:
+            logger.warning(f"⏹️ {len(pending)} génération(s) annulée(s) (arrêt ou déconnexion du client)")
 
 
 def _streaming(gen) -> StreamingResponse:

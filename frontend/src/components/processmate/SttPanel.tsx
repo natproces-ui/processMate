@@ -20,7 +20,7 @@ import DocumentExportPanel from '@/components/DocumentExportPanel';
 import MultiDocUpload, { ProcessCard } from '@/components/MultiDocUpload';
 import ProcessDiscoveryPanel from '@/components/ProcessDiscoveryPanel';
 import SttToolbar from './SttToolbar';
-import ChatInterface from '@/components/ChatInterface';
+import ChatInterface, { type GeneratedProcedure } from '@/components/ChatInterface';
 import SaveToBiblioModal from '@/components/SaveToBiblioModal';
 import Library from '@/components/new-way/Library';
 import {
@@ -387,6 +387,38 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         setSourceFiles(files);
     };
 
+    // ── Procédures générées depuis la conversation : un onglet par procédure ──
+    const handleProcedureStarted = useCallback((key: string, title: string) => {
+        setPhase('editing'); setUploadOpen(false);
+        setInstances(prev => {
+            if (prev.some(i => i.process_id === key)) return prev;
+            // Premier onglet de la conversation : il devient l'onglet actif
+            if (prev.length === 0) setActiveTab(0);
+            return [...prev, {
+                process_id: key, title, data: [], enrichments: new Map(), bpmnXml: null,
+                metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: { nom: title }, status: 'generating',
+            }];
+        });
+    }, []);
+
+    const handleProcedureReady = useCallback((proc: GeneratedProcedure) => {
+        const xml = generateBPMNSimple(proc.workflow, proc.title);
+        setInstances(prev => prev.map(inst => inst.process_id === proc.key ? {
+            ...inst, title: proc.title, data: proc.workflow, enrichments: proc.enrichments, bpmnXml: xml,
+            initialMeta: Object.keys(proc.procedureMetadata).length > 0 ? proc.procedureMetadata : { nom: proc.title },
+            status: 'ready',
+        } : inst));
+    }, []);
+
+    const handleProcedureError = useCallback((key: string) => {
+        setInstances(prev => prev.map(inst => inst.process_id === key && inst.status === 'generating' ? { ...inst, status: 'error' } : inst));
+    }, []);
+
+    const handleSelectProcedure = useCallback((key: string) => {
+        const idx = instances.findIndex(i => i.process_id === key);
+        if (idx >= 0) setActiveTab(idx);
+    }, [instances]);
+
     const handleGenerate = async (selectedIds: string[]) => {
         if (!sessionId || selectedIds.length === 0) return;
         setGenerating(true);
@@ -693,7 +725,34 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
+                {/* Conversation : pleine hauteur, composeur en bas */}
+                <aside aria-label="Conversation" className="shrink-0 h-[55vh] lg:h-auto lg:w-[420px] xl:w-[460px] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white">
+                    <ChatInterface
+                        inputContextVisible={uploadOpen || codeSourceOpen}
+                        inputContext={inputContext}
+                        onOpenDocuments={() => { setUploadOpen(true); setCodeSourceOpen(false); }}
+                        onOpenCode={() => { setCodeSourceOpen(true); setUploadOpen(false); }}
+                        recording={recording} processing={processing}
+                        onToggleRecording={toggleRecording} onCancelRecording={cancelRecording}
+                        insertText={dictation}
+                        onNewConversation={() => { setUploadOpen(false); setCodeSourceOpen(false); }}
+                        onProcessingLevelChange={setProcessingLevel}
+                        processingLevel={processingLevel}
+                        currentWorkflow={activeData}
+                        currentEnrichments={activeEnrichments}
+                        currentProcedureMetadata={activeInitialMeta}
+                        onWorkflowGenerated={handleWorkflowFromChat}
+                        onError={showError} onSuccess={showSuccess}
+                        onProcedureStarted={handleProcedureStarted}
+                        onProcedureReady={handleProcedureReady}
+                        onProcedureError={handleProcedureError}
+                        onSelectProcedure={handleSelectProcedure}
+                        variant="sidebar"
+                    />
+                </aside>
+                {/* Procédure : onglets, diagramme, tableau, export */}
+                <div className="flex-1 min-w-0 overflow-y-auto">
                 <div className="max-w-[1400px] mx-auto px-4 py-5 space-y-3">
 
                     {loadingWorkflow && (
@@ -731,26 +790,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             <ProcessDiscoveryPanel processingLevel={processingLevel} sessionId={sessionId} cards={cards} onCardsUpdated={setCards} onGenerate={handleGenerate} generating={generating} />
                         </div>
                     )}
-                    <div hidden={phase === 'discovery'}>
-                        <ChatInterface
-                            inputContextVisible={uploadOpen || codeSourceOpen}
-                            inputContext={inputContext}
-                            onOpenDocuments={() => { setUploadOpen(true); setCodeSourceOpen(false); }}
-                            onOpenCode={() => { setCodeSourceOpen(true); setUploadOpen(false); }}
-                            recording={recording} processing={processing}
-                            onToggleRecording={toggleRecording} onCancelRecording={cancelRecording}
-                            insertText={dictation}
-                            onNewConversation={() => { setUploadOpen(false); setCodeSourceOpen(false); }}
-                            onProcessingLevelChange={setProcessingLevel}
-                            processingLevel={processingLevel}
-                            key={`chat-${activeTab}`}
-                            currentWorkflow={activeData}
-                            currentEnrichments={activeEnrichments}
-                            currentProcedureMetadata={activeInitialMeta}
-                            onWorkflowGenerated={handleWorkflowFromChat}
-                            onError={showError} onSuccess={showSuccess}
-                        />
-                    </div>
                     {revisionOpen && phase === 'editing' && (
                         <RevisionPanel
                             processingLevel={processingLevel}
@@ -914,6 +953,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             onMetaEdited={changes => { exportEditsRef.current[activeTab] = changes; }}
                         />
                     )}
+                </div>
                 </div>
                 </div>
             </div>

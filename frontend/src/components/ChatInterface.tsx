@@ -10,7 +10,7 @@ import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSel
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -26,6 +26,20 @@ interface AttachedFile {
     previewUrl?: string;
 }
 
+// ── Conversation en flux (/api/studio) ─────────────────────────
+interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped' }
+export interface TurnProcedure {
+    id: string; title: string; description?: string;
+    sources?: { file: string; pages?: string | null }[]; estimated_steps?: number;
+}
+interface TurnProposal { procedures: TurnProcedure[]; selected: string[]; submitted?: boolean }
+interface TurnGeneration { key: string; title: string; status: 'generating' | 'ready' | 'error' | 'stopped'; steps?: number; error?: string }
+/** Procédure générée, transmise au Studio (key unique dans la conversation) */
+export interface GeneratedProcedure {
+    key: string; title: string; workflow: Table1Row[];
+    enrichments: Map<string, TaskEnrichment>; procedureMetadata: Record<string, unknown>;
+}
+
 interface ChatMessage {
     id: string;
     role: 'user' | 'assistant' | 'clarify';
@@ -35,6 +49,11 @@ interface ChatMessage {
     title?: string;
     operationsCount?: number;
     createdAt: Date;
+    attachments?: string[];
+    steps?: TurnStep[];
+    proposal?: TurnProposal;
+    generations?: TurnGeneration[];
+    streaming?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -62,11 +81,20 @@ interface ChatInterfaceProps {
     ) => void;
     onError: (msg: string) => void;
     onSuccess: (msg: string) => void;
+    /** Génération de procédures depuis la conversation (un onglet par procédure) */
+    onProcedureStarted?: (key: string, title: string) => void;
+    onProcedureReady?: (proc: GeneratedProcedure) => void;
+    onProcedureError?: (key: string, message: string) => void;
+    onSelectProcedure?: (key: string) => void;
+    /** 'sidebar' : colonne pleine hauteur, composeur en bas (Studio) */
+    variant?: 'inline' | 'sidebar';
 }
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
+
+const MAX_ATTACHMENTS = 10; // même limite que /api/studio/turn
 
 const ACCEPTED_TYPES: Record<string, 'pdf' | 'image'> = {
     'application/pdf': 'pdf',
@@ -75,10 +103,6 @@ const ACCEPTED_TYPES: Record<string, 'pdf' | 'image'> = {
     'image/jpg': 'image',
     'image/webp': 'image',
 };
-
-function formatTime(date: Date) {
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
 
 function IntentBadge({ intent }: { intent: Intent }) {
     const config: Record<Intent, { icon: React.ReactNode; label: string; color: string }> = {
@@ -141,6 +165,11 @@ export default function ChatInterface({
     onWorkflowGenerated,
     onError,
     onSuccess,
+    onProcedureStarted,
+    onProcedureReady,
+    onProcedureError,
+    onSelectProcedure,
+    variant = 'inline',
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -196,24 +225,15 @@ export default function ChatInterface({
         initSession();
     }, []);
 
+    // Identifiant de conversation local : plus de session créée en base à chaque ouverture
     const initSession = async () => {
-        try {
-            const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.chatSession), {
-                method: 'POST'
-            });
-            const data = await res.json();
-            if (!res.ok || !data.success || !data.session?.id) throw new Error("Session indisponible");
-            setSessionId(data.session.id);
-            setInitialized(true);
-        } catch {
-            setSessionId(crypto.randomUUID());
-            setInitialized(true);
-        }
+        setSessionId(crypto.randomUUID());
+        setInitialized(true);
     };
 
     // ── Gestion fichiers ─────────────────────────────────────
     const addFiles = useCallback((incoming: File[]) => {
-        const toAdd = incoming.slice(0, 3 - attachedFiles.length);
+        const toAdd = incoming.slice(0, MAX_ATTACHMENTS - attachedFiles.length);
         const newFiles: AttachedFile[] = [];
 
         for (const file of toAdd) {
@@ -253,144 +273,201 @@ export default function ChatInterface({
             content: m.content
         }));
 
-    // ── Envoi message ────────────────────────────────────────
+    const abortRef = useRef<AbortController | null>(null);
+
+    const updateMsg = (id: string, fn: (m: ChatMessage) => ChatMessage) =>
+        setMessages(prev => prev.map(m => (m.id === id ? fn(m) : m)));
+
+    // ── Résultat du chat existant (modifier, expliquer, préciser, générer depuis un texte) ──
+    const applyChatResult = (data: any, msgId: string) => {
+        const intent: Intent = data.intent || 'generate';
+
+        if (intent === 'clarify') {
+            updateMsg(msgId, m => ({ ...m, role: 'clarify', intent: 'clarify', content: data.clarify_question || 'Pouvez-vous préciser votre demande ?' }));
+            return;
+        }
+        if (intent === 'explain') {
+            updateMsg(msgId, m => ({ ...m, intent: 'explain', content: data.answer || '' }));
+            return;
+        }
+        if (intent === 'patch') {
+            const revised = applyOperations(currentWorkflow, data.operations || []);
+            updateMsg(msgId, m => ({ ...m, intent: 'patch', content: data.explanation || 'Modifications appliquées', operationsCount: data.operations_count || 0 }));
+            onWorkflowGenerated(revised, '', new Map<string, TaskEnrichment>(), null);
+            onSuccess(`✓ ${data.explanation}`);
+            return;
+        }
+        // generate / regen / web_search / transcribe
+        const totalSteps = data.workflow?.length || 0;
+        updateMsg(msgId, m => ({ ...m, intent, totalSteps, title: data.title, content: buildAssistantMessage(intent, data.title, totalSteps) }));
+        const enrichMap = new Map<string, TaskEnrichment>();
+        if (data.enrichments) Object.entries(data.enrichments).forEach(([id, enr]: [string, any]) => enrichMap.set(id, enr));
+        onWorkflowGenerated(data.workflow, data.title, enrichMap, data.procedureMetadata || null);
+        onSuccess(`✓ ${totalSteps} étapes — "${data.title}"`);
+    };
+
+    // ── Événements du flux ──
+    const handleEvent = (msgId: string, ev: any) => {
+        const key = (id: string) => `${msgId}:${id}`; // unique dans la conversation (p1 peut revenir à chaque tour)
+        switch (ev.type) {
+            case 'status':
+                updateMsg(msgId, m => {
+                    const steps = [...(m.steps || [])];
+                    const i = steps.findIndex(s => s.id === ev.id);
+                    const step: TurnStep = { id: ev.id, label: ev.label, state: ev.state };
+                    if (i >= 0) steps[i] = step; else steps.push(step);
+                    return { ...m, steps };
+                });
+                break;
+            case 'message':
+                updateMsg(msgId, m => ({ ...m, content: m.content ? `${m.content}\n\n${ev.text}` : ev.text }));
+                break;
+            case 'proposal':
+                updateMsg(msgId, m => ({ ...m, proposal: { procedures: ev.procedures, selected: ev.selected } }));
+                break;
+            case 'procedure_started':
+                updateMsg(msgId, m => ({ ...m, generations: [...(m.generations || []), { key: key(ev.id), title: ev.title, status: 'generating' }] }));
+                onProcedureStarted?.(key(ev.id), ev.title);
+                break;
+            case 'procedure_ready': {
+                const enrichMap = new Map<string, TaskEnrichment>();
+                Object.entries(ev.enrichments || {}).forEach(([id, enr]: [string, any]) => enrichMap.set(id, enr));
+                updateMsg(msgId, m => ({ ...m, generations: (m.generations || []).map(g => g.key === key(ev.id) ? { ...g, title: ev.title, status: 'ready', steps: ev.workflow?.length || 0 } : g) }));
+                onProcedureReady?.({ key: key(ev.id), title: ev.title, workflow: ev.workflow || [], enrichments: enrichMap, procedureMetadata: ev.procedureMetadata || {} });
+                break;
+            }
+            case 'procedure_error':
+                updateMsg(msgId, m => ({ ...m, generations: (m.generations || []).map(g => g.key === key(ev.id) ? { ...g, status: 'error', error: ev.message } : g) }));
+                onProcedureError?.(key(ev.id), ev.message);
+                onError(`« ${ev.title} » : ${ev.message}`);
+                break;
+            case 'chat_result':
+                applyChatResult(ev.result, msgId);
+                break;
+            case 'error':
+                updateMsg(msgId, m => ({ ...m, content: m.content || 'Une erreur est survenue.' }));
+                onError(ev.message || 'Erreur lors du traitement');
+                break;
+        }
+    };
+
+    // Lit un flux text/event-stream (lignes `data: {...}` séparées par une ligne vide)
+    const streamEvents = async (url: string, init: RequestInit, msgId: string) => {
+        const controller = new AbortController();
+        abortRef.current = controller;
+        updateMsg(msgId, m => ({ ...m, streaming: true }));
+        setLoading(true);
+        try {
+            const res = await fetch(url, { ...init, signal: controller.signal });
+            if (!res.ok || !res.body) {
+                const detail = await res.json().then(d => d.detail).catch(() => null);
+                throw new Error(detail || `Erreur serveur (${res.status})`);
+            }
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            for (;;) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                let sep: number;
+                while ((sep = buffer.indexOf('\n\n')) >= 0) {
+                    const chunk = buffer.slice(0, sep);
+                    buffer = buffer.slice(sep + 2);
+                    for (const line of chunk.split('\n')) {
+                        if (!line.startsWith('data: ')) continue;
+                        try { handleEvent(msgId, JSON.parse(line.slice(6))); } catch { /* événement illisible ignoré */ }
+                    }
+                }
+            }
+        } catch (err: any) {
+            if (err?.name === 'AbortError') {
+                let stoppedKeys: string[] = [];
+                setMessages(prev => prev.map(m => {
+                    if (m.id !== msgId) return m;
+                    stoppedKeys = (m.generations || []).filter(g => g.status === 'generating').map(g => g.key);
+                    return {
+                        ...m,
+                        content: m.content || 'Arrêté.',
+                        steps: (m.steps || []).map(s => s.state === 'running' ? { ...s, state: 'stopped' } : s),
+                        generations: (m.generations || []).map(g => g.status === 'generating' ? { ...g, status: 'stopped' } : g),
+                    };
+                }));
+                setTimeout(() => stoppedKeys.forEach(k => onProcedureError?.(k, 'Arrêté')), 0);
+            } else {
+                updateMsg(msgId, m => ({ ...m, content: m.content || 'Une erreur est survenue.' }));
+                onError(err?.message || 'Erreur lors du traitement');
+            }
+        } finally {
+            abortRef.current = null;
+            updateMsg(msgId, m => ({ ...m, streaming: false }));
+            setLoading(false);
+        }
+    };
+
+    const stopStreaming = () => abortRef.current?.abort();
+
+    const newAssistantMessage = (): string => {
+        const id = crypto.randomUUID();
+        setMessages(prev => [...prev, { id, role: 'assistant', content: '', createdAt: new Date(), steps: [] }]);
+        return id;
+    };
+
     const sendMessage = async (overrideInput?: string) => {
         const text = overrideInput ?? input;
         if (!text.trim() && attachedFiles.length === 0) return;
         if (!sessionId || loading) return;
 
-        const userMessage: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: text.trim() || `${attachedFiles.length} fichier(s) joint(s)`,
-            createdAt: new Date()
-        };
-
-        setMessages(prev => [...prev, userMessage]);
+        setMessages(prev => [...prev, {
+            id: crypto.randomUUID(), role: 'user', content: text.trim(),
+            attachments: attachedFiles.map(f => f.file.name), createdAt: new Date(),
+        }]);
         if (!overrideInput) setInput('');
-        setLoading(true);
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
-        try {
-            const form = new FormData();
-            form.append('session_id', sessionId);
-            form.append('message', text.trim() || 'Analyse ces fichiers et génère le workflow');
-            form.append('history', JSON.stringify(buildHistory()));
-
-            if (currentWorkflow && currentWorkflow.length > 0) {
-                form.append('current_workflow', JSON.stringify(currentWorkflow));
-            }
-
-            if (currentEnrichments && currentEnrichments.size > 0) {
-                const enrichObj: Record<string, unknown> = {};
-                currentEnrichments.forEach((v, k) => { enrichObj[k] = v; });
-                form.append('current_enrichments', JSON.stringify(enrichObj));
-            }
-
-            if (currentProcedureMetadata) {
-                form.append('current_procedure_metadata', JSON.stringify(currentProcedureMetadata));
-            }
-
-            for (const f of attachedFiles) {
-                form.append('files', f.file);
-            }
-
-            const res = await fetch(
-                API_CONFIG.getFullUrl(API_CONFIG.endpoints.chatMessage),
-                { method: 'POST', headers: processingLevelHeaders(processingLevel), body: form }
-            );
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.detail || 'Erreur serveur');
-
-            const intent: Intent = data.intent || 'generate';
-
-            // ── CAS CLARIFY ──────────────────────────────────
-            if (intent === 'clarify') {
-                const clarifyMsg: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    role: 'clarify',
-                    content: data.clarify_question || 'Pouvez-vous préciser votre demande ?',
-                    intent: 'clarify',
-                    createdAt: new Date()
-                };
-                setMessages(prev => [...prev, clarifyMsg]);
-                setAttachedFiles([]);
-                return;
-            }
-
-            // ── CAS EXPLAIN : réponse textuelle, pas de modification ──
-            if (intent === 'explain') {
-                const explainMsg: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: data.answer || '',
-                    intent: 'explain',
-                    createdAt: new Date()
-                };
-                setMessages(prev => [...prev, explainMsg]);
-                setAttachedFiles([]);
-                return;
-            }
-
-            // ── CAS PATCH ────────────────────────────────────
-            if (intent === 'patch') {
-                const revised = applyOperations(currentWorkflow, data.operations || []);
-
-                const assistantMsg: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: data.explanation || 'Modifications appliquées',
-                    intent: 'patch',
-                    operationsCount: data.operations_count || 0,
-                    createdAt: new Date()
-                };
-                setMessages(prev => [...prev, assistantMsg]);
-
-                const enrichMap = new Map<string, TaskEnrichment>();
-                onWorkflowGenerated(revised, '', enrichMap, null);
-                onSuccess(`✓ ${data.explanation}`);
-                setAttachedFiles([]);
-                return;
-            }
-
-            // ── CAS GENERATE / REGEN / WEB_SEARCH / TRANSCRIBE ──
-            const totalSteps = data.workflow?.length || 0;
-            const assistantMsg: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: buildAssistantMessage(intent, data.title, totalSteps),
-                intent,
-                totalSteps,
-                title: data.title,
-                createdAt: new Date()
-            };
-
-            setMessages(prev => [...prev, assistantMsg]);
-
-            const enrichMap = new Map<string, TaskEnrichment>();
-            if (data.enrichments) {
-                Object.entries(data.enrichments).forEach(([id, enr]: [string, any]) => {
-                    enrichMap.set(id, enr);
-                });
-            }
-
-            onWorkflowGenerated(
-                data.workflow,
-                data.title,
-                enrichMap,
-                data.procedureMetadata || null
-            );
-
-            onSuccess(`✓ ${totalSteps} étapes — "${data.title}"`);
-            setAttachedFiles([]);
-
-        } catch (err: any) {
-            onError(err.message || 'Erreur lors du traitement');
-            setMessages(prev => prev.filter(m => m.id !== userMessage.id));
-        } finally {
-            setLoading(false);
+        const form = new FormData();
+        form.append('session_id', sessionId);
+        form.append('message', text.trim());
+        form.append('history', JSON.stringify(buildHistory()));
+        if (currentWorkflow && currentWorkflow.length > 0) form.append('current_workflow', JSON.stringify(currentWorkflow));
+        if (currentEnrichments && currentEnrichments.size > 0) {
+            const enrichObj: Record<string, unknown> = {};
+            currentEnrichments.forEach((v, k) => { enrichObj[k] = v; });
+            form.append('current_enrichments', JSON.stringify(enrichObj));
         }
+        if (currentProcedureMetadata) form.append('current_procedure_metadata', JSON.stringify(currentProcedureMetadata));
+        for (const f of attachedFiles) form.append('files', f.file);
+        setAttachedFiles([]);
+
+        const msgId = newAssistantMessage();
+        await streamEvents(API_CONFIG.getFullUrl(API_CONFIG.endpoints.studioTurn),
+            { method: 'POST', headers: processingLevelHeaders(processingLevel), body: form }, msgId);
     };
+
+    // Choix dans une proposition : générer la sélection ou la fusionner en une seule procédure
+    const submitProposal = async (proposalMsgId: string, merge: boolean) => {
+        const source = messages.find(m => m.id === proposalMsgId)?.proposal;
+        if (!source || !sessionId || loading || source.selected.length === 0) return;
+        updateMsg(proposalMsgId, m => ({ ...m, proposal: m.proposal && { ...m.proposal, submitted: true } }));
+        const n = source.selected.length;
+        setMessages(prev => [...prev, {
+            id: crypto.randomUUID(), role: 'user', createdAt: new Date(),
+            content: merge ? `Fusionner les ${n} procédures sélectionnées en une seule` : `Générer ${n > 1 ? `les ${n} procédures sélectionnées` : 'la procédure sélectionnée'}`,
+        }]);
+        const msgId = newAssistantMessage();
+        await streamEvents(API_CONFIG.getFullUrl(API_CONFIG.endpoints.studioGenerate), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
+            body: JSON.stringify({ session_id: sessionId, procedure_ids: source.selected, merge }),
+        }, msgId);
+    };
+
+    const toggleProposalItem = (msgId: string, procId: string) =>
+        updateMsg(msgId, m => {
+            if (!m.proposal || m.proposal.submitted) return m;
+            const sel = m.proposal.selected.includes(procId) ? m.proposal.selected.filter(x => x !== procId) : [...m.proposal.selected, procId];
+            return { ...m, proposal: { ...m.proposal, selected: sel } };
+        });
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -417,12 +494,14 @@ export default function ChatInterface({
     // RENDER
     // ─────────────────────────────────────────────────────────
 
+    const isSidebar = variant === 'sidebar';
+
     return (
-        <section aria-label="Assistant ProcessMate" className="w-full max-w-4xl mx-auto">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+        <section aria-label="Assistant ProcessMate" className={isSidebar ? 'h-full flex flex-col min-h-0 bg-white' : 'w-full max-w-4xl mx-auto'}>
+            <div className={isSidebar ? 'shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-200' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
                 <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-slate-800">{messages.length === 0 ? 'Que souhaitez-vous formaliser ?' : 'Assistant ProcessMate'}</h3>
-                    {currentWorkflow.length > 0 && <p className="text-xs text-slate-400 mt-0.5">Processus actuel : {currentWorkflow.length} étapes</p>}
+                    <h3 className="text-sm font-semibold text-slate-800">{messages.length === 0 ? 'Que souhaitez-vous formaliser ?' : 'Assistant'}</h3>
+                    {currentWorkflow.length > 0 && <p className="text-xs text-slate-400 mt-0.5">Procédure ouverte : {currentWorkflow.length} étapes</p>}
                 </div>
                 <div className="flex items-center gap-1">
                     <button type="button" onClick={newSession} disabled={loading || !initialized}
@@ -430,82 +509,161 @@ export default function ChatInterface({
                         title="Démarrer une nouvelle conversation">
                         <PenLine className="w-3.5 h-3.5" /> Nouvelle conversation
                     </button>
-                    <button type="button" aria-label={collapsed ? 'Ouvrir l’assistant' : 'Réduire l’assistant'} aria-expanded={!collapsed}
+                    {!isSidebar && <button type="button" aria-label={collapsed ? 'Ouvrir l’assistant' : 'Réduire l’assistant'} aria-expanded={!collapsed}
                         onClick={() => setCollapsed(c => !c)} className="p-1.5 rounded-lg hover:bg-white text-slate-400">
                         {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                    </button>
+                    </button>}
                 </div>
             </div>
-            <div hidden={collapsed}>
-                <div ref={messagesContainerRef} hidden={messages.length === 0 && !loading}
-                    className="overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60">
+            <div hidden={!isSidebar && collapsed} className={isSidebar ? 'flex-1 min-h-0 flex flex-col' : undefined}>
+                <div ref={messagesContainerRef} hidden={!isSidebar && messages.length === 0 && !loading}
+                    className={isSidebar
+                        ? 'flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4'
+                        : 'overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60'}>
+                        {isSidebar && messages.length === 0 && (
+                            <div className="h-full flex flex-col items-center justify-center text-center px-6 text-slate-400">
+                                <Sparkles className="w-6 h-6 mb-3 text-slate-300" />
+                                <p className="text-sm text-slate-600 font-medium">Joignez des documents ou décrivez une procédure.</p>
+                                <p className="text-xs mt-1.5 leading-relaxed">Je repère les procédures qu&apos;ils contiennent : une seule est générée directement, plusieurs vous sont proposées. Vous pouvez aussi demander de tout fusionner.</p>
+                            </div>
+                        )}
                         {messages.map(msg => (
                             <div key={msg.id}>
                                 {/* Message utilisateur */}
                                 {msg.role === 'user' && (
-                                    <div className="flex justify-end">
-                                        <div className="max-w-[80%] bg-blue-600 text-white rounded-xl rounded-br-sm px-3 py-2 text-sm">
-                                            <p className="leading-relaxed">{msg.content}</p>
-                                            <p className="text-xs text-blue-200 mt-1">{formatTime(msg.createdAt)}</p>
-                                        </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        {msg.attachments && msg.attachments.length > 0 && (
+                                            <div className="flex flex-wrap justify-end gap-1 max-w-[85%]">
+                                                {msg.attachments.map(name => (
+                                                    <span key={name} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-600">
+                                                        <FileText className="w-3 h-3 text-slate-400" />
+                                                        <span className="max-w-[140px] truncate">{name}</span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {msg.content && (
+                                            <div className="max-w-[85%] bg-slate-100 text-slate-800 rounded-2xl rounded-br-md px-3 py-2 text-sm">
+                                                <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
-                                {/* Message assistant (résultat ou explication) */}
+                                {/* Réponse de l'assistant */}
                                 {msg.role === 'assistant' && (
-                                    <div className="flex justify-start">
-                                        <div className="max-w-[80%] bg-white border border-slate-200 rounded-xl rounded-bl-sm px-3 py-2 text-sm shadow-sm">
-                                            {msg.intent && (
-                                                <div className="mb-1.5">
-                                                    <IntentBadge intent={msg.intent} />
-                                                </div>
-                                            )}
-                                            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                                            {msg.totalSteps !== undefined && msg.totalSteps > 0 && (
-                                                <p className="text-xs text-emerald-600 font-medium mt-1">
-                                                    ✓ {msg.totalSteps} étape{msg.totalSteps > 1 ? 's' : ''}
-                                                </p>
-                                            )}
-                                            {msg.operationsCount !== undefined && msg.intent === 'patch' && (
-                                                <p className="text-xs text-violet-600 font-medium mt-1">
-                                                    ✓ {msg.operationsCount} opération{msg.operationsCount > 1 ? 's' : ''} appliquée{msg.operationsCount > 1 ? 's' : ''}
-                                                </p>
-                                            )}
-                                            <p className="text-xs text-slate-400 mt-1">{formatTime(msg.createdAt)}</p>
-                                        </div>
+                                    <div className="text-sm text-slate-700 space-y-2">
+                                        {msg.steps && msg.steps.length > 0 && (
+                                            <ul className="space-y-1" aria-label="Progression">
+                                                {msg.steps.map(s => (
+                                                    <li key={s.id} className="flex items-center gap-2 text-xs text-slate-500">
+                                                        {s.state === 'running'
+                                                            ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                                                            : s.state === 'stopped'
+                                                                ? <CircleStop className="w-3.5 h-3.5 text-slate-400" />
+                                                                : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                                                        <span>{s.label}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                        {msg.intent && msg.intent !== 'explain' && <IntentBadge intent={msg.intent} />}
+                                        {msg.content && <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                                        {msg.totalSteps !== undefined && msg.totalSteps > 0 && (
+                                            <p className="text-xs text-emerald-600 font-medium">✓ {msg.totalSteps} étape{msg.totalSteps > 1 ? 's' : ''}</p>
+                                        )}
+                                        {msg.operationsCount !== undefined && msg.intent === 'patch' && (
+                                            <p className="text-xs text-violet-600 font-medium">
+                                                ✓ {msg.operationsCount} opération{msg.operationsCount > 1 ? 's' : ''} appliquée{msg.operationsCount > 1 ? 's' : ''}
+                                            </p>
+                                        )}
+
+                                        {/* Proposition : tout coché, l'utilisateur décoche */}
+                                        {msg.proposal && (
+                                            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                                <ul>
+                                                    {msg.proposal.procedures.map(p => {
+                                                        const checked = msg.proposal!.selected.includes(p.id);
+                                                        return (
+                                                            <li key={p.id} className="border-b border-slate-100 last:border-b-0">
+                                                                <label className={`flex items-start gap-2.5 px-3 py-2.5 ${msg.proposal!.submitted ? 'opacity-70' : 'cursor-pointer hover:bg-slate-50'}`}>
+                                                                    <input type="checkbox" className="mt-0.5 accent-slate-900" checked={checked}
+                                                                        disabled={msg.proposal!.submitted} onChange={() => toggleProposalItem(msg.id, p.id)} />
+                                                                    <span className="min-w-0">
+                                                                        <span className="block text-sm text-slate-800 font-medium">{p.title}</span>
+                                                                        <span className="block text-[11px] text-slate-400 truncate">
+                                                                            {(p.sources || []).map(s => s.pages ? `${s.file} · p. ${s.pages}` : s.file).join(' — ')}
+                                                                            {p.estimated_steps ? ` · ~${p.estimated_steps} étapes` : ''}
+                                                                        </span>
+                                                                    </span>
+                                                                </label>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                                {!msg.proposal.submitted && (
+                                                    <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-50 border-t border-slate-100">
+                                                        <button type="button" disabled={loading || msg.proposal.selected.length === 0}
+                                                            onClick={() => submitProposal(msg.id, false)}
+                                                            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-40">
+                                                            Générer {msg.proposal.selected.length > 1 ? `les ${msg.proposal.selected.length}` : 'la sélection'}
+                                                        </button>
+                                                        <button type="button" disabled={loading || msg.proposal.selected.length < 2}
+                                                            onClick={() => submitProposal(msg.id, true)}
+                                                            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40">
+                                                            Fusionner en une seule
+                                                        </button>
+                                                        <span className="text-[11px] text-slate-400">ou répondez par écrit (« prends la 2 et la 4 »)</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Générations : chaque procédure arrive dès qu'elle est prête */}
+                                        {msg.generations && msg.generations.length > 0 && (
+                                            <ul className="space-y-1.5">
+                                                {msg.generations.map(g => (
+                                                    <li key={g.key}>
+                                                        <button type="button" disabled={g.status !== 'ready'} onClick={() => onSelectProcedure?.(g.key)}
+                                                            className="w-full flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left enabled:hover:border-slate-300 enabled:hover:bg-slate-50">
+                                                            {g.status === 'generating' && <Loader2 className="w-4 h-4 animate-spin text-blue-500 shrink-0" />}
+                                                            {g.status === 'ready' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                                                            {g.status === 'error' && <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />}
+                                                            {g.status === 'stopped' && <CircleStop className="w-4 h-4 text-slate-400 shrink-0" />}
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block text-sm text-slate-800 truncate">{g.title}</span>
+                                                                <span className="block text-[11px] text-slate-400">
+                                                                    {g.status === 'generating' && 'Génération…'}
+                                                                    {g.status === 'ready' && `${g.steps} étape${(g.steps || 0) > 1 ? 's' : ''} · ouvrir`}
+                                                                    {g.status === 'error' && (g.error || 'Échec de la génération')}
+                                                                    {g.status === 'stopped' && 'Arrêtée'}
+                                                                </span>
+                                                            </span>
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                        {msg.streaming && (!msg.steps || msg.steps.length === 0) && !msg.content && (
+                                            <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Réflexion…</div>
+                                        )}
                                     </div>
                                 )}
 
                                 {/* Message clarification */}
                                 {msg.role === 'clarify' && (
-                                    <div className="flex justify-start">
-                                        <div className="max-w-[85%] bg-amber-50 border border-amber-200 rounded-xl rounded-bl-sm px-3 py-2.5 text-sm">
-                                            <div className="flex items-center gap-1.5 mb-1.5">
-                                                <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
-                                                <span className="text-xs font-medium text-amber-700">Précision nécessaire</span>
-                                            </div>
-                                            <p className="text-slate-700 leading-relaxed">{msg.content}</p>
-                                            <p className="text-xs text-slate-400 mt-1">{formatTime(msg.createdAt)}</p>
+                                    <div className="max-w-[90%] bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-sm">
+                                        <div className="flex items-center gap-1.5 mb-1.5">
+                                            <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
+                                            <span className="text-xs font-medium text-amber-700">Précision nécessaire</span>
                                         </div>
+                                        <p className="text-slate-700 leading-relaxed">{msg.content}</p>
                                     </div>
                                 )}
                             </div>
                         ))}
-
-                        {loading && (
-                            <div className="flex justify-start">
-                                <div className="bg-white border border-slate-200 rounded-xl rounded-bl-sm px-4 py-3 shadow-sm">
-                                    <div className="flex items-center gap-2 text-slate-500">
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        <span className="text-xs">Analyse en cours…</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-
                 </div>
-                <div aria-label="Composeur" className="rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100">
+                <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100"}>
                     {inputContext && <div hidden={!inputContextVisible} className="border-b border-slate-100 p-3 bg-slate-50/50 rounded-t-2xl">{inputContext}</div>}
                     <div className="px-3 py-2">
                     {/* ── Fichiers attachés ─────────────────── */}
@@ -575,13 +733,13 @@ export default function ChatInterface({
                                     {addMenuOpen && (
                                         <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
                                             {onOpenDocuments && <ComposerMenuAction icon={<BookOpen className="w-4 h-4" />} label="Sources et références" onClick={() => { setAddMenuOpen(false); onOpenDocuments(); }} />}
-                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre au message" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= 3} />
+                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre au message" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
                                             {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={() => { setAddMenuOpen(false); onOpenCode(); }} />}
                                         </div>
                                     )}
                                 </div>
                             ) : (
-                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={attachedFiles.length >= 3}
+                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={attachedFiles.length >= MAX_ATTACHMENTS}
                                     className="p-2 rounded-lg text-slate-500 hover:text-blue-600 disabled:opacity-40 shrink-0" title="Joindre un fichier">
                                     <Paperclip className="w-4 h-4" />
                                 </button>
@@ -612,22 +770,22 @@ export default function ChatInterface({
                             <div className="ml-auto flex items-center gap-2">
                                 {processingLevel && onProcessingLevelChange && <ProcessingLevelSelector value={processingLevel} onChange={onProcessingLevelChange} />}
                             <button
-                                aria-label="Envoyer le message"
-                                title="Envoyer (Entrée)"
+                                aria-label={loading ? 'Arrêter' : 'Envoyer le message'}
+                                title={loading ? 'Arrêter' : 'Envoyer (Entrée)'}
                                 type="button"
-                                onClick={() => sendMessage()}
-                                disabled={loading || !initialized || (!input.trim() && attachedFiles.length === 0)}
+                                onClick={() => (loading ? stopStreaming() : sendMessage())}
+                                disabled={!loading && (!initialized || (!input.trim() && attachedFiles.length === 0))}
                                 className={`
                                     w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors
                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
-                                    ${loading || (!input.trim() && attachedFiles.length === 0)
+                                    ${!loading && (!input.trim() && attachedFiles.length === 0)
                                         ? 'bg-slate-200 text-white cursor-not-allowed'
                                         : 'bg-slate-900 text-white hover:bg-slate-700'
                                     }
                                 `}
                             >
                                 {loading
-                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    ? <Square className="w-3 h-3 fill-current" />
                                     : <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
                                 }
                             </button>

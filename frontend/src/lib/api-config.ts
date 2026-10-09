@@ -84,6 +84,8 @@ export const API_CONFIG = {
         revisionApply: '/api/revision/apply',
 
         chatSession: '/api/chat/session',
+        studioTurn: '/api/studio/turn',         // conversation du Studio (flux)
+        studioGenerate: '/api/studio/generate', // génération d'une sélection proposée
         chatMessage: '/api/chat/message',
         chatSessions: '/api/chat/sessions',
 

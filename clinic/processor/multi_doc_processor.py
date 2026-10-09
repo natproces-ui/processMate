@@ -551,7 +551,8 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
         async def _task(model_name: str):
             model = self.model_manager.get_model(model_name)
             response = await asyncio.wait_for(
-                asyncio.to_thread(model.generate_content, model=model_name, contents=parts),
+                asyncio.to_thread(model.generate_content, model=model_name, contents=parts,
+                                  config={"response_mime_type": "application/json"}),  # JSON valide garanti
                 timeout=timeout
             )
             return response
