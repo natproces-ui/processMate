@@ -4,38 +4,68 @@ VERSION OPTIMISÉE : 1 tentative par modèle avant switch
 """
 
 import logging
-from typing import Optional, Callable, Any, Dict
+from typing import Optional, Callable, Any, Dict, List
 from enum import Enum
 import asyncio
 from google import genai
 from google.genai import errors as genai_errors
 from google.api_core import exceptions as google_exceptions
-from config import GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE
+from config import GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE, GOOGLE_API_KEY
 from manager.processing_level import ProcessingLevel, get_processing_level
 
 logger = logging.getLogger(__name__)
 
 
 class GeminiModel(Enum):
-    """Modèles Gemini disponibles"""
-    FLASH = GEMINI_MODEL_PRO
-    FLASH_LITE = GEMINI_MODEL_LITE
-    BALANCED = GEMINI_MODEL_FLASH
+    """Modèles Gemini disponibles (noms réels dans config.py, surchargeables par env)."""
+    PRO = GEMINI_MODEL_PRO      # Approfondi : réfléchit davantage
+    FLASH = GEMINI_MODEL_FLASH  # Normal : équilibre rapidité / qualité
+    LITE = GEMINI_MODEL_LITE    # Rapide
 
 
-def get_models_for_request():
-    """Ordre de secours par niveau ; comportement existant sans choix Studio."""
-    models = {
-        ProcessingLevel.FAST: [GeminiModel.FLASH_LITE, GeminiModel.BALANCED],
-        ProcessingLevel.NORMAL: [GeminiModel.BALANCED, GeminiModel.FLASH_LITE],
-        ProcessingLevel.DEEP: [GeminiModel.FLASH, GeminiModel.BALANCED],
-    }.get(get_processing_level(), [GeminiModel.FLASH_LITE, GeminiModel.FLASH])
-    return list(dict.fromkeys(models))
+# Modèle principal puis secours, par niveau. Sans en-tête X-Processing-Level → Normal.
+_MODELS_BY_LEVEL = {
+    ProcessingLevel.FAST: [GeminiModel.LITE, GeminiModel.FLASH],
+    ProcessingLevel.NORMAL: [GeminiModel.FLASH, GeminiModel.LITE],
+    ProcessingLevel.DEEP: [GeminiModel.PRO, GeminiModel.FLASH],
+}
 
 
-def get_primary_model(default: str) -> str:
-    """Pour les appels directs : préserver le modèle habituel hors Studio."""
-    return get_models_for_request()[0].value if get_processing_level() else default
+def get_models_for_request() -> List[GeminiModel]:
+    level = get_processing_level() or ProcessingLevel.NORMAL
+    return list(dict.fromkeys(_MODELS_BY_LEVEL[level]))
+
+
+def _is_retryable(e: Exception) -> bool:
+    """Erreurs pour lesquelles on tente le modèle suivant (quota, surcharge, timeout, modèle retiré)."""
+    if isinstance(e, (google_exceptions.ResourceExhausted, google_exceptions.DeadlineExceeded,
+                      TimeoutError, genai_errors.ServerError)):
+        return True
+    return isinstance(e, genai_errors.ClientError) and getattr(e, "code", None) in (404, 429)
+
+
+_shared_client: Optional[genai.Client] = None
+
+
+def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini"):
+    """Appel Gemini synchrone avec la chaîne de secours du niveau courant.
+
+    Point d'entrée unique pour les appels directs (hors execute_with_fallback) :
+    un seul client, mêmes modèles et même secours partout. Lève la dernière
+    erreur si tous les modèles échouent, comme le faisait l'appel SDK direct.
+    """
+    global _shared_client
+    if _shared_client is None:
+        _shared_client = genai.Client(api_key=GOOGLE_API_KEY)
+    models = get_models_for_request()
+    for i, model in enumerate(models):
+        try:
+            return _shared_client.models.generate_content(model=model.value, contents=contents, config=config)
+        except Exception as e:
+            if i + 1 < len(models) and _is_retryable(e):
+                logger.warning(f"⚠️ {task_name} : échec sur {model.value} ({str(e)[:120]}) → {models[i + 1].value}")
+                continue
+            raise
 
 
 class ModelRetryStrategy:
@@ -52,7 +82,7 @@ class ModelRetryStrategy:
     def __init__(self, max_retries: int = 1, retry_delay: float = 2.0):
         self.max_retries = max_retries  # ← 1 seule tentative par défaut
         self.retry_delay = retry_delay
-        self.current_model = GeminiModel.FLASH_LITE
+        self.current_model = GeminiModel.FLASH
 
     async def execute_with_retry(
         self,

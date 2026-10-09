@@ -7,16 +7,13 @@ from fastapi import APIRouter, HTTPException, Body
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List
-from google import  genai
 import os
 import json
-from config import GEMINI_MODEL_FLASH
+from manager.model_manager import generate_content
 router = APIRouter(prefix="/api/bpmn-ai", tags=["BPMN AI"])
 
 # Configuration Gemini
 GEMINI_API_KEY = os.getenv("GOOGLE_API_KEY")
-if GEMINI_API_KEY:
-    client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ✅ Modèle Pydantic pour les lignes du tableau
 class TableRowInput(BaseModel):
@@ -217,17 +214,14 @@ class BPMNAIEnricher:
         if not api_key:
             raise ValueError("La clé API Gemini est requise")
         
-        genai.configure(api_key=api_key)
-        
-        self.model = genai.GenerativeModel(
-            model_name=GEMINI_MODEL_FLASH,
-            generation_config={
-                'temperature': 0.1,  # ✅ Très bas pour cohérence maximale
-                'top_p': 0.8,
-                'top_k': 20,
-                'max_output_tokens': 8192,
-            }
-        )
+        # Ancien SDK (genai.configure / GenerativeModel) supprimé : il faisait planter
+        # l'enrichissement. Modèle + secours via model_manager.generate_content.
+        self.generation_config = {
+            'temperature': 0.1,  # ✅ Très bas pour cohérence maximale
+            'top_p': 0.8,
+            'top_k': 20,
+            'max_output_tokens': 8192,
+        }
     
     def enrich_table(self, rows: List[dict]) -> dict:
         """
@@ -270,7 +264,7 @@ Génère maintenant le JSON avec les enrichissements.
 """
         
         try:
-            response = self.model.generate_content([SYSTEM_PROMPT, user_prompt])
+            response = generate_content([SYSTEM_PROMPT, user_prompt], config=self.generation_config, task_name="Enrichissement IA du tableau")
             result_text = response.text.strip()
             
             # Nettoyer le markdown

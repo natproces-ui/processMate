@@ -7,19 +7,13 @@ Router STT (Speech-To-Text) pour ProcessMate
 
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-from google import genai
 from google.api_core.exceptions import ResourceExhausted
 import logging
 from typing import List, Dict, Any, Optional
 import os
-from config import GOOGLE_API_KEY
-from config import GEMINI_MODEL_LITE
-from manager.model_manager import get_primary_model
+from manager.model_manager import generate_content
 
 logger = logging.getLogger(__name__)
-
-# Configurer Gemini
-client = genai.Client(api_key=GOOGLE_API_KEY)
 
 router = APIRouter(prefix="/api/stt", tags=["Speech-To-Text"])
 
@@ -39,8 +33,8 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
         ValueError: Si transcription invalide ou quota dépassé
     """
     try:
-        result = client.models.generate_content(
-            model=get_primary_model(GEMINI_MODEL_LITE),
+        result = generate_content(
+            task_name="Transcription audio",
             contents=[
                 {"inline_data": {"mime_type": mime_type, "data": audio_bytes}},
                 "Transcris ce fichier audio en texte clair, en corrigeant les fautes d'orthographe."
@@ -84,11 +78,9 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
             wait_seconds = retry_delay.seconds
             raise ValueError(
                 f"⏱️ Quota Gemini dépassé. Réessayez dans {wait_seconds} secondes. "
-                f"Ou changez de modèle via la variable d'environnement GEMINI_MODEL_LITE."
             )
         raise ValueError(
-            f"⏱️ Quota Gemini dépassé ({GEMINI_MODEL_LITE}). "
-            "Attendez ou passez à un modèle payant."
+            "⏱️ Quota Gemini dépassé sur tous les modèles disponibles. Réessayez dans quelques minutes."
         )
     
     except ValueError:
@@ -165,7 +157,7 @@ RÈGLES IMPORTANTES:
 - Les acteurs doivent être spécifiques (pas "personnel", mais "Chef d'équipe")
 """
         
-        result = client.models.generate_content(model=get_primary_model(GEMINI_MODEL_LITE), contents=prompt)
+        result = generate_content(prompt, task_name="Texte vers tableau")
         
         if not result or not result.text:
             raise ValueError("Gemini n'a pas retourné de parsing")

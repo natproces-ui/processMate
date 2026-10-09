@@ -4,7 +4,7 @@ Classificateur d'images BPMN avec Gemini
 Classification rapide et précise en ~10 secondes
 """
 
-from google import genai
+from manager.model_manager import generate_content
 from PIL import Image
 import io
 from typing import Dict
@@ -40,7 +40,7 @@ Réponds UNIQUEMENT avec un seul mot : swimlanes, manuscript, ou simple"""
         if not api_key:
             raise ValueError("GOOGLE_API_KEY non configurée")
         
-        self.client = genai.Client(api_key=api_key)
+        # Appels Gemini : model_manager.generate_content (self.model n'existait pas → classification jamais faite)
     
     async def classify_image(self, image_data: bytes) -> Dict[str, any]:
         """
@@ -72,8 +72,10 @@ Réponds UNIQUEMENT avec un seul mot : swimlanes, manuscript, ou simple"""
             # Appel Gemini avec timeout court
             response = await asyncio.wait_for(
                 asyncio.to_thread(
-                    self.model.generate_content,
-                    [self.CLASSIFICATION_PROMPT, image]
+                    generate_content,
+                    [self.CLASSIFICATION_PROMPT, image],
+                    None,
+                    "Classification d'image",
                 ),
                 timeout=15  # 15 secondes max pour classification
             )

@@ -13,7 +13,7 @@ from google import genai
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-from config import GEMINI_MODEL_FLASH
+from manager.model_manager import generate_content
 
 
 class BPMNGenerator:
@@ -26,7 +26,7 @@ class BPMNGenerator:
         Args:
             api_key: Clé API Google Gemini
         """
-        self.client = genai.Client(api_key=api_key)
+        pass  # modèle, client et secours : manager.model_manager.generate_content
     
     def analyze_documents(self, files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
@@ -68,7 +68,7 @@ class BPMNGenerator:
         
         # Appeler Gemini avec tous les fichiers
         try:
-            response = self.client.models.generate_content(model=GEMINI_MODEL_FLASH, contents=content_parts)
+            response = generate_content(content_parts, task_name="BPMN depuis documents")
             response_text = response.text
             
             # Parser la réponse JSON

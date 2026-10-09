@@ -4,10 +4,11 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { isProcessingLevel, PROCESSING_LEVELS, type ProcessingLevel } from '@/lib/processing-level';
 
-const STORAGE_KEY = 'processmate-studio-processing-level';
+// v2 : défaut passé de « Rapide » à « Normale » (l'ancien défaut avait été enregistré chez tous)
+const STORAGE_KEY = 'processmate-studio-processing-level-v2';
 
 export function useProcessingLevel() {
-    const [level, setLevel] = useState<ProcessingLevel>('fast');
+    const [level, setLevel] = useState<ProcessingLevel>('normal');
     const [ready, setReady] = useState(false);
 
     useEffect(() => {

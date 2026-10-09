@@ -9,18 +9,12 @@ from typing import List, Optional, Dict, Any
 import logging
 import json
 import os
-from google import genai
 from datetime import datetime
-from config import GEMINI_MODEL_FLASH
+from config import GOOGLE_API_KEY
+from manager.model_manager import generate_content, get_models_for_request
 
 logger = logging.getLogger(__name__)
 
-# Configuration Gemini
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    logger.error("❌ GOOGLE_API_KEY non définie - module inutilisable")
-else:
-    client = genai.Client(api_key=GOOGLE_API_KEY)
 
 router = APIRouter(
     prefix="/api/dot-to-table",
@@ -444,7 +438,7 @@ def dot_to_table_with_gemini(dot_source: str) -> List[Table1Row]:
         prompt = PROMPT_TEMPLATE.format(dot_source=dot_source)
         
         logger.info("🤖 Gemini transforme le .dot en tableau BPMN...")
-        response = client.models.generate_content(model=GEMINI_MODEL_FLASH, contents=prompt)
+        response = generate_content(prompt, task_name="DOT vers tableau")
         result_text = response.text.strip()
         
         # Nettoyage
@@ -534,7 +528,7 @@ async def dot_parser_info():
     return {
         "module": "DOT to Table Converter",
         "version": "5.0.0 - BPMN Swimlanes",
-        "model": GEMINI_MODEL_FLASH,
+        "model": get_models_for_request()[0].value,
         "description": "Transformation avec swimlanes BPMN correctes (Département/Acteur/Outil distincts)",
         "swimlanes": {
             "département": "Direction/Service organisationnel (Direction RH, IT, Commercial...)",

@@ -10,9 +10,7 @@ from pathlib import Path
 import tempfile
 from typing import Dict, Tuple, Optional
 import os
-from config import GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE
-from manager.model_manager import get_primary_model, get_models_for_request
-from manager.processing_level import get_processing_level
+from manager.model_manager import generate_content
 
 class FlowchartGenerator:
     """Générateur de flowcharts métier avec Gemini"""
@@ -182,9 +180,6 @@ Réponds UNIQUEMENT avec le code Graphviz complet.
         if not api_key:
             raise ValueError("La clé API Gemini est requise")
         
-        self.client = genai.Client(api_key=api_key)
-        self.model_name = GEMINI_MODEL_FLASH
-        self.fallback_model_name = GEMINI_MODEL_LITE
         self.generation_config = {'temperature': 0.3, 'top_p': 0.9, 'top_k': 40, 'max_output_tokens': 8192}
             
     def generate_flowchart(
@@ -232,19 +227,12 @@ JSON à analyser :
 Génère maintenant le flowchart Graphviz complet avec actions métier détaillées.
 """
         
-        # Génération avec Gemini (fallback sur le modèle lite si 503)
+        # Génération avec Gemini (modèle et secours selon le niveau : model_manager)
         try:
-            response = self.client.models.generate_content(model=get_primary_model(self.model_name), contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
+            response = generate_content([self.SYSTEM_PROMPT, user_prompt], config=self.generation_config, task_name="Flowchart WinDev")
             graphviz_code = self._clean_graphviz_code(response.text)
         except Exception as e:
-            if '503' in str(e) or 'UNAVAILABLE' in str(e):
-                try:
-                    response = self.client.models.generate_content(model=(get_models_for_request()[-1].value if get_processing_level() else self.fallback_model_name), contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
-                    graphviz_code = self._clean_graphviz_code(response.text)
-                except Exception as e2:
-                    raise Exception(f"Erreur lors de la génération avec Gemini (fallback) : {str(e2)}")
-            else:
-                raise Exception(f"Erreur lors de la génération avec Gemini : {str(e)}")
+            raise Exception(f"Erreur lors de la génération avec Gemini : {str(e)}")
         
         # Compilation du flowchart
         try:

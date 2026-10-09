@@ -12,16 +12,14 @@ import logging
 from datetime import date
 from typing import List, Dict, Any, Optional
 
-from google import genai
 from google.genai import types
 
 from .schema import SFDDocument
-from config import GEMINI_MODEL_FLASH
+from manager.model_manager import generate_content
 
 logger = logging.getLogger(__name__)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GEMINI_MODEL   = GEMINI_MODEL_FLASH
 
 
 # ─── HELPERS JSON REPAIR ──────────────────────────────────────────────────────
@@ -313,7 +311,6 @@ async def generate_sfd(
         f"procs={procedure_count} media={len(image_parts or [])} fichiers"
     )
 
-    gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
 
     # Construire contents : texte + éventuellement PDFs/images
     if has_media:
@@ -322,8 +319,8 @@ async def generate_sfd(
         contents = [prompt]
 
     response = await asyncio.to_thread(
-        gemini_client.models.generate_content,
-        model=GEMINI_MODEL,
+        generate_content,
+        task_name="Génération SFD",
         contents=contents,
         config=types.GenerateContentConfig(
             temperature=0.3,
@@ -414,11 +411,10 @@ glossaire: {{terme: définition}}
   }}
 }}"""
 
-    gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
 
     response = await asyncio.to_thread(
-        gemini_client.models.generate_content,
-        model=GEMINI_MODEL,
+        generate_content,
+        task_name="Génération SFD",
         contents=[prompt],
         config=types.GenerateContentConfig(
             temperature=0.4,

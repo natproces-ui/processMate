@@ -11,15 +11,17 @@ from fastapi.responses import JSONResponse
 import httpx
 from google.genai import errors
 from manager.processing_level import ProcessingLevel, get_processing_level, processing_level_scope
-from manager.model_manager import ModelRetryStrategy, GeminiModel, get_models_for_request, get_primary_model
+from unittest import mock
+import manager.model_manager as mm
+from manager.model_manager import ModelRetryStrategy, GeminiModel, get_models_for_request, generate_content
 
 
 class ProcessingLevelTests(unittest.IsolatedAsyncioTestCase):
     async def test_each_level_uses_its_model(self):
         expected = {
-            ProcessingLevel.FAST: GeminiModel.FLASH_LITE,
-            ProcessingLevel.NORMAL: GeminiModel.BALANCED,
-            ProcessingLevel.DEEP: GeminiModel.FLASH,
+            ProcessingLevel.FAST: GeminiModel.LITE,
+            ProcessingLevel.NORMAL: GeminiModel.FLASH,
+            ProcessingLevel.DEEP: GeminiModel.PRO,
         }
         for level, model in expected.items():
             async def task(name):
@@ -30,11 +32,27 @@ class ProcessingLevelTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(result["model_used"], model.value)
         self.assertIsNone(get_processing_level())
 
-    async def test_no_header_preserves_existing_order_and_direct_calls(self):
-        self.assertEqual(get_models_for_request(), list(dict.fromkeys([
-            GeminiModel.FLASH_LITE, GeminiModel.FLASH,
-        ])))
-        self.assertEqual(get_primary_model("existing-model"), "existing-model")
+    async def test_no_header_defaults_to_normal(self):
+        # Sans niveau envoyé (tout l'espace Orchestration) : Normal = FLASH puis LITE
+        self.assertEqual(get_models_for_request(), [GeminiModel.FLASH, GeminiModel.LITE])
+
+    def test_generate_content_falls_back_then_raises(self):
+        calls = []
+        class Models:
+            def generate_content(self, model, contents, config=None):
+                calls.append(model)
+                if model == GeminiModel.FLASH.value:
+                    raise errors.ClientError(404, {"error": {"message": "retiré"}})
+                return "ok"
+        with mock.patch.object(mm, "_shared_client", mock.Mock(models=Models())):
+            self.assertEqual(generate_content("x"), "ok")
+            self.assertEqual(calls, [GeminiModel.FLASH.value, GeminiModel.LITE.value])
+        class Broken:
+            def generate_content(self, model, contents, config=None):
+                raise errors.ClientError(400, {"error": {"message": "requête invalide"}})
+        with mock.patch.object(mm, "_shared_client", mock.Mock(models=Broken())):
+            with self.assertRaises(errors.ClientError):  # 400 : pas de secours, erreur remontée
+                generate_content("x")
 
     async def test_sdk_retryable_errors_use_fallback(self):
         failures = [
@@ -100,29 +118,30 @@ class ProcessingLevelTests(unittest.IsolatedAsyncioTestCase):
 
         @app.get("/test")
         async def route():
-            before = get_primary_model("existing-model")
+            first = lambda: get_models_for_request()[0].value
+            before = first()
             await asyncio.sleep(0.01)
-            threaded = await asyncio.to_thread(get_primary_model, "existing-model")
-            return {"before": before, "after": get_primary_model("existing-model"), "threaded": threaded}
+            threaded = await asyncio.to_thread(first)
+            return {"before": before, "after": first(), "threaded": threaded}
 
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
             responses = await asyncio.gather(*[
                 client.get("/test", headers={"X-Processing-Level": level.value})
                 for level in ProcessingLevel
             ], client.get("/test"))
-            expected = [GeminiModel.FLASH_LITE.value, GeminiModel.BALANCED.value,
-                        GeminiModel.FLASH.value, "existing-model"]
+            expected = [GeminiModel.LITE.value, GeminiModel.FLASH.value,
+                        GeminiModel.PRO.value, GeminiModel.FLASH.value]
             for response, model in zip(responses, expected):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json(), {"before": model, "after": model, "threaded": model})
             invalid = await client.get("/test", headers={"X-Processing-Level": "unsupported"})
             self.assertEqual(invalid.status_code, 422)
-            self.assertEqual((await client.get("/test")).json()["before"], "existing-model")
+            self.assertEqual((await client.get("/test")).json()["before"], GeminiModel.FLASH.value)
         self.assertIsNone(get_processing_level())
 
     async def test_changed_python_files_parse(self):
         clinic = Path(__file__).resolve().parents[1]
-        for relative in ["main.py", "manager/model_manager.py", "manager/processing_level.py", "routers/stt.py", "flowcharts/flowchart_generator.py"]:
+        for relative in ["main.py", "manager/model_manager.py", "manager/processing_level.py", "routers/stt.py", "flowcharts/flowchart_generator.py", "flowcharts/bpmn_generator.py", "flowcharts/cobol_flowchart_generator.py", "routers/bpmn_ai.py", "routers/dot_to_table.py", "prompts/image_classifier.py", "sfd/generation.py"]:
             ast.parse((clinic / relative).read_text(encoding="utf-8"))
 
 
