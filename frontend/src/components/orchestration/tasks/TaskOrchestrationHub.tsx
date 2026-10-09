@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock, Filter, Loader2, OctagonAlert, Plus, RefreshCw, Search, User, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Filter, Loader2, OctagonAlert, Plus, RefreshCw, Search, Ticket, User, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import type { Procedure } from '@/lib/orchestrationApi';
 import {
@@ -11,6 +11,7 @@ import {
   type ProcedureTaskStatus,
   type TaskActor,
 } from '@/lib/orchestrationTasksApi';
+import { jiraApi } from '@/lib/jiraApi';
 import TaskBatchCreateDrawer from './TaskBatchCreateDrawer';
 import TaskDetailDrawer from './TaskDetailDrawer';
 import TaskTable from './TaskTable';
@@ -52,6 +53,8 @@ export default function TaskOrchestrationHub({ actors, currentActor, procedures,
   const [filterStatus, setFilterStatus] = useState<ProcedureTaskStatus | 'all'>('all');
   const [filterPerson, setFilterPerson] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [syncingJira, setSyncingJira] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -159,11 +162,37 @@ export default function TaskOrchestrationHub({ actors, currentActor, procedures,
                 <Plus className="w-4 h-4" /> Créer des tâches
               </button>
             )}
+            {currentActor.role === 'admin' && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setSyncingJira(true); setSyncResult(null);
+                  try {
+                    const res = await jiraApi.syncAllTasks();
+                    setSyncResult(`${res.checked} vérifiée${res.checked > 1 ? 's' : ''} · ${res.transitioned} mise${res.transitioned > 1 ? 's' : ''} à jour`);
+                    load();
+                  } catch (e) {
+                    setSyncResult(e instanceof Error ? e.message : 'Erreur de synchronisation');
+                  } finally {
+                    setSyncingJira(false);
+                  }
+                }}
+                disabled={syncingJira}
+                title="Vérifier le statut Jira de toutes les tâches liées et répercuter les transitions valides"
+                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {syncingJira ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ticket className="w-4 h-4" />}
+                Synchroniser Jira
+              </button>
+            )}
             <button type="button" onClick={load} title="Actualiser" className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50">
               <RefreshCw className={`w-4 h-4 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
+        {syncResult && (
+          <p className="text-xs text-gray-400 -mt-2 mb-2">{syncResult}</p>
+        )}
 
         {/* KPI cards */}
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-4">
@@ -263,6 +292,10 @@ export default function TaskOrchestrationHub({ actors, currentActor, procedures,
             onOpenTask={setDetailTask}
             onOpenProcedure={onOpenProcedure}
             highlightTaskId={highlightTaskId || undefined}
+            onTaskStatusSynced={(taskId, newStatus) => {
+              const t = tasks.find(x => x.id === taskId);
+              if (t) updateTaskInList({ ...t, status: newStatus as ProcedureTask['status'] });
+            }}
           />
         )}
       </div>

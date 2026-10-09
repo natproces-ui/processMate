@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { API_CONFIG } from '@/lib/api-config';
+import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import {
     Upload, X, FileText,
     Loader2, Sparkles, RotateCcw, BookOpen, Target,
@@ -30,6 +31,7 @@ export interface ProcessCard {
 }
 
 interface MultiDocUploadProps {
+    processingLevel?: ProcessingLevel;
     /** `files` = tous les fichiers uploadés (références + sources), conservés pour un usage ultérieur (ex: capture d'annexe) */
     onDiscoveryComplete: (sessionId: string, cards: ProcessCard[], files: File[]) => void;
     onError: (msg: string) => void;
@@ -91,7 +93,7 @@ function DropZone({
     };
 
     return (
-        <div className="flex-1 min-w-0 flex flex-col gap-2">
+        <div className="min-w-0 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
                 <div className={`w-6 h-6 rounded-md flex items-center justify-center ${accent.icon}`}>
                     {icon}
@@ -111,9 +113,13 @@ function DropZone({
                 onDragOver={e => { e.preventDefault(); setDragActive(true); }}
                 onDragLeave={() => setDragActive(false)}
                 onDrop={handleDrop}
+                role="button"
+                tabIndex={files.length >= maxFiles ? -1 : 0}
+                aria-label={`Ajouter des fichiers : ${label}`}
+                onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); if (files.length < maxFiles) inputRef.current?.click(); } }}
                 onClick={() => files.length < maxFiles && inputRef.current?.click()}
                 className={`
-                    border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer min-h-[80px]
+                    border border-dashed rounded-lg p-2.5 text-center transition-all cursor-pointer min-h-[52px]
                     ${files.length >= maxFiles ? 'opacity-50 cursor-not-allowed' : accent.border}
                 `}
             >
@@ -130,8 +136,8 @@ function DropZone({
                 />
 
                 {files.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 py-2">
-                        <Upload className="w-5 h-5 text-slate-300" />
+                    <div className="flex items-center justify-center gap-2 py-1">
+                        <Upload className="w-4 h-4 text-slate-400" />
                         <p className="text-xs text-slate-400">Déposer ou cliquer</p>
                     </div>
                 ) : (
@@ -175,6 +181,7 @@ function DropZone({
 // ─────────────────────────────────────────────────────────────
 
 export default function MultiDocUpload({
+    processingLevel,
     onDiscoveryComplete,
     onError,
     onSuccess,
@@ -252,7 +259,7 @@ export default function MultiDocUpload({
 
             const discoverRes = await fetch(
                 API_CONFIG.getFullUrl(API_CONFIG.endpoints.discoveryAnalyze),
-                { method: 'POST', body: form }
+                { method: 'POST', headers: processingLevelHeaders(processingLevel), body: form }
             );
             const discoverData = await discoverRes.json();
             if (!discoverRes.ok) throw new Error(discoverData.detail || 'Erreur analyse');
@@ -327,10 +334,10 @@ export default function MultiDocUpload({
             </div>
 
             {!collapsed && (
-                <div className="p-4 space-y-4">
+                <div className="p-3 space-y-2.5">
 
                     {/* Deux zones */}
-                    <div className="flex gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <DropZone
                             label="Références"
                             sublabel="Modèles, templates, procédures de style"
@@ -353,70 +360,35 @@ export default function MultiDocUpload({
                         />
                     </div>
 
-                    <p className="text-xs text-slate-400">
-                        Les <span className="text-violet-600 font-medium">références</span> donnent le style et la formulation.
-                        Les <span className="text-blue-600 font-medium">sources</span> contiennent les données du nouveau processus.
-                        Vous pouvez n'utiliser qu'une seule zone.
+                    <p className="text-xs text-slate-500">
+                        Sources : données du processus. Références : style et formulation. Une seule zone suffit.
                     </p>
 
-                    {/* Instructions manuelles */}
-                    <div className="border border-slate-200 rounded-xl overflow-hidden">
-                        <button
-                            onClick={() => setShowInstructions(v => !v)}
-                            className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 transition-colors"
-                        >
-                            <div className="flex items-center gap-2">
-                                <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-                                <span className="text-xs font-medium text-slate-600">Instructions supplémentaires</span>
-                                {manualInstructions.trim() && (
-                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                                        configurées
-                                    </span>
-                                )}
-                            </div>
-                            {showInstructions
-                                ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-                                : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                            }
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+                        <button type="button" onClick={() => setShowInstructions(v => !v)}
+                            aria-expanded={showInstructions}
+                            className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-blue-700 py-1.5">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Instructions supplémentaires
+                            {manualInstructions.trim() && <span className="text-blue-600">· ajoutées</span>}
+                            {showInstructions ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
-
-                        {showInstructions && (
-                            <div className="border-t border-slate-100 p-3 space-y-2 bg-slate-50">
-                                <p className="text-xs text-slate-500">
-                                    Précisez des contraintes supplémentaires pour guider la génération.
-                                </p>
-                                <p className="text-xs text-slate-400 italic">
-                                    Ex : "Le remboursement anticipé et à échéance sont un seul processus unifié, ne pas diviser."
-                                </p>
-                                <textarea
-                                    value={manualInstructions}
-                                    onChange={e => setManualInstructions(e.target.value)}
-                                    placeholder="Instructions supplémentaires optionnelles…"
-                                    rows={3}
-                                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 bg-white"
-                                />
-                            </div>
-                        )}
+                        <button type="button" onClick={handleGenerate} disabled={!canGenerate || loading}
+                            className={['flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs transition-colors', !canGenerate || loading ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-white hover:bg-slate-700'].join(' ')}>
+                            {loading
+                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération en cours…</>
+                                : <><Sparkles className="w-4 h-4" /> Générer la procédure</>}
+                        </button>
                     </div>
-
-                    {/* Bouton générer */}
-                    <button
-                        onClick={handleGenerate}
-                        disabled={!canGenerate || loading}
-                        className={`
-                            w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm
-                            transition-all duration-200
-                            ${!canGenerate || loading
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                : 'bg-slate-800 text-white hover:bg-slate-700 active:scale-[0.99]'
-                            }
-                        `}
-                    >
-                        {loading
-                            ? <><Loader2 className="w-4 h-4 animate-spin" /> Génération en cours…</>
-                            : <><Sparkles className="w-4 h-4" /> Générer la procédure</>
-                        }
-                    </button>
+                    {showInstructions && (
+                        <div className="space-y-2">
+                            <p className="text-xs text-slate-500">Précisez les contraintes à respecter lors de la génération.</p>
+                            <textarea value={manualInstructions} onChange={e => setManualInstructions(e.target.value)}
+                                aria-label="Instructions supplémentaires"
+                                placeholder="Instructions supplémentaires optionnelles…" rows={3}
+                                className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 bg-white" />
+                        </div>
+                    )}
                 </div>
             )}
         </div>

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { Table1Row } from '@/logic/types';
 import { applyOperations } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
+import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import {
     Wand2, Send, Loader2, CheckCircle2, AlertCircle,
     ChevronDown, ChevronUp, RotateCcw, Lightbulb, History
@@ -24,6 +25,7 @@ interface RevisionEntry {
 }
 
 interface RevisionPanelProps {
+    processingLevel?: ProcessingLevel;
     workflow: Table1Row[];
     onWorkflowChange: (workflow: Table1Row[]) => void;
     onSuccess: (msg: string) => void;
@@ -48,6 +50,7 @@ const EXAMPLES = [
 // ─────────────────────────────────────────────────────────────
 
 export default function RevisionPanel({
+    processingLevel,
     workflow,
     onWorkflowChange,
     onSuccess,
@@ -84,7 +87,7 @@ export default function RevisionPanel({
                 API_CONFIG.getFullUrl(API_CONFIG.endpoints.revisionApply),
                 {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
                     body: JSON.stringify({
                         workflow,
                         instruction: instruction.trim(),

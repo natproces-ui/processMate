@@ -12,6 +12,7 @@ import {
   type Campaign, type CampaignProcedure, type CampaignProcedureStatus, type CampaignStatus,
   CAMPAIGN_STATUS_COLORS, CAMPAIGN_STATUS_LABELS, PROC_STATUS_COLORS, PROC_STATUS_LABELS,
 } from '@/lib/campaignsApi';
+import JiraLinkButton from '@/components/shared/JiraLinkButton';
 import { taxonomyApi, type TaxonomyNode } from '@/lib/taxonomyApi';
 import { useProceduresStore } from '@/store/proceduresStore';
 import { useAuth } from '@/context/AuthContext';
@@ -724,6 +725,7 @@ function CampaignDetail({
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut workflow</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut projet</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Terminée</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jira</th>
                 {isAdmin && <th className="px-3 py-3 w-16" scope="col"><span className="sr-only">Actions</span></th>}
               </tr>
             </thead>
@@ -780,6 +782,15 @@ function CampaignDetail({
                     </td>
                     <td className="px-3 py-3 text-xs text-gray-400">
                       {cp.completed_at ? new Date(cp.completed_at).toLocaleDateString('fr-FR') : '—'}
+                    </td>
+                    <td className="px-3 py-3">
+                      <JiraLinkButton
+                        entityType="campaign_procedure"
+                        entityId={cp.id}
+                        summary={`[${campaign.title}] ${name}`}
+                        description={`Projet : ${campaign.title}\nProcédure : ${name}${ref ? ` (${ref})` : ''}\nStatut projet : ${PROC_STATUS_LABELS[cp.status]}`}
+                        labels={['processmate', 'campagne-formalisation']}
+                      />
                     </td>
                     {isAdmin && (
                       <td className="px-3 py-3">

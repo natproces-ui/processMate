@@ -21,6 +21,7 @@ if sys.platform == "win32" and os.getenv("IS_PRODUCTION", "false").lower() != "t
     ssl.create_default_context = _no_verify_ctx
 
 from fastapi import FastAPI
+from manager.processing_level import ProcessingLevel, processing_level_scope
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
@@ -42,7 +43,7 @@ from routers import (
     doc_router, stt, interface_router, revision_router, chat_router,
     orchestration_router, irritants_router, orchestration_tasks_router,
     analysis_router, taxonomy_router, campaigns_router, reports_router, corrections_router,
-    workspace_router, specifications_router, tools_router
+    workspace_router, specifications_router, tools_router, jira_router, bian_scenarios_router
 )
 
 
@@ -59,6 +60,21 @@ app.add_middleware(
     CORSMiddleware,
     **CORS_CONFIG
 )
+
+@app.middleware("http")
+async def studio_processing_level(request, call_next):
+    raw_level = request.headers.get("X-Processing-Level")
+    try:
+        level = ProcessingLevel(raw_level) if raw_level is not None else None
+    except ValueError:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "Niveau de traitement invalide (fast, normal, deep)."},
+        )
+    # Le contexte est isolé, y compris pour les processors partagés et to_thread.
+    with processing_level_scope(level):
+        return await call_next(request)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -98,6 +114,8 @@ app.include_router(corrections_router.router)
 app.include_router(workspace_router.router)
 app.include_router(specifications_router.router)
 app.include_router(tools_router.router)
+app.include_router(jira_router.router)
+app.include_router(bian_scenarios_router.router)
 
 @app.head("/")
 async def head_root():

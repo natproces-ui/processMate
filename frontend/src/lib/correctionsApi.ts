@@ -1,6 +1,8 @@
 'use client';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+import { API_CONFIG } from './api-config';
+
+const BASE = API_CONFIG.baseUrl;
 
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();

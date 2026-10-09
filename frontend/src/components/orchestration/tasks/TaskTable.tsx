@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight, Clock, ExternalLink, FolderOpen } from 'lucide-react';
 import type { ProcedureTask, TaskActor } from '@/lib/orchestrationTasksApi';
 import { TaskPriorityBadge, TaskTypeBadge } from './TaskStatusBadge';
+import JiraLinkButton from '@/components/shared/JiraLinkButton';
 
 interface Props {
   tasks: ProcedureTask[];
@@ -12,6 +13,7 @@ interface Props {
   onOpenTask?: (task: ProcedureTask) => void;
   onOpenProcedure?: (procedureId: string) => void;
   highlightTaskId?: string;
+  onTaskStatusSynced?: (taskId: string, newStatus: string) => void;
 }
 
 const TASK_TYPE_LABELS: Record<string, string> = {
@@ -62,7 +64,7 @@ function Initials({ name }: { name: string }) {
   );
 }
 
-export default function TaskTable({ tasks, actors, onOpenTask, onOpenProcedure, highlightTaskId }: Props) {
+export default function TaskTable({ tasks, actors, onOpenTask, onOpenProcedure, highlightTaskId, onTaskStatusSynced }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
@@ -283,6 +285,18 @@ export default function TaskTable({ tasks, actors, onOpenTask, onOpenProcedure, 
                           <p className="text-gray-600">
                             {new Date(task.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
                           </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Jira</p>
+                          <JiraLinkButton
+                            entityType="procedure_task"
+                            entityId={task.id}
+                            summary={`[Tâche] ${task.title}`}
+                            manual={false}
+                            showDetails
+                            onTaskStatusSynced={newStatus => onTaskStatusSynced?.(task.id, newStatus)}
+                          />
                         </div>
 
                         {task.description && (

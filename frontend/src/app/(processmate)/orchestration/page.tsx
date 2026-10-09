@@ -13,8 +13,9 @@ import { useProceduresStore } from '@/store/proceduresStore';
 import { orchestrationApi } from '@/lib/orchestrationApi';
 import type { ActorRole, TaskActor } from '@/lib/orchestrationTasksApi';
 import { useAuth } from '@/context/AuthContext';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { taxonomyApi } from '@/lib/taxonomyApi';
+import { resolveProcessMateNavigation, processMateHref, LEGACY_TAB_REDIRECTS } from '@/lib/processmate-navigation';
 
 // ─── Skeleton commun ──────────────────────────────────────────
 
@@ -39,6 +40,7 @@ const TaskOrchestrationHub = dynamic(
 );
 const DashboardPanel = dynamic(() => import('@/components/orchestration/DashboardPanel'), { loading: PanelSkeleton });
 const SpecificationsPanel = dynamic(() => import('@/components/orchestration/SpecificationsPanel'), { loading: PanelSkeleton });
+const MockupsPanel = dynamic(() => import('@/app/mockups/page'), { loading: PanelSkeleton, ssr: false });
 const GuidePanel = dynamic(() => import('@/components/orchestration/GuidePanel'), { loading: PanelSkeleton });
 
 // ── Legacy panels (accessible via deep-link or internal navigation) ──
@@ -51,8 +53,7 @@ const BianServiceMap    = dynamic(() => import('@/components/orchestration/BianS
 
 // Modules externes — montés dans le même shell
 const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), { loading: PanelSkeleton, ssr: false });
-const SfdPanel = dynamic(() => import('@/components/processmate/SfdPanel'), { loading: PanelSkeleton });
-const ClinicPanel = dynamic(() => import('@/components/processmate/ClinicPanel'), { loading: PanelSkeleton, ssr: false });
+
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ type OrchestraTab =
     | 'dashboard' | 'campaigns' | 'corrections' | 'portfolio' | 'taxonomy'
     | 'pipeline' | 'irritants' | 'complexity' | 'applicatifs'
     | 'regulatory-impact' | 'analysis' | 'bian' | 'workflow'
-    | 'raci' | 'validation' | 'tasks' | 'settings';
+    | 'raci' | 'validation' | 'tasks' | 'settings' | 'mockups';
 
 function mapRole(globalRole: string): ActorRole {
     return globalRole === 'admin' ? 'admin' : 'user';
@@ -188,7 +189,11 @@ function ProceduresPanel({
                 </div>
                 <div className={subTab === 'creer' ? 'absolute inset-0 overflow-y-auto' : 'absolute inset-0 overflow-y-auto invisible pointer-events-none'}>
                     <BianServiceMap
-                        onGoToProcedures={() => setSubTab('modifier')}
+                        onGoToProcedures={nodeId => {
+                            if (nodeId) setExpandToNode(nodeId);
+                            setSubTab('modifier');
+                        }}
+                        onOpenProcedure={onOpenEditor}
                         onGoToWorkspace={onGoToWorkspace}
                         isAdmin={isAdmin}
                         onCreateProcedure={handleCreateProcedure}
@@ -207,17 +212,16 @@ function ProcessMateInner() {
     const { profile, user } = useAuth();
     const { procedures, fetchProcedures } = useProceduresStore();
 
-    // Module actif (orchestration / stt / sfd / clinic) — initialisé depuis ?module=
-    const validModules: ActiveModule[] = ['orchestration', 'stt', 'sfd', 'clinic'];
-    const paramModule = searchParams.get('module') as ActiveModule;
-    const [activeModule, setActiveModule] = useState<ActiveModule>(
-        validModules.includes(paramModule) ? paramModule : 'orchestration'
-    );
+    const navigation = resolveProcessMateNavigation(searchParams);
+    const [activeModule, setActiveModule] = useState<ActiveModule>(navigation.module);
 
     const [actors, setActors] = useState<TaskActor[]>([]);
     const [workspaceProcedureId, setWorkspaceProcedureId] = useState<string | null>(null);
-    const [studioProcedureId, setStudioProcedureId] = useState<string | null>(null);
-    const [studioReturnContext, setStudioReturnContext] = useState<{ tab: OrchestraTab; procedureId?: string } | null>(null);
+    const [studioProcedureId, setStudioProcedureId] = useState<string | null>(navigation.procedureId ?? null);
+    const [studioReturnContext, setStudioReturnContext] = useState<{ tab: OrchestraTab; procedureId?: string } | null>(() => {
+        const returnTab = searchParams.get('returnTab') as OrchestraTab | null;
+        return returnTab ? { tab: returnTab, procedureId: searchParams.get('returnProcedure') ?? undefined } : null;
+    });
     const [currentActor, setCurrentActor] = useState<TaskActor | null>(null);
     const [actorsLoading, setActorsLoading] = useState(true);
     const [taskFilterProcIds, setTaskFilterProcIds] = useState<string[] | null>(null);
@@ -265,33 +269,35 @@ function ProcessMateInner() {
             .finally(() => setActorsLoading(false));
     }, [profile]);
 
-    const initialTab = (searchParams.get('tab') as OrchestraTab) || 'procedures';
-    const [activeTab, setActiveTab] = useState<OrchestraTab>(initialTab);
+    const [activeTab, setActiveTab] = useState<OrchestraTab>(navigation.tab as OrchestraTab);
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
-    const LEGACY_REDIRECTS: Record<string, OrchestraTab> = {
-        campaigns: 'campagnes',
-        dashboard: 'tableau-de-bord',
-        portfolio: 'tableau-de-bord',
-    };
-
     useEffect(() => {
-        const raw = searchParams.get('tab');
-        const tab = (raw ? (LEGACY_REDIRECTS[raw] ?? raw) : null) as OrchestraTab | null;
-        if (tab && tab !== activeTab) {
-            setActiveTab(tab);
-            if (raw && LEGACY_REDIRECTS[raw]) router.replace(`/orchestration?tab=${tab}`, { scroll: false });
+        const next = resolveProcessMateNavigation(searchParams);
+        setActiveModule(next.module);
+        setActiveTab(next.tab as OrchestraTab);
+        if (next.module === 'stt') setStudioProcedureId(next.procedureId ?? null);
+        // Les anciens liens rejoignent les fonctions intégrées du même produit.
+        const oldModule = searchParams.get('module');
+        const rawTab = searchParams.get('tab');
+        if (oldModule === 'sfd' || oldModule === 'clinic' || (rawTab && LEGACY_TAB_REDIRECTS[rawTab])) {
+            router.replace(processMateHref(searchParams.toString(), {
+                module: next.module, tab: next.tab, procedureId: next.procedureId, tool: next.tool,
+            }), { scroll: false });
         }
-    }, [searchParams, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleTabChange = (tab: string) => {
-        setActiveTab(tab as OrchestraTab);
-        router.replace(`/orchestration?tab=${tab}`, { scroll: false });
+        const destination = LEGACY_TAB_REDIRECTS[tab] || tab;
+        setActiveModule('orchestration');
+        setActiveTab(destination as OrchestraTab);
+        router.replace(processMateHref(searchParams.toString(), { module: 'orchestration', tab: destination }), { scroll: false });
     };
 
     const handleModuleChange = (module: ActiveModule) => {
-        setActiveModule(module);
-        if (module === 'orchestration') setActiveTab('procedures');
+        if (module === activeModule) return;
+        if (module === 'stt') handleOpenStudio(studioProcedureId ?? undefined);
+        else handleStudioBack();
     };
 
     const handleOpenProcedureFromTask = (procedureId: string) => {
@@ -303,6 +309,10 @@ function ProcessMateInner() {
         setStudioReturnContext({ tab: activeTab, procedureId: workspaceProcedureId ?? undefined });
         setStudioProcedureId(procedureId ?? null);
         setActiveModule('stt');
+        router.replace(processMateHref(searchParams.toString(), {
+            module: 'stt', tab: activeTab, procedureId,
+            returnTab: activeTab, returnProcedureId: workspaceProcedureId ?? undefined,
+        }), { scroll: false });
     };
 
     const handleStudioBack = () => {
@@ -312,6 +322,8 @@ function ProcessMateInner() {
             if (studioReturnContext.procedureId) setWorkspaceProcedureId(studioReturnContext.procedureId);
             setStudioReturnContext(null);
         }
+        const destination = studioReturnContext?.tab ?? activeTab;
+        router.replace(processMateHref(searchParams.toString(), { module: 'orchestration', tab: destination }), { scroll: false });
         fetchProcedures(true);
     };
 
@@ -428,7 +440,17 @@ function ProcessMateInner() {
                                         onOpenStudio={pid => handleOpenStudio(pid)} />
                                 </LazyPanel>
                                 <LazyPanel active={activeTab === 'tableau-de-bord'}><DashboardPanel /></LazyPanel>
-                                <LazyPanel active={activeTab === 'specifications'}><SpecificationsPanel /></LazyPanel>
+                                <LazyPanel active={activeTab === 'specifications'}><SpecificationsPanel onOpenMockups={() => handleTabChange('mockups')} /></LazyPanel>
+                                <LazyPanel active={activeTab === 'mockups'}>
+                                    <div className="h-full flex flex-col overflow-hidden">
+                                        <div className="shrink-0 px-4 py-2 bg-white border-b border-slate-200">
+                                            <button type="button" onClick={() => handleTabChange('specifications')} className="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
+                                                <ArrowLeft className="w-3.5 h-3.5" /> Retour aux spécifications
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 min-h-0 overflow-y-auto"><MockupsPanel /></div>
+                                    </div>
+                                </LazyPanel>
                                 <LazyPanel active={activeTab === 'guide'}><GuidePanel /></LazyPanel>
 
                                 {/* ─ Legacy / deep-link panels ─ */}
@@ -454,23 +476,12 @@ function ProcessMateInner() {
                                     onBack={handleStudioBack}
                                     currentActorId={currentActor?.id}
                                     fromClinic={searchParams.get('from') === 'clinic'}
+                                    initialTool={navigation.tool}
                                 />
                             </div>
                         )}
 
-                        {/* ══ Module SFD ══ */}
-                        {activeModule === 'sfd' && (
-                            <div className="absolute inset-0 overflow-hidden">
-                                <SfdPanel />
-                            </div>
-                        )}
 
-                        {/* ══ Module Clinic ══ */}
-                        {activeModule === 'clinic' && (
-                            <div className="absolute inset-0 overflow-hidden">
-                                <ClinicPanel />
-                            </div>
-                        )}
 
                     </div>
                 </div>

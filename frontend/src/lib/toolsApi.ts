@@ -46,10 +46,32 @@ export interface ToolCode {
   description: string | null;
 }
 
+export type ToolRuleType = 'validation' | 'calcul' | 'controle' | 'autre';
+
+export interface ToolBusinessRule {
+  id: string;
+  tool_id: string;
+  rule: string;
+  rule_type: ToolRuleType;
+  description: string | null;
+}
+
+export type ToolDataNature = 'entree' | 'sortie' | 'reference';
+
+export interface ToolDataEntity {
+  id: string;
+  tool_id: string;
+  name: string;
+  nature: ToolDataNature;
+  description: string | null;
+}
+
 export interface ToolDetail {
   tool: Tool;
   screens: ToolScreen[];
   codes: ToolCode[];
+  business_rules: ToolBusinessRule[];
+  data_entities: ToolDataEntity[];
 }
 
 export interface ExtractedField {
@@ -150,4 +172,24 @@ export const toolsApi = {
 
   deleteCode: (codeId: string) =>
     fetchJSON<{ success: boolean }>(`/api/tools/codes/${codeId}`, { method: 'DELETE' }),
+
+  // ── Règles de gestion (ce que l'outil impose/vérifie) ──
+  addRule: (toolId: string, rule: Omit<ToolBusinessRule, 'id' | 'tool_id'>) =>
+    fetchJSON<{ success: boolean; rule: ToolBusinessRule }>(`/api/tools/${toolId}/rules`, {
+      method: 'POST',
+      body: JSON.stringify(rule),
+    }),
+
+  deleteRule: (ruleId: string) =>
+    fetchJSON<{ success: boolean }>(`/api/tools/rules/${ruleId}`, { method: 'DELETE' }),
+
+  // ── Données (entités/objets métier manipulés par l'outil) ──
+  addDataEntity: (toolId: string, entity: Omit<ToolDataEntity, 'id' | 'tool_id'>) =>
+    fetchJSON<{ success: boolean; data_entity: ToolDataEntity }>(`/api/tools/${toolId}/data-entities`, {
+      method: 'POST',
+      body: JSON.stringify(entity),
+    }),
+
+  deleteDataEntity: (entityId: string) =>
+    fetchJSON<{ success: boolean }>(`/api/tools/data-entities/${entityId}`, { method: 'DELETE' }),
 };

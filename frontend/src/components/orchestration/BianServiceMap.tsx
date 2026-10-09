@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { taxonomyApi, TaxonomyNode } from '@/lib/taxonomyApi';
-import { Plus, Edit2, Trash2, FolderOpen, Loader2, Map, RefreshCw, FileSearch } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, Loader2, Map, RefreshCw, FileSearch, Upload, Layers } from 'lucide-react';
+import { useProceduresStore } from '@/store/proceduresStore';
+import ImportPdfModal from '@/components/orchestration/ImportPdfModal';
+import BianScenarioMap from '@/components/orchestration/BianScenarioMap';
 
 // ─── BIAN uniform colours (matching the standard image) ───────
 
@@ -77,7 +80,8 @@ interface CtxMenu {
 }
 
 interface Props {
-  onGoToProcedures: () => void;
+  onGoToProcedures: (taxonomyNodeId?: string) => void;
+  onOpenProcedure?: (procedureId: string) => void;
   onGoToWorkspace?: () => void;
   isAdmin: boolean;
   onCreateProcedure?: (subcategoryId: string, subcategoryName: string) => void;
@@ -169,13 +173,16 @@ function CategoryBlock({
 
 // ─── Main component ───────────────────────────────────────────
 
-export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAdmin, onCreateProcedure }: Props) {
+export default function BianServiceMap({ onGoToProcedures, onOpenProcedure, onGoToWorkspace, isAdmin, onCreateProcedure }: Props) {
   const [themes, setThemes] = useState<TaxonomyNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ctxMenu, setCtxMenu] = useState<CtxMenu | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const [deleteNode, setDeleteNode] = useState<TaxonomyNode | null>(null);
+  const [showImportPdf, setShowImportPdf] = useState(false);
+  const [showBianMap, setShowBianMap] = useState(false);
+  const { upsertProcedure } = useProceduresStore();
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Position the context menu via ref to avoid inline-style lint warning
@@ -330,9 +337,19 @@ export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAd
           <h2 className="text-sm font-bold text-gray-900">The BIAN Service Landscape v4.0</h2>
           <p className="text-[11px] text-gray-400">Banking Industry Architecture Network — cliquez sur un service domain pour agir</p>
         </div>
-        <button type="button" onClick={loadData} title="Actualiser" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setShowImportPdf(true)}
+            className="flex items-center gap-1.5 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 font-medium text-xs transition-colors">
+            <Upload className="w-3.5 h-3.5" /> Importer PDF
+          </button>
+          <button type="button" onClick={() => setShowBianMap(true)}
+            className="flex items-center gap-1.5 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 font-medium text-xs transition-colors">
+            <Layers className="w-3.5 h-3.5" /> Scénario BIAN
+          </button>
+          <button type="button" onClick={loadData} title="Actualiser" className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Landscape — horizontal scroll */}
@@ -362,7 +379,7 @@ export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAd
 
             <button type="button"
               className="w-full text-left px-4 py-2 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
-              onClick={() => { setCtxMenu(null); onGoToProcedures(); }}>
+              onClick={() => { const nodeId = ctxMenu.node.id; setCtxMenu(null); onGoToProcedures(nodeId); }}>
               <FolderOpen className="w-3.5 h-3.5 text-blue-500" /> Ouvrir les procédures
             </button>
             {onGoToWorkspace && (
@@ -416,6 +433,26 @@ export default function BianServiceMap({ onGoToProcedures, onGoToWorkspace, isAd
             </div>
           </div>
         </div>
+      )}
+
+      {showImportPdf && (
+        <ImportPdfModal
+          onClose={() => setShowImportPdf(false)}
+          onImported={procedure => { upsertProcedure(procedure); }}
+          onOpenImported={() => { setShowImportPdf(false); onGoToProcedures(); }}
+        />
+      )}
+
+      {showBianMap && (
+        <BianScenarioMap
+          onClose={() => setShowBianMap(false)}
+          onImported={procedure => { upsertProcedure(procedure); }}
+          onOpenImported={procedure => {
+            setShowBianMap(false);
+            if (onOpenProcedure) onOpenProcedure(procedure.id);
+            else onGoToProcedures(procedure.taxonomy_id ?? undefined);
+          }}
+        />
       )}
     </div>
   );

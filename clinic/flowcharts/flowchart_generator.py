@@ -11,6 +11,8 @@ import tempfile
 from typing import Dict, Tuple, Optional
 import os
 from config import GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE
+from manager.model_manager import get_primary_model, get_models_for_request
+from manager.processing_level import get_processing_level
 
 class FlowchartGenerator:
     """Générateur de flowcharts métier avec Gemini"""
@@ -232,12 +234,12 @@ Génère maintenant le flowchart Graphviz complet avec actions métier détaill�
         
         # Génération avec Gemini (fallback sur le modèle lite si 503)
         try:
-            response = self.client.models.generate_content(model=self.model_name, contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
+            response = self.client.models.generate_content(model=get_primary_model(self.model_name), contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
             graphviz_code = self._clean_graphviz_code(response.text)
         except Exception as e:
             if '503' in str(e) or 'UNAVAILABLE' in str(e):
                 try:
-                    response = self.client.models.generate_content(model=self.fallback_model_name, contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
+                    response = self.client.models.generate_content(model=(get_models_for_request()[-1].value if get_processing_level() else self.fallback_model_name), contents=[self.SYSTEM_PROMPT, user_prompt], config=self.generation_config)
                     graphviz_code = self._clean_graphviz_code(response.text)
                 except Exception as e2:
                     raise Exception(f"Erreur lors de la génération avec Gemini (fallback) : {str(e2)}")

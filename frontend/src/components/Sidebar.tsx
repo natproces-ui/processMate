@@ -109,7 +109,7 @@ export default function Sidebar({
                                 ? <Loader2 className="w-4 h-4 animate-spin" />
                                 : <Mic className="w-4 h-4" />
                         }
-                        label={recording ? 'Arrêter' : processing ? 'Traitement…' : 'Enregistrer'}
+                        label={recording ? 'Arrêter' : processing ? 'Traitement…' : 'Vocal'}
                         expanded={expanded}
                         onClick={onToggleRecording}
                         disabled={processing}

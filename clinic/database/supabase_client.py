@@ -284,3 +284,72 @@ def get_workflow_by_version(session_id: str, version: int) -> Optional[Dict[str,
         .execute()
     )
     return result.data[0] if result.data else None
+
+
+# ─────────────────────────────────────────────────────────────
+# BIAN SCENARIOS (bibliothèque de procédures de base)
+# ─────────────────────────────────────────────────────────────
+
+def upsert_bian_scenario(
+    version: str,
+    view_id: str,
+    title: str,
+    category: Optional[str],
+    url: str,
+    participants: List[str],
+    steps: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Insère ou met à jour un scénario BIAN scrapé (clé : version + view_id)."""
+    db = get_supabase()
+    data = {
+        "version": version,
+        "view_id": view_id,
+        "title": title,
+        "category": category,
+        "url": url,
+        "participants": participants,
+        "steps": steps,
+    }
+    result = (
+        db.table("bian_scenarios")
+        .upsert(data, on_conflict="version,view_id")
+        .execute()
+    )
+    return result.data[0]
+
+
+def list_bian_scenarios(
+    category: Optional[str] = None,
+    version: Optional[str] = None,
+    status: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Liste les scénarios BIAN disponibles, filtrables par catégorie/version/statut."""
+    db = get_supabase()
+    query = db.table("bian_scenarios").select("*")
+    if category:
+        query = query.eq("category", category)
+    if version:
+        query = query.eq("version", version)
+    if status:
+        query = query.eq("status", status)
+    result = query.order("title").execute()
+    return result.data
+
+
+def get_bian_scenario(scenario_id: str) -> Optional[Dict[str, Any]]:
+    """Récupère un scénario BIAN par id"""
+    db = get_supabase()
+    result = db.table("bian_scenarios").select("*").eq("id", scenario_id).execute()
+    return result.data[0] if result.data else None
+
+
+def mark_bian_scenario_imported(scenario_id: str, workflow_id: str) -> Dict[str, Any]:
+    """Marque un scénario comme repris dans une procédure ProcessMate"""
+    db = get_supabase()
+    result = (
+        db.table("bian_scenarios")
+        .update({"status": "imported", "imported_as_workflow_id": workflow_id})
+        .eq("id", scenario_id)
+        .execute()
+    )
+    return result.data[0]

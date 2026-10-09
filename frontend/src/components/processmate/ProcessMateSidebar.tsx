@@ -1,29 +1,10 @@
 'use client';
 
-// components/processmate/Sidebar.tsx
-// Sidebar unifiée ProcessMate — remplace orchestration/Sidebar.tsx
-// Inclut tous les modules : Orchestration + BPMN Studio + SFD + Clinic
-// Notifications et Paramètres sont retirés de la sidebar (dans le header)
-
 import React from 'react';
-import {
-    ChevronLeft,
-    BarChart3,
-    FileText,
-    Workflow,
-    CheckSquare,
-    PenTool,
-    Code2,
-    Layers,
-    PenLine,
-    Megaphone,
-    BookOpen,
-    Compass,
-} from 'lucide-react';
+import { ChevronLeft, BarChart3, FileText, Workflow, CheckSquare, PenTool, PenLine, Megaphone, BookOpen, Compass, Zap } from 'lucide-react';
+import type { MainModule } from '@/lib/processmate-navigation';
 
-// ─── Types ────────────────────────────────────────────────────
-
-export type ActiveModule = 'orchestration' | 'stt' | 'sfd' | 'clinic';
+export type ActiveModule = MainModule;
 
 interface SidebarProps {
     activeTab: string;
@@ -35,265 +16,70 @@ interface SidebarProps {
     userRole?: string;
 }
 
-// ─── Structure des items ──────────────────────────────────────
-
-interface NavItem {
-    id: string;
-    label: string;
-    icon: React.ElementType;
-    color: string;
-    module: ActiveModule;
-}
-
-const MODULES: { id: ActiveModule; label: string; icon: React.ElementType; color: string }[] = [
-    { id: 'orchestration', label: 'Orchestration', icon: Workflow, color: 'text-blue-600' },
-    { id: 'stt', label: 'BPMN Studio', icon: PenTool, color: 'text-violet-600' },
-    { id: 'sfd', label: 'SFD Generator', icon: Layers, color: 'text-indigo-600' },
-    { id: 'clinic', label: 'Clinic', icon: Code2, color: 'text-teal-600' },
+const SPACES = [
+    { id: 'orchestration' as const, label: 'Orchestration', icon: Workflow },
+    { id: 'stt' as const, label: 'Studio', icon: PenTool },
 ];
 
-const ORCHESTRATION_ITEMS: NavItem[] = [
-    { id: 'procedures', label: 'Créer / Modifier', icon: FileText, color: 'text-blue-600', module: 'orchestration' },
-    { id: 'campagnes', label: 'Campagnes', icon: Megaphone, color: 'text-orange-600', module: 'orchestration' },
-    { id: 'taches', label: 'Suivi des tâches', icon: CheckSquare, color: 'text-indigo-600', module: 'orchestration' },
-    { id: 'workspace', label: 'Espace de travail personnel', icon: PenLine, color: 'text-blue-600', module: 'orchestration' },
-    { id: 'analyser', label: 'Analyse', icon: BarChart3, color: 'text-violet-600', module: 'orchestration' },
-    { id: 'tableau-de-bord', label: 'Tableau de bord', icon: BarChart3, color: 'text-emerald-600', module: 'orchestration' },
-    { id: 'specifications', label: 'Spécifications', icon: BookOpen, color: 'text-amber-600', module: 'orchestration' },
+const ORCHESTRATION_ITEMS = [
+    { id: 'procedures', label: 'Procédures', icon: FileText },
+    { id: 'workspace', label: 'Mon espace de travail', icon: PenLine },
+    { id: 'taches', label: 'Suivi des tâches', icon: CheckSquare },
+    { id: 'campagnes', label: 'Campagnes', icon: Megaphone },
+    { id: 'analyser', label: 'Analyse', icon: BarChart3 },
+    { id: 'specifications', label: 'Spécifications', icon: BookOpen },
+    { id: 'tableau-de-bord', label: 'Tableau de bord', icon: BarChart3 },
 ];
 
-// ─── Composant principal ──────────────────────────────────────
-
-export default function ProcessMateSidebar({
-    activeTab,
-    activeModule,
-    setActiveTab,
-    setActiveModule,
-    sidebarOpen,
-    setSidebarOpen,
-    userRole,
-}: SidebarProps) {
-
-    const handleModuleChange = (moduleId: ActiveModule) => {
-        setActiveModule(moduleId);
-        if (moduleId === 'orchestration') setActiveTab('procedures');
-    };
-
-    const isGuideActive = activeModule === 'orchestration' && activeTab === 'guide';
-
+export default function ProcessMateSidebar({ activeTab, activeModule, setActiveTab, setActiveModule, sidebarOpen, setSidebarOpen }: SidebarProps) {
     return (
-        <div className={`
-      ${sidebarOpen ? 'w-64' : 'w-16'}
-      h-full shrink-0 bg-white border-r border-gray-200
-      transition-all duration-300 flex flex-col shadow-sm
-    `}>
-
-            {/* ── Header sidebar ── */}
-            <div className="shrink-0 h-14 flex items-center justify-between px-3 border-b border-gray-200 bg-blue-600">
-                {sidebarOpen && (
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center flex-shrink-0">
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
-                        <span className="text-sm font-bold text-white truncate">ProcessMate</span>
-                    </div>
-                )}
-                {!sidebarOpen && (
-                    <div className="w-full flex justify-center">
-                        <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center">
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
-                    </div>
-                )}
-                <button
-                    type="button"
-                    onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="text-white/70 hover:text-white transition-colors p-1 flex-shrink-0"
-                    title={sidebarOpen ? 'Réduire' : 'Développer'}
-                >
-                    <ChevronLeft className={`w-4 h-4 transition-transform ${!sidebarOpen ? 'rotate-180' : ''}`} />
+        <aside aria-label="Navigation ProcessMate" className={[sidebarOpen ? 'w-56' : 'w-14', 'h-full shrink-0 bg-white border-r border-slate-200 flex flex-col transition-[width] duration-200'].join(' ')}>
+            <div className="shrink-0 h-14 flex items-center gap-2 px-3 border-b border-blue-500 bg-blue-600">
+                {sidebarOpen && <><Zap className="w-5 h-5 text-white shrink-0" /><span className="text-sm font-bold text-white flex-1 truncate">ProcessMate</span></>}
+                <button type="button" onClick={() => setSidebarOpen(!sidebarOpen)}
+                    aria-label={sidebarOpen ? 'Réduire la navigation' : 'Développer la navigation'} aria-expanded={sidebarOpen}
+                    title={sidebarOpen ? 'Réduire la navigation' : 'Développer la navigation'}
+                    className="p-1 text-white/80 hover:text-white rounded hover:bg-white/10">
+                    <ChevronLeft className={['w-4 h-4', !sidebarOpen ? 'rotate-180' : ''].join(' ')} />
                 </button>
             </div>
-
-            {/* ── Sélecteur de module ── */}
-            <div className={`shrink-0 border-b border-gray-100 ${sidebarOpen ? 'p-2' : 'p-1.5'}`}>
-                {sidebarOpen ? (
-                    // Mode étendu — grid 2×2
-                    <div className="grid grid-cols-2 gap-1">
-                        {MODULES.map(mod => {
-                            const Icon = mod.icon;
-                            const isActive = activeModule === mod.id;
-                            return (
-                                <button
-                                    key={mod.id}
-                                    type="button"
-                                    onClick={() => handleModuleChange(mod.id)}
-                                    title={mod.label}
-                                    className={`
-                    flex flex-col items-center gap-1 px-2 py-2 rounded-lg text-center
-                    transition-all duration-150 text-xs font-medium
-                    ${isActive
-                                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                                        }
-                  `}
-                                >
-                                    <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : mod.color} opacity-80`} />
-                                    <span className="truncate w-full text-center leading-tight">{mod.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                ) : (
-                    // Mode réduit — icônes verticales
-                    <div className="flex flex-col gap-1">
-                        {MODULES.map(mod => {
-                            const Icon = mod.icon;
-                            const isActive = activeModule === mod.id;
-                            return (
-                                <button
-                                    key={mod.id}
-                                    type="button"
-                                    onClick={() => handleModuleChange(mod.id)}
-                                    title={mod.label}
-                                    className={`
-                    flex items-center justify-center w-full py-2 rounded-lg
-                    transition-all duration-150
-                    ${isActive
-                                            ? 'bg-blue-50 text-blue-600'
-                                            : 'text-gray-400 hover:bg-gray-50 hover:text-gray-700'
-                                        }
-                  `}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
-
-            {/* ── Navigation du module actif ── */}
-            <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
-
-                {/* Label section si étendu */}
-                {sidebarOpen && (
-                    <p className="px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        {MODULES.find(m => m.id === activeModule)?.label}
-                    </p>
-                )}
-
-                {/* Items Orchestration */}
-                {activeModule === 'orchestration' && ORCHESTRATION_ITEMS.map(item => (
-                    <NavButton
-                        key={item.id}
-                        item={item}
-                        active={activeTab === item.id}
-                        expanded={sidebarOpen}
-                        onClick={() => setActiveTab(item.id)}
-                    />
-                ))}
-
-                {/* BPMN Studio — pas de sous-items, le contenu est géré dans la page */}
-                {activeModule === 'stt' && (
-                    <div className={`${sidebarOpen ? 'px-2 py-3' : 'py-2'} text-center`}>
-                        {sidebarOpen ? (
-                            <p className="text-xs text-gray-400">
-                                Les outils du Studio sont disponibles dans la barre contextuelle à droite.
-                            </p>
-                        ) : (
-                            <PenTool className="w-4 h-4 text-violet-400 mx-auto" />
-                        )}
-                    </div>
-                )}
-
-                {/* SFD — pas de sous-items */}
-                {activeModule === 'sfd' && (
-                    <div className={`${sidebarOpen ? 'px-2 py-3' : 'py-2'} text-center`}>
-                        {sidebarOpen ? (
-                            <p className="text-xs text-gray-400">
-                                Navigation interne au SFD Generator disponible dans le panneau gauche.
-                            </p>
-                        ) : (
-                            <Layers className="w-4 h-4 text-indigo-400 mx-auto" />
-                        )}
-                    </div>
-                )}
-
-                {/* Clinic — pas de sous-items */}
-                {activeModule === 'clinic' && (
-                    <div className={`${sidebarOpen ? 'px-2 py-3' : 'py-2'} text-center`}>
-                        {sidebarOpen ? (
-                            <p className="text-xs text-gray-400">
-                                Clinic s'ouvre en plein écran dans la zone de contenu.
-                            </p>
-                        ) : (
-                            <Code2 className="w-4 h-4 text-teal-400 mx-auto" />
-                        )}
-                    </div>
-                )}
-
+            <nav aria-label="Espaces de travail" className="shrink-0 p-2 space-y-1 border-b border-slate-100">
+                {SPACES.map(space => {
+                    const Icon = space.icon;
+                    const selected = activeModule === space.id;
+                    return (
+                        <button key={space.id} type="button" onClick={() => setActiveModule(space.id)}
+                            aria-label={space.label} aria-current={selected ? 'page' : undefined} title={space.label}
+                            className={['w-full flex items-center gap-2.5 rounded-lg py-2 text-sm font-semibold transition-colors', sidebarOpen ? 'px-2.5' : 'justify-center', selected ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'].join(' ')}>
+                            <Icon className="w-4 h-4 shrink-0" />
+                            {sidebarOpen && <span>{space.label}</span>}
+                        </button>
+                    );
+                })}
             </nav>
-
-            {/* ── Guide d'utilisation — épinglé, visible depuis tous les modules ── */}
-            <div className={`shrink-0 border-t border-gray-100 ${sidebarOpen ? 'p-2' : 'p-1.5'}`}>
-                <button
-                    type="button"
-                    onClick={() => { setActiveModule('orchestration'); setActiveTab('guide'); }}
-                    title="Guide d'utilisation"
-                    className={`
-            w-full flex items-center gap-3 rounded-lg transition-all duration-150 text-sm font-medium
-            ${sidebarOpen ? 'px-3 py-2' : 'px-0 py-2.5 justify-center'}
-            ${isGuideActive
-                            ? 'bg-sky-50 text-sky-900 border-l-4 border-sky-600 pl-2'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                        }
-          `}
-                >
-                    <Compass className={`w-4 h-4 shrink-0 ${isGuideActive ? 'text-sky-600' : 'text-gray-400'}`} />
-                    {sidebarOpen && <span className="truncate text-left">Guide d&apos;utilisation</span>}
+            <nav aria-label="Rubriques Orchestration" className="flex-1 overflow-y-auto p-2 space-y-0.5">
+                {sidebarOpen && <p className="px-2.5 pt-2 pb-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Orchestration</p>}
+                {ORCHESTRATION_ITEMS.map(item => {
+                    const Icon = item.icon;
+                    const selected = activeModule === 'orchestration' && (activeTab === item.id || (item.id === 'specifications' && activeTab === 'mockups'));
+                    return (
+                        <button key={item.id} type="button" onClick={() => setActiveTab(item.id)}
+                            aria-label={item.label} aria-current={selected ? 'page' : undefined} title={item.label}
+                            className={['w-full flex items-center gap-2.5 rounded-lg py-2 text-xs font-medium transition-colors', sidebarOpen ? 'px-2.5' : 'justify-center', selected ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'].join(' ')}>
+                            <Icon className="w-4 h-4 shrink-0" />
+                            {sidebarOpen && <span className="truncate">{item.label}</span>}
+                        </button>
+                    );
+                })}
+            </nav>
+            <div className="shrink-0 p-2 border-t border-slate-100">
+                <button type="button" onClick={() => setActiveTab('guide')} aria-label="Guide d’utilisation" title="Guide d’utilisation"
+                    aria-current={activeModule === 'orchestration' && activeTab === 'guide' ? 'page' : undefined}
+                    className={['w-full flex items-center gap-2.5 rounded-lg py-2 text-xs font-medium text-slate-600 hover:bg-slate-50', sidebarOpen ? 'px-2.5' : 'justify-center'].join(' ')}>
+                    <Compass className="w-4 h-4 shrink-0" />
+                    {sidebarOpen && <span>Guide d’utilisation</span>}
                 </button>
             </div>
-
-        </div>
-    );
-}
-
-// ─── NavButton ────────────────────────────────────────────────
-
-function NavButton({
-    item,
-    active,
-    expanded,
-    onClick,
-}: {
-    item: NavItem;
-    active: boolean;
-    expanded: boolean;
-    onClick: () => void;
-}) {
-    const Icon = item.icon;
-
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            title={item.label}
-            className={`
-        w-full flex items-center gap-3 rounded-lg transition-all duration-150 text-sm font-medium
-        ${expanded ? 'px-3 py-2' : 'px-0 py-2.5 justify-center'}
-        ${active
-                    ? 'bg-blue-50 text-blue-900 border-l-4 border-blue-600 pl-2'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }
-      `}
-        >
-            <Icon className={`w-4 h-4 shrink-0 ${active ? item.color : 'text-gray-400'}`} />
-            {expanded && <span className="truncate text-left">{item.label}</span>}
-        </button>
+        </aside>
     );
 }

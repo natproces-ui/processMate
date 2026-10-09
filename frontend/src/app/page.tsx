@@ -11,7 +11,7 @@ import {
   LayoutDashboard, ListChecks, Users, AlertTriangle,
   BarChart2, Shield, Map as MapIcon, BrainCircuit,
   Code2, AlignLeft, Table2, Gauge, Settings2,
-  FileText, Megaphone, CheckCircle2,
+  FileText, Megaphone, CheckCircle2, BookOpen,
 } from 'lucide-react';
 
 /* ═══════════════════════════════════════════════════════════════
@@ -78,7 +78,8 @@ const PRODUCTS: ProductModule[] = [
         icon: <PenLine className={ic} />,
         options: [
           { label: 'Partir de zéro', desc: 'Studio BPMN vierge', href: '/orchestration?module=stt', icon: <PenLine className={ic} /> },
-          { label: 'Partir de documents', desc: 'Extraction depuis PDF, Word, texte', href: '/orchestration?module=stt', icon: <Upload className={ic} /> },
+          { label: 'Partir de documents', desc: 'Extraction depuis PDF, images ou notes', href: '/orchestration?module=stt&tool=documents', icon: <Upload className={ic} /> },
+          { label: 'Partir du code source', desc: 'Analyse du code et conversion en procédure', href: '/orchestration?module=stt&tool=code', icon: <Code2 className={ic} /> },
           { label: "Partir d'un enregistrement", desc: 'Transcription dictée au micro', href: '/orchestration?module=stt', icon: <Mic className={ic} /> },
         ],
       },
@@ -106,6 +107,14 @@ const PRODUCTS: ProductModule[] = [
         ],
       },
       {
+        label: 'Spécifications',
+        icon: <BookOpen className={ic} />,
+        options: [
+          { label: 'Générer et consulter les spécifications', desc: 'SFD à partir des procédures et de sources complémentaires', href: '/orchestration?tab=specifications', icon: <FileText className={ic} /> },
+          { label: 'Maquettes', desc: 'Préparer les écrans associés aux spécifications', href: '/orchestration?tab=mockups', icon: <LayoutDashboard className={ic} /> },
+        ],
+      },
+      {
         label: 'Piloter les tâches',
         icon: <Gauge className={ic} />,
         options: [
@@ -113,65 +122,6 @@ const PRODUCTS: ProductModule[] = [
           { label: 'Suivi des tâches', desc: 'Par acteur et procédure', href: '/orchestration?tab=taches', icon: <ListChecks className={ic} /> },
           { label: 'Matrice RACI', desc: 'Responsabilités et rôles', href: '/orchestration?tab=taches', icon: <Users className={ic} /> },
           { label: 'Portfolio', desc: 'Vue globale admin', href: '/orchestration?tab=portfolio', icon: <BarChart2 className={ic} /> },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'clinic',
-    name: 'Clinic',
-    tagline: 'Reverse engineering métier',
-    description:
-      'Extrayez la logique métier enfouie dans vos codes legacy — COBOL, ABAP, WinDev — et transformez-la en procédures exploitables.',
-    icon: <Code2 className="w-6 h-6" />,
-    color: {
-      bg: 'bg-teal-600',
-      text: 'text-teal-600',
-      border: 'border-teal-200',
-      lightBg: 'bg-teal-50',
-      ring: 'ring-teal-600',
-      dot: 'bg-teal-600',
-      tab: 'text-teal-600 border-teal-600',
-      gradient: 'from-teal-600 to-teal-400',
-    },
-    cta: { label: 'Ouvrir Clinic', href: '/clinic' },
-    groups: [
-      {
-        label: 'Extraction de code',
-        icon: <Code2 className={ic} />,
-        options: [
-          { label: 'Analyse du code', desc: 'COBOL, ABAP, WinDev, PL/SQL…', href: '/clinic?mode=flowchart', icon: <Code2 className={ic} /> },
-          { label: 'Génération flowchart', desc: 'Diagramme de flux depuis le code', href: '/clinic?mode=flowchart', icon: <GitBranch className={ic} /> },
-          { label: 'Export procédure', desc: 'Transformer en procédure formalisée', href: '/clinic?mode=flowchart', icon: <FileText className={ic} /> },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'sfd',
-    name: 'SFD Generator',
-    tagline: 'Spécifications fonctionnelles',
-    description:
-      'Produisez des spécifications fonctionnelles détaillées à partir de vos documents, URLs ou descriptions textuelles. Génération assistée par IA.',
-    icon: <AlignLeft className="w-6 h-6" />,
-    color: {
-      bg: 'bg-amber-500',
-      text: 'text-amber-600',
-      border: 'border-amber-200',
-      lightBg: 'bg-amber-50',
-      ring: 'ring-amber-500',
-      dot: 'bg-amber-500',
-      tab: 'text-amber-600 border-amber-500',
-      gradient: 'from-amber-500 to-amber-400',
-    },
-    cta: { label: 'Ouvrir SFD Generator', href: '/orchestration?module=sfd' },
-    groups: [
-      {
-        label: 'Générer un SFD',
-        icon: <AlignLeft className={ic} />,
-        options: [
-          { label: 'Depuis fichiers / URLs', desc: 'Analyser des documents ou pages web', href: '/orchestration?module=sfd', icon: <Upload className={ic} /> },
-          { label: 'Depuis une description', desc: 'Texte libre → document SFD complet', href: '/orchestration?module=sfd', icon: <AlignLeft className={ic} /> },
         ],
       },
     ],

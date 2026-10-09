@@ -6,11 +6,12 @@ VERSION OPTIMISÉE : 1 tentative par modèle avant switch
 import logging
 from typing import Optional, Callable, Any, Dict
 from enum import Enum
-import time
+import asyncio
 from google import genai
 from google.genai import errors as genai_errors
 from google.api_core import exceptions as google_exceptions
-from config import GEMINI_MODEL_PRO, GEMINI_MODEL_LITE
+from config import GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE
+from manager.processing_level import ProcessingLevel, get_processing_level
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,22 @@ class GeminiModel(Enum):
     """Modèles Gemini disponibles"""
     FLASH = GEMINI_MODEL_PRO
     FLASH_LITE = GEMINI_MODEL_LITE
+    BALANCED = GEMINI_MODEL_FLASH
+
+
+def get_models_for_request():
+    """Ordre de secours par niveau ; comportement existant sans choix Studio."""
+    models = {
+        ProcessingLevel.FAST: [GeminiModel.FLASH_LITE, GeminiModel.BALANCED],
+        ProcessingLevel.NORMAL: [GeminiModel.BALANCED, GeminiModel.FLASH_LITE],
+        ProcessingLevel.DEEP: [GeminiModel.FLASH, GeminiModel.BALANCED],
+    }.get(get_processing_level(), [GeminiModel.FLASH_LITE, GeminiModel.FLASH])
+    return list(dict.fromkeys(models))
+
+
+def get_primary_model(default: str) -> str:
+    """Pour les appels directs : préserver le modèle habituel hors Studio."""
+    return get_models_for_request()[0].value if get_processing_level() else default
 
 
 class ModelRetryStrategy:
@@ -26,16 +43,16 @@ class ModelRetryStrategy:
     Stratégie de retry intelligente avec fallback entre modèles
 
     Règles OPTIMISÉES :
-    - Erreur 429 (quota expiré) → Switch immédiat vers modèle lite
+    - Erreur 429 (quota expiré) → Switch immédiat vers modèle de secours
     - Timeout → 1 tentative puis switch (pas 3 tentatives)
-    - 503 (serveur indisponible) → Switch vers Flash Lite
+    - 503 (serveur indisponible) → Switch vers le modèle de secours
     - 429 sur les deux modèles → Erreur finale
     """
 
     def __init__(self, max_retries: int = 1, retry_delay: float = 2.0):
         self.max_retries = max_retries  # ← 1 seule tentative par défaut
         self.retry_delay = retry_delay
-        self.current_model = GeminiModel.FLASH
+        self.current_model = GeminiModel.FLASH_LITE
 
     async def execute_with_retry(
         self,
@@ -53,9 +70,10 @@ class ModelRetryStrategy:
             Dict avec "success", "result" ou "error"
         """
 
-        models_to_try = [GeminiModel.FLASH, GeminiModel.FLASH_LITE]
+        models_to_try = get_models_for_request()
 
-        for model in models_to_try:
+        for model_index, model in enumerate(models_to_try):
+            has_fallback = model_index + 1 < len(models_to_try)
             logger.info(f"🤖 Tentative avec {model.value}")
 
             # Retry pour timeouts (1 seule fois maintenant)
@@ -76,16 +94,16 @@ class ModelRetryStrategy:
                     # 429 - Quota expiré → Switch immédiat
                     logger.warning(f"⚠️ Quota expiré sur {model.value}: {str(e)}")
 
-                    if model == GeminiModel.FLASH:
-                        logger.info("🔄 Switch immédiat vers Flash Lite (quota expiré)")
+                    if has_fallback:
+                        logger.info("🔄 Switch immédiat vers le modèle de secours (quota expiré)")
                         break  # Passer au modèle suivant
                     else:
                         return {
                             "success": False,
                             "error": "quota_exhausted",
                             "message": (
-                                "⚠️ Les quotas gratuits de Gemini sont temporairement épuisés. "
-                                "Veuillez réessayer dans quelques minutes ou utiliser une clé API payante."
+                                "⚠️ Les quotas du service sont temporairement atteints. "
+                                "Veuillez réessayer dans quelques minutes."
                             )
                         }
 
@@ -96,11 +114,11 @@ class ModelRetryStrategy:
                     if attempt < self.max_retries:
                         wait_time = self.retry_delay * attempt
                         logger.info(f"⏳ Attente de {wait_time}s avant retry...")
-                        time.sleep(wait_time)
+                        await asyncio.sleep(wait_time)
                         continue
                     else:
-                        if model == GeminiModel.FLASH:
-                            logger.info("🔄 Timeout sur Flash → Switch vers Flash Lite")
+                        if has_fallback:
+                            logger.info("🔄 Timeout sur le modèle courant → Switch vers le modèle de secours")
                             break
                         else:
                             return {
@@ -120,8 +138,8 @@ class ModelRetryStrategy:
                     status = getattr(e, 'code', None) or 503  # APIError expose le code HTTP dans .code
                     logger.warning(f"⚠️ Erreur serveur {status} sur {model.value}: {str(e)[:100]}")
 
-                    if model == GeminiModel.FLASH:
-                        logger.info(f"🔄 Erreur serveur {status} → Switch vers Flash Lite")
+                    if has_fallback:
+                        logger.info(f"🔄 Erreur serveur {status} → Switch vers le modèle de secours")
                         break
                     else:
                         return {
@@ -137,9 +155,18 @@ class ModelRetryStrategy:
                     # Erreurs client (4xx autres que 429)
                     status = getattr(e, 'code', None) or 400
                     logger.error(f"❌ Erreur client {status} sur {model.value}: {str(e)[:200]}")
-                    if status == 404 and model == GeminiModel.FLASH:
+                    if status == 429:
+                        if has_fallback:
+                            logger.info("🔄 Quota atteint → modèle de secours")
+                            break
+                        return {
+                            "success": False,
+                            "error": "quota_exhausted",
+                            "message": "Les quotas du service sont temporairement atteints. Veuillez réessayer plus tard.",
+                        }
+                    if status == 404 and has_fallback:
                         # Modèle retiré par Google → on bascule sur le secours plutôt que d'échouer
-                        logger.info("🔄 Modèle introuvable (404) → Switch vers Flash Lite")
+                        logger.info("🔄 Modèle introuvable (404) → Switch vers le modèle de secours")
                         break
                     return {
                         "success": False,

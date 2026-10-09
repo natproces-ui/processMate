@@ -2,7 +2,7 @@
 
 // components/processmate/SttPanel.tsx
 // Contenu BPMN Studio dans le shell ProcessMate.
-// SttToolbar positionnée à GAUCHE (avant le contenu).
+// Les entrées sont regroupées dans l’assistant ; les actions du résultat restent près du tableau.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -10,6 +10,7 @@ import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
 import { generateBPMNOutillage } from '@/logic/bpmnGeneratorOutillage';
 import { parseWorkflowFromModeler, type ParseResult } from '@/logic/bpmnParser';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
+import ToolQuickCard from '@/components/orchestration/ToolQuickCard';
 import type { Table1Row } from '@/logic/types';
 import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeProcedureMetadata, mergeEnrichments } from '@/logic/bpmnTypes';
 import type { BpmnEditorHandle } from '@/components/new-way/BpmnEditor';
@@ -27,6 +28,9 @@ import {
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
+import { processingLevelHeaders } from '@/lib/processing-level';
+import type { StudioTool } from '@/lib/processmate-navigation';
+import ProcessingLevelSelector, { useProcessingLevel } from './ProcessingLevelSelector';
 import { orchestrationApi } from '@/lib/orchestrationApi';
 import { orchestrationTasksApi } from '@/lib/orchestrationTasksApi';
 import RecipientPicker from '@/components/orchestration/tasks/RecipientPicker';
@@ -56,7 +60,7 @@ interface ProcessInstance {
     status: 'generating' | 'ready' | 'error'; workflow_db_id?: string;
 }
 
-interface Props { workflowId?: string; onBack?: () => void; currentActorId?: string; fromClinic?: boolean; }
+interface Props { workflowId?: string; onBack?: () => void; currentActorId?: string; fromClinic?: boolean; initialTool?: StudioTool; }
 
 const defaultData: Table1Row[] = [
     { id: '1', étape: 'Début du processus', typeBpmn: 'StartEvent', département: 'Front Office', acteur: 'Client', typeActeur: 'externe', condition: '', outputs: [{ targetId: '2', label: '' }], outil: '' },
@@ -67,8 +71,9 @@ const defaultData: Table1Row[] = [
     { id: '6', étape: 'Fin du processus', typeBpmn: 'EndEvent', département: 'Back Office', acteur: 'Gestionnaire', typeActeur: 'interne', condition: '', outputs: [], outil: '' },
 ];
 
-export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic }: Props) {
+export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool }: Props) {
     const { invalidate } = useProceduresStore();
+    const [processingLevel, setProcessingLevel] = useProcessingLevel();
     const [phase, setPhase] = useState<Phase>('upload');
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [cards, setCards] = useState<ProcessCard[]>([]);
@@ -84,8 +89,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [guideOpen, setGuideOpen] = useState(false);
-    const [chatOpen, setChatOpen] = useState(true);
-    const [uploadOpen, setUploadOpen] = useState(true);
+    const [uploadOpen, setUploadOpen] = useState(initialTool === 'documents');
     const [sourceFiles, setSourceFiles] = useState<File[]>([]);
     const [revisionOpen, setRevisionOpen] = useState(false);
     const [revisionCount, setRevisionCount] = useState(0);
@@ -98,8 +102,14 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [loadingWorkflow, setLoadingWorkflow] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
+    useEffect(() => {
+        if (initialTool === 'code') { setCodeSourceOpen(true); setUploadOpen(false); }
+        if (initialTool === 'documents') setUploadOpen(true);
+        if (initialTool === 'assistant') { setUploadOpen(false); setCodeSourceOpen(false); }
+    }, [initialTool]);
+
     // Code source state
-    const [codeSourceOpen, setCodeSourceOpen] = useState(false);
+    const [codeSourceOpen, setCodeSourceOpen] = useState(initialTool === 'code');
     const [codeFile, setCodeFile] = useState<File | null>(null);
     const [codeStep, setCodeStep] = useState<ProcessingStep>('idle');
     const [codeParsedData, setCodeParsedData] = useState<ParsedData | null>(null);
@@ -126,14 +136,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     useEffect(() => { initializeViz().then(v => { vizRef.current = v; }); }, []);
     useEffect(() => { return () => { if (codeFlowchartUrl) URL.revokeObjectURL(codeFlowchartUrl); }; }, [codeFlowchartUrl]);
 
-    // Toggle exclusion mutuelle Documents / Code source
-    const handleToggleCodeSource = () => {
-        setCodeSourceOpen(o => { if (!o) setUploadOpen(false); return !o; });
-    };
-    const handleToggleUpload = () => {
-        setUploadOpen(o => { if (!o) setCodeSourceOpen(false); return !o; });
-    };
-
     // Code source handlers
     const handleCodeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
@@ -152,6 +154,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         setCodeDotSource('');
         await clinicGenerateFlowchart({
             file: codeFile,
+            processingLevel,
             setCurrentStep: setCodeStep,
             setParsedData: setCodeParsedData,
             setFlowchartImageUrl: setCodeFlowchartUrl,
@@ -169,7 +172,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         try {
             const res = await fetch(API_CONFIG.getFullUrl('/api/discovery/analyze-code'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
                 body: JSON.stringify({
                     dot_source: codeDotSource,
                     business_info: codeParsedData.business_info,
@@ -245,7 +248,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             setUploadOpen(false);
             fetch(API_CONFIG.getFullUrl('/api/discovery/analyze-code'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
                 body: JSON.stringify({ dot_source, business_info, statistics }),
             })
                 .then(r => r.json())
@@ -327,14 +330,18 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         setSyncPreview(null);
     };
 
-    // ── Vue outillage (lecture seule) — voir la discussion sur "l'envers du vêtement" ──
+    // ── Vue IT (ex "Vue outillage") — voir la discussion sur "l'envers du vêtement" ──
     // Même diagramme métier (mêmes lanes/positions/flux), seul le texte des tâches
     // change : outil en titre + étape en sous-titre, "(Manuel)" si aucun outil. Généré à
     // la volée depuis Table1Row[] à chaque bascule — rien n'est stocké, rien à
-    // synchroniser. Enregistrer/Synchroniser sont désactivés tant qu'elle est affichée :
-    // le XML outillage ne doit jamais être confondu avec le XML métier réel.
+    // synchroniser. Enregistrer/Synchroniser restent désactivés tant qu'elle est affichée
+    // (le XML IT ne doit jamais être confondu avec le XML métier réel) — mais rien n'empêche
+    // bpmn-js lui-même d'être manipulé ici (pas de vrai mode lecture seule au niveau du
+    // moteur) ; le garde-fou sur `onChange` ci-dessous évite qu'une manip accidentelle
+    // n'écrase le XML métier en mémoire tant qu'on n'est pas revenu en vue métier.
     const [viewMode, setViewMode] = useState<'metier' | 'outillage'>('metier');
-    const [outillageTool, setOutillageTool] = useState<string | null>(null);
+    const [outillageTool, setOutillageTool] = useState<{ name: string; x: number; y: number } | null>(null);
+    const [manageTool, setManageTool] = useState<string | null>(null);
 
     const toggleViewMode = useCallback(async () => {
         const ref = instances.length > 0 ? editorRefs.current[activeTab] : editorRef.current;
@@ -350,10 +357,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             const eventBus = modeler.get('eventBus');
             const onClick = (e: any) => {
                 const id: string = e.element?.id || '';
-                const m = id.match(/^Task_(.+)$/);
-                if (!m) return;
-                const row = activeData.find(r => r.id === m[1]);
-                if (row?.outil) setOutillageTool(row.outil);
+                if (!id.startsWith('ToolNode_')) return; // exclut les "(Manuel)" (Task_) et le reste du diagramme
+                const name: string = e.element?.businessObject?.name || '';
+                if (!name) return;
+                const clientX = e.originalEvent?.clientX ?? window.innerWidth / 2;
+                const clientY = e.originalEvent?.clientY ?? window.innerHeight / 2;
+                setOutillageTool({ name, x: clientX, y: clientY });
             };
             eventBus.on('element.click', onClick);
             modeler.__outillageClickHandler = onClick; // retrouvé pour le détacher au retour
@@ -386,7 +395,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         for (let i = 0; i < selectedIds.length; i++) {
             const pid = selectedIds[i];
             try {
-                const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.generationGenerate), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, process_id: pid }) });
+                const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.generationGenerate), { method: 'POST', headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) }, body: JSON.stringify({ session_id: sessionId, process_id: pid }) });
                 const d = await res.json();
                 if (!res.ok) throw new Error(d.detail || 'Erreur');
                 const enrichMap = new Map<string, TaskEnrichment>();
@@ -585,7 +594,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     const blob = new Blob(chunks, { type: 'audio/webm' });
                     const fd = new FormData(); fd.append('file', blob, 'audio.webm');
                     try {
-                        const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.transcribe), { method: 'POST', body: fd });
+                        const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.transcribe), { method: 'POST', headers: processingLevelHeaders(processingLevel), body: fd });
                         const result = await res.json();
                         if (!res.ok) throw new Error(result.detail || 'Erreur transcription');
                         if (result?.parsedData && Array.isArray(result.parsedData)) {
@@ -618,55 +627,69 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         if (ref) ref.importXml(activeInst.bpmnXml);
     }, [activeTab]);
 
+    const inputContext = (
+        <>
+            <div hidden={!uploadOpen}>
+                <div className="flex items-center justify-between mb-2"><span className="text-xs font-medium text-slate-600">Documents du processus</span><button type="button" onClick={() => setUploadOpen(false)} aria-label="Fermer les documents" className="text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button></div>
+                <MultiDocUpload processingLevel={processingLevel} onDiscoveryComplete={handleDiscoveryComplete} onError={showError} onSuccess={showSuccess} />
+            </div>
+
+            {/* Code source panel */}
+            <div hidden={!codeSourceOpen}>
+                <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        <Code className="w-4 h-4 text-violet-500" />
+                        Code source — Analyse et flowchart
+                        <button type="button" onClick={() => setCodeSourceOpen(false)} aria-label="Fermer le code source" className="ml-auto text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                        Ajoutez un fichier source (.wl, .swift, .txt) pour générer un flowchart puis le convertir en BPMN.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <label className="flex-1 flex items-center gap-2 px-4 py-3 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-violet-300 hover:bg-violet-50/50 transition-colors">
+                            <Code className="w-5 h-5 text-slate-400" />
+                            <span className="text-sm text-slate-600 truncate">
+                                {codeFile ? codeFile.name : 'Choisir un fichier code source…'}
+                            </span>
+                            <input type="file" accept=".wl,.swift,.txt,.windev" onChange={handleCodeFileChange} className="hidden" />
+                        </label>
+                        <button type="button" onClick={handleGenerateCodeFlowchart}
+                            disabled={!codeFile || codeStep === 'parsing' || codeStep === 'generating'}
+                            className="px-4 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors shrink-0">
+                            {codeStep === 'parsing' || codeStep === 'generating' ? 'Génération…' : 'Générer le flowchart'}
+                        </button>
+                    </div>
+                    {(codeStep === 'parsing' || codeStep === 'generating') && (
+                        <div className="flex items-center gap-2 text-xs text-violet-600">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            {codeStep === 'parsing' ? 'Analyse du code source…' : 'Génération du flowchart…'}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
+
     return (
         <div className="flex h-full bg-slate-50 overflow-hidden">
-
-            {/* ── Toolbar STT — à GAUCHE, expandable ── */}
-            <SttToolbar
-                dataLength={activeData.length}
-                recording={recording}
-                processing={processing}
-                bpmnXml={activeBpmnXml ?? ''}
-                isEditingBpmn={!!activeBpmnXml}
-                uploadOpen={uploadOpen}
-                chatOpen={chatOpen}
-                revisionOpen={revisionOpen}
-                revisionCount={revisionCount}
-                onToggleRecording={toggleRecording}
-                onCancelRecording={cancelRecording}
-                onGenerateBPMN={handleGenerateBPMN}
-                onDownloadBPMN={handleDownloadBPMN}
-                onResetToDefault={() => { setInstances([]); setData(defaultData); setBpmnXml(null); setPhase('upload'); resetCodeSource(); }}
-                onClearTable={() => { if (instances.length > 0) updateActiveData([]); else setData([]); }}
-                onDetectInterfaces={() => { }}
-                onAnalyseErrors={() => showError('🔜 Bientôt disponible')}
-                codeSourceOpen={codeSourceOpen}
-                onToggleUpload={handleToggleUpload}
-                onToggleChat={() => setChatOpen(o => !o)}
-                onToggleRevision={() => setRevisionOpen(o => !o)}
-                onToggleCodeSource={handleToggleCodeSource}
-            />
 
             {/* ── Contenu principal ── */}
             <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-                {/* Breadcrumb retour */}
-                {onBack && (
-                    <div className="shrink-0 flex items-center gap-3 px-4 py-2 bg-white border-b border-slate-200">
-                        <button type="button" onClick={onBack}
-                            className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
-                            <ArrowLeft className="w-3.5 h-3.5" /> Retour
-                        </button>
+                {/* Retour au contexte d’origine */}
+                <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-white border-b border-slate-200">
+                    <div className="flex items-center gap-3 min-w-0">
+                        {onBack && (
+                            <button type="button" onClick={onBack}
+                                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                                <ArrowLeft className="w-3.5 h-3.5" /> Retour
+                            </button>
+                        )}
                         {activeInst?.workflow_db_id && (
-                            <>
-                                <span className="text-slate-300">|</span>
-                                <span className="text-xs text-slate-500 truncate">
-                                    {activeInst.title}
-                                </span>
-                            </>
+                            <span className="text-xs text-slate-500 truncate">{activeInst.title}</span>
                         )}
                     </div>
-                )}
+                </div>
 
                 <div className="flex-1 overflow-y-auto">
                 <div className="max-w-[1400px] mx-auto px-4 py-5 space-y-3">
@@ -678,41 +701,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     )}
                     {error && <div className="fixed top-16 right-6 z-50 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><AlertCircle className="w-4 h-4 flex-shrink-0" /><span>{error}</span></div>}
                     {success && <div className="fixed top-16 right-6 z-50 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><CheckCircle className="w-4 h-4 flex-shrink-0" /><span>{success}</span></div>}
-
-                    {uploadOpen && <MultiDocUpload onDiscoveryComplete={handleDiscoveryComplete} onError={showError} onSuccess={showSuccess} />}
-
-                    {/* Code source panel */}
-                    {codeSourceOpen && phase !== 'discovery' && (
-                        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
-                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                                <Code className="w-4 h-4 text-violet-500" />
-                                Code source — Analyse et flowchart
-                            </div>
-                            <p className="text-xs text-slate-500">
-                                Uploadez un fichier source (.wl, .swift, .txt) pour générer un flowchart puis le convertir en BPMN.
-                            </p>
-                            <div className="flex items-center gap-3">
-                                <label className="flex-1 flex items-center gap-2 px-4 py-3 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-violet-300 hover:bg-violet-50/50 transition-colors">
-                                    <Code className="w-5 h-5 text-slate-400" />
-                                    <span className="text-sm text-slate-600 truncate">
-                                        {codeFile ? codeFile.name : 'Choisir un fichier code source…'}
-                                    </span>
-                                    <input type="file" accept=".wl,.swift,.txt,.windev" onChange={handleCodeFileChange} className="hidden" />
-                                </label>
-                                <button type="button" onClick={handleGenerateCodeFlowchart}
-                                    disabled={!codeFile || codeStep === 'parsing' || codeStep === 'generating'}
-                                    className="px-4 py-2.5 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors shrink-0">
-                                    {codeStep === 'parsing' || codeStep === 'generating' ? 'Génération…' : 'Générer le flowchart'}
-                                </button>
-                            </div>
-                            {(codeStep === 'parsing' || codeStep === 'generating') && (
-                                <div className="flex items-center gap-2 text-xs text-violet-600">
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    {codeStep === 'parsing' ? 'Analyse du code source…' : 'Génération du flowchart…'}
-                                </div>
-                            )}
-                        </div>
-                    )}
 
                     {/* Flowchart Results (depuis code source) */}
                     {codeSourceOpen && codeStep === 'completed' && codeParsedData && codeFlowchartUrl && (
@@ -732,19 +720,37 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         </div>
                     )}
 
-                    {phase === 'discovery' && sessionId && <ProcessDiscoveryPanel sessionId={sessionId} cards={cards} onCardsUpdated={setCards} onGenerate={handleGenerate} generating={generating} />}
-                    {chatOpen && phase !== 'discovery' && (
+                    {phase === 'discovery' && sessionId && (
+                        <div className="space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <button type="button" onClick={() => { setPhase('upload'); setUploadOpen(true); }} className="text-xs text-blue-600">Retour aux documents</button>
+                                <ProcessingLevelSelector value={processingLevel} onChange={setProcessingLevel} />
+                            </div>
+                            <ProcessDiscoveryPanel processingLevel={processingLevel} sessionId={sessionId} cards={cards} onCardsUpdated={setCards} onGenerate={handleGenerate} generating={generating} />
+                        </div>
+                    )}
+                    <div hidden={phase === 'discovery'}>
                         <ChatInterface
-                            key={instances.length > 0 ? `chat-${activeTab}` : 'chat-default'}
+                            inputContextVisible={uploadOpen || codeSourceOpen}
+                            inputContext={inputContext}
+                            onOpenDocuments={() => { setUploadOpen(true); setCodeSourceOpen(false); }}
+                            onOpenCode={() => { setCodeSourceOpen(true); setUploadOpen(false); }}
+                            recording={recording} processing={processing}
+                            onToggleRecording={toggleRecording} onCancelRecording={cancelRecording}
+                            onNewConversation={() => { setUploadOpen(false); setCodeSourceOpen(false); }}
+                            onProcessingLevelChange={setProcessingLevel}
+                            processingLevel={processingLevel}
+                            key={`chat-${activeTab}`}
                             currentWorkflow={activeData}
                             currentEnrichments={activeEnrichments}
                             currentProcedureMetadata={activeInitialMeta}
                             onWorkflowGenerated={handleWorkflowFromChat}
                             onError={showError} onSuccess={showSuccess}
                         />
-                    )}
+                    </div>
                     {revisionOpen && phase === 'editing' && (
                         <RevisionPanel
+                            processingLevel={processingLevel}
                             workflow={activeData}
                             onWorkflowChange={instances.length > 0 ? updateActiveData : (d) => { setData(d); setRevisionCount(c => c + 1); }}
                             onSuccess={showSuccess} onError={showError}
@@ -771,6 +777,23 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         )}
                     </div>
 
+                    {/* Actions sur le processus */}
+                    <SttToolbar
+                        dataLength={activeData.length}
+                        bpmnXml={activeBpmnXml ?? ''}
+                        isEditingBpmn={!!activeBpmnXml}
+                        revisionOpen={revisionOpen}
+                        revisionCount={revisionCount}
+                        onGenerateBPMN={handleGenerateBPMN}
+                        onDownloadBPMN={handleDownloadBPMN}
+                        onResetToDefault={() => { setInstances([]); setData(defaultData); setBpmnXml(null); setPhase('upload'); resetCodeSource(); }}
+                        onClearTable={() => { if (instances.length > 0) updateActiveData([]); else setData([]); }}
+                        onDetectInterfaces={() => { }}
+                        onAnalyseErrors={() => showError('🔜 Bientôt disponible')}
+                        onToggleRevision={() => setRevisionOpen(o => !o)}
+                    />
+
+
                     {/* Onglets processus + nouvelle procédure */}
                     {instances.length > 0 && (
                         <div className="flex gap-1 flex-wrap items-center">
@@ -792,7 +815,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 };
                                 setInstances(prev => [...prev, newInst]);
                                 setActiveTab(instances.length);
-                                setPhase('upload'); setUploadOpen(true); setChatOpen(true);
+                                setPhase('upload'); setUploadOpen(true);
                             }}
                                 className="w-7 h-7 flex items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors">
                                 <Plus className="w-3.5 h-3.5" />
@@ -824,9 +847,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         <RotateCw className="w-3.5 h-3.5" />Synchroniser
                                     </button>
                                     <button type="button" onClick={toggleViewMode}
-                                        title="Vue outillage : lecture seule, l'outil devient le titre de chaque tâche"
+                                        title="Vue IT : l'outil devient le titre de chaque tâche — cliquez un outil pour voir ses écrans/champs/codes"
                                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${viewMode === 'outillage' ? 'bg-violet-600 text-white' : 'bg-white border border-violet-300 text-violet-700 hover:bg-violet-50'}`}>
-                                        <Wrench className="w-3.5 h-3.5" />{viewMode === 'outillage' ? 'Vue outillage (lecture seule)' : 'Vue outillage'}
+                                        <Wrench className="w-3.5 h-3.5" />{viewMode === 'outillage' ? 'Vue IT (active)' : 'Vue IT'}
                                     </button>
                                     {activeInst?.workflow_db_id && currentActorId && (
                                         <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
@@ -853,8 +876,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 <Library modelerRef={modelerRef} />
                                 <div className="flex-1 min-w-0">
                                     {instances.length > 0
-                                        ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst))} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
-                                        : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => setBpmnXml(xml)} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
+                                        ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
+                                        : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
                                     }
                                 </div>
                             </div>
@@ -894,7 +917,16 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             <SaveToBiblioModal open={saveModalOpen} initialNom={activeTitle} onClose={() => setSaveModalOpen(false)} onConfirm={handleSave} />
 
             {outillageTool && (
-                <ToolDetailPanel toolName={outillageTool} onClose={() => setOutillageTool(null)} />
+                <ToolQuickCard
+                    toolName={outillageTool.name}
+                    anchor={{ x: outillageTool.x, y: outillageTool.y }}
+                    onClose={() => setOutillageTool(null)}
+                    onManage={() => { setManageTool(outillageTool.name); setOutillageTool(null); }}
+                />
+            )}
+
+            {manageTool && (
+                <ToolDetailPanel toolName={manageTool} onClose={() => setManageTool(null)} />
             )}
 
             {syncPreview && (

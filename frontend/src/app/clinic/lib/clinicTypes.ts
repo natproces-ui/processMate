@@ -1,3 +1,5 @@
+import type { ProcessingLevel } from "@/lib/processing-level";
+
 // Types et interfaces pour Clinic
 
 // ---- STATISTICS ----
@@ -96,6 +98,7 @@ export type Mode = 'flowchart' | 'bpmn';
 
 // ---- FLOWCHART GENERATION PARAMS ----
 export interface GenerateFlowchartParams {
+    processingLevel?: ProcessingLevel;
     file: File;
     setCurrentStep: (step: ProcessingStep) => void;
     setParsedData: (data: ParsedData | null) => void;

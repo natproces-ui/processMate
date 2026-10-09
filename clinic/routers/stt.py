@@ -14,6 +14,7 @@ from typing import List, Dict, Any, Optional
 import os
 from config import GOOGLE_API_KEY
 from config import GEMINI_MODEL_LITE
+from manager.model_manager import get_primary_model
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
     """
     try:
         result = client.models.generate_content(
-            model=GEMINI_MODEL_LITE,
+            model=get_primary_model(GEMINI_MODEL_LITE),
             contents=[
                 {"inline_data": {"mime_type": mime_type, "data": audio_bytes}},
                 "Transcris ce fichier audio en texte clair, en corrigeant les fautes d'orthographe."
@@ -164,7 +165,7 @@ RÈGLES IMPORTANTES:
 - Les acteurs doivent être spécifiques (pas "personnel", mais "Chef d'équipe")
 """
         
-        result = client.models.generate_content(model=GEMINI_MODEL_LITE, contents=prompt)
+        result = client.models.generate_content(model=get_primary_model(GEMINI_MODEL_LITE), contents=prompt)
         
         if not result or not result.text:
             raise ValueError("Gemini n'a pas retourné de parsing")

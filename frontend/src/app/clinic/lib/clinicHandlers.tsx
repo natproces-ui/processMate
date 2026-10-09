@@ -1,5 +1,6 @@
 // ✅ Import depuis la config centralisée
 import { API_CONFIG } from '@/lib/api-config';
+import { processingLevelHeaders } from '@/lib/processing-level';
 import { GenerateFlowchartParams, GenerateBPMNParams, ParsedData } from './clinicTypes';
 
 // ❌ SUPPRIMER cette ligne
@@ -31,6 +32,7 @@ export async function generateFlowchart(params: GenerateFlowchartParams) {
             API_CONFIG.getFullUrl(API_CONFIG.endpoints.parseDownload),
             {
                 method: 'POST',
+                headers: processingLevelHeaders(params.processingLevel),
                 body: formData,
             }
         );
@@ -50,6 +52,7 @@ export async function generateFlowchart(params: GenerateFlowchartParams) {
             API_CONFIG.getFullUrl(API_CONFIG.endpoints.parse),
             {
                 method: 'POST',
+                headers: processingLevelHeaders(params.processingLevel),
                 body: formData2,
             }
         );
@@ -74,6 +77,7 @@ export async function generateFlowchart(params: GenerateFlowchartParams) {
             API_CONFIG.getFullUrl(API_CONFIG.endpoints.generateFlowchart),
             {
                 method: 'POST',
+                headers: processingLevelHeaders(params.processingLevel),
                 body: formDataFlowchart,
             }
         );
@@ -95,6 +99,7 @@ export async function generateFlowchart(params: GenerateFlowchartParams) {
             API_CONFIG.getFullUrl(API_CONFIG.endpoints.generateDotOnly),
             {
                 method: 'POST',
+                headers: processingLevelHeaders(params.processingLevel),
                 body: formDataDot,
             }
         );

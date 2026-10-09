@@ -268,6 +268,168 @@ def _role_label(raci_role: str) -> str:
     }.get(raci_role, "acteur")
 
 
+PRIORITY_TO_JIRA = {"low": "Low", "normal": "Medium", "high": "High", "urgent": "Highest"}
+TASK_TYPE_LABELS = {
+    "formalization": "type-formalisation", "review": "type-revision", "validation": "type-validation",
+    "consultation": "type-consultation", "information": "type-information", "correction": "type-correction",
+    "other": "type-autre",
+}
+RACI_LABELS = {"R": "raci-responsable", "A": "raci-valideur", "C": "raci-verificateur", "I": "raci-informe"}
+
+
+def _auto_create_jira_ticket(task: Dict[str, Any]) -> None:
+    """Crée automatiquement un ticket Jira lié à une tâche fraîchement créée.
+
+    Best-effort : ne doit jamais faire échouer la création de la tâche —
+    Jira peut ne pas être configuré (JiraConfigError, cas normal si personne
+    n'a renseigné JIRA_* dans .env) ou l'appel peut échouer pour une autre
+    raison ; dans les deux cas on logue et on continue sans lever.
+    """
+    try:
+        from manager.jira_client import JiraConfigError, create_issue
+    except ImportError:
+        return
+
+    db = get_supabase()
+    existing = (
+        db.table("jira_links")
+        .select("id")
+        .eq("entity_type", "procedure_task")
+        .eq("entity_id", task["id"])
+        .execute()
+    )
+    if existing.data:
+        return
+
+    assignee_email = None
+    if task.get("assigned_to"):
+        profile = db.table("user_profiles").select("email").eq("id", task["assigned_to"]).execute().data
+        if profile:
+            assignee_email = profile[0].get("email")
+
+    procedure_title = _get_procedure_title(task["procedure_id"])
+    description_lines = [
+        f"Procédure : {procedure_title}",
+        f"Type : {task.get('task_type', '')}",
+        f"Rôle RACI : {_role_label(task.get('raci_role', ''))}",
+    ]
+    if task.get("description"):
+        description_lines += ["", task["description"]]
+
+    labels = ["processmate", "suivi-taches"]
+    if task.get("task_type") in TASK_TYPE_LABELS:
+        labels.append(TASK_TYPE_LABELS[task["task_type"]])
+    if task.get("raci_role") in RACI_LABELS:
+        labels.append(RACI_LABELS[task["raci_role"]])
+
+    jira_priority = PRIORITY_TO_JIRA.get(task.get("priority") or "normal", "Medium")
+
+    try:
+        issue = create_issue(
+            summary=f"[Tâche] {task['title']}",
+            description="\n".join(description_lines),
+            priority=jira_priority,
+            labels=labels,
+            due_date=task.get("due_date"),
+            assignee_email=assignee_email,
+        )
+    except JiraConfigError:
+        logger.info("Jira non configuré — ticket non créé pour la tâche %s", task["id"])
+        return
+    except Exception as e:  # noqa: BLE001 - best-effort, ne jamais casser la création de tâche
+        logger.warning("Échec création ticket Jira pour la tâche %s: %s", task["id"], e)
+        return
+
+    now = _now()
+    db.table("jira_links").insert({
+        "entity_type": "procedure_task",
+        "entity_id": task["id"],
+        "jira_issue_key": issue["key"],
+        "jira_issue_url": issue["url"],
+        "jira_priority": jira_priority,
+        "jira_due_date": task.get("due_date"),
+        "jira_labels": labels,
+        "jira_assignee_email": assignee_email if issue.get("assignee_resolved") else None,
+        "created_by": task.get("assigned_by"),
+        "created_at": now,
+        "updated_at": now,
+    }).execute()
+
+
+# Mapping observé sur l'instance Jira de test (projet KAN, workflow Kanban par
+# défaut à 4 statuts) — à élargir si un autre projet/workflow est utilisé.
+# Volontairement peu granulaire : Jira n'a pas d'équivalent pour tous les
+# statuts ProcessMate (waiting_info, blocked, changes_requested, validated
+# n'ont pas de correspondance Jira évidente) — on ne mappe que ce qui est sûr.
+JIRA_STATUS_TO_TASK_STATUS = {
+    "à faire": "todo",
+    "en cours": "in_progress",
+    "en cours de revue": "submitted",
+    "terminé": "completed",
+}
+
+
+def sync_task_status_from_jira(task_id: str, jira_status: str) -> Optional[str]:
+    """Répercute (best-effort) un changement de statut Jira sur la tâche liée.
+
+    Volontairement conservateur — un simple miroir de statut, pas une vraie
+    transition métier : pas de réaffectation RACI, pas d'email, pas de
+    changement de destinataire (contrairement à /tasks/{id}/transition, qui
+    reste le seul chemin pour une transition pilotée par un humain dans
+    ProcessMate). Ne force jamais une transition illégale : si le statut Jira
+    mappé n'est pas dans ALLOWED_TRANSITIONS depuis le statut actuel (ex. une
+    tâche déjà 'validated' est terminale et ne redescend jamais), on ignore
+    et on retourne None plutôt que de contourner la machine à états.
+    Retourne le nouveau statut si appliqué, None sinon.
+    """
+    mapped = JIRA_STATUS_TO_TASK_STATUS.get((jira_status or "").strip().lower())
+    if not mapped:
+        return None
+
+    db = get_supabase()
+    result = db.table("procedure_tasks").select("*").eq("id", task_id).execute()
+    if not result.data:
+        return None
+    task = result.data[0]
+    current = task["status"]
+
+    if mapped == current:
+        return None
+    if mapped not in ALLOWED_TRANSITIONS.get(current, set()):
+        logger.info(
+            "Sync Jira: transition %s -> %s ignorée pour la tâche %s (non autorisée depuis %s)",
+            current, mapped, task_id, current,
+        )
+        return None
+
+    now = _now()
+    updates: Dict[str, Any] = {"status": mapped, "updated_at": now}
+    if mapped == "in_progress" and not task.get("started_at"):
+        updates["started_at"] = now
+    if mapped == "submitted":
+        updates["submitted_at"] = now
+    if mapped == "completed":
+        updates["completed_at"] = now
+    if mapped == "validated":
+        updates["validated_at"] = now
+
+    db.table("procedure_tasks").update(updates).eq("id", task_id).execute()
+    _event(
+        procedure_id=task["procedure_id"], event_type="jira_status_synced", task_id=task_id,
+        actor_id=None, message=f"Statut synchronisé depuis Jira ({jira_status})",
+        from_status=current, to_status=mapped, payload={"jira_status": jira_status},
+    )
+    return mapped
+
+
+def _insert_task(db, task: Dict[str, Any]) -> Dict[str, Any]:
+    """Insère une tâche et déclenche (best-effort) sa création automatique dans Jira."""
+    result = db.table("procedure_tasks").insert(task).execute()
+    created = result.data[0] if result.data else task
+    _auto_create_jira_ticket(created)
+    return created
+
+
 def _handoff_spec(raci_role: str, procedure_title: str, message: Optional[str]) -> Dict[str, str]:
     if raci_role == "C":
         return {
@@ -479,8 +641,7 @@ def _ensure_validation_tasks(
             "created_at": now,
             "updated_at": now,
         }
-        result = db.table("procedure_tasks").insert(task).execute()
-        created = result.data[0] if result.data else task
+        created = _insert_task(db, task)
 
         # Sync RACI — utiliser le rôle override si fourni (ex: C pour vérifieur)
         _upsert_raci_assignment(procedure_id, validator_id, recipient_role)
@@ -592,8 +753,7 @@ def _ensure_correction_tasks(
             "created_at": now,
             "updated_at": now,
         }
-        result = db.table("procedure_tasks").insert(task).execute()
-        created = result.data[0] if result.data else task
+        created = _insert_task(db, task)
 
         # Sync RACI — utiliser le rôle override si fourni (ex: C pour re-vérification)
         _upsert_raci_assignment(procedure_id, responsible_id, recipient_role)
@@ -661,8 +821,7 @@ def _ensure_information_tasks(
             "created_at": now,
             "updated_at": now,
         }
-        result = db.table("procedure_tasks").insert(task).execute()
-        created = result.data[0] if result.data else task
+        created = _insert_task(db, task)
         _event(procedure_id, "information_task_created", created["id"], actor_id,
                f"Information après validation: {validated_task.get('title')}", None, "todo",
                {"source_task_id": validated_task.get("id")})
@@ -826,6 +985,57 @@ async def list_recent_events(
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.post("/tasks/sync-jira")
+async def sync_all_tasks_from_jira():
+    """Synchronise en une fois toutes les tâches liées à un ticket Jira.
+
+    Pas de webhook Jira->ProcessMate pour l'instant (clinic n'est pas
+    joignable publiquement) — ce endpoint est le mécanisme de synchro tant
+    qu'il n'y a pas de déploiement accessible ; à appeler à la demande
+    (bouton "Tout synchroniser") plutôt qu'en tâche de fond planifiée.
+    """
+    from manager.jira_client import JiraConfigError, get_issue_status
+
+    db = get_supabase()
+    links = (
+        db.table("jira_links")
+        .select("id, entity_id, jira_issue_key")
+        .eq("entity_type", "procedure_task")
+        .execute()
+        .data or []
+    )
+
+    checked = 0
+    transitioned = 0
+    errors: List[Dict[str, str]] = []
+
+    for link in links:
+        checked += 1
+        try:
+            jira_status = get_issue_status(link["jira_issue_key"])
+        except JiraConfigError as e:
+            errors.append({"task_id": link["entity_id"], "error": str(e)})
+            break  # inutile de continuer si Jira n'est pas configuré du tout
+        except Exception as e:  # noqa: BLE001 - best-effort, on continue les autres
+            errors.append({"task_id": link["entity_id"], "error": str(e)})
+            continue
+
+        db.table("jira_links").update({
+            "jira_status": jira_status, "updated_at": _now(),
+        }).eq("id", link["id"]).execute()
+
+        new_status = sync_task_status_from_jira(link["entity_id"], jira_status or "")
+        if new_status:
+            transitioned += 1
+
+    return {
+        "success": True,
+        "checked": checked,
+        "transitioned": transitioned,
+        "errors": errors,
+    }
+
+
 @router.get("/tasks")
 async def list_tasks(
     actor_id: Optional[str] = None,
@@ -954,8 +1164,7 @@ def _create_task_core(procedure_id: str, body: TaskCreate, send_email: bool = Tr
             "created_at": now,
             "updated_at": now,
         }
-        result = db.table("procedure_tasks").insert(task).execute()
-        created = result.data[0] if result.data else task
+        created = _insert_task(db, task)
 
         # Sync RACI automatique si raci_role fourni
         if body.raci_role and body.raci_role in RACI_ROLES:

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { API_CONFIG } from '@/lib/api-config';
+import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import type { ProcessCard } from '@/components/MultiDocUpload';
 import {
     Loader2, Send, CheckSquare, Square, Sparkles,
@@ -15,6 +16,7 @@ interface ChatMsg {
 }
 
 interface ProcessDiscoveryPanelProps {
+    processingLevel?: ProcessingLevel;
     sessionId: string;
     cards: ProcessCard[];
     onCardsUpdated: (cards: ProcessCard[]) => void;
@@ -23,6 +25,7 @@ interface ProcessDiscoveryPanelProps {
 }
 
 export default function ProcessDiscoveryPanel({
+    processingLevel,
     sessionId,
     cards,
     onCardsUpdated,
@@ -61,7 +64,7 @@ export default function ProcessDiscoveryPanel({
         try {
             const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.discoveryChat), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
                 body: JSON.stringify({
                     session_id: sessionId,
                     message: text,

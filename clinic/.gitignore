@@ -35,3 +35,5 @@ Thumbs.db
 # html
 static/
 index.html
+# Sauvegardes de donnees (purges BDD)
+tmp/backups/

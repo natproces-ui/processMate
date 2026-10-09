@@ -17,6 +17,7 @@ import { orchestrationTasksApi } from '@/lib/orchestrationTasksApi';
 import { useProceduresStore } from '@/store/proceduresStore';
 import { useAuth } from '@/context/AuthContext';
 import TaxonomyProcedureSelector from '@/components/orchestration/TaxonomyProcedureSelector';
+import JiraLinkButton from '@/components/shared/JiraLinkButton';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -724,6 +725,14 @@ function ProcedureRow({ procedure, campaignId, isAdmin, onOpenWorkspace, onRaciO
                         )
                     }
                 </div>
+                <JiraLinkButton
+                    entityType="campaign_procedure"
+                    entityId={procedure.id}
+                    summary={`[Campagne] ${procedure.procedure_nom}`}
+                    description={`Procédure : ${procedure.procedure_nom}${procedure.procedure_ref ? ` (${procedure.procedure_ref})` : ''}\nStatut : ${PROC_STATUS_LABELS[procedure.status]}`}
+                    labels={['processmate', 'campagne-formalisation']}
+                    className="shrink-0"
+                />
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <button type="button" onClick={() => onRaciOpen(procedure)} title="RACI"
                         className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-500 bg-gray-100 rounded hover:bg-gray-200">

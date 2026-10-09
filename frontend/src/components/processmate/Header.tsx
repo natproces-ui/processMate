@@ -18,13 +18,13 @@ interface HeaderProps {
 }
 
 const MODULE_LABELS: Record<ActiveModule, string> = {
-    orchestration: 'ProcessMate',
-    stt: 'BPMN Studio',
-    sfd: 'SFD Generator',
-    clinic: 'Clinic',
+    orchestration: 'Orchestration',
+    stt: 'Studio',
 };
 
 const TAB_LABELS: Record<string, string> = {
+    specifications: 'Spécifications',
+    mockups: 'Spécifications / Maquettes',
     procedures: 'Procédures',
     campagnes: 'Campagnes',
     taches: 'Suivi des tâches',

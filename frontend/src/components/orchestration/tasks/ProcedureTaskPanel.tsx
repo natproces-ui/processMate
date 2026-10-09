@@ -103,6 +103,10 @@ export default function ProcedureTaskPanel({
           actors={actors}
           onOpenTask={setDetailTask}
           onOpenProcedure={onOpenProcedure}
+          onTaskStatusSynced={(taskId, newStatus) => {
+            const t = tasks.find(x => x.id === taskId);
+            if (t) updateTaskInList({ ...t, status: newStatus as ProcedureTask['status'] });
+          }}
         />
       )}
 

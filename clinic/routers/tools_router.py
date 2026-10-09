@@ -28,6 +28,8 @@ router = APIRouter(prefix="/api/tools", tags=["Référentiel outils"])
 
 FIELD_TYPES = {"texte", "nombre", "date", "liste"}
 CODE_TYPES = {"transaction", "produit", "erreur", "informatique"}
+RULE_TYPES = {"validation", "calcul", "controle", "autre"}
+DATA_NATURES = {"entree", "sortie", "reference"}
 
 
 # ─── Modèles ──────────────────────────────────────────────────
@@ -60,6 +62,18 @@ class ToolCodeCreate(BaseModel):
     code_type: str
     code: str
     language: Optional[str] = None  # pertinent seulement pour code_type == "informatique"
+    description: Optional[str] = None
+
+
+class ToolBusinessRuleCreate(BaseModel):
+    rule: str
+    rule_type: str = "autre"
+    description: Optional[str] = None
+
+
+class ToolDataEntityCreate(BaseModel):
+    name: str
+    nature: str = "reference"
     description: Optional[str] = None
 
 
@@ -103,6 +117,8 @@ def get_tool(tool_id: str):
 
     screens = db.table("tool_screens").select("*").eq("tool_id", tool_id).order("created_at").execute()
     codes = db.table("tool_codes").select("*").eq("tool_id", tool_id).order("code_type").execute()
+    business_rules = db.table("tool_business_rules").select("*").eq("tool_id", tool_id).order("created_at").execute()
+    data_entities = db.table("tool_data_entities").select("*").eq("tool_id", tool_id).order("name").execute()
 
     screens_with_fields = []
     for screen in screens.data:
@@ -115,7 +131,10 @@ def get_tool(tool_id: str):
         )
         screens_with_fields.append({**screen, "fields": fields.data})
 
-    return {"success": True, "tool": tool.data[0], "screens": screens_with_fields, "codes": codes.data}
+    return {
+        "success": True, "tool": tool.data[0], "screens": screens_with_fields, "codes": codes.data,
+        "business_rules": business_rules.data, "data_entities": data_entities.data,
+    }
 
 
 # ─── Écrans ───────────────────────────────────────────────────
@@ -283,4 +302,46 @@ def add_code(tool_id: str, body: ToolCodeCreate):
 def delete_code(code_id: str):
     db = get_supabase()
     db.table("tool_codes").delete().eq("id", code_id).execute()
+    return {"success": True}
+
+
+# ─── Règles de gestion (ce que l'outil impose/vérifie, pas le processus) ────
+
+@router.post("/{tool_id}/rules")
+def add_rule(tool_id: str, body: ToolBusinessRuleCreate):
+    if body.rule_type not in RULE_TYPES:
+        raise HTTPException(400, f"rule_type doit être parmi {sorted(RULE_TYPES)}")
+    db = get_supabase()
+    result = db.table("tool_business_rules").insert({
+        "tool_id": tool_id, "rule": body.rule,
+        "rule_type": body.rule_type, "description": body.description,
+    }).execute()
+    return {"success": True, "rule": result.data[0]}
+
+
+@router.delete("/rules/{rule_id}")
+def delete_rule(rule_id: str):
+    db = get_supabase()
+    db.table("tool_business_rules").delete().eq("id", rule_id).execute()
+    return {"success": True}
+
+
+# ─── Données (entités/objets métier manipulés par l'outil, pas les champs UI) ─
+
+@router.post("/{tool_id}/data-entities")
+def add_data_entity(tool_id: str, body: ToolDataEntityCreate):
+    if body.nature not in DATA_NATURES:
+        raise HTTPException(400, f"nature doit être parmi {sorted(DATA_NATURES)}")
+    db = get_supabase()
+    result = db.table("tool_data_entities").insert({
+        "tool_id": tool_id, "name": body.name,
+        "nature": body.nature, "description": body.description,
+    }).execute()
+    return {"success": True, "data_entity": result.data[0]}
+
+
+@router.delete("/data-entities/{entity_id}")
+def delete_data_entity(entity_id: str):
+    db = get_supabase()
+    db.table("tool_data_entities").delete().eq("id", entity_id).execute()
     return {"success": True}

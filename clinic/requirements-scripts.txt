@@ -1,0 +1,3 @@
+# Dependances des scripts lances a la main (scripts/bian_scraper.py), non installees en prod
+-r requirements.txt
+playwright==1.58.0

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import {
-    TriangleAlert, Gauge, Server, MessageSquare, Map, Loader2,
+    TriangleAlert, Gauge, Server, MessageSquare, Loader2,
 } from 'lucide-react';
 import type { TaskActor } from '@/lib/orchestrationTasksApi';
 
@@ -20,11 +20,12 @@ const IrritantsPanel         = dynamic(() => import('@/components/orchestration/
 const ComplexityPanel        = dynamic(() => import('@/components/orchestration/ComplexityPanel'),                { loading: PanelSkeleton });
 const ApplicatifsPanel       = dynamic(() => import('@/components/orchestration/ApplicatifsPanel'),              { loading: PanelSkeleton });
 const AnalysisWorkspace      = dynamic(() => import('@/components/analysis/AnalysisWorkspace'),                   { loading: PanelSkeleton });
-const BianServiceMap         = dynamic(() => import('@/components/orchestration/BianServiceMap'),                 { loading: PanelSkeleton });
 
 // ── Types ──────────────────────────────────────────────────────
+// Carte BIAN retirée d'ici (redondante avec Créer/Modifier → Créer, qui monte
+// désormais le même BianServiceMap) — décision utilisateur du 2026-08-11.
 
-export type AnalyserTab = 'irritants' | 'complexity' | 'applicatifs' | 'ia' | 'bian';
+export type AnalyserTab = 'irritants' | 'complexity' | 'applicatifs' | 'ia';
 
 interface AnalyserPanelProps {
     actors: TaskActor[];
@@ -41,7 +42,6 @@ const TABS: { id: AnalyserTab; label: string; icon: React.ElementType }[] = [
     { id: 'complexity',  label: 'Complexité',          icon: Gauge        },
     { id: 'applicatifs', label: 'Applicatifs',         icon: Server       },
     { id: 'ia',          label: 'Analyse IA',          icon: MessageSquare },
-    { id: 'bian',        label: 'Carte BIAN',          icon: Map          },
 ];
 
 // ── Lazy sub-panel (mounts once, stays mounted) ────────────────
@@ -112,14 +112,6 @@ export default function AnalyserPanel({
 
                 <SubPanel active={activeTab === 'ia'}>
                     <AnalysisWorkspace actors={actors} currentActor={currentActor} />
-                </SubPanel>
-
-                <SubPanel active={activeTab === 'bian'}>
-                    <BianServiceMap
-                        onGoToProcedures={onGoToProcedures}
-                        onGoToWorkspace={onGoToWorkspace}
-                        isAdmin={isAdmin}
-                    />
                 </SubPanel>
             </div>
         </div>

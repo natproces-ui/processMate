@@ -85,6 +85,14 @@ export const API_CONFIG = {
         chatSession: '/api/chat/session',
         chatMessage: '/api/chat/message',
         chatSessions: '/api/chat/sessions',
+
+        /* ---------------------- JIRA ---------------------- */
+        jiraLink: '/api/jira/link',                         // POST — créer/récupérer un lien
+        jiraLinkGet: '/api/jira/link',                       // + /{entity_type}/{entity_id}
+        jiraLinkSync: '/api/jira/link',                      // + /{entity_type}/{entity_id}/sync (POST)
+
+        /* ---------------------- BIAN SCENARIOS ---------------------- */
+        bianScenarios: '/api/bian-scenarios',                // GET (liste) + /{id} + /{id}/import (POST)
     },
 
     /**

@@ -10,6 +10,7 @@ import { useProceduresStore } from '@/store/proceduresStore';
 import { orchestrationApi, VALID_STATUSES, ProcedureStatus, Procedure, PROCEDURE_STATUS_COLORS } from '@/lib/orchestrationApi';
 import { taxonomyApi, TaxonomyFlat, TaxonomyLevel } from '@/lib/taxonomyApi';
 import ImportPdfModal from '@/components/orchestration/ImportPdfModal';
+import BianScenarioPicker from '@/components/orchestration/BianScenarioPicker';
 import ProcedureJourney from '@/components/orchestration/ProcedureJourney';
 
 function StatusBadge({ status }: { status: string }) {
@@ -239,6 +240,7 @@ export default function ProcedureList({ onOpenDetail, onOpenProcedure, isAdmin =
   const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showBianPicker, setShowBianPicker] = useState(false);
   const [statusModal, setStatusModal] = useState<Procedure | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -436,6 +438,10 @@ export default function ProcedureList({ onOpenDetail, onOpenProcedure, isAdmin =
             className="flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium text-sm transition-colors">
             <Upload className="w-4 h-4" /> Importer PDF
           </button>
+          <button type="button" onClick={() => setShowBianPicker(true)}
+            className="flex items-center gap-2 border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium text-sm transition-colors">
+            <GitBranch className="w-4 h-4" /> Scénario BIAN
+          </button>
           <button type="button" onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors shadow-sm">
             <Plus className="w-4 h-4" /> Nouvelle procédure
@@ -591,6 +597,17 @@ export default function ProcedureList({ onOpenDetail, onOpenProcedure, isAdmin =
           }}
           onOpenImported={onOpenProcedure}
           onCreateNew={() => { setShowImportModal(false); setShowCreate(true); }}
+        />
+      )}
+
+      {showBianPicker && (
+        <BianScenarioPicker
+          onClose={() => setShowBianPicker(false)}
+          onImported={(procedure, category) => {
+            upsertProcedure(procedure);
+            setExpandedCats(prev => new Set([...prev, category]));
+          }}
+          onOpenImported={onOpenProcedure}
         />
       )}
 

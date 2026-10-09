@@ -738,7 +738,7 @@ function LibraryTab({ onPreview }: { onPreview: (spec: SpecificationSummary) => 
 
 // ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────────
 
-export default function SpecificationsPanel() {
+export default function SpecificationsPanel({ onOpenMockups }: { onOpenMockups?: () => void }) {
   const [activeTab, setActiveTab]         = useState<SubTab>('generate');
   const [previewSpec, setPreviewSpec]     = useState<SpecificationSummary | null>(null);
 
@@ -750,7 +750,7 @@ export default function SpecificationsPanel() {
     <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-3">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
             <BookOpen className="w-3.5 h-3.5 text-amber-700" />
           </div>
@@ -758,6 +758,11 @@ export default function SpecificationsPanel() {
             <h1 className="text-sm font-semibold text-gray-900">Spécifications fonctionnelles</h1>
             <p className="text-xs text-gray-400">SFD générés depuis les procédures ProcessMate</p>
           </div>
+          {onOpenMockups && (
+            <button type="button" onClick={onOpenMockups} className="ml-auto px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+              Maquettes
+            </button>
+          )}
         </div>
       </div>
 

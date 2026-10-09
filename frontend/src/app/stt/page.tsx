@@ -22,6 +22,8 @@ import {
     CheckCircle2, ArrowRight, Loader2,
 } from "lucide-react";
 import { API_CONFIG } from "@/lib/api-config";
+import { processingLevelHeaders } from "@/lib/processing-level";
+import ProcessingLevelSelector, { useProcessingLevel } from "@/components/processmate/ProcessingLevelSelector";
 import { orchestrationApi } from "@/lib/orchestrationApi";
 import { useProceduresStore } from "@/store/proceduresStore";
 
@@ -108,6 +110,7 @@ function SttPageInner() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const { updateProcedureStatus, invalidate } = useProceduresStore();
+    const [processingLevel, setProcessingLevel] = useProcessingLevel();
 
     const [phase, setPhase] = useState<Phase>('upload');
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -233,7 +236,7 @@ function SttPageInner() {
             const pid = selectedIds[i];
             try {
                 const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.generationGenerate), {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
                     body: JSON.stringify({ session_id: sessionId, process_id: pid })
                 });
                 const d = await res.json();
@@ -361,7 +364,7 @@ function SttPageInner() {
                     const blob = new Blob(chunks, { type: 'audio/webm' });
                     const fd = new FormData(); fd.append('file', blob, 'audio.webm');
                     try {
-                        const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.transcribe), { method: 'POST', body: fd });
+                        const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.transcribe), { method: 'POST', headers: processingLevelHeaders(processingLevel), body: fd });
                         const result = await res.json();
                         if (!res.ok) throw new Error(result.detail || 'Erreur transcription');
                         if (result?.parsedData && Array.isArray(result.parsedData)) {
@@ -444,6 +447,10 @@ function SttPageInner() {
                     </div>
                 </div>
 
+                <div className="mb-3 flex justify-end">
+                    <ProcessingLevelSelector value={processingLevel} onChange={setProcessingLevel} />
+                </div>
+
                 {/* Chargement workflow */}
                 {loadingWorkflow && (
                     <div className="mb-3 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg flex items-center gap-2 text-sm">
@@ -486,6 +493,7 @@ function SttPageInner() {
 
                         {uploadOpen && (
                             <MultiDocUpload
+                                processingLevel={processingLevel}
                                 onDiscoveryComplete={handleDiscoveryComplete}
                                 onError={showError} onSuccess={showSuccess}
                             />
@@ -493,6 +501,7 @@ function SttPageInner() {
 
                         {phase === 'discovery' && sessionId && (
                             <ProcessDiscoveryPanel
+                                processingLevel={processingLevel}
                                 sessionId={sessionId} cards={cards}
                                 onCardsUpdated={setCards} onGenerate={handleGenerate}
                                 generating={generating}
@@ -501,6 +510,7 @@ function SttPageInner() {
 
                         {chatOpen && phase !== 'discovery' && (
                             <ChatInterface
+                                processingLevel={processingLevel}
                                 key={instances.length > 0 ? `chat-${activeTab}` : 'chat-default'}
                                 currentWorkflow={activeData}
                                 onWorkflowGenerated={handleWorkflowFromChat}
@@ -510,6 +520,7 @@ function SttPageInner() {
 
                         {revisionOpen && phase === 'editing' && (
                             <RevisionPanel
+                                processingLevel={processingLevel}
                                 workflow={activeData}
                                 onWorkflowChange={instances.length > 0 ? updateActiveData : (d) => { setData(d); setRevisionCount(c => c + 1); }}
                                 onSuccess={showSuccess} onError={showError}

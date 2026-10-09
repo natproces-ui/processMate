@@ -89,3 +89,45 @@ ALTER TABLE tool_codes ADD COLUMN IF NOT EXISTS language TEXT;
 ALTER TABLE tool_codes DROP CONSTRAINT IF EXISTS tool_codes_code_type_check;
 ALTER TABLE tool_codes ADD CONSTRAINT tool_codes_code_type_check
   CHECK (code_type IN ('transaction', 'produit', 'erreur', 'informatique'));
+
+-- ─── Migration : règles de gestion + données de l'outil ────────────────────
+-- Deux nouvelles familles, en plus des écrans/champs et des codes :
+-- - tool_business_rules : ce que L'OUTIL impose/vérifie (validation, calcul, contrôle),
+--   distinct des règles de gestion de la PROCÉDURE (procedure_metadata_json.regles_gestion
+--   côté workflows) — même nom de concept, portée différente.
+-- - tool_data_entities : les objets métier que l'outil manipule (ex. "Compte client",
+--   "Dossier de crédit"), pas les champs UI d'un écran (tool_screen_fields) — un niveau
+--   au-dessus, plus proche d'un dictionnaire de données que d'un détail d'écran.
+
+CREATE TABLE IF NOT EXISTS tool_business_rules (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tool_id      UUID NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
+  rule         TEXT NOT NULL,
+  rule_type    TEXT NOT NULL DEFAULT 'autre'
+                 CHECK (rule_type IN ('validation', 'calcul', 'controle', 'autre')),
+  description  TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS tool_data_entities (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tool_id      UUID NOT NULL REFERENCES tools(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  nature       TEXT NOT NULL DEFAULT 'reference'
+                 CHECK (nature IN ('entree', 'sortie', 'reference')),
+  description  TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tool_business_rules_tool_id ON tool_business_rules(tool_id);
+CREATE INDEX IF NOT EXISTS idx_tool_data_entities_tool_id ON tool_data_entities(tool_id);
+
+ALTER TABLE tool_business_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tool_data_entities  ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "allow_all_authenticated" ON tool_business_rules
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all_authenticated" ON tool_data_entities
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+NOTIFY pgrst, 'reload schema';

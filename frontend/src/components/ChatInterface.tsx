@@ -5,10 +5,12 @@ import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
 import { applyOperations } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
+import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
+import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import {
     Send, Paperclip, X, FileText, Image as ImageIcon,
-    Loader2, MessageSquare, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen
+    Loader2, PenLine, Plus, ChevronDown, ChevronUp,
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -36,6 +38,17 @@ interface ChatMessage {
 }
 
 interface ChatInterfaceProps {
+    processingLevel?: ProcessingLevel;
+    onProcessingLevelChange?: (level: ProcessingLevel) => void;
+    inputContext?: React.ReactNode;
+    inputContextVisible?: boolean;
+    onOpenDocuments?: () => void;
+    onOpenCode?: () => void;
+    recording?: boolean;
+    processing?: boolean;
+    onToggleRecording?: () => void;
+    onCancelRecording?: () => void;
+    onNewConversation?: () => void;
     currentWorkflow: Table1Row[];
     currentEnrichments?: Map<string, TaskEnrichment>;
     currentProcedureMetadata?: Record<string, unknown> | null;
@@ -118,6 +131,8 @@ function IntentBadge({ intent }: { intent: Intent }) {
 // ─────────────────────────────────────────────────────────────
 
 export default function ChatInterface({
+    processingLevel, onProcessingLevelChange, inputContext, inputContextVisible = true, onOpenDocuments, onOpenCode,
+    recording = false, processing = false, onToggleRecording, onCancelRecording, onNewConversation,
     currentWorkflow,
     currentEnrichments,
     currentProcedureMetadata,
@@ -134,13 +149,15 @@ export default function ChatInterface({
     const [collapsed, setCollapsed] = useState(false);
     const [initialized, setInitialized] = useState(false);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        if (messages.length === 0 && !loading) return;
+        const container = messagesContainerRef.current;
+        container?.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    }, [messages, loading]);
 
     useEffect(() => {
         initSession();
@@ -152,10 +169,9 @@ export default function ChatInterface({
                 method: 'POST'
             });
             const data = await res.json();
-            if (data.success) {
-                setSessionId(data.session.id);
-                setInitialized(true);
-            }
+            if (!res.ok || !data.success || !data.session?.id) throw new Error("Session indisponible");
+            setSessionId(data.session.id);
+            setInitialized(true);
         } catch {
             setSessionId(crypto.randomUUID());
             setInitialized(true);
@@ -247,7 +263,7 @@ export default function ChatInterface({
 
             const res = await fetch(
                 API_CONFIG.getFullUrl(API_CONFIG.endpoints.chatMessage),
-                { method: 'POST', body: form }
+                { method: 'POST', headers: processingLevelHeaders(processingLevel), body: form }
             );
 
             const data = await res.json();
@@ -351,11 +367,17 @@ export default function ChatInterface({
     };
 
     const newSession = async () => {
+        if (loading || !initialized) return;
+        setInitialized(false);
         setMessages([]);
+        setInput('');
         setAttachedFiles([]);
+        setCollapsed(false);
+        onNewConversation?.();
         setSessionId(null);
+        if (textareaRef.current) textareaRef.current.style.height = 'auto';
         await initSession();
-        onSuccess('Nouvelle session démarrée');
+        requestAnimationFrame(() => textareaRef.current?.focus());
     };
 
     // ─────────────────────────────────────────────────────────
@@ -363,79 +385,27 @@ export default function ChatInterface({
     // ─────────────────────────────────────────────────────────
 
     return (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-
-            {/* ── Header ───────────────────────────────────── */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
-                <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                        <MessageSquare className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="text-sm font-semibold text-slate-800">Assistant ProcessMate</h3>
-                        <p className="text-xs text-slate-400">
-                            {currentWorkflow.length > 0
-                                ? `Workflow actuel : ${currentWorkflow.length} étapes`
-                                : 'Décrivez votre processus ou joignez un fichier'
-                            }
-                        </p>
-                    </div>
+        <section aria-label="Assistant ProcessMate" className="w-full max-w-4xl mx-auto">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2 px-1">
+                <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-slate-800">{messages.length === 0 ? 'Que souhaitez-vous formaliser ?' : 'Assistant ProcessMate'}</h3>
+                    {currentWorkflow.length > 0 && <p className="text-xs text-slate-400 mt-0.5">Processus actuel : {currentWorkflow.length} étapes</p>}
                 </div>
-
-                <div className="flex items-center gap-1.5">
-                    <button
-                        onClick={newSession}
-                        className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors text-slate-500 hover:text-slate-700"
-                        title="Nouvelle session"
-                    >
-                        <Plus className="w-4 h-4" />
+                <div className="flex items-center gap-1">
+                    <button type="button" onClick={newSession} disabled={loading || !initialized}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-white hover:text-slate-800 disabled:opacity-40"
+                        title="Démarrer une nouvelle conversation">
+                        <PenLine className="w-3.5 h-3.5" /> Nouvelle conversation
                     </button>
-                    <button
-                        onClick={() => setCollapsed(c => !c)}
-                        className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors text-slate-500"
-                    >
-                        {collapsed
-                            ? <ChevronDown className="w-4 h-4" />
-                            : <ChevronUp className="w-4 h-4" />
-                        }
+                    <button type="button" aria-label={collapsed ? 'Ouvrir l’assistant' : 'Réduire l’assistant'} aria-expanded={!collapsed}
+                        onClick={() => setCollapsed(c => !c)} className="p-1.5 rounded-lg hover:bg-white text-slate-400">
+                        {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                     </button>
                 </div>
             </div>
-
-            {!collapsed && (
-                <>
-                    {/* ── Messages ─────────────────────────── */}
-                    <div className="h-64 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50/50">
-
-                        {messages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                    <Sparkles className="w-5 h-5 text-blue-500" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-slate-700">Prêt à formaliser</p>
-                                    <p className="text-xs text-slate-400 mt-0.5">
-                                        Génération, correction, amélioration — dites simplement ce que vous voulez
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap gap-2 justify-center mt-1">
-                                    {[
-                                        'Extrais le processus de ce document',
-                                        'Ajoute une étape de validation entre 3 et 4',
-                                        'Inspire-toi de ce template pour reformater',
-                                    ].map(suggestion => (
-                                        <button
-                                            key={suggestion}
-                                            onClick={() => setInput(suggestion)}
-                                            className="text-xs bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-full hover:border-blue-300 hover:text-blue-600 transition-colors"
-                                        >
-                                            {suggestion}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
+            <div hidden={collapsed}>
+                <div ref={messagesContainerRef} hidden={messages.length === 0 && !loading}
+                    className="overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60">
                         {messages.map(msg => (
                             <div key={msg.id}>
                                 {/* Message utilisateur */}
@@ -500,12 +470,14 @@ export default function ChatInterface({
                             </div>
                         )}
 
-                        <div ref={messagesEndRef} />
-                    </div>
 
+                </div>
+                <div aria-label="Composeur" className="rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100">
+                    {inputContext && <div hidden={!inputContextVisible} className="border-b border-slate-100 p-3 bg-slate-50/50 rounded-t-2xl">{inputContext}</div>}
+                    <div className="px-3 py-2">
                     {/* ── Fichiers attachés ─────────────────── */}
                     {attachedFiles.length > 0 && (
-                        <div className="px-4 py-2 border-t border-slate-100 flex gap-2 flex-wrap bg-white">
+                        <div className="pb-2 flex gap-2 flex-wrap">
                             {attachedFiles.map(f => (
                                 <div
                                     key={f.id}
@@ -521,6 +493,7 @@ export default function ChatInterface({
                                         {f.file.name}
                                     </span>
                                     <button
+                                        aria-label={`Retirer ${f.file.name}`}
                                         onClick={() => removeFile(f.id)}
                                         className="text-slate-400 hover:text-red-500 transition-colors"
                                     >
@@ -531,18 +504,50 @@ export default function ChatInterface({
                         </div>
                     )}
 
-                    {/* ── Input ────────────────────────────── */}
-                    <div className="px-4 py-3 border-t border-slate-200 bg-white">
-                        <div className="flex gap-2 items-end">
 
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={attachedFiles.length >= 3}
-                                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
-                                title="Joindre un fichier"
-                            >
-                                <Paperclip className="w-4 h-4" />
-                            </button>
+                            <textarea
+                                ref={textareaRef}
+                                aria-label="Message à l’assistant"
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder={
+                                    currentWorkflow.length > 0
+                                        ? 'Posez une question ou modifiez le workflow…'
+                                        : 'Décrivez votre processus ou joignez un fichier…'
+                                }
+                                disabled={loading || !initialized}
+                                rows={1}
+                                className="block w-full min-w-0 text-sm bg-transparent px-1 py-2 resize-none focus:outline-none disabled:opacity-50 min-h-[52px] max-h-[120px]"
+                                title="Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne"
+                                style={{ height: 'auto' }}
+                                onInput={e => {
+                                    const el = e.target as HTMLTextAreaElement;
+                                    el.style.height = 'auto';
+                                    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+                                }}
+                            />
+
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            <div className="flex items-center gap-1">
+                            {onOpenDocuments || onOpenCode ? (
+                                <details className="relative shrink-0" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
+                                    <summary aria-label="Ajouter un contenu" title="Ajouter un contenu" className="list-none cursor-pointer p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 [&::-webkit-details-marker]:hidden">
+                                        <Plus className="w-4 h-4" />
+                                    </summary>
+                                    <div className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
+                                        {onOpenDocuments && <ComposerMenuAction icon={<BookOpen className="w-4 h-4" />} label="Sources et références" onClick={onOpenDocuments} />}
+                                        <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre au message" onClick={() => fileInputRef.current?.click()} disabled={attachedFiles.length >= 3} />
+                                        {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={onOpenCode} />}
+                                    </div>
+                                </details>
+                            ) : (
+                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={attachedFiles.length >= 3}
+                                    className="p-2 rounded-lg text-slate-500 hover:text-blue-600 disabled:opacity-40 shrink-0" title="Joindre un fichier">
+                                    <Paperclip className="w-4 h-4" />
+                                </button>
+                            )}
 
                             <input
                                 ref={fileInputRef}
@@ -556,32 +561,25 @@ export default function ChatInterface({
                                 className="hidden"
                             />
 
-                            <textarea
-                                ref={textareaRef}
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder={
-                                    currentWorkflow.length > 0
-                                        ? 'Posez une question ou modifiez le workflow…'
-                                        : 'Décrivez votre processus ou joignez un fichier…'
-                                }
-                                disabled={loading || !initialized}
-                                rows={1}
-                                className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 disabled:opacity-50 min-h-[38px] max-h-[120px]"
-                                style={{ height: 'auto' }}
-                                onInput={e => {
-                                    const el = e.target as HTMLTextAreaElement;
-                                    el.style.height = 'auto';
-                                    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-                                }}
-                            />
 
+                                {onToggleRecording && <button type="button" onClick={onToggleRecording} disabled={processing}
+                                    aria-pressed={recording}
+                                    className={['inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium disabled:opacity-50', recording ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-100'].join(' ')}>
+                                    {recording ? <Square className="w-4 h-4" /> : processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+                                    {recording ? 'Arrêter le vocal' : processing ? 'Traitement vocal…' : 'Vocal'}
+                                </button>}
+                                {recording && onCancelRecording && <button type="button" onClick={onCancelRecording} className="text-xs text-slate-500 hover:text-red-600">Annuler le vocal</button>}
+
+                            </div>
+                            <div className="ml-auto flex items-center gap-2">
+                                {processingLevel && onProcessingLevelChange && <ProcessingLevelSelector value={processingLevel} onChange={onProcessingLevelChange} />}
                             <button
+                                aria-label="Envoyer le message"
+                                type="button"
                                 onClick={() => sendMessage()}
                                 disabled={loading || !initialized || (!input.trim() && attachedFiles.length === 0)}
                                 className={`
-                                    p-2 rounded-lg flex items-center justify-center flex-shrink-0 transition-all
+                                    p-2 rounded-full flex items-center justify-center flex-shrink-0 transition-all
                                     ${loading || (!input.trim() && attachedFiles.length === 0)
                                         ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                         : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -593,15 +591,13 @@ export default function ChatInterface({
                                     : <Send className="w-4 h-4" />
                                 }
                             </button>
-                        </div>
 
-                        <p className="text-xs text-slate-400 mt-1.5">
-                            Entrée pour envoyer · Maj+Entrée pour nouvelle ligne
-                        </p>
+                            </div>
+                        </div>
                     </div>
-                </>
-            )}
-        </div>
+                </div>
+            </div>
+        </section>
     );
 }
 
@@ -622,4 +618,8 @@ function buildAssistantMessage(intent: Intent, title: string, totalSteps: number
         default:
             return `"${title}" — ${totalSteps} étapes`;
     }
+}
+function ComposerMenuAction({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
+    return <button type="button" disabled={disabled} onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); onClick(); }}
+        className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-left text-slate-600 hover:bg-slate-50 disabled:opacity-40">{icon}{label}</button>;
 }

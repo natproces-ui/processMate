@@ -14,6 +14,7 @@ import { applyModificationsBatch } from '@/logic/applyModification';
 import TaskActionBar from './TaskActionBar';
 import { TaskPriorityBadge, TaskStatusBadge } from './TaskStatusBadge';
 import TaskTimeline from './TaskTimeline';
+import JiraLinkButton from '@/components/shared/JiraLinkButton';
 
 interface Props {
   task: ProcedureTask;
@@ -141,6 +142,16 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
             </div>
             <h3 className="font-bold text-gray-900 text-lg mt-2">{task.title}</h3>
             {task.procedure_name && <p className="text-sm text-gray-500 mt-0.5">{task.procedure_name}</p>}
+            <div className="mt-2">
+              <JiraLinkButton
+                entityType="procedure_task"
+                entityId={task.id}
+                summary={`[Tâche] ${task.title}`}
+                manual={false}
+                showDetails
+                onTaskStatusSynced={newStatus => handleChanged({ ...task, status: newStatus as ProcedureTask['status'] })}
+              />
+            </div>
           </div>
           <button type="button" onClick={onClose} title="Fermer" className="p-1.5 rounded hover:bg-gray-100 text-gray-400">
             <X className="w-5 h-5" />
