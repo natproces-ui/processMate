@@ -46,6 +46,14 @@ class GuardrailTests(unittest.TestCase):
         plan = apply_guardrails({"action": "edit", "procedures": [proc("p1", "A")]}, FILES, False)
         self.assertEqual(plan.action, "generate")
 
+    def test_reference_file_is_not_a_source(self):
+        data = {"action": "generate", "references": ["photo1.jpg"],
+                "procedures": [proc("p1", "A"), proc("p2", "Modèle", file="photo1.jpg")]}
+        plan = apply_guardrails(data, FILES, False)
+        self.assertEqual(plan.references, ["photo1.jpg"])
+        self.assertEqual([p["title"] for p in plan.procedures], ["A"])  # le modèle n'est pas une procédure
+        self.assertEqual((plan.action, plan.targets), ("generate", ["p1"]))
+
     def test_unknown_action_and_nothing_found_answers(self):
         plan = apply_guardrails({"action": "???", "procedures": []}, FILES, False)
         self.assertEqual(plan.action, "answer")

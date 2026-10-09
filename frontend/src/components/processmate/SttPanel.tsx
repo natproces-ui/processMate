@@ -18,7 +18,7 @@ import type { BpmnEditorHandle } from '@/components/new-way/BpmnEditor';
 import Table from '@/components/ProcessTable';
 import RevisionPanel from '@/components/RevisionPanel';
 import DocumentExportPanel from '@/components/DocumentExportPanel';
-import MultiDocUpload, { ProcessCard } from '@/components/MultiDocUpload';
+import type { ProcessCard } from '@/components/MultiDocUpload';
 import ProcessDiscoveryPanel from '@/components/ProcessDiscoveryPanel';
 import SttToolbar from './SttToolbar';
 import ChatInterface, { type GeneratedProcedure } from '@/components/ChatInterface';
@@ -419,10 +419,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         }
     }, [viewMode, instances, activeTab, activeData, activeTitle, activeBpmnXml]);
 
-    const handleDiscoveryComplete = (sid: string, detected: ProcessCard[], files: File[]) => {
-        setSessionId(sid); setCards(detected); setPhase('discovery'); setUploadOpen(false);
-        setSourceFiles(files);
-    };
 
     // ── Procédures générées depuis la conversation : un onglet par procédure ──
     const handleProcedureStarted = useCallback((key: string, title: string) => {
@@ -700,11 +696,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
 
     const inputContext = (
         <>
-            <div hidden={!uploadOpen}>
-                <div className="flex items-center justify-between mb-2"><span className="text-xs font-medium text-slate-600">Documents du processus</span><button type="button" onClick={() => setUploadOpen(false)} aria-label="Fermer les documents" className="text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button></div>
-                <MultiDocUpload processingLevel={processingLevel} onDiscoveryComplete={handleDiscoveryComplete} onError={showError} onSuccess={showSuccess} />
-            </div>
-
             {/* Code source panel */}
             <div hidden={!codeSourceOpen}>
                 <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
@@ -768,10 +759,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 <aside aria-label="Conversation" style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
                     className="relative shrink-0 h-[55vh] lg:h-auto lg:w-[var(--chat-w)] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white">
                     <ChatInterface
-                        inputContextVisible={uploadOpen || codeSourceOpen}
+                        inputContextVisible={codeSourceOpen}
                         inputContext={inputContext}
-                        onOpenDocuments={() => { setUploadOpen(true); setCodeSourceOpen(false); }}
-                        onOpenCode={() => { setCodeSourceOpen(true); setUploadOpen(false); }}
+                        onOpenCode={() => setCodeSourceOpen(true)}
                         recording={recording} processing={processing}
                         onToggleRecording={toggleRecording} onCancelRecording={cancelRecording}
                         insertText={dictation}
@@ -788,6 +778,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onProcedureError={handleProcedureError}
                         onSelectProcedure={handleSelectProcedure}
                         variant="sidebar"
+                        onFilesSent={files => setSourceFiles(prev => [...prev, ...files].slice(-20))}
                         onCollapse={() => toggleChat(false)}
                     />
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"

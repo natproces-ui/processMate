@@ -33,12 +33,13 @@ class StudioPlan:
     procedures: List[Dict[str, Any]] = field(default_factory=list)
     targets: List[str] = field(default_factory=list)
     merged_title: Optional[str] = None
+    references: List[str] = field(default_factory=list)  # fichiers modèles (style, format), pas des sources
     adjustments: List[str] = field(default_factory=list)  # corrections appliquées par les garde-fous
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "action": self.action, "reply": self.reply, "procedures": self.procedures,
-            "targets": self.targets, "merged_title": self.merged_title, "adjustments": self.adjustments,
+            "targets": self.targets, "merged_title": self.merged_title, "references": self.references, "adjustments": self.adjustments,
         }
 
 
@@ -83,6 +84,8 @@ def apply_guardrails(
 
     # Une procédure doit citer au moins un fichier réellement joint (pas d'invention depuis un sommaire)
     known = {_norm(f): f for f in filenames}
+    references = [known[_norm(r)] for r in (data.get("references") or []) if _norm(r) in known]
+    ref_set = set(references)
     procedures: List[Dict[str, Any]] = []
     for p in data.get("procedures") or []:
         sources = []
@@ -90,7 +93,7 @@ def apply_guardrails(
             real = known.get(_norm(s.get("file", "")))
             if real is None and len(filenames) == 1:
                 real = filenames[0]  # un seul fichier : la source ne peut être que lui
-            if real:
+            if real and real not in ref_set:  # un fichier de référence n'est pas une source
                 sources.append({"file": real, "pages": s.get("pages") or None})
         if p.get("title") and sources:
             procedures.append({**p, "sources": sources})
@@ -138,6 +141,7 @@ def apply_guardrails(
     return StudioPlan(
         action=action, reply=reply, procedures=procedures, targets=targets,
         merged_title=(data.get("merged_title") or None) if action == "merge" else None,
+        references=references,
         adjustments=adjustments,
     )
 

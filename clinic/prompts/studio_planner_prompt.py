@@ -27,6 +27,11 @@ tu décides de l'action et tu repères les procédures présentes dans les fichi
 - Pour chaque procédure, indique ses sources : nom exact du fichier et pages (ex : "3-7") si c'est un PDF.
   Une procédure sans source identifiable ne doit pas être listée.
 
+- FICHIERS DE RÉFÉRENCE : si le message désigne un fichier comme modèle, exemple, gabarit, charte ou style à imiter
+  (« utilise X comme modèle », « même format que Y », « en suivant la procédure Z »), ce fichier est une RÉFÉRENCE :
+  liste son nom exact dans "references" et ne le compte PAS comme une procédure à générer.
+  Sans indication explicite, tous les fichiers sont des sources.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 2. CHOISIR L'ACTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -66,7 +71,8 @@ Réponds UNIQUEMENT avec ce JSON :
     {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12}
   ],
   "targets": ["p1"],
-  "merged_title": null
+  "merged_title": null,
+  "references": []
 }
 Les identifiants sont p1, p2, p3… dans l'ordre d'apparition. Si une proposition précédente existe et que le message
 y fait référence, réutilise SES identifiants et SES titres au lieu d'en créer de nouveaux.

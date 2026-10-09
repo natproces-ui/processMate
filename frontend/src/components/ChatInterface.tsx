@@ -27,6 +27,8 @@ interface AttachedFile {
 }
 
 // ── Conversation en flux (/api/studio) ─────────────────────────
+interface SentAttachment { name: string; type: 'pdf' | 'image'; previewUrl?: string; size?: number }
+
 interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped' }
 export interface TurnProcedure {
     id: string; title: string; description?: string;
@@ -49,7 +51,7 @@ interface ChatMessage {
     title?: string;
     operationsCount?: number;
     createdAt: Date;
-    attachments?: string[];
+    attachments?: SentAttachment[];
     steps?: TurnStep[];
     proposal?: TurnProposal;
     generations?: TurnGeneration[];
@@ -90,6 +92,8 @@ interface ChatInterfaceProps {
     variant?: 'inline' | 'sidebar';
     /** Masquer l’assistant (mode colonne) */
     onCollapse?: () => void;
+    /** Fichiers envoyés (pour la capture d'annexes à l'export) */
+    onFilesSent?: (files: File[]) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -173,6 +177,7 @@ export default function ChatInterface({
     onSelectProcedure,
     variant = 'inline',
     onCollapse,
+    onFilesSent,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -187,6 +192,7 @@ export default function ChatInterface({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [addMenuOpen, setAddMenuOpen] = useState(false);
+    const [dragging, setDragging] = useState(false);
 
     // Dictée : le texte arrive dans le champ, l'utilisateur relit puis envoie
     useEffect(() => {
@@ -423,7 +429,7 @@ export default function ChatInterface({
 
         setMessages(prev => [...prev, {
             id: crypto.randomUUID(), role: 'user', content: text.trim(),
-            attachments: attachedFiles.map(f => f.file.name), createdAt: new Date(),
+            attachments: attachedFiles.map(f => ({ name: f.file.name, type: f.type, previewUrl: f.previewUrl, size: f.file.size })), createdAt: new Date(),
         }]);
         if (!overrideInput) setInput('');
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -440,6 +446,7 @@ export default function ChatInterface({
         }
         if (currentProcedureMetadata) form.append('current_procedure_metadata', JSON.stringify(currentProcedureMetadata));
         for (const f of attachedFiles) form.append('files', f.file);
+        if (attachedFiles.length > 0) onFilesSent?.(attachedFiles.map(f => f.file));
         setAttachedFiles([]);
 
         const msgId = newAssistantMessage();
@@ -500,7 +507,17 @@ export default function ChatInterface({
     const isSidebar = variant === 'sidebar';
 
     return (
-        <section aria-label="Assistant ProcessMate" className={isSidebar ? 'h-full flex flex-col min-h-0 bg-white' : 'w-full max-w-4xl mx-auto'}>
+        <section aria-label="Assistant ProcessMate" className={isSidebar ? 'relative h-full flex flex-col min-h-0 bg-white' : 'relative w-full max-w-4xl mx-auto'}
+            onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragging(true); } }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
+            onDrop={e => { e.preventDefault(); setDragging(false); addFiles(Array.from(e.dataTransfer.files || [])); }}>
+            {dragging && (
+                <div className="absolute inset-2 z-30 rounded-2xl border-2 border-dashed border-blue-400 bg-blue-50/90 flex flex-col items-center justify-center text-blue-700 pointer-events-none">
+                    <Paperclip className="w-6 h-6 mb-2" />
+                    <p className="text-sm font-semibold">Déposez vos fichiers</p>
+                    <p className="text-xs text-blue-500 mt-0.5">PDF ou images, jusqu&apos;à {MAX_ATTACHMENTS}</p>
+                </div>
+            )}
             <div className={isSidebar ? 'shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-200' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
                 <div className="min-w-0">
                     <h3 className="text-sm font-semibold text-slate-800 truncate">{isSidebar || messages.length > 0 ? 'Assistant' : 'Que souhaitez-vous formaliser ?'}</h3>
@@ -543,13 +560,8 @@ export default function ChatInterface({
                                 {msg.role === 'user' && (
                                     <div className="flex flex-col items-end gap-1">
                                         {msg.attachments && msg.attachments.length > 0 && (
-                                            <div className="flex flex-wrap justify-end gap-1 max-w-[85%]">
-                                                {msg.attachments.map(name => (
-                                                    <span key={name} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] text-slate-600">
-                                                        <FileText className="w-3 h-3 text-slate-400" />
-                                                        <span className="max-w-[140px] truncate">{name}</span>
-                                                    </span>
-                                                ))}
+                                            <div className="flex flex-wrap justify-end gap-1.5 max-w-[90%]">
+                                                {msg.attachments.map((a, i) => <FileChip key={`${a.name}-${i}`} name={a.name} type={a.type} previewUrl={a.previewUrl} size={a.size} />)}
                                             </div>
                                         )}
                                         {msg.content && (
@@ -678,29 +690,9 @@ export default function ChatInterface({
                     <div className="px-3 py-2">
                     {/* ── Fichiers attachés ─────────────────── */}
                     {attachedFiles.length > 0 && (
-                        <div className="pb-2 flex gap-2 flex-wrap">
+                        <div className="pb-2 pt-1 flex gap-2 flex-wrap">
                             {attachedFiles.map(f => (
-                                <div
-                                    key={f.id}
-                                    className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1"
-                                >
-                                    {f.type === 'image' && f.previewUrl
-                                        ? <img src={f.previewUrl} alt="" className="w-5 h-5 rounded object-cover" />
-                                        : f.type === 'pdf'
-                                            ? <FileText className="w-3.5 h-3.5 text-red-500" />
-                                            : <ImageIcon className="w-3.5 h-3.5 text-blue-500" />
-                                    }
-                                    <span className="text-xs text-slate-600 max-w-[100px] truncate">
-                                        {f.file.name}
-                                    </span>
-                                    <button
-                                        aria-label={`Retirer ${f.file.name}`}
-                                        onClick={() => removeFile(f.id)}
-                                        className="text-slate-400 hover:text-red-500 transition-colors"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
+                                <FileChip key={f.id} name={f.file.name} type={f.type} previewUrl={f.previewUrl} size={f.file.size} onRemove={() => removeFile(f.id)} />
                             ))}
                         </div>
                     )}
@@ -712,6 +704,10 @@ export default function ChatInterface({
                                 value={input}
                                 onChange={e => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
+                                onPaste={e => {
+                                    const pasted = Array.from(e.clipboardData.files || []);
+                                    if (pasted.length > 0) { e.preventDefault(); addFiles(pasted); }
+                                }}
                                 placeholder={
                                     currentWorkflow.length > 0
                                         ? 'Posez une question ou modifiez le workflow…'
@@ -742,8 +738,7 @@ export default function ChatInterface({
                                     </button>
                                     {addMenuOpen && (
                                         <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
-                                            {onOpenDocuments && <ComposerMenuAction icon={<BookOpen className="w-4 h-4" />} label="Sources et références" onClick={() => { setAddMenuOpen(false); onOpenDocuments(); }} />}
-                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre au message" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
+                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre des fichiers (PDF, images)" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
                                             {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={() => { setAddMenuOpen(false); onOpenCode(); }} />}
                                         </div>
                                     )}
@@ -827,6 +822,34 @@ function buildAssistantMessage(intent: Intent, title: string, totalSteps: number
             return `"${title}" — ${totalSteps} étapes`;
     }
 }
+function formatSize(bytes?: number) {
+    if (!bytes) return '';
+    return bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} Mo` : `${Math.max(1, Math.round(bytes / 1024))} Ko`;
+}
+
+/** Vignette de fichier (composeur et messages envoyés), façon Claude */
+function FileChip({ name, type, previewUrl, size, onRemove }: { name: string; type: 'pdf' | 'image'; previewUrl?: string; size?: number; onRemove?: () => void }) {
+    return (
+        <div className="group relative flex items-center gap-2 rounded-xl border border-slate-200 bg-white pl-1.5 pr-3 py-1.5 max-w-[220px] shadow-sm">
+            {type === 'image' && previewUrl
+                ? <img src={previewUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                : <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${type === 'pdf' ? 'bg-red-50' : 'bg-blue-50'}`}>
+                    {type === 'pdf' ? <FileText className="w-4 h-4 text-red-500" /> : <ImageIcon className="w-4 h-4 text-blue-500" />}
+                  </div>}
+            <div className="min-w-0 text-left">
+                <p className="text-xs font-medium text-slate-700 truncate">{name}</p>
+                <p className="text-[10px] text-slate-400">{type === 'pdf' ? 'PDF' : 'Image'}{size ? ` · ${formatSize(size)}` : ''}</p>
+            </div>
+            {onRemove && (
+                <button type="button" aria-label={`Retirer ${name}`} onClick={onRemove}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                    <X className="w-3 h-3" />
+                </button>
+            )}
+        </div>
+    );
+}
+
 function ComposerMenuAction({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
     return <button type="button" disabled={disabled} onClick={onClick} role="menuitem"
         className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-left text-slate-600 hover:bg-slate-50 disabled:opacity-40">{icon}{label}</button>;

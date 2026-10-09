@@ -126,7 +126,8 @@ def _scope_instructions(proc: Dict[str, Any]) -> str:
 
 
 async def _generate(request: Request, files: List[Dict[str, Any]], procedures: List[Dict[str, Any]],
-                    targets: List[str], merge: bool, merged_title: Optional[str], message: str):
+                    targets: List[str], merge: bool, merged_title: Optional[str], message: str,
+                    references: Optional[List[str]] = None):
     chosen = [p for p in procedures if p["id"] in targets]
     if not chosen:
         yield _sse({"type": "error", "message": "Aucune procédure sélectionnée."})
@@ -148,14 +149,17 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
     from processor.multi_doc_processor import MultiDocProcessor
     processor = await asyncio.to_thread(MultiDocProcessor)
     sem = asyncio.Semaphore(MAX_PARALLEL)
+    ref_names = set(references or [])
+    ref_files = [f for f in files if f["filename"] in ref_names]   # conventions de style (passe 1)
+    src_pool = [f for f in files if f["filename"] not in ref_names]
 
     async def run(proc: Dict[str, Any], instructions: str):
         """Renvoie (procédure, résultat, erreur) : une génération en échec n'arrête pas les autres."""
         async with sem:
             try:
                 card = _card(proc, files)
-                src = [f for f in files if f["file_id"] in {s.file_id for s in card.sources}] or files
-                result = await processor.generate_process(selected_card=card, src_files=src, ref_files=[], instructions=instructions)
+                src = [f for f in src_pool if f["file_id"] in {s.file_id for s in card.sources}] or src_pool
+                result = await processor.generate_process(selected_card=card, src_files=src, ref_files=ref_files, instructions=instructions)
                 return proc, result, None
             except Exception as e:
                 logger.error(f"❌ Génération Studio « {proc.get('title')} » : {e}", exc_info=True)
@@ -233,11 +237,14 @@ async def studio_turn(
 
                 if plan.procedures:
                     sess["proposal"] = plan.procedures
+                if new_files:
+                    sess["references"] = plan.references
                 if plan.action == "propose":
                     yield _sse({"type": "proposal", "procedures": plan.procedures, "selected": [p["id"] for p in plan.procedures]})
                 elif plan.action in ("generate", "merge"):
                     async for ev in _generate(request, sess["files"], plan.procedures, plan.targets,
-                                              plan.action == "merge", plan.merged_title, message):
+                                              plan.action == "merge", plan.merged_title, message,
+                                              sess.get("references")):
                         yield ev
                 elif plan.action == "edit":
                     async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata):
@@ -285,7 +292,7 @@ async def studio_generate(request: Request, body: GenerateRequest):
         with processing_level_scope(level):
             try:
                 async for ev in _generate(request, sess["files"], sess["proposal"], body.procedure_ids,
-                                          body.merge, body.merged_title, body.message):
+                                          body.merge, body.merged_title, body.message, sess.get("references")):
                     yield ev
             except Exception as e:
                 logger.error(f"❌ Génération Studio : {e}", exc_info=True)
