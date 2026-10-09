@@ -49,6 +49,8 @@ interface ChatInterfaceProps {
     onToggleRecording?: () => void;
     onCancelRecording?: () => void;
     onNewConversation?: () => void;
+    /** Texte dicté à insérer dans le champ (id change à chaque dictée) */
+    insertText?: { id: number; text: string };
     currentWorkflow: Table1Row[];
     currentEnrichments?: Map<string, TaskEnrichment>;
     currentProcedureMetadata?: Record<string, unknown> | null;
@@ -132,7 +134,7 @@ function IntentBadge({ intent }: { intent: Intent }) {
 
 export default function ChatInterface({
     processingLevel, onProcessingLevelChange, inputContext, inputContextVisible = true, onOpenDocuments, onOpenCode,
-    recording = false, processing = false, onToggleRecording, onCancelRecording, onNewConversation,
+    recording = false, processing = false, onToggleRecording, onCancelRecording, onNewConversation, insertText,
     currentWorkflow,
     currentEnrichments,
     currentProcedureMetadata,
@@ -153,6 +155,20 @@ export default function ChatInterface({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [addMenuOpen, setAddMenuOpen] = useState(false);
+
+    // Dictée : le texte arrive dans le champ, l'utilisateur relit puis envoie
+    useEffect(() => {
+        if (!insertText?.text) return;
+        setInput(prev => (prev.trim() ? `${prev.trimEnd()} ${insertText.text}` : insertText.text));
+        requestAnimationFrame(() => {
+            const el = textareaRef.current;
+            if (!el) return;
+            el.focus();
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+            el.setSelectionRange(el.value.length, el.value.length);
+        });
+    }, [insertText?.id]); // eslint-disable-line react-hooks/exhaustive-deps
     const addMenuRef = useRef<HTMLDivElement>(null);
 
     // Menu « + » : se ferme au clic extérieur ou avec Échap (plus besoin de recliquer sur +)

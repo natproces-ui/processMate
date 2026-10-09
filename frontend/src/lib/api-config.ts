@@ -41,6 +41,7 @@ export const API_CONFIG = {
         bpmnInfo: '/api/bpmn/info',
 
         transcribe: '/api/stt/transcribe',
+        dictate: '/api/stt/dictate',
 
         /* ---------------------- BPMN AI ---------------------- */
         bpmnAiEnrichTable: '/api/bpmn-ai/enrich-table',

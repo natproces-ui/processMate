@@ -10,7 +10,7 @@ import asyncio
 from google import genai
 from google.genai import errors as genai_errors
 from google.api_core import exceptions as google_exceptions
-from config import GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE, GOOGLE_API_KEY
+from config import GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE, GEMINI_MODEL_TRANSCRIBE, GOOGLE_API_KEY
 from manager.processing_level import ProcessingLevel, get_processing_level
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,43 @@ def _is_retryable(e: Exception) -> bool:
 _shared_client: Optional[genai.Client] = None
 
 
+def _client() -> genai.Client:
+    global _shared_client
+    if _shared_client is None:
+        _shared_client = genai.Client(api_key=GOOGLE_API_KEY)
+    return _shared_client
+
+
+def transcribe_audio(audio_bytes: bytes, mime_type: str, language_codes: List[str] = ["fr-FR"]) -> str:
+    """Dictée : texte fidèle d'un enregistrement audio.
+
+    Modèle dédié gemini-3.5-transcribe via l'API Interactions (SDK google-genai >= 2.x).
+    Si elle est indisponible (SDK plus ancien) ou échoue, secours sur la chaîne
+    générale (Normal : FLASH puis LITE), qui transcrit aussi très bien.
+    """
+    import base64
+    client = _client()
+    if hasattr(client, "interactions"):
+        try:
+            it = client.interactions.create(
+                model=GEMINI_MODEL_TRANSCRIBE,
+                input=[{"type": "audio", "data": base64.b64encode(audio_bytes).decode(), "mime_type": mime_type}],
+                generation_config={"transcription_config": {"language_codes": list(language_codes)}},
+            )
+            text = (getattr(it, "output_text", None) or "").strip()
+            if text:
+                return text
+            logger.warning("⚠️ Transcription vide via le modèle dédié → secours")
+        except Exception as e:
+            logger.warning(f"⚠️ Modèle de transcription indisponible ({str(e)[:120]}) → secours")
+    response = generate_content(
+        [{"inline_data": {"mime_type": mime_type, "data": audio_bytes}},
+         "Transcris fidèlement cet audio, sans le résumer ni le reformuler. Corrige seulement l'orthographe."],
+        task_name="Transcription audio (secours)",
+    )
+    return (response.text or "").strip()
+
+
 def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini"):
     """Appel Gemini synchrone avec la chaîne de secours du niveau courant.
 
@@ -54,13 +91,10 @@ def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini
     un seul client, mêmes modèles et même secours partout. Lève la dernière
     erreur si tous les modèles échouent, comme le faisait l'appel SDK direct.
     """
-    global _shared_client
-    if _shared_client is None:
-        _shared_client = genai.Client(api_key=GOOGLE_API_KEY)
     models = get_models_for_request()
     for i, model in enumerate(models):
         try:
-            return _shared_client.models.generate_content(model=model.value, contents=contents, config=config)
+            return _client().models.generate_content(model=model.value, contents=contents, config=config)
         except Exception as e:
             if i + 1 < len(models) and _is_retryable(e):
                 logger.warning(f"⚠️ {task_name} : échec sur {model.value} ({str(e)[:120]}) → {models[i + 1].value}")

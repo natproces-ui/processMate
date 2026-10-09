@@ -11,7 +11,8 @@ from google.api_core.exceptions import ResourceExhausted
 import logging
 from typing import List, Dict, Any, Optional
 import os
-from manager.model_manager import generate_content
+import asyncio
+from manager.model_manager import generate_content, transcribe_audio as transcribe_with_model
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +34,10 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str) -> str:
         ValueError: Si transcription invalide ou quota dépassé
     """
     try:
-        result = generate_content(
-            task_name="Transcription audio",
-            contents=[
-                {"inline_data": {"mime_type": mime_type, "data": audio_bytes}},
-                "Transcris ce fichier audio en texte clair, en corrigeant les fautes d'orthographe."
-            ]
-        )
-        
-        if not result or not result.text:
+        # Modèle de transcription dédié (gemini-3.5-transcribe), secours sur la chaîne générale
+        transcription = await asyncio.to_thread(transcribe_with_model, audio_bytes, mime_type.split(";")[0])
+        if not transcription:
             raise ValueError("Gemini n'a pas retourné de transcription")
-        
-        transcription = result.text.strip()
         
         # ✅ Bloquer les réponses vides/génériques de Gemini
         invalid_responses = [
@@ -324,6 +317,25 @@ async def transcribe_and_parse(file: UploadFile = File(...)):
         )
     finally:
         await file.close()
+
+
+@router.post("/dictate")
+async def dictate(file: UploadFile = File(...)):
+    """Dictée du composeur : renvoie uniquement le texte transcrit.
+
+    Contrairement à /transcribe, rien n'est converti en étapes : le texte va dans
+    le champ de saisie, l'utilisateur le relit et l'envoie, l'assistant décide.
+    """
+    if not file.content_type or "audio" not in file.content_type:
+        raise HTTPException(status_code=400, detail=f"Format non accepté : {file.content_type}. Envoyez un fichier audio.")
+    audio_bytes = await file.read()
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Fichier audio vide")
+    try:
+        transcription = await transcribe_audio(audio_bytes, file.content_type)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"success": True, "transcription": transcription}
 
 
 @router.get("/info")

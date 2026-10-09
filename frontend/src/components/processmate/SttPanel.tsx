@@ -97,6 +97,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [recording, setRecording] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const [dictation, setDictation] = useState<{ id: number; text: string }>();
     const [saving, setSaving] = useState(false);
     const [saveModalOpen, setSaveModalOpen] = useState(false);
     const [loadingWorkflow, setLoadingWorkflow] = useState(false);
@@ -599,15 +600,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     const blob = new Blob(chunks, { type: 'audio/webm' });
                     const fd = new FormData(); fd.append('file', blob, 'audio.webm');
                     try {
-                        const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.transcribe), { method: 'POST', headers: processingLevelHeaders(processingLevel), body: fd });
+                        // Dictée : le texte va dans le composeur (plus d'écrasement direct du tableau)
+                        const res = await fetch(API_CONFIG.getFullUrl(API_CONFIG.endpoints.dictate), { method: 'POST', body: fd });
                         const result = await res.json();
                         if (!res.ok) throw new Error(result.detail || 'Erreur transcription');
-                        if (result?.parsedData && Array.isArray(result.parsedData)) {
-                            const rows: Table1Row[] = result.parsedData
-                                .filter((i: any) => i.étape && i.acteur)
-                                .map((i: any) => ({ id: i.id || crypto.randomUUID(), étape: i.étape || '', typeBpmn: i.typeBpmn || 'Task', département: i.département || '', acteur: i.acteur || '', typeActeur: i.typeActeur || '', condition: i.condition || '', outputs: Array.isArray(i.outputs) ? i.outputs : [], outil: i.outil || '' }));
-                            if (rows.length > 0) { setData(rows); showSuccess(`✅ ${rows.length} étape(s) extraite(s)`); }
-                        }
+                        if (result?.transcription) setDictation({ id: Date.now(), text: result.transcription });
                     } catch (e: any) { showError(e.message || 'Erreur transcription'); }
                     finally { setProcessing(false); }
                 };
@@ -742,6 +739,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             onOpenCode={() => { setCodeSourceOpen(true); setUploadOpen(false); }}
                             recording={recording} processing={processing}
                             onToggleRecording={toggleRecording} onCancelRecording={cancelRecording}
+                            insertText={dictation}
                             onNewConversation={() => { setUploadOpen(false); setCodeSourceOpen(false); }}
                             onProcessingLevelChange={setProcessingLevel}
                             processingLevel={processingLevel}

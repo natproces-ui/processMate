@@ -29,6 +29,8 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 GEMINI_MODEL_PRO = os.getenv("GEMINI_MODEL_PRO", "gemini-3.1-pro-preview")
 GEMINI_MODEL_FLASH = os.getenv("GEMINI_MODEL_FLASH", "gemini-3.8-flash")
 GEMINI_MODEL_LITE = os.getenv("GEMINI_MODEL_LITE", "gemini-3.5-flash-lite")
+# Dictée vocale : modèle dédié (API Interactions, SDK google-genai >= 2.x)
+GEMINI_MODEL_TRANSCRIBE = os.getenv("GEMINI_MODEL_TRANSCRIBE", "gemini-3.5-transcribe")
 if not GOOGLE_API_KEY and IS_PRODUCTION:
     raise ValueError("❌ GOOGLE_API_KEY manquante en production !")
 
