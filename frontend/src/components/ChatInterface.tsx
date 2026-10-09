@@ -8,7 +8,7 @@ import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import {
-    Send, Paperclip, X, FileText, Image as ImageIcon,
+    ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
     Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square
 } from 'lucide-react';
@@ -152,6 +152,23 @@ export default function ChatInterface({
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [addMenuOpen, setAddMenuOpen] = useState(false);
+    const addMenuRef = useRef<HTMLDivElement>(null);
+
+    // Menu « + » : se ferme au clic extérieur ou avec Échap (plus besoin de recliquer sur +)
+    useEffect(() => {
+        if (!addMenuOpen) return;
+        const onPointer = (e: MouseEvent) => {
+            if (!addMenuRef.current?.contains(e.target as Node)) setAddMenuOpen(false);
+        };
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAddMenuOpen(false); };
+        document.addEventListener('mousedown', onPointer);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onPointer);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [addMenuOpen]);
 
     useEffect(() => {
         if (messages.length === 0 && !loading) return;
@@ -532,16 +549,21 @@ export default function ChatInterface({
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                             <div className="flex items-center gap-1">
                             {onOpenDocuments || onOpenCode ? (
-                                <details className="relative shrink-0" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
-                                    <summary aria-label="Ajouter un contenu" title="Ajouter un contenu" className="list-none cursor-pointer p-2 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 [&::-webkit-details-marker]:hidden">
-                                        <Plus className="w-4 h-4" />
-                                    </summary>
-                                    <div className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
-                                        {onOpenDocuments && <ComposerMenuAction icon={<BookOpen className="w-4 h-4" />} label="Sources et références" onClick={onOpenDocuments} />}
-                                        <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre au message" onClick={() => fileInputRef.current?.click()} disabled={attachedFiles.length >= 3} />
-                                        {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={onOpenCode} />}
-                                    </div>
-                                </details>
+                                <div ref={addMenuRef} className="relative shrink-0">
+                                    <button type="button" aria-label="Ajouter un contenu" title="Ajouter un contenu"
+                                        aria-haspopup="menu" aria-expanded={addMenuOpen}
+                                        onClick={() => setAddMenuOpen(o => !o)}
+                                        className={`p-2 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${addMenuOpen ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
+                                        <Plus className={`w-4 h-4 transition-transform ${addMenuOpen ? 'rotate-45' : ''}`} />
+                                    </button>
+                                    {addMenuOpen && (
+                                        <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
+                                            {onOpenDocuments && <ComposerMenuAction icon={<BookOpen className="w-4 h-4" />} label="Sources et références" onClick={() => { setAddMenuOpen(false); onOpenDocuments(); }} />}
+                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre au message" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= 3} />
+                                            {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={() => { setAddMenuOpen(false); onOpenCode(); }} />}
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <button type="button" onClick={() => fileInputRef.current?.click()} disabled={attachedFiles.length >= 3}
                                     className="p-2 rounded-lg text-slate-500 hover:text-blue-600 disabled:opacity-40 shrink-0" title="Joindre un fichier">
@@ -575,20 +597,22 @@ export default function ChatInterface({
                                 {processingLevel && onProcessingLevelChange && <ProcessingLevelSelector value={processingLevel} onChange={onProcessingLevelChange} />}
                             <button
                                 aria-label="Envoyer le message"
+                                title="Envoyer (Entrée)"
                                 type="button"
                                 onClick={() => sendMessage()}
                                 disabled={loading || !initialized || (!input.trim() && attachedFiles.length === 0)}
                                 className={`
-                                    p-2 rounded-full flex items-center justify-center flex-shrink-0 transition-all
+                                    w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors
+                                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
                                     ${loading || (!input.trim() && attachedFiles.length === 0)
-                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        ? 'bg-slate-200 text-white cursor-not-allowed'
+                                        : 'bg-slate-900 text-white hover:bg-slate-700'
                                     }
                                 `}
                             >
                                 {loading
                                     ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : <Send className="w-4 h-4" />
+                                    : <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
                                 }
                             </button>
 
@@ -620,6 +644,6 @@ function buildAssistantMessage(intent: Intent, title: string, totalSteps: number
     }
 }
 function ComposerMenuAction({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
-    return <button type="button" disabled={disabled} onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); onClick(); }}
+    return <button type="button" disabled={disabled} onClick={onClick} role="menuitem"
         className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-left text-slate-600 hover:bg-slate-50 disabled:opacity-40">{icon}{label}</button>;
 }
