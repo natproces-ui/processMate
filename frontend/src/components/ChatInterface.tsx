@@ -11,7 +11,7 @@ import MiniMarkdown from '@/components/shared/MiniMarkdown';
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow, Presentation
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -23,12 +23,13 @@ type Intent = 'generate' | 'patch' | 'regen' | 'web_search' | 'clarify' | 'trans
 interface AttachedFile {
     id: string;
     file: File;
-    type: 'pdf' | 'image';
+    type: FileKind;
     previewUrl?: string;
 }
 
 // ── Conversation en flux (/api/studio) ─────────────────────────
-interface SentAttachment { name: string; type: 'pdf' | 'image'; previewUrl?: string; size?: number }
+type FileKind = 'pdf' | 'image' | 'docx' | 'pptx';
+interface SentAttachment { name: string; type: FileKind; previewUrl?: string; size?: number }
 
 interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped' }
 export interface TurnProcedure {
@@ -112,7 +113,9 @@ interface ChatInterfaceProps {
 
 const MAX_ATTACHMENTS = 10; // même limite que /api/studio/turn
 
-const ACCEPTED_TYPES: Record<string, 'pdf' | 'image'> = {
+const ACCEPTED_TYPES: Record<string, FileKind> = {
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
     'application/pdf': 'pdf',
     'image/png': 'image',
     'image/jpeg': 'image',
@@ -257,7 +260,9 @@ export default function ChatInterface({
         const newFiles: AttachedFile[] = [];
 
         for (const file of toAdd) {
-            const type = ACCEPTED_TYPES[file.type];
+            const ext = file.name.toLowerCase().split('.').pop() || '';
+            const type = ACCEPTED_TYPES[file.type] || ({ pdf: 'pdf', docx: 'docx', pptx: 'pptx' } as Record<string, FileKind>)[ext];
+            if (!type && (ext === 'doc' || ext === 'ppt')) { onError(`Ancien format Office : ${file.name}. Enregistrez-le en .docx ou .pptx.`); continue; }
             if (!type) { onError(`Format non supporté : ${file.name}`); continue; }
             if (file.size > 20 * 1024 * 1024) { onError(`Fichier trop lourd : ${file.name}`); continue; }
 
@@ -509,7 +514,7 @@ export default function ChatInterface({
     const editMessage = (m: ChatMessage) => {
         setInput(m.content);
         setAttachedFiles((m.files || []).map((file, i) => ({
-            id: crypto.randomUUID(), file, type: ACCEPTED_TYPES[file.type] || 'pdf', previewUrl: m.attachments?.[i]?.previewUrl,
+            id: crypto.randomUUID(), file, type: ACCEPTED_TYPES[file.type] || ({ docx: 'docx', pptx: 'pptx' } as Record<string, FileKind>)[file.name.toLowerCase().split('.').pop() || ''] || 'pdf', previewUrl: m.attachments?.[i]?.previewUrl,
         })));
         requestAnimationFrame(() => textareaRef.current?.focus());
     };
@@ -557,7 +562,7 @@ export default function ChatInterface({
                 <div className="absolute inset-2 z-30 rounded-2xl border-2 border-dashed border-blue-400 bg-blue-50/90 flex flex-col items-center justify-center text-blue-700 pointer-events-none">
                     <Paperclip className="w-6 h-6 mb-2" />
                     <p className="text-sm font-semibold">Déposez vos fichiers</p>
-                    <p className="text-xs text-blue-500 mt-0.5">PDF ou images, jusqu&apos;à {MAX_ATTACHMENTS}</p>
+                    <p className="text-xs text-blue-500 mt-0.5">PDF, Word, PowerPoint ou images, jusqu&apos;à {MAX_ATTACHMENTS}</p>
                 </div>
             )}
             <div className={isSidebar ? 'shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-200' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
@@ -825,7 +830,7 @@ export default function ChatInterface({
                                     </button>
                                     {addMenuOpen && (
                                         <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
-                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre des fichiers (PDF, images)" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
+                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre des fichiers (PDF, Word, PowerPoint, images)" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
                                             {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={() => { setAddMenuOpen(false); onOpenCode(); }} />}
                                         </div>
                                     )}
@@ -841,7 +846,7 @@ export default function ChatInterface({
                                 ref={fileInputRef}
                                 type="file"
                                 multiple
-                                accept=".pdf,image/png,image/jpeg,image/webp"
+                                accept=".pdf,.docx,.pptx,image/png,image/jpeg,image/webp"
                                 onChange={e => {
                                     if (e.target.files) addFiles(Array.from(e.target.files));
                                     e.target.value = '';
@@ -924,17 +929,25 @@ function formatSize(bytes?: number) {
 }
 
 /** Vignette de fichier (composeur et messages envoyés), façon Claude */
-function FileChip({ name, type, previewUrl, size, onRemove }: { name: string; type: 'pdf' | 'image'; previewUrl?: string; size?: number; onRemove?: () => void }) {
+const KIND_STYLE: Record<FileKind, { label: string; tile: string; icon: string }> = {
+    pdf: { label: 'PDF', tile: 'bg-red-50', icon: 'text-red-500' },
+    docx: { label: 'Word', tile: 'bg-blue-50', icon: 'text-blue-600' },
+    pptx: { label: 'PowerPoint', tile: 'bg-orange-50', icon: 'text-orange-500' },
+    image: { label: 'Image', tile: 'bg-blue-50', icon: 'text-blue-500' },
+};
+
+function FileChip({ name, type, previewUrl, size, onRemove }: { name: string; type: FileKind; previewUrl?: string; size?: number; onRemove?: () => void }) {
+    const kind = KIND_STYLE[type] || KIND_STYLE.pdf;
     return (
         <div className="group relative flex items-center gap-2 rounded-xl border border-slate-200 bg-white pl-1.5 pr-3 py-1.5 max-w-[220px] shadow-sm">
             {type === 'image' && previewUrl
                 ? <img src={previewUrl} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                : <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${type === 'pdf' ? 'bg-red-50' : 'bg-blue-50'}`}>
-                    {type === 'pdf' ? <FileText className="w-4 h-4 text-red-500" /> : <ImageIcon className="w-4 h-4 text-blue-500" />}
+                : <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${kind.tile}`}>
+                    {type === 'pptx' ? <Presentation className={`w-4 h-4 ${kind.icon}`} /> : type === 'image' ? <ImageIcon className={`w-4 h-4 ${kind.icon}`} /> : <FileText className={`w-4 h-4 ${kind.icon}`} />}
                   </div>}
             <div className="min-w-0 text-left">
                 <p className="text-xs font-medium text-slate-700 truncate">{name}</p>
-                <p className="text-[10px] text-slate-400">{type === 'pdf' ? 'PDF' : 'Image'}{size ? ` · ${formatSize(size)}` : ''}</p>
+                <p className="text-[10px] text-slate-400">{kind.label}{size ? ` · ${formatSize(size)}` : ''}</p>
             </div>
             {onRemove && (
                 <button type="button" aria-label={`Retirer ${name}`} onClick={onRemove}

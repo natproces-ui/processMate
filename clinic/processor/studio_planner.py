@@ -44,7 +44,10 @@ class StudioPlan:
 
 
 def file_to_parts(f: Dict[str, Any]) -> list:
-    """Même envoi que la découverte : PDF tel quel, image réduite à 1024 px."""
+    """Même envoi que la découverte : PDF tel quel, image réduite à 1024 px, Office extrait."""
+    if f.get("type") in ("docx", "pptx"):
+        from processor.office_extract import office_parts
+        return office_parts(f)
     raw = f.get("data")
     if not raw:
         return []

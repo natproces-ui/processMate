@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 def _split_files_by_type(files: List[Dict[str, Any]]):
     images = [f for f in files if f["type"] == "image"]
-    pdfs   = [f for f in files if f["type"] == "pdf"]
+    pdfs   = [f for f in files if f["type"] in ("pdf", "docx", "pptx")]  # Office = document, comme un PDF
     return images, pdfs
 
 
@@ -57,6 +57,10 @@ async def _classify_pdfs(pdf_files: List[Dict[str, Any]]) -> List[Dict[str, Any]
     classifier = PDFClassifier()
     results = []
     for f in pdf_files:
+        if f["type"] in ("docx", "pptx"):  # déjà extrait : classement sans appel IA
+            has_diagram = bool((f.get("office") or {}).get("has_diagram"))
+            results.append({**f, "classification": {"type": "contains_diagram" if has_diagram else "text_only", "confidence": 80}})
+            continue
         try:
             classification = await classifier.classify_pdf(f["data"], f["filename"])
             results.append({**f, "classification": classification})
@@ -679,6 +683,9 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
     # ─────────────────────────────────────────────────────
 
     def _file_to_parts(self, f: Dict[str, Any]) -> list:
+        if f.get("type") in ("docx", "pptx"):
+            from processor.office_extract import office_parts
+            return office_parts(f)
         raw = f.get("data") or f.get("content")
         if not raw:
             return []

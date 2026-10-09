@@ -35,6 +35,7 @@ from pydantic import BaseModel
 from manager.processing_level import get_processing_level, processing_level_scope
 from models.discovery_models import ProcessCard, SourceReference, SourceType
 from processor.studio_planner import plan_turn
+from processor.office_extract import extract_office, office_type
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/studio", tags=["Studio"])
@@ -84,18 +85,29 @@ async def _read_files(files: List[UploadFile]) -> List[Dict[str, Any]]:
     for f in files:
         name = f.filename or f"fichier_{len(out) + 1}"
         ctype = (f.content_type or "").lower()
+        kind = office_type(name, ctype)
         if ctype == "application/pdf" or name.lower().endswith(".pdf"):
             ftype = "pdf"
         elif ctype.startswith("image/"):
             ftype = "image"
+        elif kind:
+            ftype = kind
+        elif name.lower().endswith((".doc", ".ppt")):
+            raise HTTPException(400, f"Ancien format Office non pris en charge : {name}. Enregistrez-le en .docx ou .pptx.")
         else:
-            raise HTTPException(400, f"Format non pris en charge : {name} (PDF ou image)")
+            raise HTTPException(400, f"Format non pris en charge : {name} (PDF, image, Word .docx ou PowerPoint .pptx)")
         data = await f.read()
         if not data:
             raise HTTPException(400, f"Fichier vide : {name}")
         if len(data) > MAX_FILE_SIZE:
             raise HTTPException(400, f"Fichier trop volumineux : {name} (max 20 Mo)")
-        out.append({"file_id": str(uuid.uuid4()), "filename": name, "data": data, "type": ftype, "size": len(data)})
+        entry = {"file_id": str(uuid.uuid4()), "filename": name, "data": data, "type": ftype, "size": len(data)}
+        if ftype in ("docx", "pptx"):
+            try:
+                entry["office"] = await asyncio.to_thread(extract_office, data, ftype)
+            except ValueError as e:
+                raise HTTPException(400, str(e))
+        out.append(entry)
     return out
 
 
