@@ -190,22 +190,22 @@ export default function DocumentPreviewModal({
                 </div>
 
                 {/* Footer Actions */}
-                <div className="bg-gray-900 border-t border-gray-700 p-4 flex items-center justify-between">
-                    <div className="text-sm text-gray-400">
-                        <span className="font-medium text-white">{filename}</span>
-                        <span className="mx-2">•</span>
-                        <span>{formatFileSize(fileSize)}</span>
+                <div className="bg-gray-900 border-t border-gray-700 p-4 flex items-center justify-between gap-4">
+                    {/* Nom tronqué : un nom de fichier long ne doit jamais repousser les boutons hors de la fenêtre */}
+                    <div className="min-w-0 flex-1 text-sm text-gray-400">
+                        <span className="block truncate font-medium text-white" title={filename}>{filename}</span>
+                        <span className="text-xs">{formatFileSize(fileSize)}</span>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex shrink-0 gap-3">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors font-medium"
+                            className="px-4 py-2 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors font-medium whitespace-nowrap"
                         >
                             Fermer
                         </button>
                         <button
                             onClick={onDownload}
-                            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-semibold flex items-center gap-2 shadow-lg"
+                            className="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors font-semibold flex items-center gap-2 shadow-lg whitespace-nowrap"
                         >
                             <Download className="w-4 h-4" />
                             Télécharger le document
