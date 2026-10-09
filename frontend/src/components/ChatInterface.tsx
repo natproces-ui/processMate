@@ -37,7 +37,7 @@ export interface TurnProcedure {
     sources?: { file: string; pages?: string | null }[]; estimated_steps?: number;
 }
 interface TurnProposal { procedures: TurnProcedure[]; selected: string[]; submitted?: boolean }
-interface TurnGeneration { key: string; title: string; status: 'generating' | 'ready' | 'error' | 'stopped'; steps?: number; error?: string }
+interface TurnGeneration { key: string; title: string; status: 'generating' | 'ready' | 'error' | 'stopped'; steps?: number; error?: string; phase?: string; rows?: number }
 /** Procédure générée, transmise au Studio (key unique dans la conversation) */
 export interface GeneratedProcedure {
     key: string; title: string; workflow: Table1Row[];
@@ -94,6 +94,8 @@ interface ChatInterfaceProps {
     onSuccess: (msg: string) => void;
     /** Génération de procédures depuis la conversation (un onglet par procédure) */
     onProcedureStarted?: (key: string, title: string) => void;
+    /** Étape reçue pendant la génération (aperçu, remplacé par la version finale). */
+    onProcedureRow?: (key: string, row: Table1Row) => void;
     onProcedureReady?: (proc: GeneratedProcedure) => void;
     onProcedureError?: (key: string, message: string) => void;
     onSelectProcedure?: (key: string) => void;
@@ -185,6 +187,7 @@ export default function ChatInterface({
     onError,
     onSuccess,
     onProcedureStarted,
+    onProcedureRow,
     onProcedureReady,
     onProcedureError,
     onSelectProcedure,
@@ -353,6 +356,13 @@ export default function ChatInterface({
             case 'procedure_started':
                 updateMsg(msgId, m => ({ ...m, generations: [...(m.generations || []), { key: key(ev.id), title: ev.title, status: 'generating' }] }));
                 onProcedureStarted?.(key(ev.id), ev.title);
+                break;
+            case 'procedure_progress':
+                updateMsg(msgId, m => ({ ...m, generations: (m.generations || []).map(g => g.key === key(ev.id) ? { ...g, phase: ev.label } : g) }));
+                break;
+            case 'procedure_row':
+                updateMsg(msgId, m => ({ ...m, generations: (m.generations || []).map(g => g.key === key(ev.id) ? { ...g, rows: (g.rows || 0) + 1 } : g) }));
+                onProcedureRow?.(key(ev.id), ev.row);
                 break;
             case 'procedure_ready': {
                 const enrichMap = new Map<string, TaskEnrichment>();
@@ -716,7 +726,7 @@ export default function ChatInterface({
                                                             <span className="relative min-w-0 flex-1">
                                                                 <span className="block text-[15px] font-medium text-slate-800 truncate">{g.title}</span>
                                                                 <span className="flex items-center gap-1 text-xs text-slate-500">
-                                                                    {g.status === 'generating' && 'Génération en cours…'}
+                                                                    {g.status === 'generating' && <span className="truncate">{`${g.phase || 'Génération en cours'}…`}{g.rows ? ` · ${g.rows} étape${g.rows > 1 ? 's' : ''}` : ''}</span>}
                                                                     {g.status === 'ready' && <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{`${g.steps} étape${(g.steps || 0) > 1 ? 's' : ''}`}</>}
                                                                     {g.status === 'error' && (g.error || 'Échec de la génération')}
                                                                     {g.status === 'stopped' && 'Arrêtée'}

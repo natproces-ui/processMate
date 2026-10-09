@@ -10,7 +10,7 @@ import json
 import re
 import uuid
 import base64
-from typing import List, Dict, Any, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from prompts.image_classifier import ImageClassifier
 from prompts.pdf_classifier import PDFClassifier
@@ -453,18 +453,56 @@ Tu DOIS les appliquer à la procédure que tu vas générer/améliorer.
     # PHASE 2 — GÉNÉRATION (double passe si références)
     # ─────────────────────────────────────────────────────
 
+    async def _generate_streamed(self, parts: List[Any], timeout: float, title: str,
+                                 notify: Callable[[Dict[str, Any]], None]) -> str:
+        """Génération lue en flux : chaque étape complète est transmise aussitôt (aperçu)."""
+        from manager.model_manager import generate_content_stream
+        from processor.workflow_stream import WorkflowRowStream
+
+        stream = generate_content_stream(parts, config={"response_mime_type": "application/json"},
+                                         task_name=f"Génération BPMN (flux) — {title}")
+        reader, chunks, end = WorkflowRowStream(), [], object()
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        writing = described = False
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise TimeoutError(f"Génération trop longue (> {int(timeout)} s)")
+            chunk = await asyncio.wait_for(asyncio.to_thread(next, stream, end), timeout=remaining)
+            if chunk is end:
+                break
+            chunks.append(chunk)
+            if not writing:
+                writing = True
+                notify({"phase": "Rédaction des étapes"})
+            for row in reader.feed(chunk):
+                normalized = self.img_processor._validate_and_normalize_workflow([row], quiet=True)
+                if normalized:
+                    notify({"row": normalized[0]})
+            if reader.closed and not described:
+                described = True
+                notify({"phase": "Rédaction des descriptions des tâches"})
+        return "".join(chunks)
+
     async def generate_process(
         self,
         selected_card: ProcessCard,
         src_files: List[Dict[str, Any]],
         ref_files: List[Dict[str, Any]] = None,
-        instructions: Optional[str] = None
+        instructions: Optional[str] = None,
+        on_progress: Optional[Callable[[Dict[str, Any]], None]] = None
     ) -> Dict[str, Any]:
         """
         Génération en deux passes si des références sont présentes :
         Passe 1 → Analyser les références → extraire conventions
         Passe 2 → Générer depuis les sources en appliquant les conventions
+
+        on_progress (Studio) : la réponse est lue en flux et chaque événement est transmis —
+        {"phase": libellé} pour l'avancement, {"row": ligne} dès qu'une étape est complète.
+        Le résultat final est identique au mode sans flux (JSON relu en entier).
         """
+        notify = on_progress or (lambda event: None)
         ref_files = ref_files or []
         logger.info(
             f"⚙️ Génération — '{selected_card.title}' | "
@@ -475,6 +513,7 @@ Tu DOIS les appliquer à la procédure que tu vas générer/améliorer.
         conventions = None
         if ref_files:
             logger.info("🔍 Passe 1 : Analyse des références...")
+            notify({"phase": "Analyse des documents de référence"})
             conventions = await self._analyze_references(ref_files)
 
         # ── Identifier les fichiers sources pertinents ────────
@@ -485,6 +524,7 @@ Tu DOIS les appliquer à la procédure que tu vas générer/améliorer.
             relevant_srcs = src_files
 
         # ── Classifier les sources ────────────────────────────
+        notify({"phase": "Lecture des sources"})
         image_files, pdf_files = _split_files_by_type(relevant_srcs)
         classified_images = await _classify_images(image_files) if image_files else []
         classified_pdfs   = await _classify_pdfs(pdf_files)     if pdf_files   else []
@@ -562,13 +602,17 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
             return response
 
         logger.info("🤖 Passe 2 : Génération avec conventions appliquées...")
-        result = await self.model_manager.execute_with_fallback(
-            _task, task_name=f"Génération BPMN — {selected_card.title}"
-        )
-        if not result["success"]:
-            raise ValueError(result["message"])
-
-        raw_text = result["result"].text
+        notify({"phase": "Analyse du document par le modèle"})
+        if on_progress:
+            raw_text = await self._generate_streamed(parts, timeout, selected_card.title, notify)
+            result = {"model_used": "flux", "attempts": 1}
+        else:
+            result = await self.model_manager.execute_with_fallback(
+                _task, task_name=f"Génération BPMN — {selected_card.title}"
+            )
+            if not result["success"]:
+                raise ValueError(result["message"])
+            raw_text = result["result"].text
         workflow_list, title, enrichments_raw = self.img_processor._parse_gemini_response(raw_text)
         validated = self.img_processor._validate_and_normalize_workflow(workflow_list)
 

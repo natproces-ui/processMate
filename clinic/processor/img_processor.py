@@ -331,8 +331,12 @@ class ImageProcessor:
             logger.error(f"❌ Erreur parsing JSON: {str(e)}\nTexte: {text[:500]}")
             raise ValueError(f"Réponse non-JSON de Gemini: {str(e)}")
     
-    def _validate_and_normalize_workflow(self, workflow: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Valide et normalise au format Table1Row strict (avec outputs[])"""
+    def _validate_and_normalize_workflow(self, workflow: List[Dict[str, Any]], quiet: bool = False) -> List[Dict[str, Any]]:
+        """Valide et normalise au format Table1Row strict (avec outputs[]).
+
+        quiet : aperçu en flux (lignes partielles) — les cibles pas encore écrites ne sont pas signalées.
+        """
+        log = (lambda *a, **k: None) if quiet else logger.warning
         validated = []
         all_ids = [str(step.get("id", "")) for step in workflow]
 
@@ -341,7 +345,7 @@ class ImageProcessor:
         for idx, step in enumerate(workflow):
             type_bpmn = str(step.get("typeBpmn", "Task"))
             if type_bpmn not in valid_types:
-                logger.warning(f"⚠️ Type invalide '{type_bpmn}' → Task")
+                log(f"⚠️ Type invalide '{type_bpmn}' → Task")
                 type_bpmn = "Task"
 
             # --- Normalisation du tableau outputs ---
@@ -355,14 +359,14 @@ class ImageProcessor:
                         label = str(out.get("label", "")).strip()
                         if target_id:
                             if target_id not in all_ids:
-                                logger.warning(
+                                log(
                                     f"⚠️ targetId '{target_id}' introuvable pour étape {step.get('id')}"
                                 )
                             outputs.append({"targetId": target_id, "label": label})
                     elif isinstance(out, str) and out.strip():
                         # Rétrocompatibilité : string seul → targetId sans label
                         if out.strip() not in all_ids:
-                            logger.warning(
+                            log(
                                 f"⚠️ targetId '{out.strip()}' introuvable pour étape {step.get('id')}"
                             )
                         outputs.append({"targetId": out.strip(), "label": ""})
@@ -373,7 +377,7 @@ class ImageProcessor:
                 if not condition:
                     condition = str(step.get("étape", "")) or "Décision"
                 if len(outputs) < 2:
-                    logger.warning(f"⚠️ ExclusiveGateway '{step.get('id')}' a moins de 2 sorties")
+                    log(f"⚠️ ExclusiveGateway '{step.get('id')}' a moins de 2 sorties")
             elif type_bpmn == "InclusiveGateway":
                 condition = str(step.get("condition", "")).strip()
             else:
@@ -393,7 +397,8 @@ class ImageProcessor:
 
             validated.append(normalized)
 
-        logger.info(f"✅ Workflow validé: {len(validated)} étapes")
+        if not quiet:
+            logger.info(f"✅ Workflow validé: {len(validated)} étapes")
         return validated
     
     def _build_metadata(self, workflow: List[Dict[str, str]], image: Image.Image) -> Dict[str, Any]:

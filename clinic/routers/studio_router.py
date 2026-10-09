@@ -15,6 +15,8 @@ ce que l'utilisateur l'enregistre (avec son emplacement dans la taxonomie).
   message           {text}                    réponse de l'assistant
   proposal          {procedures, selected}    choix proposé (tout coché)
   procedure_started {id, title}
+  procedure_progress {id, label}             avancement (lecture, analyse, rédaction)
+  procedure_row     {id, row}                une étape complète, en aperçu pendant la génération
   procedure_ready   {id, title, workflow, enrichments, procedureMetadata}
   procedure_error   {id, title, message}
   chat_result       {result}                  modification / réponse via le chat existant
@@ -165,32 +167,52 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
     ref_files = [f for f in files if f["filename"] in ref_names]   # conventions de style (passe 1)
     src_pool = [f for f in files if f["filename"] not in ref_names]
 
+    # Les générations tournent en parallèle et déposent leurs événements (avancement, lignes, fin)
+    # dans une file unique, relayée au client dans l'ordre d'arrivée.
+    queue: asyncio.Queue = asyncio.Queue()
+
     async def run(proc: Dict[str, Any], instructions: str):
-        """Renvoie (procédure, résultat, erreur) : une génération en échec n'arrête pas les autres."""
+        """Dépose ("done", procédure, résultat, erreur) : une génération en échec n'arrête pas les autres."""
+        def on_progress(event: Dict[str, Any]) -> None:
+            if "row" in event:
+                queue.put_nowait({"type": "procedure_row", "id": proc["id"], "row": event["row"]})
+            elif event.get("phase"):
+                queue.put_nowait({"type": "procedure_progress", "id": proc["id"], "label": event["phase"]})
+
         async with sem:
             try:
                 card = _card(proc, files)
                 src = [f for f in src_pool if f["file_id"] in {s.file_id for s in card.sources}] or src_pool
-                result = await processor.generate_process(selected_card=card, src_files=src, ref_files=ref_files, instructions=instructions)
-                return proc, result, None
+                result = await processor.generate_process(selected_card=card, src_files=src, ref_files=ref_files,
+                                                          instructions=instructions, on_progress=on_progress)
+                queue.put_nowait(("done", proc, result, None))
             except Exception as e:
                 logger.error(f"❌ Génération Studio « {proc.get('title')} » : {e}", exc_info=True)
-                return proc, None, e
+                queue.put_nowait(("done", proc, None, e))
 
     tasks = [asyncio.create_task(run(p, ins)) for p, ins in jobs]
     ready: List[Dict[str, Any]] = []
     stopped = False
+    remaining = len(tasks)
     try:
-        for fut in asyncio.as_completed(tasks):
-            proc, result, error = await fut
-            if error is None:
-                done = {"title": result.get("title") or proc["title"], "workflow": result.get("workflow") or [],
-                        "procedureMetadata": result.get("procedureMetadata") or {}}
-                ready.append(done)
-                yield _sse({"type": "procedure_ready", "id": proc["id"], **done,
-                            "enrichments": result.get("enrichments") or {}})
-            else:
-                yield _sse({"type": "procedure_error", "id": proc["id"], "title": proc["title"], "message": str(error)[:300]})
+        while remaining:
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                item = None              # rien de neuf : on vérifie seulement que le client est toujours là
+            if isinstance(item, dict):
+                yield _sse(item)
+            elif item is not None:
+                _, proc, result, error = item
+                remaining -= 1
+                if error is None:
+                    done = {"title": result.get("title") or proc["title"], "workflow": result.get("workflow") or [],
+                            "procedureMetadata": result.get("procedureMetadata") or {}}
+                    ready.append(done)
+                    yield _sse({"type": "procedure_ready", "id": proc["id"], **done,
+                                "enrichments": result.get("enrichments") or {}})
+                else:
+                    yield _sse({"type": "procedure_error", "id": proc["id"], "title": proc["title"], "message": str(error)[:300]})
             if await request.is_disconnected():
                 logger.info("⏹️ Génération Studio interrompue par l'utilisateur")
                 stopped = True

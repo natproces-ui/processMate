@@ -23,6 +23,7 @@ import ProcessDiscoveryPanel from '@/components/ProcessDiscoveryPanel';
 import SttToolbar from './SttToolbar';
 import ChatInterface, { type GeneratedProcedure } from '@/components/ChatInterface';
 import SaveToBiblioModal from '@/components/SaveToBiblioModal';
+import { LiveBpmn, LiveHeader, LiveTable } from './LiveProcedurePreview';
 import Library from '@/components/new-way/Library';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
@@ -446,6 +447,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         });
     }, []);
 
+    // Aperçu : les étapes s'ajoutent pendant la génération, la version finale les remplace
+    const handleProcedureRow = useCallback((key: string, row: Table1Row) => {
+        setInstances(prev => prev.map(inst => inst.process_id === key && inst.status === 'generating' && !inst.data.some(r => r.id === row.id)
+            ? { ...inst, data: [...inst.data, row] } : inst));
+    }, []);
+
     const handleProcedureReady = useCallback((proc: GeneratedProcedure) => {
         const xml = generateBPMNSimple(proc.workflow, proc.title);
         setInstances(prev => prev.map(inst => inst.process_id === proc.key ? {
@@ -456,7 +463,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     }, []);
 
     const handleProcedureError = useCallback((key: string) => {
-        setInstances(prev => prev.map(inst => inst.process_id === key && inst.status === 'generating' ? { ...inst, status: 'error' } : inst));
+        setInstances(prev => prev.map(inst => inst.process_id === key && inst.status === 'generating' ? { ...inst, data: [], status: 'error' } : inst));
     }, []);
 
     const handleSelectProcedure = useCallback((key: string) => {
@@ -786,6 +793,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onWorkflowGenerated={handleWorkflowFromChat}
                         onError={showError} onSuccess={showSuccess}
                         onProcedureStarted={handleProcedureStarted}
+                        onProcedureRow={handleProcedureRow}
                         onProcedureReady={handleProcedureReady}
                         onProcedureError={handleProcedureError}
                         onSelectProcedure={handleSelectProcedure}
@@ -920,7 +928,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             </div>
                         )}
 
-                        {activeInst?.status === 'generating' ? (
+                        {activeInst?.status === 'generating' && activeInst.data.length > 0 ? (
+                            <>
+                                <LiveHeader title={activeInst.title} count={activeInst.data.length} />
+                                {view === 'bpmn' ? <LiveBpmn rows={activeInst.data} title={activeInst.title} /> : <LiveTable rows={activeInst.data} />}
+                            </>
+                        ) : activeInst?.status === 'generating' ? (
                             <div className="bg-white border border-slate-200 rounded-xl p-8 flex items-center justify-center gap-3 text-slate-400">
                                 <div className="w-5 h-5 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
                                 <span className="text-sm">Génération de "{activeInst.title}"…</span>
