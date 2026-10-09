@@ -7,10 +7,11 @@ import { applyOperations } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
+import MiniMarkdown from '@/components/shared/MiniMarkdown';
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -56,6 +57,13 @@ interface ChatMessage {
     proposal?: TurnProposal;
     generations?: TurnGeneration[];
     streaming?: boolean;
+    startedAt?: number;
+    /** Relecture après génération (Markdown, en flux) et actions proposées */
+    remarks?: string;
+    suggestions?: string[];
+    endedAt?: number;
+    /** Fichiers d'origine d'un message utilisateur (pour réessayer / modifier) */
+    files?: File[];
 }
 
 interface ChatInterfaceProps {
@@ -350,6 +358,12 @@ export default function ChatInterface({
                 onProcedureError?.(key(ev.id), ev.message);
                 onError(`« ${ev.title} » : ${ev.message}`);
                 break;
+            case 'remarks_delta':
+                updateMsg(msgId, m => ({ ...m, remarks: (m.remarks || '') + ev.text }));
+                break;
+            case 'suggestions':
+                updateMsg(msgId, m => ({ ...m, suggestions: ev.items || [] }));
+                break;
             case 'chat_result':
                 applyChatResult(ev.result, msgId);
                 break;
@@ -364,7 +378,7 @@ export default function ChatInterface({
     const streamEvents = async (url: string, init: RequestInit, msgId: string) => {
         const controller = new AbortController();
         abortRef.current = controller;
-        updateMsg(msgId, m => ({ ...m, streaming: true }));
+        updateMsg(msgId, m => ({ ...m, streaming: true, startedAt: Date.now() }));
         setLoading(true);
         try {
             const res = await fetch(url, { ...init, signal: controller.signal });
@@ -409,7 +423,7 @@ export default function ChatInterface({
             }
         } finally {
             abortRef.current = null;
-            updateMsg(msgId, m => ({ ...m, streaming: false }));
+            updateMsg(msgId, m => ({ ...m, streaming: false, endedAt: Date.now() }));
             setLoading(false);
         }
     };
@@ -422,16 +436,18 @@ export default function ChatInterface({
         return id;
     };
 
-    const sendMessage = async (overrideInput?: string) => {
+    const sendMessage = async (overrideInput?: string, override?: { files: File[]; attachments: SentAttachment[] }) => {
         const text = overrideInput ?? input;
-        if (!text.trim() && attachedFiles.length === 0) return;
+        const files = override ? override.files : attachedFiles.map(f => f.file);
+        if (!text.trim() && files.length === 0) return;
         if (!sessionId || loading) return;
 
         setMessages(prev => [...prev, {
-            id: crypto.randomUUID(), role: 'user', content: text.trim(),
-            attachments: attachedFiles.map(f => ({ name: f.file.name, type: f.type, previewUrl: f.previewUrl, size: f.file.size })), createdAt: new Date(),
+            id: crypto.randomUUID(), role: 'user', content: text.trim(), files,
+            attachments: override ? override.attachments : attachedFiles.map(f => ({ name: f.file.name, type: f.type, previewUrl: f.previewUrl, size: f.file.size })),
+            createdAt: new Date(),
         }]);
-        if (!overrideInput) setInput('');
+        if (overrideInput === undefined) setInput('');
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
         const form = new FormData();
@@ -445,9 +461,9 @@ export default function ChatInterface({
             form.append('current_enrichments', JSON.stringify(enrichObj));
         }
         if (currentProcedureMetadata) form.append('current_procedure_metadata', JSON.stringify(currentProcedureMetadata));
-        for (const f of attachedFiles) form.append('files', f.file);
-        if (attachedFiles.length > 0) onFilesSent?.(attachedFiles.map(f => f.file));
-        setAttachedFiles([]);
+        for (const f of files) form.append('files', f);
+        if (files.length > 0 && !override) onFilesSent?.(files);
+        if (!override) setAttachedFiles([]);
 
         const msgId = newAssistantMessage();
         await streamEvents(API_CONFIG.getFullUrl(API_CONFIG.endpoints.studioTurn),
@@ -470,6 +486,29 @@ export default function ChatInterface({
             headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
             body: JSON.stringify({ session_id: sessionId, procedure_ids: source.selected, merge }),
         }, msgId);
+    };
+
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [openSteps, setOpenSteps] = useState<Set<string>>(new Set());
+
+    const copyMessage = async (m: ChatMessage) => {
+        try { await navigator.clipboard.writeText([m.content, m.remarks].filter(Boolean).join('\n\n')); setCopiedId(m.id); setTimeout(() => setCopiedId(null), 1500); }
+        catch { onError('Copie impossible'); }
+    };
+    // Réessayer : renvoie la demande qui a produit cette réponse (texte et fichiers)
+    const retryFrom = (assistantId: string) => {
+        const idx = messages.findIndex(m => m.id === assistantId);
+        const user = [...messages.slice(0, idx)].reverse().find(m => m.role === 'user');
+        if (!user || loading) return;
+        sendMessage(user.content, { files: user.files || [], attachments: user.attachments || [] });
+    };
+    // Modifier : la demande revient dans le champ, avec ses fichiers
+    const editMessage = (m: ChatMessage) => {
+        setInput(m.content);
+        setAttachedFiles((m.files || []).map((file, i) => ({
+            id: crypto.randomUUID(), file, type: ACCEPTED_TYPES[file.type] || 'pdf', previewUrl: m.attachments?.[i]?.previewUrl,
+        })));
+        requestAnimationFrame(() => textareaRef.current?.focus());
     };
 
     const toggleProposalItem = (msgId: string, procId: string) =>
@@ -558,7 +597,7 @@ export default function ChatInterface({
                             <div key={msg.id}>
                                 {/* Message utilisateur */}
                                 {msg.role === 'user' && (
-                                    <div className="flex flex-col items-end gap-1">
+                                    <div className="group flex flex-col items-end gap-1">
                                         {msg.attachments && msg.attachments.length > 0 && (
                                             <div className="flex flex-wrap justify-end gap-1.5 max-w-[90%]">
                                                 {msg.attachments.map((a, i) => <FileChip key={`${a.name}-${i}`} name={a.name} type={a.type} previewUrl={a.previewUrl} size={a.size} />)}
@@ -569,13 +608,24 @@ export default function ChatInterface({
                                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                             </div>
                                         )}
+                                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                            {msg.content && <MsgAction label={copiedId === msg.id ? 'Copié' : 'Copier'} onClick={() => copyMessage(msg)}>{copiedId === msg.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</MsgAction>}
+                                            <MsgAction label="Modifier" onClick={() => editMessage(msg)} disabled={loading}><Pencil className="w-3.5 h-3.5" /></MsgAction>
+                                        </div>
                                     </div>
                                 )}
 
                                 {/* Réponse de l'assistant */}
                                 {msg.role === 'assistant' && (
                                     <div className="text-sm text-slate-700 space-y-2">
-                                        {msg.steps && msg.steps.length > 0 && (
+                                        {msg.steps && msg.steps.length > 0 && !msg.streaming && !openSteps.has(msg.id) ? (
+                                            <button type="button" onClick={() => setOpenSteps(s => new Set(s).add(msg.id))}
+                                                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
+                                                <ChevronRight className="w-3.5 h-3.5" />
+                                                {msg.steps.length} étape{msg.steps.length > 1 ? 's' : ''}
+                                                {msg.startedAt && msg.endedAt ? ` · ${Math.max(1, Math.round((msg.endedAt - msg.startedAt) / 1000))} s` : ''}
+                                            </button>
+                                        ) : msg.steps && msg.steps.length > 0 && (
                                             <ul className="space-y-1" aria-label="Progression">
                                                 {msg.steps.map(s => (
                                                     <li key={s.id} className="flex items-center gap-2 text-xs text-slate-500">
@@ -590,7 +640,7 @@ export default function ChatInterface({
                                             </ul>
                                         )}
                                         {msg.intent && msg.intent !== 'explain' && <IntentBadge intent={msg.intent} />}
-                                        {msg.content && <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>}
+                                        {msg.content && <MiniMarkdown text={msg.content} />}
                                         {msg.totalSteps !== undefined && msg.totalSteps > 0 && (
                                             <p className="text-xs text-emerald-600 font-medium">✓ {msg.totalSteps} étape{msg.totalSteps > 1 ? 's' : ''}</p>
                                         )}
@@ -666,8 +716,33 @@ export default function ChatInterface({
                                                 ))}
                                             </ul>
                                         )}
+                                        {/* Relecture : remarques puis suggestions cliquables */}
+                                        {msg.remarks && (
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
+                                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Remarques et suggestions</p>
+                                                <MiniMarkdown text={msg.remarks} className="text-[13px]" />
+                                            </div>
+                                        )}
+                                        {msg.suggestions && msg.suggestions.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5" aria-label="Suggestions">
+                                                {msg.suggestions.map(sug => (
+                                                    <button key={sug} type="button" disabled={loading} onClick={() => sendMessage(sug, { files: [], attachments: [] })}
+                                                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 text-left hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40">
+                                                        {sug}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                         {msg.streaming && (!msg.steps || msg.steps.length === 0) && !msg.content && (
                                             <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Réflexion…</div>
+                                        )}
+                                        {!msg.streaming && (msg.content || (msg.generations && msg.generations.length > 0)) && (
+                                            <div className="flex gap-0.5 -ml-1.5">
+                                                {msg.content && <MsgAction label={copiedId === msg.id ? 'Copié' : 'Copier'} onClick={() => copyMessage(msg)}>{copiedId === msg.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</MsgAction>}
+                                                {msg.id === [...messages].reverse().find(m => m.role === 'assistant')?.id && (
+                                                    <MsgAction label="Réessayer" onClick={() => retryFrom(msg.id)} disabled={loading}><RotateCcw className="w-3.5 h-3.5" /></MsgAction>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 )}
@@ -822,6 +897,15 @@ function buildAssistantMessage(intent: Intent, title: string, totalSteps: number
             return `"${title}" — ${totalSteps} étapes`;
     }
 }
+function MsgAction({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+    return (
+        <button type="button" title={label} aria-label={label} onClick={onClick} disabled={disabled}
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-40">
+            {children}
+        </button>
+    );
+}
+
 function formatSize(bytes?: number) {
     if (!bytes) return '';
     return bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} Mo` : `${Math.max(1, Math.round(bytes / 1024))} Ko`;

@@ -166,17 +166,22 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
                 return proc, None, e
 
     tasks = [asyncio.create_task(run(p, ins)) for p, ins in jobs]
+    ready: List[Dict[str, Any]] = []
+    stopped = False
     try:
         for fut in asyncio.as_completed(tasks):
             proc, result, error = await fut
             if error is None:
-                yield _sse({"type": "procedure_ready", "id": proc["id"], "title": result.get("title") or proc["title"],
-                            "workflow": result.get("workflow") or [], "enrichments": result.get("enrichments") or {},
-                            "procedureMetadata": result.get("procedureMetadata") or {}})
+                done = {"title": result.get("title") or proc["title"], "workflow": result.get("workflow") or [],
+                        "procedureMetadata": result.get("procedureMetadata") or {}}
+                ready.append(done)
+                yield _sse({"type": "procedure_ready", "id": proc["id"], **done,
+                            "enrichments": result.get("enrichments") or {}})
             else:
                 yield _sse({"type": "procedure_error", "id": proc["id"], "title": proc["title"], "message": str(error)[:300]})
             if await request.is_disconnected():
                 logger.info("⏹️ Génération Studio interrompue par l'utilisateur")
+                stopped = True
                 break
     finally:
         pending = [t for t in tasks if not t.done()]
@@ -184,6 +189,45 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
             t.cancel()
         if pending:
             logger.warning(f"⏹️ {len(pending)} génération(s) annulée(s) (arrêt ou déconnexion du client)")
+
+    if ready and not stopped:
+        async for ev in _stream_remarks(request, ready, message):
+            yield ev
+
+
+async def _stream_remarks(request: Request, procedures: List[Dict[str, Any]], message: str):
+    """Relecture en flux : remarques (texte) puis suggestions (boutons). Facultatif : une erreur n'interrompt rien."""
+    from manager.model_manager import generate_content_stream
+    from prompts.studio_remarks_prompt import SUGGESTIONS_MARKER, build_remarks_prompt, split_suggestions
+
+    yield _sse({"type": "status", "id": "remarks", "label": "Relecture de la procédure", "state": "running"})
+    end = object()
+    full, sent = "", 0
+    try:
+        stream = generate_content_stream(build_remarks_prompt(procedures, message), task_name="Remarques Studio")
+        while True:
+            chunk = await asyncio.to_thread(next, stream, end)
+            if chunk is end:
+                break
+            full += chunk
+            # On n'envoie que ce qui précède la ligne SUGGESTIONS (marge pour un marqueur coupé en deux morceaux)
+            cut = full.find(SUGGESTIONS_MARKER)
+            visible = cut if cut >= 0 else max(sent, len(full) - len(SUGGESTIONS_MARKER))
+            if visible > sent:
+                yield _sse({"type": "remarks_delta", "text": full[sent:visible]})
+                sent = visible
+            if await request.is_disconnected():
+                return
+        _, items = split_suggestions(full)
+        cut = full.find(SUGGESTIONS_MARKER)
+        rest = (full[:cut] if cut >= 0 else full).rstrip()[sent:]
+        if rest:
+            yield _sse({"type": "remarks_delta", "text": rest})
+        if items:
+            yield _sse({"type": "suggestions", "items": items})
+    except Exception as e:
+        logger.warning(f"⚠️ Remarques Studio indisponibles : {e}")
+    yield _sse({"type": "status", "id": "remarks", "label": "Relecture de la procédure", "state": "done"})
 
 
 def _streaming(gen) -> StreamingResponse:

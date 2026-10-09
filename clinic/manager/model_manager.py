@@ -84,6 +84,30 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str, language_codes: List[st
     return (response.text or "").strip()
 
 
+def generate_content_stream(contents: Any, config: Any = None, task_name: str = "Gemini",
+                            models: Optional[List[GeminiModel]] = None):
+    """Comme generate_content, mais renvoie le texte morceau par morceau (générateur synchrone).
+
+    Bascule sur le modèle suivant seulement si rien n'a encore été envoyé : on ne
+    mélange jamais deux réponses partielles.
+    """
+    models = models or get_models_for_request()
+    for i, model in enumerate(models):
+        started = False
+        try:
+            for chunk in _client().models.generate_content_stream(model=model.value, contents=contents, config=config):
+                text = getattr(chunk, "text", None)
+                if text:
+                    started = True
+                    yield text
+            return
+        except Exception as e:
+            if not started and i + 1 < len(models) and _is_retryable(e):
+                logger.warning(f"⚠️ {task_name} : échec sur {model.value} ({str(e)[:120]}) → {models[i + 1].value}")
+                continue
+            raise
+
+
 def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini",
                      models: Optional[List[GeminiModel]] = None):
     """Appel Gemini synchrone avec la chaîne de secours du niveau courant.
