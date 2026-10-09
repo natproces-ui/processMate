@@ -10,7 +10,7 @@ const getApiBaseUrl = (): string => {
     }
 
     if (process.env.NODE_ENV === 'production') {
-        return 'https://processmate-6x5x5.ondigitalocean.app'; // backend : DigitalOcean App Platform
+        return 'https://processmate-ronqa.ondigitalocean.app'; // backend : DigitalOcean App Platform
     }
 
     return 'http://localhost:8002';
