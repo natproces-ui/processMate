@@ -293,6 +293,7 @@ export default function Table({
                                     return (
                                         <tr
                                             key={row.id}
+                                            data-step-id={row.id}
                                             draggable
                                             onDragStart={e => handleDragStart(e, i)}
                                             onDragOver={e => handleDragOver(e, i)}

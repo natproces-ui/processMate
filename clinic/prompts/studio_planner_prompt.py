@@ -61,6 +61,9 @@ En cas de doute entre generate et propose avec plusieurs procédures : propose.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 "reply" : une ou deux phrases en français, naturelles, qui disent ce que tu as compris et ce qui va se passer
 (ex : « J'ai trouvé 3 procédures dans ce manuel. Je les ai toutes sélectionnées : décochez celles dont vous n'avez pas besoin. »).
+Pour "propose" : les procédures sont TOUTES présélectionnées dans l'interface ; dis-le (« Je les ai toutes
+sélectionnées : décochez celles dont vous n'avez pas besoin, ou demandez de les fusionner. »). Ne demande jamais
+« laquelle » comme s'il fallait en choisir une seule.
 Pour "answer", "reply" contient la réponse elle-même.
 
 Réponds UNIQUEMENT avec ce JSON :

@@ -327,6 +327,18 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         return new Set((items || []).map(i => i.target_step_id).filter((id): id is string => Boolean(id)));
     }, [activeInitialMeta]);
 
+    // « étape N » cliqué dans une réponse : vue Tableau, défilement et surbrillance temporaire
+    const [focusedStepIds, setFocusedStepIds] = useState<Set<string>>(new Set());
+    const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const handleFocusSteps = useCallback((ids: string[]) => {
+        setView('table');
+        setFocusedStepIds(new Set(ids));
+        if (focusTimer.current) clearTimeout(focusTimer.current);
+        focusTimer.current = setTimeout(() => setFocusedStepIds(new Set()), 5000);
+        setTimeout(() => document.querySelector(`[data-step-id="${ids[0]}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+    }, []);
+    const tableHighlightIds = useMemo(() => new Set([...recentAiChangedStepIds, ...focusedStepIds]), [recentAiChangedStepIds, focusedStepIds]);
+
     const updateActiveData = (d: Table1Row[]) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: d } : inst));
     const updateActiveEnrichments = (e: Map<string, TaskEnrichment>) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, enrichments: e } : inst));
 
@@ -779,6 +791,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onSelectProcedure={handleSelectProcedure}
                         variant="sidebar"
                         onFilesSent={files => setSourceFiles(prev => [...prev, ...files].slice(-20))}
+                        onFocusSteps={handleFocusSteps}
                         onCollapse={() => toggleChat(false)}
                     />
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
@@ -920,7 +933,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     onDataChange={instances.length > 0 ? updateActiveData : setData}
                                     onEnrichmentsChange={instances.length > 0 ? updateActiveEnrichments : setEnrichments}
                                     onShowSuccess={showSuccess}
-                                    highlightedRowIds={recentAiChangedStepIds}
+                                    highlightedRowIds={tableHighlightIds}
                                 />
                                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                                     <button onClick={() => setGuideOpen(!guideOpen)} className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors">

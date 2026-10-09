@@ -60,3 +60,37 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+/* ── Studio : réponses vivantes (apparition, chargement, curseur de flux) ── */
+@keyframes pm-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.pm-rise { animation: pm-rise 0.32s ease-out both; }
+
+@keyframes pm-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+.pm-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.10) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: pm-shimmer 1.6s linear infinite;
+}
+
+@keyframes pm-caret { 50% { opacity: 0; } }
+.pm-caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.45em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.55;
+  animation: pm-caret 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-rise, .pm-shimmer, .pm-caret::after { animation: none; }
+}

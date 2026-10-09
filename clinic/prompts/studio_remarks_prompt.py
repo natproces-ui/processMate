@@ -2,51 +2,61 @@
 """
 Remarques et suggestions affichées sous chaque génération du Studio.
 
-Texte en flux (Markdown léger) suivi d'une ligne SUGGESTIONS: [...] que le serveur
-retire du texte et envoie à part (boutons cliquables).
+Fondées sur des constats vérifiés par le code (processor/procedure_lint) : l'IA
+reformule et priorise, elle n'invente pas de problème. Texte en flux (Markdown,
+titres fixes que l'interface affiche en encadrés) suivi d'une ligne
+SUGGESTIONS: [...] que le serveur envoie à part (boutons cliquables).
 """
 import json
 from typing import Any, Dict, List
 
+from processor.procedure_lint import lint_procedure
+
 SUGGESTIONS_MARKER = "SUGGESTIONS:"
 
-REMARKS_PROMPT = """Tu es un expert en organisation et en formalisation de procédures bancaires.
-Une ou plusieurs procédures viennent d'être générées à partir des documents de l'utilisateur.
-Relis-les comme le ferait un auditeur et donne un retour COURT et CONCRET.
+REMARKS_PROMPT = """Tu es un auditeur expert en procédures bancaires. Une ou plusieurs procédures viennent d'être générées.
+Tu reçois pour chacune ses étapes ET une liste de « constats_verifies », établis automatiquement par le code
+(ils sont certains). Donne un retour COURT, CONCRET et FONDÉ.
 
-Rédige en français, en Markdown léger, 3 à 7 puces au total, réparties sous les titres utiles parmi :
-**À compléter** — informations manquantes : acteur ou département vague, condition sans branche « Non »,
-  étape sans outil alors qu'elle en utilise manifestement un, responsable absent, dates ou périmètre non renseignés.
-**Points d'attention** — incohérences : étape sans suite, boucle sans sortie, contrôle ou validation manquant,
-  séparation des tâches non respectée.
-**Opportunités** — automatisation possible, irritant probable, étape redondante, simplification.
+Structure : utilise uniquement ces titres, dans cet ordre, et omets ceux qui sont vides :
+### À compléter
+### Points d'attention
+### Opportunités
 
-Règles :
-- Cite les étapes par leur numéro (ex : « étape 5 »). Pas d'introduction ni de conclusion.
-- N'invente rien : appuie-toi uniquement sur le contenu fourni. Omets un titre s'il n'y a rien à y mettre.
-- Si tout est solide, dis-le en une phrase et propose seulement des améliorations.
+Règles de fond (impératives) :
+- « Points d'attention » : UNIQUEMENT les constats_verifies de type « erreur ». Reformule-les clairement, ne les invente pas,
+  n'en ajoute pas d'autres. S'il n'y en a aucun, omets ce titre.
+- « À compléter » : les constats_verifies de type « manque » (regroupe-les intelligemment), plus une information
+  visiblement absente des étapes fournies. Rien d'autre.
+- « Opportunités » : ton jugement d'expert, 1 à 3 puces maximum, formulées au conditionnel (« pourrait »), chacune liée
+  à une étape précise et à son contenu réel (cite le libellé). Aucune opportunité vague ou générique.
+- Chaque puce cite les étapes concernées sous la forme « étape 5 » ou « étapes 3 et 4 ».
+- N'affirme jamais un fait qui ne figure pas dans les données fournies. En cas de doute, n'écris rien.
+- Style : puces courtes (une ou deux lignes), **gras** pour l'élément clé. Pas d'introduction ni de conclusion.
+- Si aucun constat et rien de notable : une seule phrase positive sous « Opportunités ».
 
 Termine OBLIGATOIREMENT par une dernière ligne exactement de cette forme :
 SUGGESTIONS: ["...", "...", "..."]
-avec 2 à 4 actions courtes, formulées comme des demandes adressées à l'assistant, directement exécutables
-(ex : « Ajoute une étape de contrôle de conformité après l'étape 5 », « Précise l'acteur de l'étape 3 »).
+2 à 4 actions courtes, directement exécutables, formulées comme des demandes à l'assistant. Traite d'abord
+les erreurs vérifiées (ex : « Place l'événement de début avant l'étape 1 », « Ajoute l'issue Non à la décision de l'étape 3 »).
 """
 
 
 def _compact(proc: Dict[str, Any], max_rows: int = 60) -> Dict[str, Any]:
+    workflow = proc.get("workflow") or []
+    meta = proc.get("procedureMetadata") or {}
     rows = []
-    for r in (proc.get("workflow") or [])[:max_rows]:
+    for r in workflow[:max_rows]:
         rows.append({
             "id": r.get("id"), "étape": r.get("étape"), "type": r.get("typeBpmn"),
             "département": r.get("département"), "acteur": r.get("acteur"), "outil": r.get("outil"),
             "condition": r.get("condition") or None,
             "sorties": [o.get("targetId") for o in (r.get("outputs") or []) if isinstance(o, dict)],
         })
-    meta = proc.get("procedureMetadata") or {}
     return {
         "titre": proc.get("title"),
+        "constats_verifies": [{"type": f["kind"], "constat": f["message"]} for f in lint_procedure(workflow, meta)],
         "étapes": rows,
-        "métadonnées_vides": [k for k in ("objet", "perimetre", "dateEffet", "proprietaire") if not meta.get(k)],
     }
 
 

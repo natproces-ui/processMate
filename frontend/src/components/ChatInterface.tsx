@@ -8,10 +8,11 @@ import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
+import RemarksView from '@/components/shared/RemarksView';
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -102,6 +103,8 @@ interface ChatInterfaceProps {
     onCollapse?: () => void;
     /** Fichiers envoyés (pour la capture d'annexes à l'export) */
     onFilesSent?: (files: File[]) => void;
+    /** Clic sur « étape N » dans une réponse : surligner ces étapes dans le tableau */
+    onFocusSteps?: (ids: string[]) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -186,6 +189,7 @@ export default function ChatInterface({
     variant = 'inline',
     onCollapse,
     onFilesSent,
+    onFocusSteps,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -583,7 +587,7 @@ export default function ChatInterface({
             <div hidden={!isSidebar && collapsed} className={isSidebar ? 'flex-1 min-h-0 flex flex-col' : undefined}>
                 <div ref={messagesContainerRef} hidden={!isSidebar && messages.length === 0 && !loading}
                     className={isSidebar
-                        ? 'flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4'
+                        ? 'flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-5 bg-gradient-to-b from-slate-50/80 to-white'
                         : 'overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60'}>
                         {isSidebar && messages.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-6 text-slate-400">
@@ -594,7 +598,7 @@ export default function ChatInterface({
                             </div>
                         )}
                         {messages.map(msg => (
-                            <div key={msg.id}>
+                            <div key={msg.id} className="pm-rise">
                                 {/* Message utilisateur */}
                                 {msg.role === 'user' && (
                                     <div className="group flex flex-col items-end gap-1">
@@ -604,7 +608,7 @@ export default function ChatInterface({
                                             </div>
                                         )}
                                         {msg.content && (
-                                            <div className="max-w-[85%] bg-slate-100 text-slate-800 rounded-2xl rounded-br-md px-3 py-2 text-sm">
+                                            <div className="max-w-[85%] bg-slate-900 text-white rounded-2xl rounded-br-md px-3.5 py-2.5 text-[15px] shadow-sm">
                                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                             </div>
                                         )}
@@ -617,7 +621,7 @@ export default function ChatInterface({
 
                                 {/* Réponse de l'assistant */}
                                 {msg.role === 'assistant' && (
-                                    <div className="text-sm text-slate-700 space-y-2">
+                                    <div className="text-[15px] text-slate-700 space-y-3">
                                         {msg.steps && msg.steps.length > 0 && !msg.streaming && !openSteps.has(msg.id) ? (
                                             <button type="button" onClick={() => setOpenSteps(s => new Set(s).add(msg.id))}
                                                 className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
@@ -640,7 +644,7 @@ export default function ChatInterface({
                                             </ul>
                                         )}
                                         {msg.intent && msg.intent !== 'explain' && <IntentBadge intent={msg.intent} />}
-                                        {msg.content && <MiniMarkdown text={msg.content} />}
+                                        {msg.content && <MiniMarkdown text={msg.content} onStepClick={onFocusSteps} />}
                                         {msg.totalSteps !== undefined && msg.totalSteps > 0 && (
                                             <p className="text-xs text-emerald-600 font-medium">✓ {msg.totalSteps} étape{msg.totalSteps > 1 ? 's' : ''}</p>
                                         )}
@@ -652,7 +656,7 @@ export default function ChatInterface({
 
                                         {/* Proposition : tout coché, l'utilisateur décoche */}
                                         {msg.proposal && (
-                                            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                                                 <ul>
                                                     {msg.proposal.procedures.map(p => {
                                                         const checked = msg.proposal!.selected.includes(p.id);
@@ -697,20 +701,24 @@ export default function ChatInterface({
                                                 {msg.generations.map(g => (
                                                     <li key={g.key}>
                                                         <button type="button" disabled={g.status !== 'ready'} onClick={() => onSelectProcedure?.(g.key)}
-                                                            className="w-full flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left enabled:hover:border-slate-300 enabled:hover:bg-slate-50">
-                                                            {g.status === 'generating' && <Loader2 className="w-4 h-4 animate-spin text-blue-500 shrink-0" />}
-                                                            {g.status === 'ready' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                                                            {g.status === 'error' && <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />}
-                                                            {g.status === 'stopped' && <CircleStop className="w-4 h-4 text-slate-400 shrink-0" />}
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block text-sm text-slate-800 truncate">{g.title}</span>
-                                                                <span className="block text-[11px] text-slate-400">
-                                                                    {g.status === 'generating' && 'Génération…'}
-                                                                    {g.status === 'ready' && `${g.steps} étape${(g.steps || 0) > 1 ? 's' : ''} · ouvrir`}
+                                                            className={`group relative w-full overflow-hidden flex items-center gap-3 rounded-2xl border bg-white px-3.5 py-3 text-left shadow-sm transition-all ${g.status === 'ready' ? 'border-slate-200 hover:-translate-y-0.5 hover:shadow-md hover:border-blue-300' : g.status === 'error' ? 'border-red-200' : 'border-slate-200'}`}>
+                                                            {g.status === 'generating' && <span aria-hidden className="pm-shimmer absolute inset-0" />}
+                                                            <span className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${g.status === 'ready' ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' : g.status === 'error' ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400'}`}>
+                                                                {g.status === 'generating' ? <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                                                    : g.status === 'error' ? <AlertCircle className="w-4 h-4" />
+                                                                    : g.status === 'stopped' ? <CircleStop className="w-4 h-4" />
+                                                                    : <Workflow className="w-4 h-4" />}
+                                                            </span>
+                                                            <span className="relative min-w-0 flex-1">
+                                                                <span className="block text-[15px] font-medium text-slate-800 truncate">{g.title}</span>
+                                                                <span className="flex items-center gap-1 text-xs text-slate-500">
+                                                                    {g.status === 'generating' && 'Génération en cours…'}
+                                                                    {g.status === 'ready' && <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{`${g.steps} étape${(g.steps || 0) > 1 ? 's' : ''}`}</>}
                                                                     {g.status === 'error' && (g.error || 'Échec de la génération')}
                                                                     {g.status === 'stopped' && 'Arrêtée'}
                                                                 </span>
                                                             </span>
+                                                            {g.status === 'ready' && <span className="relative text-xs font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">Ouvrir</span>}
                                                         </button>
                                                     </li>
                                                 ))}
@@ -718,17 +726,19 @@ export default function ChatInterface({
                                         )}
                                         {/* Relecture : remarques puis suggestions cliquables */}
                                         {msg.remarks && (
-                                            <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5">
-                                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Remarques et suggestions</p>
-                                                <MiniMarkdown text={msg.remarks} className="text-[13px]" />
+                                            <div className="space-y-2">
+                                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Remarques et suggestions</p>
+                                                <RemarksView text={msg.remarks} streaming={!!msg.streaming && !msg.suggestions} onStepClick={onFocusSteps} />
                                             </div>
                                         )}
                                         {msg.suggestions && msg.suggestions.length > 0 && (
                                             <div className="flex flex-wrap gap-1.5" aria-label="Suggestions">
                                                 {msg.suggestions.map(sug => (
                                                     <button key={sug} type="button" disabled={loading} onClick={() => sendMessage(sug, { files: [], attachments: [] })}
-                                                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 text-left hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40">
+                                                        className="pm-rise group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] text-slate-700 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow disabled:opacity-40">
+                                                        <Sparkles className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                                                         {sug}
+                                                        <ArrowUpRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 shrink-0" />
                                                     </button>
                                                 ))}
                                             </div>
