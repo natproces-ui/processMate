@@ -84,14 +84,15 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str, language_codes: List[st
     return (response.text or "").strip()
 
 
-def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini"):
+def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini",
+                     models: Optional[List[GeminiModel]] = None):
     """Appel Gemini synchrone avec la chaîne de secours du niveau courant.
 
     Point d'entrée unique pour les appels directs (hors execute_with_fallback) :
     un seul client, mêmes modèles et même secours partout. Lève la dernière
     erreur si tous les modèles échouent, comme le faisait l'appel SDK direct.
     """
-    models = get_models_for_request()
+    models = models or get_models_for_request()  # liste imposée (ex : aiguillage toujours rapide)
     for i, model in enumerate(models):
         try:
             return _client().models.generate_content(model=model.value, contents=contents, config=config)
