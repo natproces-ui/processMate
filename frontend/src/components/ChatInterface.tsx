@@ -8,7 +8,6 @@ import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
-import RemarksView from '@/components/shared/RemarksView';
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
@@ -724,21 +723,24 @@ export default function ChatInterface({
                                                 ))}
                                             </ul>
                                         )}
-                                        {/* Relecture : remarques puis suggestions cliquables */}
+                                        {/* Relecture : texte naturel (comme une réponse), étapes cliquables */}
                                         {msg.remarks && (
-                                            <div className="space-y-2">
-                                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Remarques et suggestions</p>
-                                                <RemarksView text={msg.remarks} streaming={!!msg.streaming && !msg.suggestions} onStepClick={onFocusSteps} />
+                                            <div className={msg.streaming && !msg.suggestions ? 'pm-caret' : undefined}>
+                                                <MiniMarkdown text={msg.remarks} onStepClick={onFocusSteps} />
                                             </div>
                                         )}
+                                        {/* Suggestions : seules à être présentées en cartes */}
                                         {msg.suggestions && msg.suggestions.length > 0 && (
-                                            <div className="flex flex-wrap gap-1.5" aria-label="Suggestions">
-                                                {msg.suggestions.map(sug => (
+                                            <div className="grid gap-2 pt-1" aria-label="Suggestions">
+                                                {msg.suggestions.map((sug, i) => (
                                                     <button key={sug} type="button" disabled={loading} onClick={() => sendMessage(sug, { files: [], attachments: [] })}
-                                                        className="pm-rise group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] text-slate-700 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow disabled:opacity-40">
-                                                        <Sparkles className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                                        {sug}
-                                                        <ArrowUpRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-500 shrink-0" />
+                                                        style={{ animationDelay: `${i * 60}ms` }}
+                                                        className="pm-rise group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md disabled:opacity-40 disabled:hover:translate-y-0">
+                                                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                            <Sparkles className="w-4 h-4" />
+                                                        </span>
+                                                        <span className="flex-1 text-[14px] leading-snug text-slate-700 group-hover:text-slate-900">{sug}</span>
+                                                        <ArrowUpRight className="w-4 h-4 shrink-0 text-slate-300 group-hover:text-blue-500" />
                                                     </button>
                                                 ))}
                                             </div>

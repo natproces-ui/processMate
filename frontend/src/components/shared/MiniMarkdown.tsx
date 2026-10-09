@@ -19,7 +19,7 @@ function stepRefs(text: string, keyBase: string, onStepClick?: (ids: string[]) =
         return (
             <button key={`${keyBase}-s${i}`} type="button" onClick={() => onStepClick(ids)}
                 title="Voir dans le tableau"
-                className="inline rounded-md bg-blue-50 px-1 py-px font-medium text-blue-700 hover:bg-blue-100 underline-offset-2 hover:underline">
+                className="inline rounded bg-blue-50 px-0.5 font-medium text-blue-700 hover:bg-blue-100 underline-offset-2 hover:underline">
                 {part}
             </button>
         );
