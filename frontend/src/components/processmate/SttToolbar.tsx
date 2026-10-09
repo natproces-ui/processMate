@@ -3,6 +3,8 @@
 import { FileText, FileDown, RotateCcw, Trash2, Network, Wand2, SearchCheck, MoreHorizontal } from 'lucide-react';
 
 interface SttToolbarProps {
+    /** Sans encadré : intégré dans l’en-tête du Studio */
+    bare?: boolean;
     dataLength: number;
     detectingInterfaces?: boolean;
     bpmnXml: string;
@@ -21,6 +23,7 @@ interface SttToolbarProps {
 type Variant = 'default' | 'primary' | 'toggle' | 'danger';
 
 export default function SttToolbar({
+    bare = false,
     dataLength, detectingInterfaces = false,
     bpmnXml, isEditingBpmn, revisionOpen, revisionCount,
     onGenerateBPMN, onDownloadBPMN,
@@ -28,7 +31,7 @@ export default function SttToolbar({
     onToggleRevision,
 }: SttToolbarProps) {
     return (
-        <div role="toolbar" aria-label="Outils du Studio" className="bg-white rounded-xl border border-slate-200 px-3 py-2">
+        <div role="toolbar" aria-label="Outils du Studio" className={bare ? '' : 'bg-white rounded-xl border border-slate-200 px-3 py-2'}>
             <div className="flex flex-wrap items-center gap-1.5">
                 <ToolBtn icon={<Wand2 className="w-4 h-4" />} label="Révision" active={revisionOpen} onClick={onToggleRevision}
                     variant="toggle" badge={revisionCount > 0 ? revisionCount : undefined} />

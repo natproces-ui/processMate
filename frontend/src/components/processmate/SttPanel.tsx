@@ -5,6 +5,7 @@
 // Les entrées sont regroupées dans l’assistant ; les actions du résultat restent près du tableau.
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import type * as React from 'react';
 import dynamic from 'next/dynamic';
 import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
 import { generateBPMNOutillage } from '@/logic/bpmnGeneratorOutillage';
@@ -26,6 +27,7 @@ import Library from '@/components/new-way/Library';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
+    PanelLeftOpen, Table2, Workflow, FileText,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders } from '@/lib/processing-level';
@@ -94,6 +96,41 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [revisionOpen, setRevisionOpen] = useState(false);
     const [revisionCount, setRevisionCount] = useState(0);
     const [editorFullscreen, setEditorFullscreen] = useState(false);
+    // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
+    const [view, setView] = useState<'table' | 'bpmn' | 'fiche'>('table');
+    const [chatOpen, setChatOpen] = useState(true);
+    const [chatWidth, setChatWidth] = useState(400);
+    const LAYOUT_KEY = 'processmate-studio-layout';
+    useEffect(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
+            if (typeof saved.chatOpen === 'boolean') setChatOpen(saved.chatOpen);
+            if (typeof saved.chatWidth === 'number') setChatWidth(Math.min(720, Math.max(320, saved.chatWidth)));
+        } catch { /* préférence facultative */ }
+    }, []);
+    // Enregistré au moment de l'action (un effet réécrirait les valeurs par défaut au montage)
+    const saveLayout = (patch: { chatOpen?: boolean; chatWidth?: number }) => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
+            localStorage.setItem(LAYOUT_KEY, JSON.stringify({ ...saved, ...patch }));
+        } catch { /* facultatif */ }
+    };
+    const toggleChat = (open: boolean) => { setChatOpen(open); saveLayout({ chatOpen: open }); };
+    const startChatResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX, startW = chatWidth;
+        let width = startW;
+        const onMove = (ev: MouseEvent) => { width = Math.min(720, Math.max(320, startW + ev.clientX - startX)); setChatWidth(width); };
+        const onUp = () => {
+            saveLayout({ chatWidth: width });
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = ''; document.body.style.userSelect = '';
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+    };
     const [recording, setRecording] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -727,7 +764,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
 
                 <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
                 {/* Conversation : pleine hauteur, composeur en bas */}
-                <aside aria-label="Conversation" className="shrink-0 h-[55vh] lg:h-auto lg:w-[420px] xl:w-[460px] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white">
+                {chatOpen && (
+                <aside aria-label="Conversation" style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
+                    className="relative shrink-0 h-[55vh] lg:h-auto lg:w-[var(--chat-w)] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white">
                     <ChatInterface
                         inputContextVisible={uploadOpen || codeSourceOpen}
                         inputContext={inputContext}
@@ -749,211 +788,260 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onProcedureError={handleProcedureError}
                         onSelectProcedure={handleSelectProcedure}
                         variant="sidebar"
+                        onCollapse={() => toggleChat(false)}
                     />
+                    <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
+                        onMouseDown={startChatResize}
+                        className="hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-blue-400/30" />
                 </aside>
-                {/* Procédure : onglets, diagramme, tableau, export */}
-                <div className="flex-1 min-w-0 overflow-y-auto">
-                <div className="max-w-[1400px] mx-auto px-4 py-5 space-y-3">
-
-                    {loadingWorkflow && (
-                        <div className="p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg flex items-center gap-2 text-sm">
-                            <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />Chargement…
+                )}
+                {/* Procédure : en-tête (onglets + vues + actions) puis la vue choisie en pleine hauteur */}
+                <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
+                    <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5 space-y-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                            {!chatOpen && (
+                                <button type="button" onClick={() => toggleChat(true)} title="Afficher l’assistant"
+                                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                                    <PanelLeftOpen className="w-3.5 h-3.5" /> Assistant
+                                </button>
+                            )}
+                            {/* Onglets des procédures */}
+                            <div className="flex gap-1 items-center min-w-0 overflow-x-auto">
+                                {instances.length === 0 && <span className="text-sm font-semibold text-slate-800 truncate">{activeTitle || 'Nouvelle procédure'}</span>}
+                                {instances.map((inst, i) => (
+                                    <button type="button" key={inst.process_id} onClick={() => setActiveTab(i)} title={inst.title}
+                                        className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === activeTab ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                                        {inst.status === 'generating' && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse" />}
+                                        {inst.status === 'error' && <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1.5" />}
+                                        {inst.status === 'ready' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />}
+                                        {inst.title.length > 30 ? inst.title.slice(0, 30) + '…' : inst.title}
+                                    </button>
+                                ))}
+                                {instances.length > 0 && (
+                                    <button type="button" title="Nouvelle procédure" onClick={() => {
+                                        const newInst: ProcessInstance = {
+                                            process_id: crypto.randomUUID(), title: 'Nouvelle procédure',
+                                            data: defaultData, enrichments: new Map(), bpmnXml: null,
+                                            metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: undefined,
+                                            status: 'ready',
+                                        };
+                                        setInstances(prev => [...prev, newInst]);
+                                        setActiveTab(instances.length);
+                                    }}
+                                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+                                        <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    )}
+                        <div className="flex flex-wrap items-end justify-between gap-2">
+                            {/* Vues de la procédure */}
+                            <div role="tablist" aria-label="Vue de la procédure" className="flex gap-1">
+                                {([
+                                    { id: 'table' as const, label: 'Tableau', icon: Table2 },
+                                    { id: 'bpmn' as const, label: 'BPMN', icon: Workflow },
+                                    { id: 'fiche' as const, label: 'Fiche & export', icon: FileText },
+                                ]).map(v => (
+                                    <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)}
+                                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${view === v.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+                                        <v.icon className="w-3.5 h-3.5" />{v.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="pb-1.5">
+                                <SttToolbar
+                                    bare
+                                    dataLength={activeData.length}
+                                    bpmnXml={activeBpmnXml ?? ''}
+                                    isEditingBpmn={!!activeBpmnXml}
+                                    revisionOpen={revisionOpen}
+                                    revisionCount={revisionCount}
+                                    onGenerateBPMN={async () => { await handleGenerateBPMN(); setView('bpmn'); }}
+                                    onDownloadBPMN={handleDownloadBPMN}
+                                    onResetToDefault={() => { setInstances([]); setData(defaultData); setBpmnXml(null); setPhase('upload'); resetCodeSource(); }}
+                                    onClearTable={() => { if (instances.length > 0) updateActiveData([]); else setData([]); }}
+                                    onDetectInterfaces={() => { }}
+                                    onAnalyseErrors={() => showError('🔜 Bientôt disponible')}
+                                    onToggleRevision={() => setRevisionOpen(o => !o)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {error && <div className="fixed top-16 right-6 z-50 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><AlertCircle className="w-4 h-4 flex-shrink-0" /><span>{error}</span></div>}
                     {success && <div className="fixed top-16 right-6 z-50 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><CheckCircle className="w-4 h-4 flex-shrink-0" /><span>{success}</span></div>}
 
-                    {/* Flowchart Results (depuis code source) */}
-                    {codeSourceOpen && codeStep === 'completed' && codeParsedData && codeFlowchartUrl && (
-                        <div className="clinic-page" style={{ minHeight: 'auto', background: 'transparent' }}>
-                            <FlowchartResults
-                                parsedData={codeParsedData}
-                                flowchartImageUrl={codeFlowchartUrl}
-                                dotSource={codeDotSource}
-                                currentFileName={codeFileName}
-                                vizInstance={vizRef.current}
-                                activeTab={codeActiveTab}
-                                onTabChange={setCodeActiveTab}
-                                onDotSourceChange={setCodeDotSource}
-                                onDownloadJson={() => {}}
-                                onGenerateBPMN={handleCodeToBPMN}
-                            />
-                        </div>
-                    )}
-
-                    {phase === 'discovery' && sessionId && (
-                        <div className="space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <button type="button" onClick={() => { setPhase('upload'); setUploadOpen(true); }} className="text-xs text-blue-600">Retour aux documents</button>
-                                <ProcessingLevelSelector value={processingLevel} onChange={setProcessingLevel} />
-                            </div>
-                            <ProcessDiscoveryPanel processingLevel={processingLevel} sessionId={sessionId} cards={cards} onCardsUpdated={setCards} onGenerate={handleGenerate} generating={generating} />
-                        </div>
-                    )}
-                    {revisionOpen && phase === 'editing' && (
-                        <RevisionPanel
-                            processingLevel={processingLevel}
-                            workflow={activeData}
-                            onWorkflowChange={instances.length > 0 ? updateActiveData : (d) => { setData(d); setRevisionCount(c => c + 1); }}
-                            onSuccess={showSuccess} onError={showError}
-                        />
-                    )}
-
-                    {/* Guide */}
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                        <button onClick={() => setGuideOpen(!guideOpen)} className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                                <Info className="w-3.5 h-3.5 text-blue-400" />Guide d'utilisation
-                            </div>
-                            {guideOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-                        </button>
-                        {guideOpen && (
-                            <div className="px-4 pb-3 border-t border-slate-100">
-                                <ul className="text-xs text-slate-600 space-y-1 mt-2.5">
-                                    <li><strong>StartEvent / EndEvent</strong> — Début et fin du processus</li>
-                                    <li><strong>Task</strong> — Action réalisée par un acteur</li>
-                                    <li><strong>ExclusiveGateway</strong> — Décision (Oui/Non)</li>
-                                    <li><strong>Acteur</strong> — Définit les swimlanes</li>
-                                </ul>
+                    <div className={`flex-1 min-h-0 p-3 ${view === 'bpmn' ? 'flex flex-col gap-3 overflow-hidden' : 'overflow-auto space-y-3'}`}>
+                        {loadingWorkflow && (
+                            <div className="p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg flex items-center gap-2 text-sm">
+                                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />Chargement…
                             </div>
                         )}
-                    </div>
 
-                    {/* Actions sur le processus */}
-                    <SttToolbar
-                        dataLength={activeData.length}
-                        bpmnXml={activeBpmnXml ?? ''}
-                        isEditingBpmn={!!activeBpmnXml}
-                        revisionOpen={revisionOpen}
-                        revisionCount={revisionCount}
-                        onGenerateBPMN={handleGenerateBPMN}
-                        onDownloadBPMN={handleDownloadBPMN}
-                        onResetToDefault={() => { setInstances([]); setData(defaultData); setBpmnXml(null); setPhase('upload'); resetCodeSource(); }}
-                        onClearTable={() => { if (instances.length > 0) updateActiveData([]); else setData([]); }}
-                        onDetectInterfaces={() => { }}
-                        onAnalyseErrors={() => showError('🔜 Bientôt disponible')}
-                        onToggleRevision={() => setRevisionOpen(o => !o)}
-                    />
+                        {/* Flowchart Results (depuis code source) */}
+                        {codeSourceOpen && codeStep === 'completed' && codeParsedData && codeFlowchartUrl && (
+                            <div className="clinic-page shrink-0" style={{ minHeight: 'auto', background: 'transparent' }}>
+                                <FlowchartResults
+                                    parsedData={codeParsedData}
+                                    flowchartImageUrl={codeFlowchartUrl}
+                                    dotSource={codeDotSource}
+                                    currentFileName={codeFileName}
+                                    vizInstance={vizRef.current}
+                                    activeTab={codeActiveTab}
+                                    onTabChange={setCodeActiveTab}
+                                    onDotSourceChange={setCodeDotSource}
+                                    onDownloadJson={() => {}}
+                                    onGenerateBPMN={handleCodeToBPMN}
+                                />
+                            </div>
+                        )}
 
+                        {phase === 'discovery' && sessionId && (
+                            <div className="space-y-2 shrink-0">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <button type="button" onClick={() => { setPhase('upload'); setUploadOpen(true); }} className="text-xs text-blue-600">Retour aux documents</button>
+                                    <ProcessingLevelSelector value={processingLevel} onChange={setProcessingLevel} />
+                                </div>
+                                <ProcessDiscoveryPanel processingLevel={processingLevel} sessionId={sessionId} cards={cards} onCardsUpdated={setCards} onGenerate={handleGenerate} generating={generating} />
+                            </div>
+                        )}
+                        {revisionOpen && phase === 'editing' && (
+                            <div className="shrink-0">
+                                <RevisionPanel
+                                    processingLevel={processingLevel}
+                                    workflow={activeData}
+                                    onWorkflowChange={instances.length > 0 ? updateActiveData : (d) => { setData(d); setRevisionCount(c => c + 1); }}
+                                    onSuccess={showSuccess} onError={showError}
+                                />
+                            </div>
+                        )}
 
-                    {/* Onglets processus + nouvelle procédure */}
-                    {instances.length > 0 && (
-                        <div className="flex gap-1 flex-wrap items-center">
-                            {instances.map((inst, i) => (
-                                <button type="button" key={inst.process_id} onClick={() => setActiveTab(i)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === activeTab ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                                    {inst.status === 'generating' && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse" />}
-                                    {inst.status === 'error' && <span className="inline-block w-2 h-2 rounded-full bg-red-400    mr-1.5" />}
-                                    {inst.status === 'ready' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />}
-                                    {inst.title.length > 30 ? inst.title.slice(0, 30) + '…' : inst.title}
-                                </button>
-                            ))}
-                            <button type="button" title="Nouvelle procédure" onClick={() => {
-                                const newInst: ProcessInstance = {
-                                    process_id: crypto.randomUUID(), title: 'Nouvelle procédure',
-                                    data: defaultData, enrichments: new Map(), bpmnXml: null,
-                                    metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: undefined,
-                                    status: 'ready',
-                                };
-                                setInstances(prev => [...prev, newInst]);
-                                setActiveTab(instances.length);
-                                setPhase('upload'); setUploadOpen(true);
-                            }}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors">
-                                <Plus className="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* BPMN Editor */}
-                    {activeBpmnXml && (
-                        <div className={`bg-white border border-slate-200 rounded-xl overflow-hidden ${editorFullscreen ? 'fixed inset-4 z-50 shadow-2xl' : ''}`}>
-                            <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-                                <span className="text-sm font-semibold text-slate-700">BPMN Studio — {activeTitle}</span>
-                                <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => {
-                                        const inst = instances.length > 0 ? activeInst : null;
-                                        if (inst?.workflow_db_id) {
-                                            handleSave(inst.title, '', undefined);
-                                        } else {
-                                            setSaveModalOpen(true);
-                                        }
-                                    }} disabled={saving || viewMode === 'outillage'}
-                                        title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                                        <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
+                        {activeInst?.status === 'generating' ? (
+                            <div className="bg-white border border-slate-200 rounded-xl p-8 flex items-center justify-center gap-3 text-slate-400">
+                                <div className="w-5 h-5 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
+                                <span className="text-sm">Génération de "{activeInst.title}"…</span>
+                            </div>
+                        ) : view === 'table' ? (
+                            <>
+                                <Table
+                                    data={activeData} enrichments={activeEnrichments}
+                                    processTitle={activeTitle}
+                                    onDataChange={instances.length > 0 ? updateActiveData : setData}
+                                    onEnrichmentsChange={instances.length > 0 ? updateActiveEnrichments : setEnrichments}
+                                    onShowSuccess={showSuccess}
+                                    highlightedRowIds={recentAiChangedStepIds}
+                                />
+                                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                                    <button onClick={() => setGuideOpen(!guideOpen)} className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                                            <Info className="w-3.5 h-3.5 text-blue-400" />Légende des types BPMN
+                                        </div>
+                                        {guideOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
                                     </button>
-                                    <button type="button" onClick={handleSyncClick} disabled={viewMode === 'outillage'}
-                                        title={viewMode === 'outillage' ? 'Repassez en vue métier pour synchroniser' : 'Relire le diagramme pour mettre à jour le tableau (tâches/outils ajoutés directement sur le canevas)'}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 disabled:opacity-40 transition-colors">
-                                        <RotateCw className="w-3.5 h-3.5" />Synchroniser
-                                    </button>
-                                    <button type="button" onClick={toggleViewMode}
-                                        title="Vue IT : l'outil devient le titre de chaque tâche — cliquez un outil pour voir ses écrans/champs/codes"
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${viewMode === 'outillage' ? 'bg-violet-600 text-white' : 'bg-white border border-violet-300 text-violet-700 hover:bg-violet-50'}`}>
-                                        <Wrench className="w-3.5 h-3.5" />{viewMode === 'outillage' ? 'Vue IT (active)' : 'Vue IT'}
-                                    </button>
-                                    {activeInst?.workflow_db_id && currentActorId && (
-                                        <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
-                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                                            {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                                            Soumettre
-                                        </button>
+                                    {guideOpen && (
+                                        <div className="px-4 pb-3 border-t border-slate-100">
+                                            <ul className="text-xs text-slate-600 space-y-1 mt-2.5">
+                                                <li><strong>StartEvent / EndEvent</strong> — Début et fin du processus</li>
+                                                <li><strong>Task</strong> — Action réalisée par un acteur</li>
+                                                <li><strong>ExclusiveGateway</strong> — Décision (Oui/Non)</li>
+                                                <li><strong>Acteur</strong> — Définit les swimlanes</li>
+                                            </ul>
+                                        </div>
                                     )}
-                                    <button type="button" onClick={handleDownloadBPMN}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">
-                                        <Download className="w-3.5 h-3.5" />Télécharger
-                                    </button>
-                                    <button type="button" onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
-                                        <Maximize2 className="w-4 h-4 text-slate-500" />
-                                    </button>
-                                    <button type="button"
-                                        onClick={() => { if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: null } : inst)); else setBpmnXml(null); }}
-                                        className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
-                                        <X className="w-4 h-4 text-slate-500" />
+                                </div>
+                            </>
+                        ) : view === 'bpmn' ? (
+                            activeBpmnXml ? (
+                                <div className={`bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col ${editorFullscreen ? 'fixed inset-4 z-50 shadow-2xl' : 'flex-1 min-h-[420px]'}`}>
+                                    <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
+                                        <span className="text-sm font-semibold text-slate-700 truncate">BPMN — {activeTitle}</span>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <button type="button" onClick={() => {
+                                                const inst = instances.length > 0 ? activeInst : null;
+                                                if (inst?.workflow_db_id) {
+                                                    handleSave(inst.title, '', undefined);
+                                                } else {
+                                                    setSaveModalOpen(true);
+                                                }
+                                            }} disabled={saving || viewMode === 'outillage'}
+                                                title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                                <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
+                                            </button>
+                                            <button type="button" onClick={handleSyncClick} disabled={viewMode === 'outillage'}
+                                                title={viewMode === 'outillage' ? 'Repassez en vue métier pour synchroniser' : 'Relire le diagramme pour mettre à jour le tableau (tâches/outils ajoutés directement sur le canevas)'}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 disabled:opacity-40 transition-colors">
+                                                <RotateCw className="w-3.5 h-3.5" />Synchroniser
+                                            </button>
+                                            <button type="button" onClick={toggleViewMode}
+                                                title="Vue IT : l'outil devient le titre de chaque tâche — cliquez un outil pour voir ses écrans/champs/codes"
+                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${viewMode === 'outillage' ? 'bg-violet-600 text-white' : 'bg-white border border-violet-300 text-violet-700 hover:bg-violet-50'}`}>
+                                                <Wrench className="w-3.5 h-3.5" />{viewMode === 'outillage' ? 'Vue IT (active)' : 'Vue IT'}
+                                            </button>
+                                            {activeInst?.workflow_db_id && currentActorId && (
+                                                <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                                                    {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                                    Soumettre
+                                                </button>
+                                            )}
+                                            <button type="button" onClick={handleDownloadBPMN}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">
+                                                <Download className="w-3.5 h-3.5" />Télécharger
+                                            </button>
+                                            <button type="button" title={editorFullscreen ? 'Quitter le plein écran' : 'Plein écran'} onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
+                                                <Maximize2 className="w-4 h-4 text-slate-500" />
+                                            </button>
+                                            <button type="button" title="Fermer le diagramme"
+                                                onClick={() => { if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: null } : inst)); else setBpmnXml(null); }}
+                                                className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
+                                                <X className="w-4 h-4 text-slate-500" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-1 min-h-0">
+                                        <Library modelerRef={modelerRef} />
+                                        <div className="flex-1 min-w-0">
+                                            {instances.length > 0
+                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
+                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center text-slate-500 bg-white border border-dashed border-slate-300 rounded-xl p-8">
+                                    <Workflow className="w-8 h-8 text-slate-300" />
+                                    <p className="text-sm">Le diagramme n&apos;est pas encore généré.</p>
+                                    <button type="button" onClick={handleGenerateBPMN} disabled={activeData.length === 0}
+                                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40">
+                                        Générer le BPMN
                                     </button>
                                 </div>
-                            </div>
-                            <div className="flex" style={{ height: editorFullscreen ? 'calc(100% - 44px)' : '600px' }}>
-                                <Library modelerRef={modelerRef} />
-                                <div className="flex-1 min-w-0">
-                                    {instances.length > 0
-                                        ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
-                                        : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
-                                    }
+                            )
+                        ) : (
+                            activeBpmnXml && activeData.length > 0 ? (
+                                <DocumentExportPanel
+                                    data={activeData} enrichments={activeEnrichments}
+                                    processMetadata={activeMetadata} bpmnXml={activeBpmnXml}
+                                    diagramCaptureFn={captureBpmnDiagram}
+                                    initialMeta={activeInitialMeta}
+                                    sourceFiles={sourceFiles}
+                                    onSuccess={showSuccess} onError={showError}
+                                    onMetaEdited={changes => { exportEditsRef.current[activeTab] = changes; }}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center gap-3 text-center text-slate-500 bg-white border border-dashed border-slate-300 rounded-xl p-8">
+                                    <FileText className="w-8 h-8 text-slate-300" />
+                                    <p className="text-sm">La fiche et l&apos;export sont disponibles une fois le diagramme BPMN généré.</p>
+                                    <button type="button" onClick={async () => { await handleGenerateBPMN(); }} disabled={activeData.length === 0}
+                                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40">
+                                        Générer le BPMN
+                                    </button>
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeInst?.status === 'generating' ? (
-                        <div className="bg-white border border-slate-200 rounded-xl p-8 flex items-center justify-center gap-3 text-slate-400">
-                            <div className="w-5 h-5 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
-                            <span className="text-sm">Génération de "{activeInst.title}"…</span>
-                        </div>
-                    ) : (
-                        <Table
-                            data={activeData} enrichments={activeEnrichments}
-                            processTitle={activeTitle}
-                            onDataChange={instances.length > 0 ? updateActiveData : setData}
-                            onEnrichmentsChange={instances.length > 0 ? updateActiveEnrichments : setEnrichments}
-                            onShowSuccess={showSuccess}
-                            highlightedRowIds={recentAiChangedStepIds}
-                        />
-                    )}
-
-                    {activeBpmnXml && activeData.length > 0 && (
-                        <DocumentExportPanel
-                            data={activeData} enrichments={activeEnrichments}
-                            processMetadata={activeMetadata} bpmnXml={activeBpmnXml}
-                            diagramCaptureFn={captureBpmnDiagram}
-                            initialMeta={activeInitialMeta}
-                            sourceFiles={sourceFiles}
-                            onSuccess={showSuccess} onError={showError}
-                            onMetaEdited={changes => { exportEditsRef.current[activeTab] = changes; }}
-                        />
-                    )}
-                </div>
+                            )
+                        )}
+                    </div>
                 </div>
                 </div>
             </div>

@@ -10,7 +10,7 @@ import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSel
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -88,6 +88,8 @@ interface ChatInterfaceProps {
     onSelectProcedure?: (key: string) => void;
     /** 'sidebar' : colonne pleine hauteur, composeur en bas (Studio) */
     variant?: 'inline' | 'sidebar';
+    /** Masquer l’assistant (mode colonne) */
+    onCollapse?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -170,6 +172,7 @@ export default function ChatInterface({
     onProcedureError,
     onSelectProcedure,
     variant = 'inline',
+    onCollapse,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -500,15 +503,21 @@ export default function ChatInterface({
         <section aria-label="Assistant ProcessMate" className={isSidebar ? 'h-full flex flex-col min-h-0 bg-white' : 'w-full max-w-4xl mx-auto'}>
             <div className={isSidebar ? 'shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-200' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
                 <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-slate-800">{messages.length === 0 ? 'Que souhaitez-vous formaliser ?' : 'Assistant'}</h3>
+                    <h3 className="text-sm font-semibold text-slate-800 truncate">{isSidebar || messages.length > 0 ? 'Assistant' : 'Que souhaitez-vous formaliser ?'}</h3>
                     {currentWorkflow.length > 0 && <p className="text-xs text-slate-400 mt-0.5">Procédure ouverte : {currentWorkflow.length} étapes</p>}
                 </div>
                 <div className="flex items-center gap-1">
                     <button type="button" onClick={newSession} disabled={loading || !initialized}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-white hover:text-slate-800 disabled:opacity-40"
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
                         title="Démarrer une nouvelle conversation">
                         <PenLine className="w-3.5 h-3.5" /> Nouvelle conversation
                     </button>
+                    {isSidebar && onCollapse && (
+                        <button type="button" onClick={onCollapse} title="Masquer l’assistant" aria-label="Masquer l’assistant"
+                            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                            <PanelLeftClose className="w-4 h-4" />
+                        </button>
+                    )}
                     {!isSidebar && <button type="button" aria-label={collapsed ? 'Ouvrir l’assistant' : 'Réduire l’assistant'} aria-expanded={!collapsed}
                         onClick={() => setCollapsed(c => !c)} className="p-1.5 rounded-lg hover:bg-white text-slate-400">
                         {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
@@ -523,7 +532,8 @@ export default function ChatInterface({
                         {isSidebar && messages.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-6 text-slate-400">
                                 <Sparkles className="w-6 h-6 mb-3 text-slate-300" />
-                                <p className="text-sm text-slate-600 font-medium">Joignez des documents ou décrivez une procédure.</p>
+                                <p className="text-base text-slate-700 font-semibold">Que souhaitez-vous formaliser ?</p>
+                                <p className="text-sm text-slate-500 mt-1">Joignez des documents, dictez ou décrivez une procédure.</p>
                                 <p className="text-xs mt-1.5 leading-relaxed">Je repère les procédures qu&apos;ils contiennent : une seule est générée directement, plusieurs vous sont proposées. Vous pouvez aussi demander de tout fusionner.</p>
                             </div>
                         )}
