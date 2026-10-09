@@ -120,6 +120,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
 
     const editorRef = useRef<BpmnEditorHandle>(null);
     const editorRefs = useRef<(BpmnEditorHandle | null)[]>([]);
+    // Champs modifiés dans le formulaire d'export, par onglet : enregistrés avec la procédure
+    const exportEditsRef = useRef<Record<number, Record<string, unknown>>>({});
     const modelerRef = useRef<any>(null);
     const vizRef = useRef<VizInstance | null>(null);
     const cancelledRef = useRef(false);
@@ -458,21 +460,24 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 saveEnrichments.forEach((v, k) => { enrichObj[k] = v; });
                 // Une sauvegarde manuelle depuis le Studio efface le tampon "modifications
                 // récentes de l'IA" — l'utilisateur a vu et repris la main sur la procédure.
-                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, saveRows as unknown[], enrichObj, { recent_ai_changes: null }, currentXml);
-                setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, initialMeta: { ...i.initialMeta, recent_ai_changes: null } } : i));
+                const exportEdits = exportEditsRef.current[activeTab] ?? {};
+                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, saveRows as unknown[], enrichObj, { ...exportEdits, recent_ai_changes: null }, currentXml);
+                setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, initialMeta: { ...i.initialMeta, ...exportEdits, recent_ai_changes: null } } : i));
             } else {
                 const res = await orchestrationApi.createProcedure({ nom, category, taxonomy_id: taxonomyId });
                 const newId = res.procedure.id;
                 const enrichObj: Record<string, unknown> = {};
                 saveEnrichments.forEach((v, k) => { enrichObj[k] = v; });
-                await orchestrationApi.saveWorkflowData(newId, saveRows as unknown[], enrichObj, { nom, category }, currentXml);
+                // Métadonnées générées (objet, périmètre, dates, annexes…) + saisies du formulaire d'export
+                const fullMeta = { ...(activeInitialMeta ?? {}), ...(exportEditsRef.current[activeTab] ?? {}), nom, category };
+                await orchestrationApi.saveWorkflowData(newId, saveRows as unknown[], enrichObj, fullMeta, currentXml);
                 if (inst) setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, workflow_db_id: newId, title: nom } : i));
                 invalidate();
             }
             showSuccess('Procédure enregistrée');
         } catch (err: any) { showError(`Erreur : ${err.message}`); throw err; }
         finally { setSaving(false); }
-    }, [activeInst, activeTab, instances, data, enrichments, invalidate, runParser, applySyncResult]);
+    }, [activeInst, activeTab, instances, data, enrichments, invalidate, runParser, applySyncResult, activeInitialMeta]);
 
     const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
@@ -908,6 +913,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             initialMeta={activeInitialMeta}
                             sourceFiles={sourceFiles}
                             onSuccess={showSuccess} onError={showError}
+                            onMetaEdited={changes => { exportEditsRef.current[activeTab] = changes; }}
                         />
                     )}
                 </div>

@@ -16,6 +16,7 @@ import re
 import uuid
 
 from database.supabase_client import get_supabase, ensure_session_exists
+from database.procedure_metadata import normalize_procedure_metadata
 
 import logging
 
@@ -103,7 +104,7 @@ def _get_workflow(workflow_id: str) -> Dict:
 
 def _update_metadata(workflow_id: str, meta: Dict) -> None:
     db = get_supabase()
-    db.table("workflows").update({"procedure_metadata_json": meta}).eq("id", workflow_id).execute()
+    db.table("workflows").update({"procedure_metadata_json": normalize_procedure_metadata(meta)}).eq("id", workflow_id).execute()
 
 
 def _get_latest_workflows() -> List[Dict]:
@@ -505,7 +506,7 @@ async def create_procedure(body: CreateProcedureRequest):
             "title": body.nom.strip(),
             "workflow_json": [],
             "enrichments_json": {},
-            "procedure_metadata_json": meta,
+            "procedure_metadata_json": normalize_procedure_metadata(meta),
             "version": 1,
         }
         if body.taxonomy_id:
@@ -679,7 +680,10 @@ async def import_procedure_from_extraction(body: ImportFromExtractionRequest):
     else:
         regles_gestion = []
 
+    # Tous les champs extraits sont conservés (dates d'effet/diffusion, annexes…),
+    # puis complétés/surchargés par les valeurs propres à la création.
     meta = {
+        **proc_meta,
         "nom": body.nom.strip(),
         "ref": proc_meta.get("ref", ""),
         "version": proc_meta.get("version", ""),
@@ -687,8 +691,8 @@ async def import_procedure_from_extraction(body: ImportFromExtractionRequest):
         "pole": proc_meta.get("pole", ""),
         "direction": proc_meta.get("direction", ""),
         "objet": proc_meta.get("objet", ""),
-        "definition": "",
-        "perimetre": proc_meta.get("perimeter", ""),
+        "definition": proc_meta.get("definition", ""),
+        "perimetre": proc_meta.get("perimetre") or proc_meta.get("perimeter", ""),
         "proprietaire": proc_meta.get("direction", "") or proc_meta.get("pole", ""),
         "regles_gestion": regles_gestion,
         "abbreviations": proc_meta.get("abbreviations") or [],
@@ -716,7 +720,7 @@ async def import_procedure_from_extraction(body: ImportFromExtractionRequest):
             "title": body.nom.strip(),
             "workflow_json": workflow_json,
             "enrichments_json": enrichments_json,
-            "procedure_metadata_json": meta,
+            "procedure_metadata_json": normalize_procedure_metadata(meta),
             "version": 1,
         }).execute()
 
@@ -788,7 +792,9 @@ async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest):
         wf = _get_workflow(workflow_id)
         existing_meta = wf.get("procedure_metadata_json") or {}
         if body.procedure_metadata_json is not None:
-            merged = {**existing_meta, **body.procedure_metadata_json}
+            # L'entrant est normalisé avant la fusion : un nouveau `perimeter` remplace
+            # aussi l'ancien `perimetre` (sinon l'ancienne valeur l'emporterait).
+            merged = {**existing_meta, **normalize_procedure_metadata(body.procedure_metadata_json)}
             for key in ("lifecycle_stages", "raci", "remarks"):
                 if key in existing_meta and key not in body.procedure_metadata_json:
                     merged[key] = existing_meta[key]
@@ -802,7 +808,7 @@ async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest):
         update: Dict = {
             "workflow_json": body.workflow_json,
             "enrichments_json": enrichments,
-            "procedure_metadata_json": merged,
+            "procedure_metadata_json": normalize_procedure_metadata(merged),
         }
         db.table("workflows").update(update).eq("id", workflow_id).execute()
         logger.info(f"💾 workflow_json mis à jour — {workflow_id}")
@@ -996,7 +1002,7 @@ async def migrate_lifecycle_stages():
 
             meta["lifecycle_stages"] = stages
             db.table("workflows").update(
-                {"procedure_metadata_json": meta}
+                {"procedure_metadata_json": normalize_procedure_metadata(meta)}
             ).eq("id", wf["id"]).execute()
             updated += 1
 

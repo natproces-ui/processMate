@@ -11,6 +11,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 import httpx
 from supabase import create_client, Client, ClientOptions
+from database.procedure_metadata import normalize_procedure_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -236,7 +237,7 @@ def save_workflow(
         "title": title,
         "workflow_json": workflow_json,
         "enrichments_json": enrichments_json,
-        "procedure_metadata_json": procedure_metadata_json,
+        "procedure_metadata_json": normalize_procedure_metadata(procedure_metadata_json),
         "version": version
     }
 

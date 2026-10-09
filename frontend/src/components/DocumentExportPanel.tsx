@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FileText, Download, Loader2, ChevronDown, ChevronUp, Plus, Trash2, Sparkles, Crop, ImageOff } from 'lucide-react';
 import { Table1Row } from '@/logic/bpmnGenerator';
 import { TaskEnrichment, ProcessMetadata } from '@/logic/bpmnTypes';
@@ -53,6 +53,8 @@ interface DocumentExportPanelProps {
     initialMeta?: Partial<CIHProcedureMetadata>;
     /** Fichiers sources uploadés (PDF/images), disponibles pour la capture d'annexe */
     sourceFiles?: File[];
+    /** Champs modifiés à la main dans le formulaire (hors pré-remplissage), pour que l'appelant les enregistre */
+    onMetaEdited?: (changes: Record<string, unknown>) => void;
 }
 
 interface ExportOptions {
@@ -72,7 +74,7 @@ const textareaCls = "w-full bg-gray-800 border border-gray-600 text-white text-s
 const labelCls = "block text-xs text-gray-400 mb-1";
 
 export default function DocumentExportPanel({
-    data, enrichments, processMetadata, bpmnXml, diagramCaptureFn, onSuccess, onError, initialMeta, sourceFiles,
+    data, enrichments, processMetadata, bpmnXml, diagramCaptureFn, onSuccess, onError, initialMeta, sourceFiles, onMetaEdited,
 }: DocumentExportPanelProps) {
 
     const [isGenerating, setIsGenerating] = useState(false);
@@ -92,6 +94,22 @@ export default function DocumentExportPanel({
         ...DEFAULT_CIH_METADATA,
         nom: processMetadata?.nom || '',
     });
+    // Référence = état après pré-remplissage ; seules les différences sont des saisies de l'utilisateur
+    const baselineRef = useRef<CIHProcedureMetadata>(cihMeta);
+
+    useEffect(() => {
+        if (!onMetaEdited) return;
+        const base = baselineRef.current;
+        const changes: Record<string, unknown> = {};
+        (Object.keys(cihMeta) as (keyof CIHProcedureMetadata)[]).forEach(k => {
+            if (JSON.stringify(cihMeta[k]) === JSON.stringify(base[k])) return;
+            // Format de la base : règles de gestion en liste (le formulaire les saisit en texte)
+            changes[k] = k === 'regles_gestion'
+                ? String(cihMeta[k]).split('\n').map(r => r.trim()).filter(Boolean)
+                : cihMeta[k];
+        });
+        onMetaEdited(changes);
+    }, [cihMeta]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const [options, setOptions] = useState<ExportOptions>({
         include_diagram: true, include_enrichments: true, include_annexes: true, detail_level: 'standard',
@@ -100,15 +118,27 @@ export default function DocumentExportPanel({
     // Pré-remplissage automatique quand initialMeta arrive depuis l'extraction
     useEffect(() => {
         if (!initialMeta) return;
-        setCihMeta(prev => ({
-            ...prev,
-            ...Object.fromEntries(
-                Object.entries(initialMeta).filter(([, v]) =>
-                    v !== undefined && v !== null && v !== '' &&
-                    !(Array.isArray(v) && v.length === 0)
-                )
-            ),
-        }));
+        // La base stocke `perimetre`, le formulaire lit `perimeter` : on accepte les deux noms
+        const raw = initialMeta as Record<string, unknown>;
+        const normalized = {
+            ...raw,
+            perimeter: raw.perimeter || raw.perimetre || '',
+            // La base stocke une liste, le formulaire un texte (une règle par ligne)
+            regles_gestion: Array.isArray(raw.regles_gestion) ? raw.regles_gestion.join('\n') : raw.regles_gestion,
+        };
+        setCihMeta(prev => {
+            const next = {
+                ...prev,
+                ...Object.fromEntries(
+                    Object.entries(normalized).filter(([, v]) =>
+                        v !== undefined && v !== null && v !== '' &&
+                        !(Array.isArray(v) && v.length === 0)
+                    )
+                ),
+            };
+            baselineRef.current = next;
+            return next;
+        });
         setAutoFilled(true);
         setShowMetaForm(true);
     }, [initialMeta]);

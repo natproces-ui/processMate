@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from database.supabase_client import get_supabase, mark_bian_scenario_imported
+from database.procedure_metadata import normalize_procedure_metadata
 from routers.orchestration_router import DEFAULT_LIFECYCLE_STAGES, _build_procedure
 
 logger = logging.getLogger(__name__)
@@ -196,7 +197,7 @@ async def import_scenario(scenario_id: str, body: ImportScenarioRequest):
             "title": body.nom.strip(),
             "workflow_json": workflow_json,
             "enrichments_json": {},
-            "procedure_metadata_json": meta,
+            "procedure_metadata_json": normalize_procedure_metadata(meta),
             "version": 1,
             "taxonomy_id": taxonomy_id,
         }).execute()
