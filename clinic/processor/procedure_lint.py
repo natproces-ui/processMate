@@ -37,10 +37,21 @@ def lint_procedure(workflow: List[Dict[str, Any]], metadata: Dict[str, Any] | No
         for tgt in _targets(r):
             if tgt in incoming:
                 incoming[tgt].append(str(r.get("id")))
+    # Convention de modélisation (prompt de génération) : un acteur EXTERNE qui déclenche le
+    # processus (ex. le client dépose sa demande) a sa tâche AVANT le StartEvent et pointe vers lui ;
+    # le StartEvent appartient au premier acteur interne. Ce n'est pas une erreur.
+    def is_external_trigger(rid: str) -> bool:
+        r = by_id.get(rid, {})
+        return (str(r.get("typeActeur") or "").strip().lower() == "externe"
+                and r.get("typeBpmn") not in (START, END) and not incoming.get(rid))
+    triggers: List[str] = []
     for s in starts:
-        if incoming.get(s):
-            add("erreur", [s] + incoming[s], f"Le début (étape {s}) est précédé par l'étape {', '.join(incoming[s])} : il devrait être le premier élément.")
-        elif ids.index(s) != 0:
+        preds = incoming.get(s) or []
+        internal_preds = [p for p in preds if not is_external_trigger(p)]
+        triggers += [p for p in preds if is_external_trigger(p)]
+        if internal_preds:
+            add("erreur", [s] + internal_preds, f"Le début (étape {s}) est précédé par l'étape {', '.join(internal_preds)} : seule une tâche d'acteur externe déclencheur peut le précéder.")
+        elif any(not is_external_trigger(i) for i in ids[:ids.index(s)]):
             add("erreur", [s], f"Le début (étape {s}) n'est pas placé en premier dans le tableau.")
 
     for r in rows:
@@ -57,8 +68,9 @@ def lint_procedure(workflow: List[Dict[str, Any]], metadata: Dict[str, Any] | No
         if typ not in (START, END) and not (r.get("acteur") or "").strip():
             add("manque", [rid], f"L'étape {rid} n'a pas d'acteur.")
 
-    if starts:  # étapes inatteignables depuis le début
-        seen, queue = set(starts), deque(starts)
+    if starts:  # étapes inatteignables depuis le début (ou depuis un déclencheur externe)
+        roots = starts + triggers
+        seen, queue = set(roots), deque(roots)
         while queue:
             for tgt in _targets(by_id.get(queue.popleft(), {})):
                 if tgt in by_id and tgt not in seen:

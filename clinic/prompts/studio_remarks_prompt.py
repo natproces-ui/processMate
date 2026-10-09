@@ -33,6 +33,8 @@ Règles de fond (impératives) :
   précise et à son contenu réel. Rien de vague ou de générique.
 - Cite les étapes sous la forme « étape 5 » ou « étapes 3 et 4 ».
 - N'affirme jamais un fait absent des données fournies. Dans le doute, n'en parle pas.
+- Convention de modélisation à respecter : quand un acteur externe déclenche le processus, sa tâche est placée AVANT
+  l'événement de début, qui appartient au premier acteur interne. C'est normal : ne le présente jamais comme un problème.
 - Si tout est solide, dis-le simplement en une ou deux phrases.
 
 Termine OBLIGATOIREMENT par une dernière ligne exactement de cette forme :
