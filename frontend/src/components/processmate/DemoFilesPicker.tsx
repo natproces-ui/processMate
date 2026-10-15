@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Presentation, Loader2, Trash2, Upload, X, FolderOpen, Check } from 'lucide-react';
+import { FileText, Presentation, Loader2, Trash2, Upload, X, FolderOpen, Check, Eye } from 'lucide-react';
 import { listDemoFiles, fetchDemoFile, uploadDemoFile, deleteDemoFile, type DemoFile } from '@/lib/demoFilesApi';
 
 type Kind = 'image' | 'pdf' | 'office';
@@ -134,17 +134,18 @@ export default function DemoFilesPicker({ open, onClose, onAttach, maxSelect, on
                 {files.map(f => {
                   const checked = selected.includes(f.name);
                   return (
-                    <li key={f.name} className={`group flex items-center gap-1 rounded-lg pl-2 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                    <li key={f.name} className={`group flex items-center gap-1 rounded-lg pl-1 ${checked ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                      <button type="button" onClick={() => setPreviewing(f.name)}
+                        aria-label={`Aperçu de ${f.name}`} title="Aperçu"
+                        className="p-1.5 shrink-0 rounded-md text-slate-400 hover:text-blue-600 hover:bg-white">
+                        <Eye className="w-4 h-4" />
+                      </button>
                       <button type="button" onClick={() => toggle(f.name)} aria-pressed={checked}
-                        aria-label={`${checked ? 'Désélectionner' : 'Sélectionner'} ${f.name}`}
                         disabled={!checked && !canSelectMore}
-                        className="p-1 shrink-0 disabled:opacity-40">
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center ${checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'}`}>
+                        className={`flex-1 min-w-0 flex items-center gap-2.5 py-1.5 pr-1 text-left text-sm disabled:opacity-40 ${checked ? 'text-blue-900' : 'text-slate-700'}`}>
+                        <span className={`w-4 h-4 shrink-0 rounded border flex items-center justify-center ${checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'}`}>
                           {checked && <Check className="w-3 h-3" />}
                         </span>
-                      </button>
-                      <button type="button" onClick={() => setPreviewing(f.name)} title="Aperçu"
-                        className={`flex-1 min-w-0 flex items-center gap-2.5 py-1.5 pr-1 text-left text-sm ${checked ? 'text-blue-900' : 'text-slate-700'}`}>
                         <Thumb name={f.name} getFile={getFile} />
                         <span className="truncate">{f.name}</span>
                         {f.size != null && <span className="ml-auto shrink-0 text-xs text-slate-400">{formatSize(f.size)}</span>}
