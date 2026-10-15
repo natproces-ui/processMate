@@ -8,10 +8,12 @@ import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
+import DemoFilesPicker from '@/components/processmate/DemoFilesPicker';
+import { useAuth } from '@/context/AuthContext';
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow, Presentation
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow, Presentation, FolderOpen
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -209,6 +211,9 @@ export default function ChatInterface({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [addMenuOpen, setAddMenuOpen] = useState(false);
+    const [demoFilesOpen, setDemoFilesOpen] = useState(false);
+    const { profile } = useAuth();
+    const isAdmin = profile?.global_role === 'admin';
     const [dragging, setDragging] = useState(false);
 
     // Dictée : le texte arrive dans le champ, l'utilisateur relit puis envoie
@@ -830,7 +835,7 @@ export default function ChatInterface({
 
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                             <div className="flex items-center gap-1">
-                            {onOpenDocuments || onOpenCode ? (
+                            {onOpenDocuments || onOpenCode || isAdmin ? (
                                 <div ref={addMenuRef} className="relative shrink-0">
                                     <button type="button" aria-label="Ajouter un contenu" title="Ajouter un contenu"
                                         aria-haspopup="menu" aria-expanded={addMenuOpen}
@@ -841,6 +846,7 @@ export default function ChatInterface({
                                     {addMenuOpen && (
                                         <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
                                             <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre des fichiers (PDF, Word, PowerPoint, images)" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
+                                            {isAdmin && <ComposerMenuAction icon={<FolderOpen className="w-4 h-4" />} label="Fichiers de démo" onClick={() => { setAddMenuOpen(false); setDemoFilesOpen(true); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />}
                                             {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={() => { setAddMenuOpen(false); onOpenCode(); }} />}
                                         </div>
                                     )}
@@ -863,6 +869,8 @@ export default function ChatInterface({
                                 }}
                                 className="hidden"
                             />
+                            {isAdmin && <DemoFilesPicker open={demoFilesOpen} onClose={() => setDemoFilesOpen(false)}
+                                onAttach={addFiles} maxSelect={MAX_ATTACHMENTS - attachedFiles.length} onError={onError} />}
 
 
                                 {onToggleRecording && <button type="button" onClick={onToggleRecording} disabled={processing}

@@ -44,7 +44,7 @@ from routers import (
     orchestration_router, irritants_router, orchestration_tasks_router,
     analysis_router, taxonomy_router, campaigns_router, reports_router, corrections_router,
     workspace_router, specifications_router, tools_router, jira_router, bian_scenarios_router,
-    studio_router
+    studio_router, demo_files_router
 )
 
 
@@ -118,6 +118,7 @@ app.include_router(tools_router.router)
 app.include_router(jira_router.router)
 app.include_router(bian_scenarios_router.router)
 app.include_router(studio_router.router)
+app.include_router(demo_files_router.router)
 
 @app.head("/")
 async def head_root():
