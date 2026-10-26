@@ -20,10 +20,11 @@ function loadScreens(toolName: string): Promise<ToolScreen[]> {
     const key = toolName.trim().toLowerCase();
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.promise;
-    // Même résolution nom → référentiel que ToolDetailPanel
-    const promise = toolsApi.createOrGet(toolName)
-        .then(res => toolsApi.getDetail(res.tool.id))
-        .then(detail => detail.screens);
+    // Recherche seule, jamais createOrGet : afficher une étape ne doit pas créer
+    // l'applicatif dans le référentiel. Absent du référentiel = aucun écran.
+    const promise = toolsApi.search(toolName)
+        .then(res => res.tools.find(t => t.name.trim().toLowerCase() === key))
+        .then(tool => tool ? toolsApi.getDetail(tool.id).then(detail => detail.screens) : []);
     promise.catch(() => cache.delete(key));
     cache.set(key, { at: Date.now(), promise });
     return promise;
