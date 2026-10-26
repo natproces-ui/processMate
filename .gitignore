@@ -58,3 +58,6 @@ sfd/tmp/outputs/
 
 # Claude local settings
 .claude/settings.local.json
+
+# Pièces des appels d'offres clients (confidentielles, jamais versionnées)
+docs/DCE Déf/
