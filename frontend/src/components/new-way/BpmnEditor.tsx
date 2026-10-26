@@ -507,7 +507,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                             const toolId = `Tool_${Date.now()}`;
                             const bo = moddle.create('bpmn:ServiceTask', {
                                 id: toolId,
-                                name: 'Outil',
+                                name: 'Applicatif',
                             });
                             const shape = elementFactory.createShape({
                                 type: 'bpmn:ServiceTask',
@@ -523,7 +523,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                             'processmate.tool': {
                                 group: 'tools',
                                 className: 'bpmn-icon-service-task',
-                                title: 'Outil / Applicatif',
+                                title: 'Applicatif',
                                 action: {
                                     dragstart: createTool,
                                     click: createTool,
@@ -532,7 +532,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                             'processmate.link': {
                                 group: 'tools',
                                 className: 'bpmn-icon-connection',
-                                title: 'Link — relier un outil à une tâche',
+                                title: 'Link — relier un applicatif à une tâche',
                                 action: {
                                     click(_event: any) {
                                         // Le link se crée en tirant depuis le contextPad
@@ -582,7 +582,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                             'processmate.link': {
                                 group: 'connect',
                                 className: 'bpmn-icon-connection',
-                                title: 'Lier un outil (Link)',
+                                title: 'Lier un applicatif (Link)',
                                 action: {
                                     click(_event: any, element: any) {
                                         connect.start(_event, element);
@@ -834,7 +834,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                     // le nom tout de suite et on le fait passer par
                     // toolsApi.createOrGet, qui dédoublonne (recherche insensible à la
                     // casse côté backend) plutôt que de laisser passer du texte libre.
-                    const typed = window.prompt('Nom de l\'outil :', '');
+                    const typed = window.prompt('Nom de l\'applicatif :', '');
                     if (!typed || !typed.trim()) return; // annulé — ne rien créer
 
                     let toolName = typed.trim();
@@ -899,7 +899,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                     background-size: 28px 28px;
                 }
                 .djs-palette .entry[data-action="processmate.tool"]::after {
-                    content: 'Outil';
+                    content: 'Applicatif';
                     position: absolute;
                     bottom: -13px;
                     left: 50%;

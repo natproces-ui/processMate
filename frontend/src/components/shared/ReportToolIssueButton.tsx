@@ -30,8 +30,8 @@ export default function ReportToolIssueButton({ toolName, className = '' }: Repo
             const res = await jiraApi.createLink({
                 entity_type: 'tool_issue',
                 entity_id: crypto.randomUUID(),
-                summary: `[Outil] ${toolName} — problème signalé`,
-                description: `Outil : ${toolName}\n\n${description.trim()}`,
+                summary: `[Applicatif] ${toolName} — problème signalé`,
+                description: `Applicatif : ${toolName}\n\n${description.trim()}`,
                 labels: ['processmate', 'signalement-outil'],
             });
             setResult({ key: res.link.jira_issue_key, url: res.link.jira_issue_url });
@@ -49,7 +49,7 @@ export default function ReportToolIssueButton({ toolName, className = '' }: Repo
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                title="Signaler un problème sur cet outil"
+                title="Signaler un problème sur cet applicatif"
                 className={`inline-flex items-center gap-1.5 rounded-lg border border-amber-200 px-2.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 ${className}`}
             >
                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -90,7 +90,7 @@ export default function ReportToolIssueButton({ toolName, className = '' }: Repo
                                         value={description}
                                         onChange={e => setDescription(e.target.value)}
                                         rows={4}
-                                        placeholder="ex: le champ 'IBAN' n'existe pas sur cet écran, cet outil devrait être intégré à..."
+                                        placeholder="ex: le champ 'IBAN' n'existe pas sur cet écran, cet applicatif devrait être intégré à..."
                                         className="w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         autoFocus
                                     />

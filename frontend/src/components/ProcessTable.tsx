@@ -172,6 +172,15 @@ export default function Table({
     // ── Champs simples ────────────────────────────────────────
     const handleChange = (index: number, field: keyof Table1Row, value: string) => {
         const updated = [...data];
+        // Les écrans choisis appartiennent à l'ancien outil : on les retire si l'outil change
+        if (field === 'outil' && value !== updated[index].outil) {
+            const enr = enrichments.get(updated[index].id);
+            if (enr?.ecrans?.length) {
+                const newEnrichments = new Map(enrichments);
+                newEnrichments.set(enr.id_tache, { ...enr, ecrans: [] });
+                onEnrichmentsChange(newEnrichments);
+            }
+        }
         if (field === 'typeBpmn') {
             updated[index][field] = value as Table1Row['typeBpmn'];
             if (!GATEWAY_TYPES.includes(value)) updated[index].condition = '';
@@ -210,6 +219,8 @@ export default function Table({
         newEnrichments.set(newRow.id, {
             id_tache: newRow.id,
             descriptif: '',
+            declencheur: '',
+            applicatif: '',
             duree_estimee: '',
             frequence: '',
             kpi: '',
@@ -267,7 +278,7 @@ export default function Table({
                                     Sorties
                                     <span className="block text-xs font-normal text-gray-300">id:label, id:label</span>
                                 </th>
-                                <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Outil</th>
+                                <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Applicatif</th>
                                 <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Actions</th>
                             </tr>
                         </thead>
@@ -410,7 +421,7 @@ export default function Table({
                                                     </div>
                                                     {row.outil && (
                                                         <button type="button" onClick={() => setManagingTool(row.outil)}
-                                                            title="Gérer les écrans/champs/codes de cet outil"
+                                                            title="Gérer les écrans/champs/codes de cet applicatif"
                                                             className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg shrink-0">
                                                             <Settings2 className="w-3.5 h-3.5" />
                                                         </button>
@@ -430,7 +441,9 @@ export default function Table({
                                                             (enrichments.get(row.id)?.descriptif ||
                                                                 enrichments.get(row.id)?.duree_estimee ||
                                                                 enrichments.get(row.id)?.frequence ||
-                                                                enrichments.get(row.id)?.kpi) ? (
+                                                                enrichments.get(row.id)?.kpi ||
+                                                                enrichments.get(row.id)?.ecrans?.length ||
+                                                                enrichments.get(row.id)?.liens?.length) ? (
                                                             <Edit className="w-5 h-5 fill-blue-200" />
                                                         ) : (
                                                             <Edit className="w-5 h-5" />
@@ -482,7 +495,7 @@ export default function Table({
                         <h2 className="text-xl font-bold flex items-center gap-2">
                             <FileText className="w-5 h-5" />
                             Détails documentaires ({Array.from(enrichments.values()).filter(e =>
-                                e.descriptif || e.duree_estimee || e.frequence || e.kpi
+                                e.descriptif || e.duree_estimee || e.frequence || e.kpi || e.ecrans?.length || e.liens?.length
                             ).length} tâche(s) détaillée(s))
                         </h2>
                     </div>
@@ -494,6 +507,8 @@ export default function Table({
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Nom Tâche</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Descriptif</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Durée estimée</th>
+                                    <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Écrans</th>
+                                    <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Liens</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Actions</th>
                                 </tr>
                             </thead>
@@ -522,6 +537,16 @@ export default function Table({
                                             <td className="border border-gray-300 px-3 py-2">
                                                 {enrichment?.duree_estimee || <span className="text-gray-400">-</span>}
                                             </td>
+                                            <td className="border border-gray-300 px-3 py-2 whitespace-nowrap">
+                                                {enrichment?.ecrans?.length
+                                                    ? `${enrichment.ecrans.length} écran${enrichment.ecrans.length > 1 ? 's' : ''}${row.outil ? ` · ${row.outil}` : ''}`
+                                                    : <span className="text-gray-400">-</span>}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 whitespace-nowrap">
+                                                {enrichment?.liens?.length
+                                                    ? `${enrichment.liens.length} lien${enrichment.liens.length > 1 ? 's' : ''}`
+                                                    : <span className="text-gray-400">-</span>}
+                                            </td>
                                             <td className="border border-gray-300 p-1 text-center">
                                                 <button
                                                     onClick={() => openEnrichmentModal(row.id, row.étape)}
@@ -545,6 +570,7 @@ export default function Table({
                 isOpen={enrichmentModalOpen}
                 taskId={selectedTaskForEnrichment?.id || ''}
                 taskName={selectedTaskForEnrichment?.name || ''}
+                toolName={data.find(r => r.id === selectedTaskForEnrichment?.id)?.outil || ''}
                 enrichment={selectedTaskForEnrichment ? enrichments.get(selectedTaskForEnrichment.id) || null : null}
                 onSave={handleSaveEnrichment}
                 onClose={closeEnrichmentModal}

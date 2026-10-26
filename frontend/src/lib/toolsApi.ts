@@ -74,6 +74,14 @@ export interface ToolDetail {
   data_entities: ToolDataEntity[];
 }
 
+/** Une étape de procédure qui a sélectionné cet écran (TaskEnrichment.ecrans). */
+export interface ScreenUsage {
+  workflow_id: string;
+  procedure_title: string;
+  step_id: string;
+  step_name: string;
+}
+
 export interface ExtractedField {
   name: string;
   field_type: ToolFieldType;
@@ -131,6 +139,10 @@ export const toolsApi = {
     if (!res.ok) throw new Error(data.detail ?? `Erreur ${res.status}`);
     return data as { success: boolean; screen: ToolScreen };
   },
+
+  // Vue inverse : pour chaque écran de l'outil, les étapes qui l'utilisent
+  getScreenUsages: (toolId: string) =>
+    fetchJSON<{ success: boolean; usages: Record<string, ScreenUsage[]> }>(`/api/tools/${toolId}/screen-usages`),
 
   screenshotUrl: (screenId: string) => `${BASE}/api/tools/screens/${screenId}/screenshot`,
 

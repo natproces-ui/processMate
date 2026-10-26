@@ -17,7 +17,7 @@ import {
     toolsApi, type ToolDetail, type ToolScreen, type ToolCode,
     type ToolFieldType, type ToolCodeType, type ExtractedField,
     type ToolRuleType, type ToolDataNature,
-    type ToolBusinessRule, type ToolDataEntity,
+    type ToolBusinessRule, type ToolDataEntity, type ScreenUsage,
 } from '@/lib/toolsApi';
 import ReportToolIssueButton from '@/components/shared/ReportToolIssueButton';
 
@@ -88,7 +88,7 @@ export default function ToolDetailPanel({ toolName, onClose }: ToolDetailPanelPr
             <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-xl shadow-xl overflow-hidden flex flex-col">
                 <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between shrink-0">
                     <div>
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Fiche outil</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Fiche applicatif</p>
                         <h3 className="font-bold text-gray-900 text-lg">{toolName}</h3>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -135,6 +135,16 @@ function ScreensSection({ toolId, screens, onReload }: {
     const [description, setDescription] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
+    // Vue inverse écran → étapes (TaskEnrichment.ecrans). null = indisponible, on n'affiche rien.
+    const [usages, setUsages] = useState<Record<string, ScreenUsage[]> | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        toolsApi.getScreenUsages(toolId)
+            .then(res => { if (!cancelled) setUsages(res.usages); })
+            .catch(() => { if (!cancelled) setUsages(null); });
+        return () => { cancelled = true; };
+    }, [toolId, screens]);
 
     const submit = async () => {
         if (!name.trim()) return;
@@ -187,19 +197,21 @@ function ScreensSection({ toolId, screens, onReload }: {
             )}
 
             {screens.length === 0 && !adding && (
-                <p className="text-xs text-gray-400 italic px-1">Aucun écran renseigné pour cet outil.</p>
+                <p className="text-xs text-gray-400 italic px-1">Aucun écran renseigné pour cet applicatif.</p>
             )}
 
             <div className="space-y-3">
                 {screens.map(screen => (
-                    <ScreenCard key={screen.id} screen={screen} onReload={onReload} />
+                    <ScreenCard key={screen.id} screen={screen} usages={usages?.[screen.id] ?? null} onReload={onReload} />
                 ))}
             </div>
         </div>
     );
 }
 
-function ScreenCard({ screen, onReload }: { screen: ToolScreen; onReload: () => void }) {
+function ScreenCard({ screen, usages, onReload }: {
+    screen: ToolScreen; usages: ScreenUsage[] | null; onReload: () => void;
+}) {
     const [extracting, setExtracting] = useState(false);
     const [proposed, setProposed] = useState<ExtractedField[] | null>(null);
     const [extractError, setExtractError] = useState<string | null>(null);
@@ -273,6 +285,25 @@ function ScreenCard({ screen, onReload }: { screen: ToolScreen; onReload: () => 
             </div>
 
             <div className="p-4 space-y-3">
+                {usages && (
+                    usages.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">Utilisé par aucune étape pour l'instant.</p>
+                    ) : (
+                        <div className="text-xs">
+                            <p className="font-semibold text-gray-600 mb-1">
+                                Utilisé par {usages.length} étape{usages.length > 1 ? 's' : ''}
+                            </p>
+                            <ul className="space-y-0.5 text-gray-500">
+                                {usages.map(u => (
+                                    <li key={`${u.workflow_id}-${u.step_id}`} className="truncate">
+                                        {u.procedure_title || 'Procédure sans titre'} → {u.step_id}. {u.step_name || 'Étape sans nom'}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )
+                )}
+
                 {screen.screenshot_path && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={toolsApi.screenshotUrl(screen.id)} alt={screen.name}
@@ -466,7 +497,7 @@ function CodesSection({ toolId, codes, onReload }: {
             )}
 
             {codes.length === 0 && !adding && (
-                <p className="text-xs text-gray-400 italic px-1">Aucun code renseigné pour cet outil.</p>
+                <p className="text-xs text-gray-400 italic px-1">Aucun code renseigné pour cet applicatif.</p>
             )}
 
             {CODE_TYPES.map(({ value, label }) => {
@@ -556,7 +587,7 @@ function RulesSection({ toolId, rules, onReload }: {
                         {RULE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                     <textarea value={rule} onChange={e => setRule(e.target.value)}
-                        placeholder="Ce que l'outil impose ou vérifie (ex : le montant ne peut pas dépasser le plafond journalier)"
+                        placeholder="Ce que l'applicatif impose ou vérifie (ex : le montant ne peut pas dépasser le plafond journalier)"
                         rows={2} className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg resize-y" autoFocus />
                     <input type="text" value={description} onChange={e => setDescription(e.target.value)}
                         placeholder="Contexte (optionnel)"
@@ -570,7 +601,7 @@ function RulesSection({ toolId, rules, onReload }: {
             )}
 
             {rules.length === 0 && !adding && (
-                <p className="text-xs text-gray-400 italic px-1">Aucune règle de gestion renseignée pour cet outil.</p>
+                <p className="text-xs text-gray-400 italic px-1">Aucune règle de gestion renseignée pour cet applicatif.</p>
             )}
 
             <div className="space-y-2">
@@ -648,7 +679,7 @@ function DataEntitiesSection({ toolId, entities, onReload }: {
             )}
 
             {entities.length === 0 && !adding && (
-                <p className="text-xs text-gray-400 italic px-1">Aucune donnée renseignée pour cet outil.</p>
+                <p className="text-xs text-gray-400 italic px-1">Aucune donnée renseignée pour cet applicatif.</p>
             )}
 
             <div className="flex flex-wrap gap-1.5">

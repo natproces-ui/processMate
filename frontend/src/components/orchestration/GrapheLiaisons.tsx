@@ -177,7 +177,7 @@ export default function GrapheLiaisons({ procedures }: { procedures: Procedure[]
         {hasData && (
           <div className="absolute top-3 left-3 z-10">
             <span className="px-3 py-1 bg-white/90 border border-gray-200 rounded-full text-xs text-gray-500 shadow-sm backdrop-blur-sm">
-              {nodes.length} outils · {edges.length} liaison{edges.length !== 1 ? 's' : ''}
+              {nodes.length} applicatifs · {edges.length} liaison{edges.length !== 1 ? 's' : ''}
             </span>
           </div>
         )}
@@ -205,7 +205,7 @@ export default function GrapheLiaisons({ procedures }: { procedures: Procedure[]
             <div className="w-12 h-12 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center">
               <span className="text-lg text-gray-300">○</span>
             </div>
-            <p className="text-sm">Aucune donnée d&apos;outil dans les procédures</p>
+            <p className="text-sm">Aucune donnée d&apos;applicatif dans les procédures</p>
           </div>
         ) : (
           <svg
@@ -327,14 +327,14 @@ export default function GrapheLiaisons({ procedures }: { procedures: Procedure[]
               <div className="w-6 h-6 rounded-full border-2 border-dashed border-gray-300" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-600 mb-1">Sélectionnez un outil</p>
+              <p className="text-sm font-semibold text-gray-600 mb-1">Sélectionnez un applicatif</p>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Les liaisons indiquent les outils utilisés dans les mêmes procédures
+                Les liaisons indiquent les applicatifs utilisés dans les mêmes procédures
               </p>
             </div>
             {nodes.length > 0 && (
               <div className="w-full border-t border-gray-100 pt-4 space-y-1.5">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Tous les outils</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Tous les applicatifs</p>
                 {nodes.slice(0, 8).map(n => (
                   <button
                     type="button"
@@ -400,7 +400,7 @@ export default function GrapheLiaisons({ procedures }: { procedures: Procedure[]
                 </p>
                 {connectedEdges.length === 0 ? (
                   <div className="py-6 text-center">
-                    <p className="text-xs text-gray-400">Aucune liaison avec d&apos;autres outils</p>
+                    <p className="text-xs text-gray-400">Aucune liaison avec d&apos;autres applicatifs</p>
                   </div>
                 ) : (
                   connectedEdges

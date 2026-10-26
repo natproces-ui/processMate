@@ -1,52 +1,60 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileText, Clock } from 'lucide-react';
+import { X, FileText, Clock, Monitor, Link2 } from 'lucide-react';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
+import type { StepLink } from '@/lib/processLinks';
+import StepScreensPicker from '@/components/orchestration/StepScreensPicker';
+import ProcessLinksEditor from '@/components/orchestration/ProcessLinksEditor';
 
 interface EnrichmentModalProps {
     isOpen: boolean;
     taskId: string;
     taskName: string;
+    /** Outil de l'étape (Table1Row.outil) — les écrans proposés sont ceux de cet outil. */
+    toolName: string;
+    /** session_id de la procédure éditée, s'il est connu — exclu des cibles de lien. */
+    currentSessionId?: string;
     enrichment: TaskEnrichment | null;
     onSave: (enrichment: TaskEnrichment) => void;
     onClose: () => void;
 }
 
+const emptyEnrichment = (taskId: string): TaskEnrichment => ({
+    id_tache: taskId,
+    descriptif: '',
+    declencheur: '',
+    applicatif: '',
+    duree_estimee: '',
+    frequence: '',
+    kpi: ''
+});
+
 export default function EnrichmentModal({
     isOpen,
     taskId,
     taskName,
+    toolName,
+    currentSessionId,
     enrichment,
     onSave,
     onClose
 }: EnrichmentModalProps) {
-    const [formData, setFormData] = useState<TaskEnrichment>({
-        id_tache: taskId,
-        descriptif: '',
-        duree_estimee: '',
-        frequence: '',
-        kpi: ''
-    });
+    const [formData, setFormData] = useState<TaskEnrichment>(emptyEnrichment(taskId));
 
     // Initialiser le formulaire avec les données existantes
     useEffect(() => {
         if (enrichment) {
             setFormData(enrichment);
         } else {
-            setFormData({
-                id_tache: taskId,
-                descriptif: '',
-                duree_estimee: '',
-                frequence: '',
-                kpi: ''
-            });
+            setFormData(emptyEnrichment(taskId));
         }
     }, [taskId, enrichment]);
 
     const handleChange = (field: keyof TaskEnrichment, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
+
 
     const handleSave = () => {
         onSave(formData);
@@ -111,6 +119,33 @@ export default function EnrichmentModal({
                             onChange={(e) => handleChange('duree_estimee', e.target.value)}
                             placeholder="Ex: 15 min, 2h, 1 jour"
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                    </div>
+
+                    {/* Écrans — rattachés à l'outil, l'étape choisit ceux qu'elle utilise */}
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                            <Monitor className="w-4 h-4 text-violet-600" />
+                            Écrans utilisés{toolName ? ` — ${toolName}` : ''}
+                        </label>
+                        <StepScreensPicker
+                            toolName={toolName}
+                            value={formData.ecrans ?? []}
+                            onChange={ids => setFormData(prev => ({ ...prev, ecrans: ids }))}
+                        />
+                    </div>
+
+                    {/* Liens vers d'autres procédures — le sens inverse s'affiche sur la cible */}
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                            <Link2 className="w-4 h-4 text-amber-600" />
+                            Liens vers d'autres process
+                        </label>
+                        <ProcessLinksEditor
+                            types={['fait_appel_a', 'declenche']}
+                            value={formData.liens ?? []}
+                            onChange={items => setFormData(prev => ({ ...prev, liens: items as StepLink[] }))}
+                            excludeSessionId={currentSessionId}
                         />
                     </div>
 

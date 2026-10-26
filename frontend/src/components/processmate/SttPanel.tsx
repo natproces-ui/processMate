@@ -986,12 +986,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                                 <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                             </button>
                                             <button type="button" onClick={handleSyncClick} disabled={viewMode === 'outillage'}
-                                                title={viewMode === 'outillage' ? 'Repassez en vue métier pour synchroniser' : 'Relire le diagramme pour mettre à jour le tableau (tâches/outils ajoutés directement sur le canevas)'}
+                                                title={viewMode === 'outillage' ? 'Repassez en vue métier pour synchroniser' : 'Relire le diagramme pour mettre à jour le tableau (tâches/applicatifs ajoutés directement sur le canevas)'}
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 disabled:opacity-40 transition-colors">
                                                 <RotateCw className="w-3.5 h-3.5" />Synchroniser
                                             </button>
                                             <button type="button" onClick={toggleViewMode}
-                                                title="Vue IT : l'outil devient le titre de chaque tâche — cliquez un outil pour voir ses écrans/champs/codes"
+                                                title="Vue IT : l'applicatif devient le titre de chaque tâche — cliquez un applicatif pour voir ses écrans/champs/codes"
                                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${viewMode === 'outillage' ? 'bg-violet-600 text-white' : 'bg-white border border-violet-300 text-violet-700 hover:bg-violet-50'}`}>
                                                 <Wrench className="w-3.5 h-3.5" />{viewMode === 'outillage' ? 'Vue IT (active)' : 'Vue IT'}
                                             </button>

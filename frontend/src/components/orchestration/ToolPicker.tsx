@@ -83,7 +83,7 @@ export default function ToolPicker({ value, onChange, placeholder, className }: 
                         autoFocus
                         value={query}
                         onChange={e => setQuery(e.target.value)}
-                        placeholder="Rechercher un outil…"
+                        placeholder="Rechercher un applicatif…"
                         className="w-full pl-7 pr-6 py-1.5 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
                     />
                     <button type="button" onClick={() => { setOpen(false); setQuery(''); }}
@@ -105,7 +105,7 @@ export default function ToolPicker({ value, onChange, placeholder, className }: 
                                     </button>
                                 ))}
                                 {results.length === 0 && !query.trim() && (
-                                    <div className="px-3 py-2 text-xs text-gray-400 italic">Tapez pour rechercher ou créer un outil</div>
+                                    <div className="px-3 py-2 text-xs text-gray-400 italic">Tapez pour rechercher ou créer un applicatif</div>
                                 )}
                                 {query.trim() && !exactMatch && (
                                     <button type="button" onClick={() => select(query)} disabled={saving}
@@ -122,9 +122,9 @@ export default function ToolPicker({ value, onChange, placeholder, className }: 
                 // déclencher que pour ajouter/changer un outil, pas au moindre clic sur
                 // une case déjà remplie — un simple clic ne fait donc rien ici.
                 <button type="button" onDoubleClick={() => setOpen(true)}
-                    title="Double-cliquez pour choisir ou créer un outil"
+                    title="Double-cliquez pour choisir ou créer un applicatif"
                     className="w-full text-left px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition-colors truncate">
-                    {value || <span className="text-gray-400 italic">{placeholder ?? 'Choisir un outil… (double-clic)'}</span>}
+                    {value || <span className="text-gray-400 italic">{placeholder ?? 'Choisir un applicatif… (double-clic)'}</span>}
                 </button>
             )}
         </div>

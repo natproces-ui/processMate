@@ -155,6 +155,12 @@ côté plutôt que construite à l'aveugle, pour deux raisons concrètes :
    ce choix (`TaskEnrichment` n'a pas de champ pour ça aujourd'hui) — pas tranché pour
    ne pas improviser un champ de plus sans relecture.
 
+**Mise à jour — (b) fait.** Le choix est stocké dans `TaskEnrichment.ecrans` (ids
+`tool_screens`, dans `enrichments_json`, pas de nouvelle table). La modale Détails
+(`DetailModal.tsx`) coche les écrans de l'outil de l'étape ; changer l'outil d'une
+étape vide sa sélection (`ProcessTable.tsx`). Vue inverse : `GET
+/api/tools/{id}/screen-usages`, affichée dans chaque carte écran de `ToolDetailPanel`.
+
 Prochaine étape concrète, dans cet ordre : (a) une page/panneau "Fiche outil" pour
 gérer écrans/champs/codes d'un outil du référentiel (dont le bouton d'extraction IA —
 `toolsApi.extractFields` existe déjà côté client, juste pas de bouton), (b) une fois ça

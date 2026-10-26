@@ -244,8 +244,8 @@ export function parseWorkflowFromModeler(
         const tools = toolsByTask.get(elId) ?? [];
         if (tools.length > 1) {
             warnings.push(
-                `« ${rawName || newId} » est liée à plusieurs outils (${tools.join(', ')}) — ` +
-                `seul le premier a été gardé, le champ outil du tableau reste unique pour le moment.`,
+                `« ${rawName || newId} » est liée à plusieurs applicatifs (${tools.join(', ')}) — ` +
+                `seul le premier a été gardé, le champ applicatif du tableau reste unique pour le moment.`,
             );
         }
         // Limite connue, assumée : si un outil existait déjà sur cette ligne et

@@ -42,7 +42,7 @@ export function LiveTable({ rows }: { rows: Table1Row[] }) {
                         <th className="px-3 py-2 font-semibold">Étape</th>
                         <th className="px-3 py-2 font-semibold">Type</th>
                         <th className="px-3 py-2 font-semibold">Acteur</th>
-                        <th className="px-3 py-2 font-semibold">Outil</th>
+                        <th className="px-3 py-2 font-semibold">Applicatif</th>
                         <th className="px-3 py-2 font-semibold">Suite</th>
                     </tr>
                 </thead>

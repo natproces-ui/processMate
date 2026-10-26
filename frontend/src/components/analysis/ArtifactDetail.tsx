@@ -45,7 +45,7 @@ const PARTIE_META: Record<Partie, { label: string; icon: React.ReactNode; taskTi
   qualite: { label: 'Règles de gestion', icon: <Settings2 className="h-3 w-3" />, taskTitle: 'Revoir les règles de gestion' },
   diagramme: { label: 'Logigramme', icon: <GitBranch className="h-3 w-3" />, taskTitle: 'Modifier le logigramme' },
   descriptions: { label: 'Descriptions', icon: <AlignLeft className="h-3 w-3" />, taskTitle: 'Revoir les descriptions' },
-  outils: { label: 'Outils', icon: <Wrench className="h-3 w-3" />, taskTitle: 'Mettre à jour les outils' },
+  outils: { label: 'Applicatifs', icon: <Wrench className="h-3 w-3" />, taskTitle: 'Mettre à jour les applicatifs' },
 };
 
 type ExtendedAction = RecommendedAction & { effort?: string; procedure_step_target?: string };

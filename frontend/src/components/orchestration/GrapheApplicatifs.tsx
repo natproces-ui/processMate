@@ -281,7 +281,7 @@ export default function GrapheApplicatifs({
             );
           })}
           {filteredTools.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-8">Aucun outil</p>
+            <p className="text-xs text-gray-400 text-center py-8">Aucun applicatif</p>
           )}
         </div>
 
@@ -384,7 +384,7 @@ export default function GrapheApplicatifs({
               ))}
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-gray-500">Sélectionnez un outil</p>
+              <p className="text-sm font-semibold text-gray-500">Sélectionnez un applicatif</p>
               <p className="text-xs text-gray-400 mt-1 max-w-[220px] leading-relaxed">
                 L&apos;arbre radial affichera ses procédures (1er anneau) et étapes (2e anneau)
               </p>

@@ -107,7 +107,7 @@ function MatriceView({ toolUsages, procedures, onSelectTool }: {
                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Filtrer les outils…"
+                        placeholder="Filtrer les applicatifs…"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-200"
@@ -201,7 +201,7 @@ function MatriceView({ toolUsages, procedures, onSelectTool }: {
                 </table>
                 {filteredTools.length === 0 && (
                     <div className="text-center py-12 text-gray-400 text-sm">
-                        Aucun outil trouvé
+                        Aucun applicatif trouvé
                     </div>
                 )}
             </div>
@@ -282,7 +282,7 @@ function DetailView({ toolUsages, selectedOutil, onSelectTool, onClearTool, onOp
                     <div className="h-64 flex items-center justify-center text-gray-400">
                         <div className="text-center">
                             <Wrench className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                            <p className="text-sm">Sélectionnez un outil pour voir son détail</p>
+                            <p className="text-sm">Sélectionnez un applicatif pour voir son détail</p>
                         </div>
                     </div>
                 ) : (
@@ -313,7 +313,7 @@ function DetailView({ toolUsages, selectedOutil, onSelectTool, onClearTool, onOp
                                 <div className="flex items-center gap-2 shrink-0">
                                     <button type="button" onClick={() => setManagingTool(selected.outil)}
                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-medium hover:bg-violet-100 transition-colors">
-                                        <Settings2 className="w-3.5 h-3.5" />Gérer l&apos;outil
+                                        <Settings2 className="w-3.5 h-3.5" />Gérer l&apos;applicatif
                                     </button>
                                     <button type="button" onClick={onClearTool}
                                         className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
@@ -446,7 +446,7 @@ export default function ApplicatifsPanel() {
                         <div className="flex items-center flex-wrap gap-2 mt-1.5">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-blue-50 border border-blue-100 rounded-full text-xs font-semibold text-blue-700">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                                {toolUsages.length} outils
+                                {toolUsages.length} applicatifs
                             </span>
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-red-50 border border-red-100 rounded-full text-xs font-semibold text-red-600">
                                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
@@ -459,7 +459,7 @@ export default function ApplicatifsPanel() {
                             </span>
                         </div>
                     ) : (
-                        <p className="text-sm text-gray-400 mt-0.5">Aucun outil détecté dans les workflows</p>
+                        <p className="text-sm text-gray-400 mt-0.5">Aucun applicatif détecté dans les workflows</p>
                     )}
                 </div>
 
@@ -491,8 +491,8 @@ export default function ApplicatifsPanel() {
                 <div className="flex-1 flex items-center justify-center text-gray-400">
                     <div className="text-center">
                         <Wrench className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p className="font-medium">Aucun outil détecté</p>
-                        <p className="text-sm mt-1">Les outils sont extraits automatiquement depuis les workflows formalisés.</p>
+                        <p className="font-medium">Aucun applicatif détecté</p>
+                        <p className="text-sm mt-1">Les applicatifs sont extraits automatiquement depuis les workflows formalisés.</p>
                     </div>
                 </div>
             ) : (

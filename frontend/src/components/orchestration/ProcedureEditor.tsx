@@ -14,10 +14,13 @@ import { Procedure } from '@/lib/orchestrationApi';
 import { orchestrationApi } from '@/lib/orchestrationApi';
 import ToolPicker from '@/components/orchestration/ToolPicker';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
+import StepScreensPicker from '@/components/orchestration/StepScreensPicker';
+import ProcessLinksEditor from '@/components/orchestration/ProcessLinksEditor';
+import { LINK_LABELS, type ProcedureLinks, type StepLink } from '@/lib/processLinks';
 import {
     Download, Save, Maximize2, X, MessageSquare,
     CheckCircle, AlertCircle, Loader2,
-    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench, RotateCw,
+    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench, RotateCw, Link2,
 } from 'lucide-react';
 
 const BpmnEditor = dynamic(() => import('@/components/new-way/BpmnEditor'), {
@@ -34,7 +37,7 @@ const BpmnEditor = dynamic(() => import('@/components/new-way/BpmnEditor'), {
 
 // ─── Types ────────────────────────────────────────────────────
 
-type Section = 'caracteristiques' | 'qualite' | 'diagramme' | 'descriptions' | 'outils';
+type Section = 'caracteristiques' | 'qualite' | 'diagramme' | 'descriptions' | 'outils' | 'liens';
 
 interface ExtendedMeta {
     objet: string;
@@ -108,6 +111,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     const [editingDiagramme, setEditingDiagramme] = useState(false);
     const [editingDescriptions, setEditingDescriptions] = useState(false);
     const [editingOutils, setEditingOutils] = useState(false);
+    const [editingLiens, setEditingLiens] = useState(false);
 
     // ─── Drafts ───────────────────────────────────────────────
     const [draftMeta, setDraftMeta] = useState<ExtendedMeta>(meta);
@@ -270,10 +274,64 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
 
     const handleSaveOutils = async () => {
         try {
-            await saveToDb(draftData, enrichments, meta);
+            await saveToDb(draftData, draftEnrichments, meta);
             setData(draftData);
+            setEnrichments(draftEnrichments);
             setEditingOutils(false);
-            showSuccess('Outils enregistrés');
+            showSuccess('Applicatifs enregistrés');
+        } catch { /* handled */ }
+    };
+
+    // Changer l'outil d'une étape retire ses écrans : ils appartenaient à l'ancien outil
+    const changeStepTool = (rowId: string, name: string) => {
+        const previous = draftData.find(r => r.id === rowId)?.outil;
+        setDraftData(prev => prev.map(r => r.id === rowId ? { ...r, outil: name } : r));
+        if (name !== previous) {
+            setDraftEnrichments(prev => {
+                const enr = prev.get(rowId);
+                if (!enr?.ecrans?.length) return prev;
+                const next = new Map(prev);
+                next.set(rowId, { ...enr, ecrans: [] });
+                return next;
+            });
+        }
+    };
+
+    const updateDraftEnrichment = (rowId: string, patch: Partial<TaskEnrichment>) => {
+        setDraftEnrichments(prev => {
+            const next = new Map(prev);
+            next.set(rowId, { ...(prev.get(rowId) ?? emptyEnrichment(rowId)), ...patch });
+            return next;
+        });
+    };
+
+    // ── Liens entre procédures : sortants enregistrés ici, entrants recalculés par le backend ──
+    const [links, setLinks] = useState<ProcedureLinks | null>(null);
+    const [linksError, setLinksError] = useState<string | null>(null);
+
+    const loadLinks = useCallback(async () => {
+        try {
+            const res = await orchestrationApi.getProcedureLinks(procedure.id);
+            setLinks({ sortants: res.sortants, entrants: res.entrants });
+            setLinksError(null);
+        } catch (err: any) {
+            setLinksError(err.message || 'Liens indisponibles');
+        }
+    }, [procedure.id]);
+
+    useEffect(() => {
+        if (activeSection === 'liens') loadLinks();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeSection]);
+
+    const handleSaveLiens = async () => {
+        try {
+            await saveToDb(data, draftEnrichments, draftMeta);
+            setEnrichments(draftEnrichments);
+            setMeta(draftMeta);
+            setEditingLiens(false);
+            showSuccess('Liens enregistrés');
+            loadLinks();
         } catch { /* handled */ }
     };
 
@@ -378,7 +436,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
         { id: 'qualite', label: 'Qualité', icon: <Settings2 className="w-3.5 h-3.5" /> },
         { id: 'diagramme', label: 'Diagramme', icon: <GitBranch className="w-3.5 h-3.5" /> },
         { id: 'descriptions', label: 'Descriptions', icon: <AlignLeft className="w-3.5 h-3.5" /> },
-        { id: 'outils', label: 'Outils', icon: <Wrench className="w-3.5 h-3.5" /> },
+        { id: 'outils', label: 'Applicatifs', icon: <Wrench className="w-3.5 h-3.5" /> },
+        { id: 'liens', label: 'Liens', icon: <Link2 className="w-3.5 h-3.5" /> },
     ];
 
     // ─── Bouton éditer / édition terminée ─────────────────────
@@ -659,7 +718,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                             <Save className="w-3 h-3" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                         </button>
                                         <button type="button" onClick={handleSyncClick}
-                                            title="Relire le diagramme pour mettre à jour le tableau (tâches/outils ajoutés directement sur le canevas)"
+                                            title="Relire le diagramme pour mettre à jour le tableau (tâches/applicatifs ajoutés directement sur le canevas)"
                                             className="flex items-center gap-1 px-2.5 py-1 bg-white border border-slate-300 text-slate-700 rounded text-xs font-medium hover:bg-slate-50 transition-colors">
                                             <RotateCw className="w-3 h-3" />Synchroniser
                                         </button>
@@ -775,10 +834,10 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 {activeSection === 'outils' && (
                     <div className="max-w-4xl space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-base font-bold text-slate-800">Outils par étape</h3>
+                            <h3 className="text-base font-bold text-slate-800">Applicatifs par étape</h3>
                             <EditBtn
                                 editing={editingOutils}
-                                onEdit={() => { setDraftData([...data]); setEditingOutils(true); }}
+                                onEdit={() => { setDraftData([...data]); setDraftEnrichments(new Map(enrichments)); setEditingOutils(true); }}
                                 onSave={handleSaveOutils}
                             />
                         </div>
@@ -795,7 +854,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10">#</th>
                                             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Étape</th>
                                             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-36">Acteur</th>
-                                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-56">Outil</th>
+                                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-56">Applicatif</th>
+                                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Écrans</th>
                                             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide w-10" />
                                         </tr>
                                     </thead>
@@ -818,17 +878,23 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                                     ) : (
                                                         <ToolPicker
                                                             value={row.outil || ''}
-                                                            onChange={name => setDraftData(prev =>
-                                                                prev.map(r => r.id === row.id ? { ...r, outil: name } : r)
-                                                            )}
+                                                            onChange={name => changeStepTool(row.id, name)}
                                                             placeholder="Ex: SAP, Core Banking…"
                                                         />
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3">
+                                                    <StepScreensPicker
+                                                        toolName={row.outil || ''}
+                                                        value={(editingOutils ? draftEnrichments : enrichments).get(row.id)?.ecrans ?? []}
+                                                        onChange={ids => updateDraftEnrichment(row.id, { ecrans: ids })}
+                                                        readOnly={!editingOutils}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
                                                     {row.outil && (
                                                         <button type="button" onClick={() => setManagingTool(row.outil)}
-                                                            title="Gérer les écrans/champs/codes de cet outil"
+                                                            title="Gérer les écrans/champs/codes de cet applicatif"
                                                             className="p-1.5 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg">
                                                             <Settings2 className="w-3.5 h-3.5" />
                                                         </button>
@@ -840,6 +906,91 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                 </table>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* ══════════════════════════════════════════════
+                    LIENS
+                ══════════════════════════════════════════════ */}
+                {activeSection === 'liens' && (
+                    <div className="max-w-4xl space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-base font-bold text-slate-800">Liens avec d'autres process</h3>
+                            <EditBtn
+                                editing={editingLiens}
+                                onEdit={() => { setDraftEnrichments(new Map(enrichments)); setDraftMeta(meta); setEditingLiens(true); }}
+                                onSave={handleSaveLiens}
+                            />
+                        </div>
+
+                        {/* Nécessite — au niveau de la procédure */}
+                        <div className="bg-white rounded-xl border border-slate-200 px-5 py-4 space-y-2">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Prérequis de cette procédure</p>
+                            <ProcessLinksEditor
+                                types={['necessite']}
+                                value={(((editingLiens ? draftMeta : meta).necessite as string[] | undefined) ?? [])
+                                    .map(cible => ({ type: 'necessite' as const, cible }))}
+                                onChange={items => setDraftMeta(prev => ({ ...prev, necessite: items.map(i => i.cible) }))}
+                                excludeSessionId={procedure.session_id}
+                                readOnly={!editingLiens}
+                            />
+                        </div>
+
+                        {/* Fait appel à / Déclenche — posés sur les étapes */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <p className="px-5 pt-4 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Liens posés sur les étapes</p>
+                            {(() => {
+                                const source = editingLiens ? draftEnrichments : enrichments;
+                                const rows = editingLiens ? data : data.filter(r => source.get(r.id)?.liens?.length);
+                                if (rows.length === 0) {
+                                    return <p className="px-5 pb-4 text-xs text-slate-400 italic">Aucun lien posé sur les étapes.</p>;
+                                }
+                                return (
+                                    <div className="divide-y divide-slate-100">
+                                        {rows.map(row => (
+                                            <div key={row.id} className="px-5 py-3 flex gap-4">
+                                                <div className="w-56 shrink-0 text-sm text-slate-800 font-medium">
+                                                    <span className="text-xs text-slate-400 font-mono mr-1.5">{row.id}</span>{row.étape}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <ProcessLinksEditor
+                                                        types={['fait_appel_a', 'declenche']}
+                                                        value={source.get(row.id)?.liens ?? []}
+                                                        onChange={items => updateDraftEnrichment(row.id, { liens: items as StepLink[] })}
+                                                        excludeSessionId={procedure.session_id}
+                                                        readOnly={!editingLiens}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Sens inverse — calculé, jamais saisi ici */}
+                        <div className="bg-white rounded-xl border border-slate-200 px-5 py-4 space-y-2">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Les autres process vers celui-ci</p>
+                            {linksError ? (
+                                <p className="text-xs text-red-600">{linksError}</p>
+                            ) : !links ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                            ) : links.entrants.length === 0 ? (
+                                <p className="text-xs text-slate-400 italic">Aucun process ne pointe vers celui-ci.</p>
+                            ) : (
+                                <ul className="space-y-1.5">
+                                    {links.entrants.map((l, i) => (
+                                        <li key={`${l.session_id}-${l.type}-${l.step_id ?? ''}-${i}`} className="flex items-center gap-2 text-sm">
+                                            <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${LINK_LABELS[l.type].color}`}>
+                                                {LINK_LABELS[l.type].inverse}
+                                            </span>
+                                            <span className="text-slate-800">{l.nom}</span>
+                                            {l.step_name && <span className="text-xs text-slate-400 truncate">— étape « {l.step_name} »</span>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>
@@ -879,7 +1030,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                 </div>
                             )}
                             <p className="text-xs text-slate-400">
-                                Cette action remplace le contenu des sections Descriptions/Outils par ce qui
+                                Cette action remplace le contenu des sections Descriptions/Applicatifs par ce qui
                                 est lu sur le canevas. Les ids et les détails déjà saisis sont conservés pour
                                 les étapes reconnues.
                             </p>

@@ -1,5 +1,7 @@
 // bpmnTypes.ts - Types pour les 3 tables du système BPMN
 
+import type { StepLink } from '@/lib/processLinks';
+
 /**
  * Table 0 : Métadonnées globales du processus
  */
@@ -38,6 +40,8 @@ export interface TaskEnrichment {
     duree_estimee: string;         // Ex: "15 min", "2h", "1 jour"
     frequence: string;             // Ex: "quotidien", "hebdomadaire", "mensuel", "à la demande"
     kpi: string;                   // Ex: "taux d'erreur < 2%", "délai < 24h"
+    ecrans?: string[];             // ids tool_screens, choisis parmi les écrans de l'outil de l'étape (Table1Row.outil)
+    liens?: StepLink[];            // liens vers d'autres procédures, voir lib/processLinks.ts
 }
 
 /**

@@ -70,7 +70,7 @@ export default function ToolQuickCard({ toolName, anchor, onClose, onManage }: P
             >
                 <div className="px-3.5 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2 bg-gray-50">
                     <div className="min-w-0">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Outil</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Applicatif</p>
                         <p className="font-bold text-gray-900 text-sm truncate">{toolName}</p>
                     </div>
                     <button type="button" onClick={onClose} className="shrink-0 p-1 hover:bg-gray-200 rounded">
@@ -130,7 +130,7 @@ export default function ToolQuickCard({ toolName, anchor, onClose, onManage }: P
 
                             {(detail?.screens.length ?? 0) === 0 && (detail?.codes.length ?? 0) === 0
                                 && (detail?.business_rules.length ?? 0) === 0 && (detail?.data_entities.length ?? 0) === 0 && (
-                                <p className="text-xs text-gray-400">Rien renseigné pour cet outil pour l&apos;instant.</p>
+                                <p className="text-xs text-gray-400">Rien renseigné pour cet applicatif pour l&apos;instant.</p>
                             )}
                         </>
                     )}

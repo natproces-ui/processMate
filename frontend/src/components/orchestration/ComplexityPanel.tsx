@@ -265,7 +265,7 @@ export default function ComplexityPanel() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Complexite des procedures</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Score structurel calcule avec les etapes de parcours, les acteurs et les outils.
+            Score structurel calcule avec les etapes de parcours, les acteurs et les applicatifs.
           </p>
         </div>
         <button
@@ -305,7 +305,7 @@ export default function ComplexityPanel() {
               <th className="text-left px-5 py-3 font-bold">Procedure</th>
               <th className="text-center px-3 py-3 font-bold">Etapes</th>
               <th className="text-center px-3 py-3 font-bold">Acteurs</th>
-              <th className="text-center px-3 py-3 font-bold">Outils</th>
+              <th className="text-center px-3 py-3 font-bold">Applicatifs</th>
               <th className="text-left px-3 py-3 font-bold">Score</th>
               <th className="text-left px-5 py-3 font-bold">Niveau</th>
             </tr>

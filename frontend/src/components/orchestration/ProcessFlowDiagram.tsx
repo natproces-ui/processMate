@@ -201,7 +201,7 @@ export default function ProcessFlowDiagram({
 
                     <Seg x1={COLL + R} y1={LY} x2={ANAL - R} y2={LY} color="blue" arrow />
                     <Station cx={ANAL} cy={LY} color="blue" icon="✦"
-                        label="Analyse & Extraction" sublabel="Étapes, acteurs, outils" />
+                        label="Analyse & Extraction" sublabel="Étapes, acteurs, applicatifs" />
 
                     <Seg x1={ANAL + R} y1={LY} x2={FORM - R} y2={LY} color="purple" arrow />
                     <Station cx={FORM} cy={LY} color="purple" icon="✎"

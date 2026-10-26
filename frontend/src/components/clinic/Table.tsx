@@ -549,7 +549,7 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
                                     { key: 'condition' as keyof TableRow, label: 'Condition', sortable: true },
                                     { key: 'outputOui' as keyof TableRow, label: 'Output Oui', sortable: true },
                                     { key: 'outputNon' as keyof TableRow, label: 'Output Non', sortable: true },
-                                    { key: 'outil' as keyof TableRow, label: 'Outil', sortable: true },
+                                    { key: 'outil' as keyof TableRow, label: 'Applicatif', sortable: true },
                                     { key: 'actions' as keyof TableRow, label: 'Actions', sortable: true },
                                     { key: null, label: '', sortable: false }
                                 ].map(({ key, label, sortable }) => (
@@ -794,7 +794,7 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
                 <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e40af', fontSize: '0.875rem', fontWeight: '600' }}>💡 Instructions d'utilisation</h4>
                 <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#1e40af', lineHeight: '1.6' }}>
                     <li><strong>📋 Import automatique</strong> : Les colonnes Étape et Actions sont remplies automatiquement depuis le fichier .dot</li>
-                    <li><strong>🤖 Enrichissement IA sur demande</strong> : Cliquez sur "Enrichir avec IA" pour remplir automatiquement Département, Acteur et Outil</li>
+                    <li><strong>🤖 Enrichissement IA sur demande</strong> : Cliquez sur "Enrichir avec IA" pour remplir automatiquement Département, Acteur et Applicatif</li>
                     <li><strong>✏️ Édition manuelle</strong> : Double-cliquez sur une cellule pour l'éditer et corriger si nécessaire</li>
                     <li><strong>🔀 Type BPMN</strong> : StartEvent = Début, Task = Tâche, Gateway = Décision, EndEvent = Fin</li>
                     <li><strong>❓ Condition</strong> : Uniquement pour les Gateways (questions oui/non)</li>

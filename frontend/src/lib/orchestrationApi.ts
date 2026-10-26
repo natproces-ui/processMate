@@ -1,5 +1,6 @@
 // lib/orchestrationApi.ts
 import { API_CONFIG } from './api-config';
+import type { ProcedureLinks } from './processLinks';
 
 const BASE = API_CONFIG.baseUrl;
 
@@ -243,6 +244,10 @@ async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const orchestrationApi = {
   // ── Liste & Stats ──
+  // Liens sortants (enregistrés ici) et entrants (calculés) — voir lib/processLinks.ts
+  getProcedureLinks: (workflowId: string) =>
+    fetchJSON<{ success: boolean } & ProcedureLinks>(`/api/orchestration/procedures/${workflowId}/links`),
+
   listProcedures: () =>
     fetchJSON<{ success: boolean; procedures: Procedure[]; total: number }>('/api/orchestration/procedures'),
 

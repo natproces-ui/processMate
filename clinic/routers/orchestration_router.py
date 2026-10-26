@@ -456,6 +456,73 @@ async def get_procedure(workflow_id: str):
 
 
 # ─────────────────────────────────────────────────────────────
+# LIENS ENTRE PROCÉDURES
+# Enregistrés une seule fois côté source (enrichments_json[step].liens pour
+# fait_appel_a/declenche, procedure_metadata_json.necessite pour necessite) ; le sens
+# inverse est toujours recalculé ici. Cible = session_id, stable entre versions.
+# ─────────────────────────────────────────────────────────────
+
+STEP_LINK_TYPES = {"fait_appel_a", "declenche"}
+
+
+def _procedure_name(wf: Dict) -> str:
+    return (wf.get("procedure_metadata_json") or {}).get("nom") or wf.get("title") or "Sans titre"
+
+
+def _collect_links(workflows: List[Dict]) -> List[Dict]:
+    """Toutes les arêtes source → cible des dernières versions."""
+    edges: List[Dict] = []
+    for wf in workflows:
+        step_names = {
+            str(row.get("id")): row.get("étape") or ""
+            for row in (wf.get("workflow_json") or []) if isinstance(row, dict)
+        }
+        for step_id, enr in (wf.get("enrichments_json") or {}).items():
+            if step_id.startswith("__") or not isinstance(enr, dict):
+                continue
+            for link in enr.get("liens") or []:
+                if isinstance(link, dict) and link.get("type") in STEP_LINK_TYPES and link.get("cible"):
+                    edges.append({
+                        "source": wf["session_id"], "target": link["cible"], "type": link["type"],
+                        "step_id": step_id, "step_name": step_names.get(step_id, ""),
+                    })
+        for target in (wf.get("procedure_metadata_json") or {}).get("necessite") or []:
+            if isinstance(target, str) and target:
+                edges.append({"source": wf["session_id"], "target": target, "type": "necessite",
+                              "step_id": None, "step_name": None})
+    return edges
+
+
+@router.get("/procedures/{workflow_id}/links")
+async def get_procedure_links(workflow_id: str):
+    try:
+        session_id = _get_workflow(workflow_id)["session_id"]
+        workflows = _get_latest_workflows()
+        by_session = {wf["session_id"]: wf for wf in workflows}
+
+        def other(sid: str) -> Dict:
+            wf = by_session.get(sid)
+            return {
+                "session_id": sid,
+                "workflow_id": wf["id"] if wf else None,
+                "nom": _procedure_name(wf) if wf else "Procédure supprimée",
+            }
+
+        sortants, entrants = [], []
+        for e in _collect_links(workflows):
+            step = {"type": e["type"], "step_id": e["step_id"], "step_name": e["step_name"]}
+            if e["source"] == session_id:
+                sortants.append({**step, **other(e["target"])})
+            if e["target"] == session_id:
+                entrants.append({**step, **other(e["source"])})
+        return {"success": True, "sortants": sortants, "entrants": entrants}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────
 # ENDPOINTS — CRUD
 # ─────────────────────────────────────────────────────────────
 

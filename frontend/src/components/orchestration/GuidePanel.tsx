@@ -288,7 +288,7 @@ export default function GuidePanel() {
             <SubHeading>Éditer, discuter, corriger</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">Une fois l&apos;organigramme généré, quatre outils permettent de l&apos;affiner :</p>
             <ul className="space-y-2 text-sm text-gray-700 max-w-2xl">
-              <li className="flex gap-2"><Table2 className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Le tableau</strong> — chaque étape (type BPMN, département, acteur, condition, sorties, outil) est modifiable et réordonnable par glisser-déposer.</span></li>
+              <li className="flex gap-2"><Table2 className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Le tableau</strong> — chaque étape (type BPMN, département, acteur, condition, sorties, applicatif) est modifiable et réordonnable par glisser-déposer.</span></li>
               <li className="flex gap-2"><Waypoints className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Le diagramme</strong> — l&apos;organigramme est éditable à même le canevas graphique, avec une palette de composants BPMN.</span></li>
               <li className="flex gap-2"><MessageSquare className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>L&apos;assistant ProcessMate</strong> — pour générer, régénérer entièrement, ou corriger ponctuellement en langage naturel.</span></li>
               <li className="flex gap-2"><PencilLine className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>La révision</strong> — une instruction unique en langage libre (« Ajoute une étape de validation entre 3 et 4 »), avec historique annulable.</span></li>
@@ -325,12 +325,12 @@ export default function GuidePanel() {
 
             <SubHeading><Gauge className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Complexité</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Un score structurel sur 12 est calculé pour chaque procédure à partir du nombre d&apos;étapes, d&apos;acteurs et d&apos;outils impliqués, puis classé en niveau <strong>Faible</strong>, <strong>Moyenne</strong> ou <strong>Élevée</strong>. Utile pour prioriser les procédures qui gagneraient à être simplifiées.
+              Un score structurel sur 12 est calculé pour chaque procédure à partir du nombre d&apos;étapes, d&apos;acteurs et d&apos;applicatifs impliqués, puis classé en niveau <strong>Faible</strong>, <strong>Moyenne</strong> ou <strong>Élevée</strong>. Utile pour prioriser les procédures qui gagneraient à être simplifiées.
             </p>
 
             <SubHeading><Server className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Cartographie applicative</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Vue d&apos;ensemble des applications et outils utilisés à travers toutes les procédures — qui utilise quoi, et où. Un clic sur une procédure l&apos;ouvre directement dans le Studio.
+              Vue d&apos;ensemble des applicatifs utilisés à travers toutes les procédures — qui utilise quoi, et où. Un clic sur une procédure l&apos;ouvre directement dans le Studio.
             </p>
 
             <SubHeading><Sparkles className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Analyse IA</SubHeading>
@@ -359,7 +359,7 @@ export default function GuidePanel() {
               <li><strong>Qualité</strong> — règles de gestion.</li>
               <li><strong>Diagramme</strong> — le BPMN, avec le même éditeur que dans Formaliser, et l&apos;export Word.</li>
               <li><strong>Descriptions</strong> — le descriptif détaillé de chaque étape.</li>
-              <li><strong>Outils</strong> — l&apos;application ou l&apos;outil associé à chaque étape.</li>
+              <li><strong>Applicatifs</strong> — l&apos;applicatif associé à chaque étape, et les écrans qu&apos;elle utilise.</li>
             </ul>
             <p className="text-sm text-gray-700 max-w-2xl">Un chat IA est intégré à l&apos;éditeur de procédure : les mêmes corrections que dans Formaliser peuvent s&apos;y faire à la conversation.</p>
             <p className="text-sm text-gray-700 max-w-2xl">

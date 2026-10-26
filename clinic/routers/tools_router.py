@@ -4,7 +4,8 @@ Router Référentiel d'outils ProcessMate — voir referentiel-outils.md.
 Référentiel global à toute la plateforme (tools/tool_screens/tool_screen_fields/
 tool_codes, schéma : clinic/database/tools_registry_schema.sql). `Table1Row.outil`
 (dans workflows.workflow_json) reste la seule source de "quel outil pour cette étape" —
-ce routeur ne gère que le catalogue (écrans/champs/codes), pas de lien à une étape.
+ce routeur gère le catalogue (écrans/champs/codes). Le choix des écrans par étape vit
+dans enrichments_json[step_id].ecrans ; seule la vue inverse (screen-usages) le lit.
 """
 
 import asyncio
@@ -135,6 +136,40 @@ def get_tool(tool_id: str):
         "success": True, "tool": tool.data[0], "screens": screens_with_fields, "codes": codes.data,
         "business_rules": business_rules.data, "data_entities": data_entities.data,
     }
+
+
+@router.get("/{tool_id}/screen-usages")
+def get_screen_usages(tool_id: str):
+    """Vue inverse écran → étapes : quelles étapes de quelles procédures ont sélectionné
+    chaque écran de l'outil (enrichments_json[step_id].ecrans). Dernière version de
+    chaque procédure seulement, comme le reste de l'orchestration."""
+    from routers.orchestration_router import _get_latest_workflows
+
+    db = get_supabase()
+    screens = db.table("tool_screens").select("id").eq("tool_id", tool_id).execute()
+    usages = {s["id"]: [] for s in screens.data}
+    if not usages:
+        return {"success": True, "usages": usages}
+
+    for wf in _get_latest_workflows():
+        enrichments = wf.get("enrichments_json") or {}
+        step_names = {
+            str(row.get("id")): row.get("étape") or ""
+            for row in (wf.get("workflow_json") or []) if isinstance(row, dict)
+        }
+        for step_id, enr in enrichments.items():
+            if step_id.startswith("__") or not isinstance(enr, dict):
+                continue
+            for screen_id in enr.get("ecrans") or []:
+                if screen_id in usages:
+                    usages[screen_id].append({
+                        "workflow_id": wf["id"],
+                        "procedure_title": wf.get("title") or "",
+                        "step_id": step_id,
+                        "step_name": step_names.get(step_id, ""),
+                    })
+
+    return {"success": True, "usages": usages}
 
 
 # ─── Écrans ───────────────────────────────────────────────────

@@ -82,7 +82,7 @@ export default function Library({ modelerRef }: LibraryProps) {
             font-size: 11px; font-weight: 600; color: #1a7a5e;
             white-space: nowrap; font-family: system-ui, sans-serif;
         `;
-        ghost.textContent = '⚙ Outil';
+        ghost.textContent = '⚙ Applicatif';
         document.body.appendChild(ghost);
         e.dataTransfer.setDragImage(ghost, 40, 14);
         setTimeout(() => document.body.removeChild(ghost), 0);
@@ -225,7 +225,7 @@ export default function Library({ modelerRef }: LibraryProps) {
                 draggable
                 onDragStart={handleToolDragStart}
                 onDragEnd={handleToolDragEnd}
-                title="Outil / Applicatif — glisser sur le diagramme"
+                title="Applicatif — glisser sur le diagramme"
                 className={`
                     w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-1
                     cursor-grab active:cursor-grabbing
@@ -247,7 +247,7 @@ export default function Library({ modelerRef }: LibraryProps) {
                 onClick={handleLinkClick}
                 title={linkMode
                     ? 'Mode Link actif — cliquez sur la source puis la cible (Échap pour annuler)'
-                    : 'Link — relier une tâche à un outil'}
+                    : 'Link — relier une tâche à un applicatif'}
                 className={`
                     w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-1
                     cursor-pointer
