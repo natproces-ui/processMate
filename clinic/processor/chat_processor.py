@@ -161,7 +161,7 @@ class ChatProcessor:
                 result["enrichments"] = _merge_enrichments(current_enrichments, result.get("enrichments"))
                 result["procedureMetadata"] = _merge_metadata(current_procedure_metadata, result.get("procedureMetadata"))
                 return result
-            return await self._handle_patch(message, current_workflow)
+            return await self._handle_patch(message, current_workflow, current_enrichments)
 
         if intent_result.intent == "web_search":
             return await self._handle_web_search(message, files, current_workflow)
@@ -237,10 +237,18 @@ class ChatProcessor:
     async def _handle_patch(
         self,
         message: str,
-        current_workflow: List[Dict]
+        current_workflow: List[Dict],
+        current_enrichments: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
 
-        prompt = get_revision_prompt(current_workflow, message)
+        # Le modèle voit la description de chaque étape pour pouvoir la réécrire
+        # (champ "description" des opérations, rangé côté interface dans les enrichments)
+        enrichments = current_enrichments or {}
+        workflow_for_prompt = [
+            {**row, "description": (enrichments.get(str(row.get("id"))) or {}).get("descriptif", "")}
+            for row in current_workflow
+        ]
+        prompt = get_revision_prompt(workflow_for_prompt, message)
 
         async def _task(model_name: str):
             model = self.model_manager.get_model(model_name)

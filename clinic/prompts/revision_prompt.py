@@ -84,6 +84,16 @@ Tu dois retourner UNIQUEMENT un patch JSON décrivant les opérations à appliqu
 6. **Plusieurs opérations** : Une instruction peut nécessiter plusieurs opérations.
    Exemple "ajouter entre 5 et 6" → [add, update(5 pour changer ses outputs)]
 
+7. **Description détaillée d'une étape** : le champ "description" de chaque étape du
+   workflow actuel est sa description détaillée (affichée dans les détails de l'étape).
+   Pour la rédiger ou la réécrire, mets "description" dans "fields" (update) ou dans "row" (add).
+   Si l'instruction porte sur la description, modifie "description", pas "étape" (le titre).
+
+8. **Vérification finale** : avant de répondre, vérifie le workflow obtenu après tes
+   opérations : aucune sortie ne pointe vers une étape supprimée ou inexistante, toute
+   étape sauf le StartEvent a au moins une entrée, toute étape sauf un EndEvent a au
+   moins une sortie.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 FORMAT DE SORTIE JSON (sans markdown)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

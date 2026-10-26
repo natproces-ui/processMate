@@ -324,9 +324,22 @@ export default function ChatInterface({
             return;
         }
         if (intent === 'patch') {
-            const revised = applyOperations(currentWorkflow, data.operations || []);
+            const operations = data.operations || [];
+            const applied = applyOperations(currentWorkflow, operations);
+            // Le patch porte les descriptions dans un champ `description` (revision_prompt) :
+            // on les range dans les enrichments, et on ne les laisse pas dans la ligne.
+            const revised = applied.map(({ description: _d, ...row }: any) => row as Table1Row);
+            const described = new Map<string, TaskEnrichment>();
+            operations.forEach((op: any) => {
+                const desc = op.fields?.description ?? op.row?.description;
+                if (!desc) return;
+                let id: string | undefined = op.id ?? op.row?.id;
+                // ligne ajoutée : son id NEW_x a été renuméroté, on la retrouve par son libellé
+                if (!revised.some(r => r.id === id) && op.row) id = revised.find(r => r.étape === op.row.étape)?.id;
+                if (id) described.set(id, { id_tache: id, descriptif: desc } as TaskEnrichment);
+            });
             updateMsg(msgId, m => ({ ...m, intent: 'patch', content: data.explanation || 'Modifications appliquées', operationsCount: data.operations_count || 0 }));
-            onWorkflowGenerated(revised, '', new Map<string, TaskEnrichment>(), null);
+            onWorkflowGenerated(revised, '', described, null);
             onSuccess(`✓ ${data.explanation}`);
             return;
         }

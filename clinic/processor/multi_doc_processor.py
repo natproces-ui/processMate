@@ -28,6 +28,45 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Plafond absolu d'une génération en flux (le délai passé en paramètre borne l'inactivité)
+STREAM_MAX_SECONDS = 600
+
+
+def _referential_section() -> str:
+    """Noms du référentiel d'applicatifs : sans eux, le modèle invente une variante par
+    procédure (« Espace client », « Portail Web », « Solution Espace Client »…)."""
+    try:
+        from database.supabase_client import get_supabase
+        names = [t["name"] for t in get_supabase().table("tools").select("name").order("name").execute().data]
+    except Exception as e:
+        logger.warning(f"Référentiel d'applicatifs indisponible pour le prompt ({e})")
+        return ""
+    if not names:
+        return ""
+    return ("- Applicatifs du référentiel : quand une étape utilise l'une de ces applications, "
+            "reprends son nom EXACT dans « outil » : " + " ; ".join(names) + ".")
+
+
+def move_start_event_first(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Remet le StartEvent en tête quand le modèle a placé des tâches avant lui.
+
+    Cas visé : T1 → T2 → Start → X. On obtient Start → T1 → T2 → X. Sans chaîne linéaire
+    claire jusqu'au StartEvent, on ne touche à rien (le contrôle le signalera)."""
+    idx = next((i for i, r in enumerate(rows) if r.get("typeBpmn") == "StartEvent"), None)
+    if not idx:  # absent, ou déjà en tête
+        return rows
+    before, start = rows[:idx], rows[idx]
+    for i, r in enumerate(before):
+        expected = before[i + 1]["id"] if i + 1 < len(before) else start["id"]
+        if [o.get("targetId") for o in r.get("outputs") or []] != [expected]:
+            return rows
+    if any(o.get("targetId") == before[0]["id"] for r in rows for o in r.get("outputs") or []):
+        return rows  # la première tâche a déjà une entrée : ce n'est pas un simple préambule
+    new_start = {**start, "outputs": [{"targetId": before[0]["id"], "label": ""}]}
+    new_last = {**before[-1], "outputs": start.get("outputs") or []}
+    logger.info(f"🔧 StartEvent {start['id']} remis en tête ({len(before)} tâche(s) avant lui)")
+    return [new_start, *before[:-1], new_last, *rows[idx + 1:]]
+
 
 # ─────────────────────────────────────────────────────────────
 # HELPERS
@@ -463,13 +502,20 @@ Tu DOIS les appliquer à la procédure que tu vas générer/améliorer.
                                          task_name=f"Génération BPMN (flux) — {title}")
         reader, chunks, end = WorkflowRowStream(), [], object()
         loop = asyncio.get_running_loop()
-        deadline = loop.time() + timeout
+        # `timeout` borne l'inactivité, pas la durée totale : sur un long document le flux
+        # avance (étapes puis descriptions) bien au-delà de 180 s sans être bloqué.
+        deadline = loop.time() + STREAM_MAX_SECONDS
         writing = described = False
         while True:
             remaining = deadline - loop.time()
             if remaining <= 0:
-                raise TimeoutError(f"Génération trop longue (> {int(timeout)} s)")
-            chunk = await asyncio.wait_for(asyncio.to_thread(next, stream, end), timeout=remaining)
+                raise TimeoutError(f"Génération trop longue (> {STREAM_MAX_SECONDS} s)")
+            try:
+                chunk = await asyncio.wait_for(asyncio.to_thread(next, stream, end),
+                                               timeout=min(timeout, remaining))
+            except asyncio.TimeoutError:
+                # str() de l'exception native est vide : l'utilisateur ne verrait rien
+                raise TimeoutError(f"Le modèle ne répond plus depuis {int(min(timeout, remaining))} s") from None
             if chunk is end:
                 break
             chunks.append(chunk)
@@ -571,6 +617,19 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
 - Applique les conventions extraites des références pour adapter le flux
 - En cas de doute sur un flux (ex: qui informe le client ?), applique la convention de la référence
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧱 STRUCTURE DU FLUX (obligatoire)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Le StartEvent est la PREMIÈRE ligne : aucune tâche avant lui ; il porte le déclencheur
+  (ex : « Clic du client sur Souscrire », « Réception de l'alerte de nouvelle demande »).
+- Toute étape sauf un EndEvent a au moins une sortie ; toute étape sauf le StartEvent a au
+  moins une entrée. Une étape « le client reçoit / prend connaissance » mène à l'étape suivante
+  ou à une fin : jamais d'impasse. Les branches d'une ParallelGateway se rejoignent.
+- Une action exécutée automatiquement par une application (contrôle, envoi de mail, calcul,
+  intégration, purge…) a pour acteur « Système », jamais un acteur humain.
+- Ne décris que ce que disent les sources : n'invente ni détail technique ni consigne absente.
+{_referential_section()}
 """
 
         extract_format = get_extraction_prompt()
@@ -614,7 +673,7 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
                 raise ValueError(result["message"])
             raw_text = result["result"].text
         workflow_list, title, enrichments_raw = self.img_processor._parse_gemini_response(raw_text)
-        validated = self.img_processor._validate_and_normalize_workflow(workflow_list)
+        validated = move_start_event_first(self.img_processor._validate_and_normalize_workflow(workflow_list))
 
         if isinstance(enrichments_raw, list):
             enrichments_dict = {e["id_tache"]: e for e in enrichments_raw if "id_tache" in e}

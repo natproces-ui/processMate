@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from 'next/dynamic';
 import { generateBPMNSimple } from "@/logic/bpmnGeneratorSimple";
 import type { Table1Row } from "@/logic/types";
-import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS } from "@/logic/bpmnTypes";
+import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeEnrichments } from "@/logic/bpmnTypes";
 import type { BpmnEditorHandle } from "@/components/new-way/BpmnEditor";
 import Table from "@/components/ProcessTable";
 import RevisionPanel from "@/components/RevisionPanel";
@@ -339,12 +339,14 @@ function SttPageInner() {
         if (instances.length > 0) {
             setInstances(prev => prev.map((inst, i) => i === activeTab ? {
                 ...inst, data: workflow, title: title || inst.title,
-                enrichments: newEnrichments, bpmnXml: null,
+                // Fusion, comme SttPanel/ProcedureEditor : un patch du chat n'apporte que
+                // les descriptions qu'il a modifiées, les autres doivent rester.
+                enrichments: mergeEnrichments(inst.enrichments, newEnrichments), bpmnXml: null,
                 initialMeta: procedureMetadata || inst.initialMeta
             } : inst));
         } else {
             setData(workflow); if (title) setProcessTitle(title); setBpmnXml(null);
-            if (newEnrichments?.size > 0) setEnrichments(newEnrichments);
+            if (newEnrichments?.size > 0) setEnrichments(prev => mergeEnrichments(prev, newEnrichments));
             if (procedureMetadata) setInitialMeta(procedureMetadata);
         }
     }, [activeTab, instances]);
