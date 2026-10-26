@@ -151,6 +151,15 @@ def get_screen_usages(tool_id: str):
     if not usages:
         return {"success": True, "usages": usages}
 
+    # Calcul côté base si database/procedure_links_functions.sql est appliqué
+    try:
+        rows = db.rpc("screen_step_usages", {"p_screen_ids": list(usages)}).execute().data or []
+        for r in rows:
+            usages[r["screen_id"]].append({k: r[k] for k in ("workflow_id", "procedure_title", "step_id", "step_name")})
+        return {"success": True, "usages": usages}
+    except Exception as e:
+        logger.warning(f"screen_step_usages indisponible, calcul Python ({e})")
+
     for wf in _get_latest_workflows():
         enrichments = wf.get("enrichments_json") or {}
         step_names = {

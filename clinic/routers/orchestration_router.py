@@ -493,10 +493,38 @@ def _collect_links(workflows: List[Dict]) -> List[Dict]:
     return edges
 
 
+def _links_from_db(session_id: str) -> Optional[Dict[str, List[Dict]]]:
+    """Calcul côté base (database/procedure_links_functions.sql) : quelques lignes au lieu
+    de relire toutes les procédures. None si la fonction n'est pas encore appliquée."""
+    try:
+        rows = get_supabase().rpc("procedure_link_edges", {"p_session": session_id}).execute().data or []
+    except Exception as e:
+        logger.warning(f"procedure_link_edges indisponible, calcul Python ({e})")
+        return None
+    sortants, entrants = [], []
+    for r in rows:
+        step = {"type": r["link_type"], "step_id": r["step_id"], "step_name": r["step_name"]}
+        if r["source_session"] == session_id:
+            sortants.append({**step, "session_id": r["target_session"],
+                             "workflow_id": r["target_workflow_id"], "nom": r["target_nom"]})
+        if r["target_session"] == session_id:
+            entrants.append({**step, "session_id": r["source_session"],
+                             "workflow_id": r["source_workflow_id"], "nom": r["source_nom"]})
+    return {"sortants": sortants, "entrants": entrants}
+
+
 @router.get("/procedures/{workflow_id}/links")
 async def get_procedure_links(workflow_id: str):
     try:
-        session_id = _get_workflow(workflow_id)["session_id"]
+        found = get_supabase().table("workflows").select("session_id").eq("id", workflow_id).execute()
+        if not found.data:
+            raise HTTPException(status_code=404, detail="Procédure introuvable")
+        session_id = found.data[0]["session_id"]
+
+        from_db = _links_from_db(session_id)
+        if from_db is not None:
+            return {"success": True, **from_db}
+
         workflows = _get_latest_workflows()
         by_session = {wf["session_id"]: wf for wf in workflows}
 
