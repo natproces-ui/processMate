@@ -68,6 +68,32 @@ def move_start_event_first(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [new_start, *before[:-1], new_last, *rows[idx + 1:]]
 
 
+def chain_dead_end_branches(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Répare le motif « envoi → (réception sans suite | suite) » produit par le modèle :
+    une tâche P mène à D (impasse) et à O ; on enchaîne P → D → O.
+
+    Ne touche qu'à une tâche sans sortie, qui n'a qu'un prédécesseur, lui-même une tâche
+    à exactement deux sorties (pas une passerelle : ses branches ont un sens)."""
+    by_id = {r["id"]: r for r in rows}
+    preds: Dict[str, List[str]] = {}
+    for r in rows:
+        for o in r.get("outputs") or []:
+            preds.setdefault(o.get("targetId"), []).append(r["id"])
+    fixed = {}
+    for d in rows:
+        if d.get("typeBpmn") == "EndEvent" or d.get("outputs") or len(preds.get(d["id"], [])) != 1:
+            continue
+        p = by_id.get(preds[d["id"]][0])
+        if not p or p.get("typeBpmn") != "Task" or len(p.get("outputs") or []) != 2 or p["id"] in fixed:
+            continue
+        other = next(o for o in p["outputs"] if o.get("targetId") != d["id"])
+        fixed[p["id"]] = {**p, "outputs": [{"targetId": d["id"], "label": ""}]}
+        fixed[d["id"]] = {**d, "outputs": [{"targetId": other["targetId"], "label": other.get("label", "")}]}
+    if fixed:
+        logger.info(f"🔧 {len(fixed) // 2} impasse(s) enchaînée(s) après leur envoi")
+    return [fixed.get(r["id"], r) for r in rows]
+
+
 # ─────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────
@@ -673,7 +699,8 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
                 raise ValueError(result["message"])
             raw_text = result["result"].text
         workflow_list, title, enrichments_raw = self.img_processor._parse_gemini_response(raw_text)
-        validated = move_start_event_first(self.img_processor._validate_and_normalize_workflow(workflow_list))
+        validated = chain_dead_end_branches(
+            move_start_event_first(self.img_processor._validate_and_normalize_workflow(workflow_list)))
 
         if isinstance(enrichments_raw, list):
             enrichments_dict = {e["id_tache"]: e for e in enrichments_raw if "id_tache" in e}
