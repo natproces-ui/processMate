@@ -42,7 +42,7 @@ const TABS: { id: AnalyserTab; label: string; icon: React.ElementType }[] = [
     { id: 'irritants',   label: 'Irritants',           icon: TriangleAlert },
     { id: 'complexity',  label: 'Complexité',          icon: Gauge        },
     { id: 'applicatifs', label: 'Applicatifs',         icon: Server       },
-    { id: 'liens',       label: 'Carte des liens',     icon: Network      },
+    { id: 'liens',       label: 'Bout en bout',        icon: Network      },
     { id: 'ia',          label: 'Analyse IA',          icon: MessageSquare },
 ];
 

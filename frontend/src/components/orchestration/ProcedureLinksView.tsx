@@ -6,7 +6,7 @@
 // déclenche ou nécessite (et celles qui y mènent), chacune avec son BPMN en entier et ses liens
 // posés sur les étapes. À droite, leurs écrans dans l'ordre des étapes. Les deux colonnes
 // défilent verticalement et se suivent : cliquer une étape amène à son écran, faire défiler
-// les écrans surligne l'étape. Sert à Analyse > Carte des liens et au bouton « Défiler les
+// les écrans surligne l'étape. Sert à Analyse > Bout en bout et au bouton « Défiler les
 // écrans » des éditeurs (onClose).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
