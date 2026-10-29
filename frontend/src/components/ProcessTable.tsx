@@ -7,6 +7,7 @@ import EnrichmentModal from '@/components/DetailModal';
 import ToolPicker from '@/components/orchestration/ToolPicker';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import { Settings2 } from 'lucide-react';
+import { ScreenHoverTarget } from '@/components/orchestration/ScreenHover';
 
 interface TableProps {
     data: Table1Row[];
@@ -527,7 +528,9 @@ export default function Table({
                                                 {isAiChanged && <span className="ml-1 rounded-full bg-amber-400 px-1 text-[9px] font-bold text-white align-top">IA</span>}
                                             </td>
                                             <td className="border border-gray-300 px-3 py-2 font-medium">
-                                                {row.étape || <span className="text-gray-400 italic">Sans nom</span>}
+                                                <ScreenHoverTarget toolName={row.outil} screenIds={enrichment?.ecrans}>
+                                                    {row.étape || <span className="text-gray-400 italic">Sans nom</span>}
+                                                </ScreenHoverTarget>
                                             </td>
                                             <td className="border border-gray-300 px-3 py-2 max-w-xs">
                                                 <div className="truncate" title={enrichment?.descriptif}>

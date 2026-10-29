@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/tools", tags=["Référentiel outils"])
 
-FIELD_TYPES = {"texte", "nombre", "date", "liste"}
+# case = case à cocher, fichier = dépôt de pièce, affichage = valeur affichée (non saisie)
+FIELD_TYPES = {"texte", "nombre", "date", "liste", "case", "fichier", "affichage"}
 CODE_TYPES = {"transaction", "produit", "erreur", "informatique"}
 RULE_TYPES = {"validation", "calcul", "controle", "autre"}
 DATA_NATURES = {"entree", "sortie", "reference"}
@@ -38,6 +39,19 @@ DATA_NATURES = {"entree", "sortie", "reference"}
 class ToolCreate(BaseModel):
     name: str
     color: Optional[str] = None
+
+
+class ToolUpdate(BaseModel):
+    color: Optional[str] = None
+    # Charte graphique de l'applicatif (CSS), appliquée à la page HTML de chacun de ses écrans
+    design_css: Optional[str] = None
+
+
+class ToolScreenUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    # Page de l'écran (HTML sans script), affichée dans un iframe isolé avec design_css
+    html: Optional[str] = None
 
 
 class ToolScreenCreate(BaseModel):
@@ -128,6 +142,7 @@ def get_tool(tool_id: str):
             .select("*")
             .eq("screen_id", screen["id"])
             .order("sort_order")
+            .order("created_at")  # ordre de saisie à sort_order égal (champs ajoutés avant que sort_order soit renseigné)
             .execute()
         )
         screens_with_fields.append({**screen, "fields": fields.data})
@@ -136,6 +151,18 @@ def get_tool(tool_id: str):
         "success": True, "tool": tool.data[0], "screens": screens_with_fields, "codes": codes.data,
         "business_rules": business_rules.data, "data_entities": data_entities.data,
     }
+
+
+@router.put("/{tool_id}")
+def update_tool(tool_id: str, body: ToolUpdate):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        return {"success": True}
+    db = get_supabase()
+    result = db.table("tools").update(updates).eq("id", tool_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Outil introuvable")
+    return {"success": True, "tool": result.data[0]}
 
 
 @router.get("/{tool_id}/screen-usages")
@@ -226,6 +253,18 @@ def get_screen_screenshot(screen_id: str):
     return Response(content=data, media_type="image/png")
 
 
+@router.put("/screens/{screen_id}")
+def update_screen(screen_id: str, body: ToolScreenUpdate):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        return {"success": True}
+    db = get_supabase()
+    result = db.table("tool_screens").update(updates).eq("id", screen_id).execute()
+    if not result.data:
+        raise HTTPException(404, "Écran introuvable")
+    return {"success": True, "screen": result.data[0]}
+
+
 @router.delete("/screens/{screen_id}")
 def delete_screen(screen_id: str):
     db = get_supabase()
@@ -240,9 +279,13 @@ def add_field(screen_id: str, body: ToolScreenFieldCreate):
     if body.field_type not in FIELD_TYPES:
         raise HTTPException(400, f"field_type doit être parmi {sorted(FIELD_TYPES)}")
     db = get_supabase()
+    # Le nouveau champ se place après les autres : c'est l'ordre affiché sur la maquette
+    last = (db.table("tool_screen_fields").select("sort_order").eq("screen_id", screen_id)
+            .order("sort_order", desc=True).limit(1).execute())
     result = db.table("tool_screen_fields").insert({
         "screen_id": screen_id, "name": body.name, "field_type": body.field_type,
         "required": body.required, "example_value": body.example_value,
+        "sort_order": (last.data[0]["sort_order"] + 1) if last.data else 0,
     }).execute()
     return {"success": True, "field": result.data[0]}
 

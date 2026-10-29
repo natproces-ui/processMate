@@ -11,9 +11,12 @@ export interface Tool {
   id: string;
   name: string;
   color: string | null;
+  /** Charte graphique (CSS) appliquée aux pages HTML des écrans de l'applicatif. */
+  design_css?: string | null;
 }
 
-export type ToolFieldType = 'texte' | 'nombre' | 'date' | 'liste';
+// case = case à cocher, fichier = dépôt de pièce, affichage = valeur affichée (non saisie)
+export type ToolFieldType = 'texte' | 'nombre' | 'date' | 'liste' | 'case' | 'fichier' | 'affichage';
 
 export interface ToolScreenField {
   id: string;
@@ -31,6 +34,8 @@ export interface ToolScreen {
   name: string;
   description: string | null;
   screenshot_path: string | null;
+  /** Page de l'écran (HTML sans script), dessinée dans la charte de l'applicatif. */
+  html?: string | null;
   fields: ToolScreenField[];
 }
 

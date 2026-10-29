@@ -12,6 +12,8 @@ import { generateBPMNOutillage } from '@/logic/bpmnGeneratorOutillage';
 import { parseWorkflowFromModeler, type ParseResult } from '@/logic/bpmnParser';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import ToolQuickCard from '@/components/orchestration/ToolQuickCard';
+import ScreenFlow from '@/components/orchestration/ScreenFlow';
+import { ScreenHoverCard } from '@/components/orchestration/ScreenHover';
 import type { Table1Row } from '@/logic/types';
 import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeProcedureMetadata, mergeEnrichments } from '@/logic/bpmnTypes';
 import type { BpmnEditorHandle } from '@/components/new-way/BpmnEditor';
@@ -28,13 +30,13 @@ import Library from '@/components/new-way/Library';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
-    PanelLeftOpen, Table2, Workflow, FileText,
+    PanelLeftOpen, Table2, Workflow, FileText, Play,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders } from '@/lib/processing-level';
 import type { StudioTool } from '@/lib/processmate-navigation';
 import ProcessingLevelSelector, { useProcessingLevel } from './ProcessingLevelSelector';
-import { orchestrationApi } from '@/lib/orchestrationApi';
+import { orchestrationApi, type Procedure } from '@/lib/orchestrationApi';
 import { orchestrationTasksApi } from '@/lib/orchestrationTasksApi';
 import RecipientPicker from '@/components/orchestration/tasks/RecipientPicker';
 import { useProceduresStore } from '@/store/proceduresStore';
@@ -99,6 +101,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [editorFullscreen, setEditorFullscreen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
     const [view, setView] = useState<'table' | 'bpmn' | 'fiche'>('table');
+    const [journeyOpen, setJourneyOpen] = useState(false);
+    const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatWidth, setChatWidth] = useState(400);
     const LAYOUT_KEY = 'processmate-studio-layout';
@@ -859,6 +863,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         <v.icon className="w-3.5 h-3.5" />{v.label}
                                     </button>
                                 ))}
+                                <button type="button" onClick={() => setJourneyOpen(true)} disabled={activeData.length === 0}
+                                    title="Parcourir les écrans des étapes, et des process liés"
+                                    className="ml-2 mb-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 disabled:opacity-40">
+                                    <Play className="w-3.5 h-3.5" fill="currentColor" />Défiler les écrans
+                                </button>
                             </div>
                             <div className="pb-1.5">
                                 <SttToolbar
@@ -1020,8 +1029,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         <Library modelerRef={modelerRef} />
                                         <div className="flex-1 min-w-0">
                                             {instances.length > 0
-                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
-                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} />
+                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
+                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
                                             }
                                         </div>
                                     </div>
@@ -1134,6 +1143,21 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     confirmLabel="Soumettre"
                     onConfirm={(recipientId, recipientRole, message) => handleSubmitConfirm(recipientId, message)}
                     onCancel={() => setSubmitModalOpen(false)}
+                />
+            )}
+            {hoveredStep && (() => {
+                const row = activeData.find(r => r.id === hoveredStep.id);
+                const ids = activeEnrichments.get(hoveredStep.id)?.ecrans;
+                return row?.outil && ids?.length ? <ScreenHoverCard toolName={row.outil} screenIds={ids} anchor={hoveredStep.rect} /> : null;
+            })()}
+            {journeyOpen && (
+                // Ce qui est affiché dans le Studio, enregistré ou non ; les process liés sont lus en base
+                <ScreenFlow
+                    procedure={{
+                        id: activeInst?.workflow_db_id || '', session_id: '', nom: activeTitle, ref: '',
+                        workflow_json: activeData, enrichments_json: Object.fromEntries(activeEnrichments),
+                    } as unknown as Procedure}
+                    onClose={() => setJourneyOpen(false)}
                 />
             )}
         </div>

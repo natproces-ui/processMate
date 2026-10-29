@@ -26,7 +26,7 @@ interface ToolDetailPanelProps {
     onClose: () => void;
 }
 
-const FIELD_TYPES: ToolFieldType[] = ['texte', 'nombre', 'date', 'liste'];
+const FIELD_TYPES: ToolFieldType[] = ['texte', 'nombre', 'date', 'liste', 'case', 'fichier', 'affichage'];
 const CODE_TYPES: { value: ToolCodeType; label: string }[] = [
     { value: 'transaction', label: 'Transaction' },
     { value: 'produit', label: 'Produit / référence' },

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import {
-    TriangleAlert, Gauge, Server, MessageSquare, Loader2,
+    TriangleAlert, Gauge, Server, MessageSquare, Loader2, Network,
 } from 'lucide-react';
 import type { TaskActor } from '@/lib/orchestrationTasksApi';
 
@@ -20,12 +20,13 @@ const IrritantsPanel         = dynamic(() => import('@/components/orchestration/
 const ComplexityPanel        = dynamic(() => import('@/components/orchestration/ComplexityPanel'),                { loading: PanelSkeleton });
 const ApplicatifsPanel       = dynamic(() => import('@/components/orchestration/ApplicatifsPanel'),              { loading: PanelSkeleton });
 const AnalysisWorkspace      = dynamic(() => import('@/components/analysis/AnalysisWorkspace'),                   { loading: PanelSkeleton });
+const LinksMapPanel          = dynamic(() => import('@/components/orchestration/LinksMapPanel'),                  { loading: PanelSkeleton, ssr: false });
 
 // ── Types ──────────────────────────────────────────────────────
 // Carte BIAN retirée d'ici (redondante avec Créer/Modifier → Créer, qui monte
 // désormais le même BianServiceMap) — décision utilisateur du 2026-08-11.
 
-export type AnalyserTab = 'irritants' | 'complexity' | 'applicatifs' | 'ia';
+export type AnalyserTab = 'irritants' | 'complexity' | 'applicatifs' | 'liens' | 'ia';
 
 interface AnalyserPanelProps {
     actors: TaskActor[];
@@ -41,6 +42,7 @@ const TABS: { id: AnalyserTab; label: string; icon: React.ElementType }[] = [
     { id: 'irritants',   label: 'Irritants',           icon: TriangleAlert },
     { id: 'complexity',  label: 'Complexité',          icon: Gauge        },
     { id: 'applicatifs', label: 'Applicatifs',         icon: Server       },
+    { id: 'liens',       label: 'Carte des liens',     icon: Network      },
     { id: 'ia',          label: 'Analyse IA',          icon: MessageSquare },
 ];
 
@@ -108,6 +110,10 @@ export default function AnalyserPanel({
 
                 <SubPanel active={activeTab === 'applicatifs'}>
                     <ApplicatifsPanel />
+                </SubPanel>
+
+                <SubPanel active={activeTab === 'liens'}>
+                    <LinksMapPanel />
                 </SubPanel>
 
                 <SubPanel active={activeTab === 'ia'}>

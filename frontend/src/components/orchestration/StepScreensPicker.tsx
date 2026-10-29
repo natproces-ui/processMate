@@ -9,14 +9,15 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { toolsApi, type ToolScreen } from '@/lib/toolsApi';
+import { toolsApi, type ToolScreen, type ToolDetail } from '@/lib/toolsApi';
 
 // Plusieurs étapes partagent souvent le même outil : une seule requête par outil,
 // gardée peu de temps pour voir les écrans ajoutés entre-temps dans la fiche outil.
 const CACHE_TTL_MS = 15_000;
-const cache = new Map<string, { at: number; promise: Promise<ToolScreen[]> }>();
+const cache = new Map<string, { at: number; promise: Promise<ToolDetail | null> }>();
 
-function loadScreens(toolName: string): Promise<ToolScreen[]> {
+/** Fiche d'un applicatif par son nom (charte + écrans), null s'il n'est pas au référentiel. */
+export function loadToolDetail(toolName: string): Promise<ToolDetail | null> {
     const key = toolName.trim().toLowerCase();
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.promise;
@@ -24,10 +25,14 @@ function loadScreens(toolName: string): Promise<ToolScreen[]> {
     // l'applicatif dans le référentiel. Absent du référentiel = aucun écran.
     const promise = toolsApi.search(toolName)
         .then(res => res.tools.find(t => t.name.trim().toLowerCase() === key))
-        .then(tool => tool ? toolsApi.getDetail(tool.id).then(detail => detail.screens) : []);
+        .then(tool => tool ? toolsApi.getDetail(tool.id) : null);
     promise.catch(() => cache.delete(key));
     cache.set(key, { at: Date.now(), promise });
     return promise;
+}
+
+export function loadScreens(toolName: string): Promise<ToolScreen[]> {
+    return loadToolDetail(toolName).then(detail => detail?.screens ?? []);
 }
 
 interface Props {

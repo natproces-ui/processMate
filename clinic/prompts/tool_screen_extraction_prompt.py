@@ -11,7 +11,7 @@ TOOL_SCREEN_EXTRACTION_PROMPT = """Tu es un expert en analyse d'interfaces appli
 RÈGLES :
 - Un champ = tout élément de formulaire visible : zone de texte, liste déroulante, case à cocher, sélecteur de date, montant, numéro de compte, etc.
 - N'invente aucun champ qui n'est pas visible sur la capture.
-- Le type doit être l'un de : "texte", "nombre", "date", "liste".
+- Le type doit être l'un de : "texte", "nombre", "date", "liste", "case" (case à cocher), "fichier" (dépôt / pièce jointe), "affichage" (valeur seulement affichée, non modifiable : solde, statut, libellé de compte...).
 - "required" = true uniquement si un indicateur visuel de champ obligatoire est présent (astérisque, couleur, mention explicite) — sinon false, ne jamais deviner.
 - "example_value" = la valeur déjà affichée dans le champ sur la capture, si il y en a une (utile comme exemple) — sinon chaîne vide.
 - Si le nom exact du champ n'est pas lisible, utilise une description courte plutôt que de l'inventer.
@@ -19,7 +19,7 @@ RÈGLES :
 FORMAT DE SORTIE — uniquement ce JSON, rien d'autre :
 {
   "fields": [
-    {"name": "...", "field_type": "texte|nombre|date|liste", "required": true|false, "example_value": "..."}
+    {"name": "...", "field_type": "texte|nombre|date|liste|case|fichier|affichage", "required": true|false, "example_value": "..."}
   ]
 }
 """

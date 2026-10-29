@@ -1,6 +1,6 @@
 // lib/orchestrationApi.ts
 import { API_CONFIG } from './api-config';
-import type { ProcedureLinks } from './processLinks';
+import type { LinkType, ProcedureLinks } from './processLinks';
 
 const BASE = API_CONFIG.baseUrl;
 
@@ -247,6 +247,10 @@ export const orchestrationApi = {
   // Liens sortants (enregistrés ici) et entrants (calculés) — voir lib/processLinks.ts
   getProcedureLinks: (workflowId: string) =>
     fetchJSON<{ success: boolean } & ProcedureLinks>(`/api/orchestration/procedures/${workflowId}/links`),
+
+  // Toutes les arêtes entre procédures (session_id → session_id), pour la carte des liens
+  getAllLinks: () =>
+    fetchJSON<{ success: boolean; edges: { source: string; target: string; type: LinkType; step_id: string | null; step_name: string | null }[] }>('/api/orchestration/links'),
 
   listProcedures: () =>
     fetchJSON<{ success: boolean; procedures: Procedure[]; total: number }>('/api/orchestration/procedures'),

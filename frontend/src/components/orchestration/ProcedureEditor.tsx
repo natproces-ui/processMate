@@ -16,11 +16,13 @@ import ToolPicker from '@/components/orchestration/ToolPicker';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import StepScreensPicker from '@/components/orchestration/StepScreensPicker';
 import ProcessLinksEditor from '@/components/orchestration/ProcessLinksEditor';
+import ScreenFlow from '@/components/orchestration/ScreenFlow';
+import { ScreenHoverCard, ScreenHoverTarget } from '@/components/orchestration/ScreenHover';
 import { LINK_LABELS, type ProcedureLinks, type StepLink } from '@/lib/processLinks';
 import {
     Download, Save, Maximize2, X, MessageSquare,
     CheckCircle, AlertCircle, Loader2,
-    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench, RotateCw, Link2,
+    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench, RotateCw, Link2, Play,
 } from 'lucide-react';
 
 const BpmnEditor = dynamic(() => import('@/components/new-way/BpmnEditor'), {
@@ -104,6 +106,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [managingTool, setManagingTool] = useState<string | null>(null);
+    const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+    const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
 
     // ─── Modes édition ────────────────────────────────────────
     const [editingCaract, setEditingCaract] = useState(false);
@@ -490,7 +494,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
 
             {/* Navigation sections */}
             <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6">
-                <div className="flex">
+                <div className="flex items-center">
                     {SECTIONS.map(s => (
                         <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
                             className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeSection === s.id
@@ -500,6 +504,11 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                             {s.icon}{s.label}
                         </button>
                     ))}
+                    <button type="button" onClick={() => setWalkthroughOpen(true)} disabled={data.length === 0}
+                        title="Parcourir les écrans de la procédure, étape par étape"
+                        className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 disabled:opacity-40 whitespace-nowrap">
+                        <Play className="w-3.5 h-3.5" fill="currentColor" />Défiler les écrans
+                    </button>
                 </div>
             </div>
 
@@ -743,6 +752,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                         onReady={() => { }}
                                         onModelerReady={m => { modelerRef.current = m; }}
                                         highlightStepIds={Array.from(aiChangedStepIds)}
+                                        onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)}
                                     />
                                 </div>
                             </div>
@@ -792,7 +802,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                                 <span className="flex-shrink-0 w-6 h-6 bg-slate-200 text-slate-700 rounded-full flex items-center justify-center text-xs font-bold">
                                                     {idx + 1}
                                                 </span>
-                                                <span className="flex-1 text-sm font-semibold text-slate-800">{row.étape}</span>
+                                                <ScreenHoverTarget toolName={row.outil} screenIds={enrichments.get(row.id)?.ecrans} className="flex-1 text-sm font-semibold text-slate-800">{row.étape}</ScreenHoverTarget>
                                                 {isAiChanged && <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-bold text-white">IA</span>}
                                                 {row.département && (
                                                     <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
@@ -866,7 +876,9 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                                     {idx + 1}
                                                     {aiChangedStepIds.has(row.id) && <span className="ml-1 rounded-full bg-amber-400 px-1 text-[9px] font-bold text-white align-top">IA</span>}
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-800 font-medium">{row.étape}</td>
+                                                <td className="px-4 py-3 text-slate-800 font-medium">
+                                                    <ScreenHoverTarget toolName={row.outil} screenIds={enrichments.get(row.id)?.ecrans}>{row.étape}</ScreenHoverTarget>
+                                                </td>
                                                 <td className="px-4 py-3 text-slate-500 text-xs">{row.acteur || '—'}</td>
                                                 <td className="px-4 py-3">
                                                     {!editingOutils ? (
@@ -1047,6 +1059,18 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                         </div>
                     </div>
                 </div>
+            )}
+            {hoveredStep && (() => {
+                const row = data.find(r => r.id === hoveredStep.id);
+                const ids = enrichments.get(hoveredStep.id)?.ecrans;
+                return row?.outil && ids?.length ? <ScreenHoverCard toolName={row.outil} screenIds={ids} anchor={hoveredStep.rect} /> : null;
+            })()}
+            {walkthroughOpen && (
+                // L'état affiché (pas seulement la version enregistrée) : on parcourt ce qu'on voit
+                <ScreenFlow
+                    procedure={{ ...procedure, workflow_json: data, enrichments_json: Object.fromEntries(enrichments) }}
+                    onClose={() => setWalkthroughOpen(false)}
+                />
             )}
         </div>
     );

@@ -513,6 +513,24 @@ def _links_from_db(session_id: str) -> Optional[Dict[str, List[Dict]]]:
     return {"sortants": sortants, "entrants": entrants}
 
 
+@router.get("/links")
+async def get_all_links():
+    """Toutes les arêtes entre procédures (dernières versions), pour la carte des liens.
+    Les procédures elles-mêmes viennent de GET /procedures."""
+    try:
+        try:
+            rows = get_supabase().rpc("procedure_link_edges", {"p_session": None}).execute().data or []
+            edges = [{"source": r["source_session"], "target": r["target_session"], "type": r["link_type"],
+                      "step_id": r["step_id"], "step_name": r["step_name"]} for r in rows]
+        except Exception as e:
+            logger.warning(f"procedure_link_edges indisponible, calcul Python ({e})")
+            edges = _collect_links(_get_latest_workflows())
+        return {"success": True, "edges": edges}
+    except Exception as e:
+        logger.error(f"Erreur liens : {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/procedures/{workflow_id}/links")
 async def get_procedure_links(workflow_id: str):
     try:

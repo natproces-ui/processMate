@@ -26,6 +26,9 @@ interface BpmnEditorProps {
     /** Ids de Table1Row (pas d'éléments BPMN) récemment touchés par une modification IA
      *  appliquée — surlignés à l'ouverture du diagramme. */
     highlightStepIds?: string[];
+    /** Survol d'une étape (id de Table1Row) : rectangle à l'écran pour y ancrer un aperçu ;
+     *  (null, null) quand la souris la quitte. */
+    onStepHover?: (stepId: string | null, rect: DOMRect | null) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -86,11 +89,15 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
     onError,
     onModelerReady,
     highlightStepIds,
+    onStepHover,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const modelerRef = useRef<any>(null);
     const [loading, setLoading] = useState(true);
     const changeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // Gardé dans une ref : le modeler n'est créé qu'une fois, le callback peut changer
+    const onStepHoverRef = useRef(onStepHover);
+    onStepHoverRef.current = onStepHover;
     useEffect(() => {
         let destroyed = false;
         loadBpmnCss();
@@ -719,6 +726,17 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
 
 
                 const canvas = modeler.get('canvas');
+
+                // Survol d'une étape : même convention d'id "{préfixe}_{id de la ligne}"
+                const STEP_TYPES = ['bpmn:Task', 'bpmn:UserTask', 'bpmn:StartEvent', 'bpmn:EndEvent'];
+                eventBus.on('element.hover', (e: any) => {
+                    const el = e.element;
+                    if (!el || el.waypoints || !STEP_TYPES.includes(el.type) || !el.id.includes('_')) return;
+                    onStepHoverRef.current?.(el.id.slice(el.id.indexOf('_') + 1), (e.gfx as SVGGElement).getBoundingClientRect());
+                });
+                eventBus.on('element.out', (e: any) => {
+                    if (e.element && STEP_TYPES.includes(e.element.type)) onStepHoverRef.current?.(null, null);
+                });
 
                 // Surligne les éléments correspondant aux étapes récemment modifiées par
                 // l'IA — l'id d'un élément BPMN est toujours "{préfixe}_{id de la ligne}"
