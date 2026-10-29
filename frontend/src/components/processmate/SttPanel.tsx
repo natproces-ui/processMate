@@ -12,7 +12,7 @@ import { generateBPMNOutillage } from '@/logic/bpmnGeneratorOutillage';
 import { parseWorkflowFromModeler, type ParseResult } from '@/logic/bpmnParser';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import ToolQuickCard from '@/components/orchestration/ToolQuickCard';
-import ScreenFlow from '@/components/orchestration/ScreenFlow';
+import ProcedureLinksView from '@/components/orchestration/ProcedureLinksView';
 import { ScreenHoverCard } from '@/components/orchestration/ScreenHover';
 import type { Table1Row } from '@/logic/types';
 import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeProcedureMetadata, mergeEnrichments } from '@/logic/bpmnTypes';
@@ -863,8 +863,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         <v.icon className="w-3.5 h-3.5" />{v.label}
                                     </button>
                                 ))}
-                                <button type="button" onClick={() => setJourneyOpen(true)} disabled={activeData.length === 0}
-                                    title="Parcourir les écrans des étapes, et des process liés"
+                                <button type="button" onClick={() => setJourneyOpen(true)} disabled={activeData.length === 0 || !activeInst?.workflow_db_id}
+                                    title={activeInst?.workflow_db_id ? 'Parcourir les écrans des étapes, et des process liés' : 'Enregistrez la procédure pour parcourir ses écrans'}
                                     className="ml-2 mb-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 disabled:opacity-40">
                                     <Play className="w-3.5 h-3.5" fill="currentColor" />Défiler les écrans
                                 </button>
@@ -1150,15 +1150,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 const ids = activeEnrichments.get(hoveredStep.id)?.ecrans;
                 return row?.outil && ids?.length ? <ScreenHoverCard toolName={row.outil} screenIds={ids} anchor={hoveredStep.rect} /> : null;
             })()}
-            {journeyOpen && (
-                // Ce qui est affiché dans le Studio, enregistré ou non ; les process liés sont lus en base
-                <ScreenFlow
-                    procedure={{
-                        id: activeInst?.workflow_db_id || '', session_id: '', nom: activeTitle, ref: '',
-                        workflow_json: activeData, enrichments_json: Object.fromEntries(activeEnrichments),
-                    } as unknown as Procedure}
-                    onClose={() => setJourneyOpen(false)}
-                />
+            {journeyOpen && activeInst?.workflow_db_id && (
+                // Version enregistrée de la procédure et procédures liées, lues en base
+                <ProcedureLinksView initialWorkflowId={activeInst.workflow_db_id} initialDepth={1} onClose={() => setJourneyOpen(false)} />
             )}
         </div>
     );

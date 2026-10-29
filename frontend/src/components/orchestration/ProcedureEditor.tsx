@@ -16,7 +16,7 @@ import ToolPicker from '@/components/orchestration/ToolPicker';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import StepScreensPicker from '@/components/orchestration/StepScreensPicker';
 import ProcessLinksEditor from '@/components/orchestration/ProcessLinksEditor';
-import ScreenFlow from '@/components/orchestration/ScreenFlow';
+import ProcedureLinksView from '@/components/orchestration/ProcedureLinksView';
 import { ScreenHoverCard, ScreenHoverTarget } from '@/components/orchestration/ScreenHover';
 import { LINK_LABELS, type ProcedureLinks, type StepLink } from '@/lib/processLinks';
 import {
@@ -1066,11 +1066,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 return row?.outil && ids?.length ? <ScreenHoverCard toolName={row.outil} screenIds={ids} anchor={hoveredStep.rect} /> : null;
             })()}
             {walkthroughOpen && (
-                // L'état affiché (pas seulement la version enregistrée) : on parcourt ce qu'on voit
-                <ScreenFlow
-                    procedure={{ ...procedure, workflow_json: data, enrichments_json: Object.fromEntries(enrichments) }}
-                    onClose={() => setWalkthroughOpen(false)}
-                />
+                // Version enregistrée de la procédure et procédures liées, lues en base
+                <ProcedureLinksView initialWorkflowId={procedure.id} initialDepth={1} onClose={() => setWalkthroughOpen(false)} />
             )}
         </div>
     );

@@ -20,7 +20,7 @@ const IrritantsPanel         = dynamic(() => import('@/components/orchestration/
 const ComplexityPanel        = dynamic(() => import('@/components/orchestration/ComplexityPanel'),                { loading: PanelSkeleton });
 const ApplicatifsPanel       = dynamic(() => import('@/components/orchestration/ApplicatifsPanel'),              { loading: PanelSkeleton });
 const AnalysisWorkspace      = dynamic(() => import('@/components/analysis/AnalysisWorkspace'),                   { loading: PanelSkeleton });
-const LinksMapPanel          = dynamic(() => import('@/components/orchestration/LinksMapPanel'),                  { loading: PanelSkeleton });
+const ProcedureLinksView     = dynamic(() => import('@/components/orchestration/ProcedureLinksView'),             { loading: PanelSkeleton });
 
 // ── Types ──────────────────────────────────────────────────────
 // Carte BIAN retirée d'ici (redondante avec Créer/Modifier → Créer, qui monte
@@ -113,7 +113,7 @@ export default function AnalyserPanel({
                 </SubPanel>
 
                 <SubPanel active={activeTab === 'liens'}>
-                    <LinksMapPanel />
+                    <ProcedureLinksView />
                 </SubPanel>
 
                 <SubPanel active={activeTab === 'ia'}>
