@@ -2,16 +2,15 @@
 
 // components/orchestration/ProcessChainMap.tsx
 //
-// Carte bpmn-js d'un thème (lib/processMapXml.ts) en mode « disposition » : on zoome, on
-// déplace la vue, on déplace et redimensionne les procédures (bassins) ; rien d'autre n'est
-// modifiable. Les groupements suivent leurs procédures ; cliquer le nom d'un groupement
-// sélectionne ses procédures pour les déplacer ensemble, double-cliquer le renomme. Cliquer une
+// Carte bpmn-js des enchaînements d'un thème (lib/processMapXml.ts), en lecture : on zoome, on
+// dézoome, on déplace la vue. Chaque rangée porte son nom et un bouton « ⋯ » (modification de
+// la rangée, gérée par le parent). Cliquer une procédure sélectionne sa rangée ; cliquer une
 // étape la désigne.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import type { Box, ProcessMapLayout } from '@/lib/taxonomyApi';
-import { groupBounds, type ProcessMap } from '@/lib/processMapXml';
+import type { Box } from '@/lib/taxonomyApi';
+import type { MapRow, ProcessMap } from '@/lib/processMapXml';
 
 let assetsLoaded = false;
 function loadAssets() {
@@ -30,19 +29,23 @@ function loadAssets() {
     });
     const style = document.createElement('style');
     style.textContent = `
-.pm-map .djs-palette, .pm-map .djs-context-pad, .pm-map .djs-popup { display: none !important; }
 .pm-map .djs-element.pm-step { cursor: pointer; }
 .pm-map .djs-element.pm-step:hover .djs-visual > :first-child { stroke: #60a5fa !important; }
 .pm-map .djs-element.pm-active .djs-visual > :first-child { stroke: #2563eb !important; stroke-width: 4px !important; fill: #dbeafe !important; }
-.pm-map .djs-element.pm-focus > .djs-visual > rect { stroke: #2563eb !important; stroke-width: 3px !important; }
-.pm-map .djs-element[data-element-id^="Cluster_"] .djs-visual rect { stroke: #94a3b8 !important; stroke-width: 2px !important; }
+/* Cadre de rangée : bordure seule, le groupe BPMN est dessiné au-dessus des procédures */
+.pm-map .djs-element.pm-row .djs-visual rect { stroke: #cbd5e1 !important; stroke-width: 3px !important; stroke-dasharray: none !important; fill: none !important; }
+.pm-map .djs-element.pm-row-active .djs-visual rect { stroke: #2563eb !important; stroke-width: 6px !important; }
+.pm-map .djs-element.pm-need-pool .djs-visual rect { fill: #f1f5f9 !important; stroke: #94a3b8 !important; }
+.pm-map .djs-element.pm-chain .djs-visual path { stroke-dasharray: none !important; stroke-width: 4px !important; }
+.pm-map .djs-element.pm-then .djs-visual path { stroke-dasharray: none !important; stroke-width: 3px !important; }
+.pm-map .djs-element.pm-need .djs-visual path { stroke-dasharray: 3 7 !important; stroke-width: 2px !important; }
 .pm-map .pm-pool-title { font: 700 20px/1.2 Inter, system-ui, sans-serif; color: #1e293b; white-space: nowrap; pointer-events: none; }
-.pm-map .pm-pool-title span { margin-left: 10px; padding: 1px 8px; border-radius: 6px; background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 15px; }
-.pm-map .pm-cluster-title { font: 700 13px/1 Inter, system-ui, sans-serif; color: #fff; background: #334155; padding: 6px 11px; border-radius: 6px;
-  white-space: nowrap; cursor: pointer; box-shadow: 0 1px 3px rgba(15,23,42,.2); outline: none; }
-.pm-map .pm-cluster-title[contenteditable="true"] { background: #fff; color: #0f172a; box-shadow: 0 0 0 2px #2563eb; cursor: text; }
-.pm-map .djs-element.pm-chain .djs-visual path { stroke-dasharray: none !important; stroke-width: 3px !important; }
-.pm-map .djs-element.pm-need .djs-visual path { stroke-dasharray: 3 7 !important; stroke-width: 1.5px !important; opacity: .75; }
+.pm-map .pm-pool-title span { margin-left: 10px; padding: 1px 8px; border-radius: 6px; background: #e2e8f0; color: #475569; font-weight: 600; font-size: 15px; }
+.pm-map .pm-row-title { display: flex; align-items: center; gap: 8px; font: 700 26px/1 Inter, system-ui, sans-serif; color: #fff; background: #1e293b;
+  padding: 6px 6px 6px 16px; border-radius: 10px; white-space: nowrap; box-shadow: 0 1px 3px rgba(15,23,42,.25); cursor: pointer; }
+.pm-map .pm-row-title.on { background: #2563eb; }
+.pm-map .pm-row-title button { width: 40px; height: 40px; border-radius: 8px; border: 0; background: rgba(255,255,255,.15); color: #fff; font: 700 24px/1 Inter, sans-serif; cursor: pointer; }
+.pm-map .pm-row-title button:hover { background: rgba(255,255,255,.3); }
 .pm-map .pm-badge { display: flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 9px; background: #2563eb; color: #fff;
   font: 600 10px/16px Inter, system-ui, sans-serif; box-shadow: 0 1px 3px rgba(15,23,42,.25); pointer-events: none; white-space: nowrap; }`;
     document.head.appendChild(style);
@@ -50,58 +53,43 @@ function loadAssets() {
 
 const SCREEN_ICON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
 
-// Seuls le déplacement et le redimensionnement des procédures sont permis
-async function layoutOnlyModule() {
-    const RuleProvider = (await import('diagram-js/lib/features/rules/RuleProvider')).default as any;
-    class LayoutOnlyRules extends RuleProvider {
-        static $inject = ['eventBus'];
-        init() {
-            const isPool = (e: any) => e?.type === 'bpmn:Participant';
-            this.addRule('elements.move', 3000, (ctx: any) => (ctx.shapes || []).every(isPool));
-            this.addRule('shape.resize', 3000, (ctx: any) => isPool(ctx.shape));
-            ['shape.create', 'shape.append', 'elements.create', 'connection.create', 'connection.start', 'connection.reconnect',
-                'connection.updateWaypoints', 'elements.delete', 'shape.replace', 'element.copy', 'elements.paste', 'shape.attach',
-                'lane.add', 'lane.split', 'element.autoResize'].forEach(r => this.addRule(r, 3000, () => false));
-        }
-    }
-    return { __init__: ['pmLayoutOnlyRules'], pmLayoutOnlyRules: ['type', LayoutOnlyRules] };
-}
+export interface ActiveStep { rowId: string; index: number; stepId: string }
 
 export interface ProcessChainMapHandle {
     zoom: (factor: number) => void;
     fit: () => void;
-    focusStep: (sid: string, stepId: string) => void;
-    focusPool: (sid: string) => void;
-    /** Positions des procédures et vue courante, pour l'enregistrement. */
-    snapshot: () => ProcessMapLayout | null;
+    focusStep: (step: ActiveStep) => void;
+    focusRow: (rowId: string) => void;
+    viewbox: () => Box | null;
 }
 
 interface Props {
     map: ProcessMap;
-    savedPools?: Record<string, Box>;
+    rows: MapRow[];
     savedViewbox?: Box;
     screenCounts: Map<string, Map<string, number>>; // session_id → étape → nombre d'écrans
-    activeStep: { sid: string; stepId: string } | null;
-    focusSid: string | null;
-    onStepClick: (sid: string, stepId: string) => void;
-    onPoolClick: (sid: string) => void;
-    onChange: () => void;                            // disposition ou vue modifiée
-    onRenameGroup: (hubSid: string, name: string) => void;
+    activeRowId: string | null;
+    activeStep: ActiveStep | null;
+    onRowClick: (rowId: string) => void;
+    onStepClick: (step: ActiveStep) => void;
+    onRowMenu: (rowId: string, anchor: DOMRect) => void;
+    onViewChange: () => void;
 }
 
 const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function ProcessChainMap(
-    { map, savedPools, savedViewbox, screenCounts, activeStep, focusSid, onStepClick, onPoolClick, onChange, onRenameGroup }, ref) {
+    { map, rows, savedViewbox, screenCounts, activeRowId, activeStep, onRowClick, onStepClick, onRowMenu, onViewChange }, ref) {
     const boxRef = useRef<HTMLDivElement>(null);
-    const modelerRef = useRef<any>(null);
-    const cb = useRef({ onStepClick, onPoolClick, onChange, onRenameGroup });
-    cb.current = { onStepClick, onPoolClick, onChange, onRenameGroup };
+    const viewerRef = useRef<any>(null);
+    const cb = useRef({ onRowClick, onStepClick, onRowMenu, onViewChange });
+    cb.current = { onRowClick, onStepClick, onRowMenu, onViewChange };
+    const rowTags = useRef(new Map<string, HTMLElement>());
     const [ready, setReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const get = (name: string) => modelerRef.current?.get(name);
-
-    const centerOn = (el: any) => {
+    const get = (name: string) => viewerRef.current?.get(name);
+    const centerOn = (el: any, zoomTo?: number) => {
         const canvas = get('canvas');
+        if (zoomTo) canvas.zoom(zoomTo);
         const vb = canvas.viewbox();
         canvas.viewbox({ x: el.x + el.width / 2 - vb.width / 2, y: el.y + el.height / 2 - vb.height / 2, width: vb.width, height: vb.height });
     };
@@ -109,33 +97,23 @@ const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function Proces
     useImperativeHandle(ref, () => ({
         zoom: factor => { const c = get('canvas'); if (c) c.zoom(c.zoom() * factor); },
         fit: () => get('canvas')?.zoom('fit-viewport', 'auto'),
-        focusStep: (sid, stepId) => {
-            const id = map.elementOfStep(sid, stepId);
+        focusStep: step => {
+            const id = map.elementOfStep(step.rowId, step.index, step.stepId);
             const el = id && get('elementRegistry')?.get(id);
             if (!el) return;
             const vb = get('canvas').viewbox();
             const inside = el.x >= vb.x && el.y >= vb.y && el.x + el.width <= vb.x + vb.width && el.y + el.height <= vb.y + vb.height;
             if (!inside) centerOn(el);
         },
-        focusPool: sid => {
-            const el = get('elementRegistry')?.get(map.poolOf.get(sid));
+        focusRow: rowId => {
+            const el = get('elementRegistry')?.get(map.groupOfRow.get(rowId));
             if (!el) return;
-            const canvas = get('canvas');
-            const vb = canvas.viewbox();
-            const scale = Math.min(1, (vb.outer.width / el.width) * 0.9, (vb.outer.height / el.height) * 0.9);
-            canvas.zoom(scale);
-            centerOn(el);
-        },
-        snapshot: () => {
-            const registry = get('elementRegistry');
-            if (!registry) return null;
-            const pools: Record<string, Box> = {};
-            map.poolOf.forEach((poolId, sid) => {
-                const el = registry.get(poolId);
-                if (el) pools[sid] = { x: el.x, y: el.y, width: el.width, height: el.height };
-            });
             const vb = get('canvas').viewbox();
-            return { pools, viewbox: { x: vb.x, y: vb.y, width: vb.width, height: vb.height } };
+            centerOn(el, Math.min(1, (vb.outer.width / el.width) * 0.95, (vb.outer.height / el.height) * 0.95));
+        },
+        viewbox: () => {
+            const vb = get('canvas')?.viewbox();
+            return vb ? { x: vb.x, y: vb.y, width: vb.width, height: vb.height } : null;
         },
     }), [map]);
 
@@ -146,74 +124,50 @@ const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function Proces
         loadAssets();
         (async () => {
             try {
-                const [{ default: Modeler }, rules] = await Promise.all([import('bpmn-js/lib/Modeler'), layoutOnlyModule()]);
+                const Viewer = (await import('bpmn-js/lib/NavigatedViewer')).default;
                 if (destroyed || !boxRef.current) return;
-                const modeler = new Modeler({ container: boxRef.current, additionalModules: [rules] });
-                modelerRef.current = modeler;
-                await modeler.importXML(map.xml);
+                const viewer = new Viewer({ container: boxRef.current });
+                viewerRef.current = viewer;
+                await viewer.importXML(map.xml);
                 if (destroyed) return;
-                const canvas = modeler.get('canvas') as any;
-                const registry = modeler.get('elementRegistry') as any;
-                const modeling = modeler.get('modeling') as any;
-                const overlays = modeler.get('overlays') as any;
-                const eventBus = modeler.get('eventBus') as any;
-                const selection = modeler.get('selection') as any;
+                const canvas = viewer.get('canvas') as any;
+                const registry = viewer.get('elementRegistry') as any;
+                const overlays = viewer.get('overlays') as any;
+                const eventBus = viewer.get('eventBus') as any;
 
-                // Taille enregistrée des procédures (les couloirs suivent)
-                map.poolOf.forEach((poolId, sid) => {
-                    const saved = savedPools?.[sid], el = registry.get(poolId);
-                    if (saved && el && (Math.round(saved.width) !== el.width || Math.round(saved.height) !== el.height)) {
-                        modeling.resizeShape(el, { x: el.x, y: el.y, width: saved.width, height: saved.height });
-                    }
-                });
-                const refitGroups = () => map.groups.forEach((sids, groupId) => {
-                    const g = registry.get(groupId);
-                    const pools = sids.map(s => registry.get(map.poolOf.get(s))).filter(Boolean);
-                    if (!g || pools.length === 0) return;
-                    const b = groupBounds(pools.map((p: any) => ({ x: p.x, y: p.y, width: p.width, height: p.height })));
-                    if (b.x !== g.x || b.y !== g.y || b.width !== g.width || b.height !== g.height) modeling.resizeShape(g, b);
-                });
-                refitGroups();
-                (modeler.get('commandStack') as any).clear();
-
-                // Titres : procédure (et sa catégorie) au-dessus de son bassin, suit le zoom ;
-                // groupement en étiquette de taille fixe, cliquable et renommable
-                map.titles.forEach((title, id) => {
-                    if (!registry.get(id)) return;
+                rowTags.current.clear();
+                map.groupOfRow.forEach((groupId, rowId) => {
+                    if (!registry.get(groupId)) return;
+                    canvas.addMarker(groupId, 'pm-row');
+                    const row = rows.find(r => r.id === rowId);
                     const tag = document.createElement('div');
-                    if (!map.groups.has(id)) {
-                        tag.className = 'pm-pool-title';
-                        tag.textContent = title;
-                        const cat = map.subtitles.get(id);
-                        if (cat) { const chip = document.createElement('span'); chip.textContent = cat; tag.appendChild(chip); }
-                        overlays.add(id, { position: { top: -30, left: 0 }, html: tag });
-                        return;
-                    }
-                    tag.className = 'pm-cluster-title';
-                    tag.textContent = title;
-                    tag.title = 'Cliquer : sélectionner ses procédures · double-cliquer : renommer';
-                    tag.onclick = () => {
-                        if (tag.isContentEditable) return;
-                        selection.select((map.groups.get(id) ?? []).map(s => registry.get(map.poolOf.get(s))).filter(Boolean));
-                    };
-                    tag.ondblclick = () => {
-                        tag.contentEditable = 'true';
-                        tag.focus();
-                        document.getSelection()?.selectAllChildren(tag);
-                    };
-                    const done = () => {
-                        if (!tag.isContentEditable) return;
-                        tag.contentEditable = 'false';
-                        const name = (tag.textContent || '').trim() || title;
-                        tag.textContent = name;
-                        cb.current.onRenameGroup(map.groupKey.get(id)!, name);
-                    };
-                    tag.onblur = done;
-                    tag.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); tag.blur(); } e.stopPropagation(); };
-                    overlays.add(id, { position: { top: 10, left: 10 }, scale: false, html: tag });
+                    tag.className = 'pm-row-title';
+                    const name = document.createElement('span');
+                    name.textContent = row?.name ?? '';
+                    const more = document.createElement('button');
+                    more.type = 'button';
+                    more.textContent = '⋯';
+                    more.title = 'Modifier la rangée';
+                    more.onclick = e => { e.stopPropagation(); cb.current.onRowMenu(rowId, more.getBoundingClientRect()); };
+                    tag.append(name, more);
+                    tag.onclick = () => cb.current.onRowClick(rowId);
+                    rowTags.current.set(rowId, tag);
+                    // Suit le zoom, sans descendre sous une taille lisible
+                    overlays.add(groupId, { position: { top: 18, left: 18 }, scale: { min: 0.55 }, html: tag });
                 });
-                map.linkTypes.forEach((type, id) => { if (registry.get(id)) canvas.addMarker(id, type === 'necessite' ? 'pm-need' : 'pm-chain'); });
-
+                map.titles.forEach((title, poolId) => {
+                    if (!registry.get(poolId)) return;
+                    const tag = document.createElement('div');
+                    tag.className = 'pm-pool-title';
+                    tag.textContent = title;
+                    const cat = map.subtitles.get(poolId);
+                    if (cat) { const chip = document.createElement('span'); chip.textContent = cat; tag.appendChild(chip); }
+                    overlays.add(poolId, { position: { top: -30, left: 0 }, html: tag });
+                });
+                map.dependencyOf.forEach((_, id) => { if (registry.get(id)) canvas.addMarker(id, 'pm-need-pool'); });
+                map.linkTypes.forEach((type, id) => {
+                    if (registry.get(id)) canvas.addMarker(id, type === 'necessite' ? 'pm-need' : type === 'puis' ? 'pm-then' : 'pm-chain');
+                });
                 map.stepOfElement.forEach(({ sid, stepId }, id) => {
                     if (!registry.get(id)) return;
                     canvas.addMarker(id, 'pm-step');
@@ -221,52 +175,56 @@ const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function Proces
                     if (n > 0) overlays.add(id, { position: { top: -9, right: 4 }, html: `<div class="pm-badge">${SCREEN_ICON}${n > 1 ? n : ''}</div>` });
                 });
 
-                // Pas d'édition des libellés
-                eventBus.on('element.dblclick', 5000, () => false);
                 eventBus.on('element.click', (e: any) => {
                     const id = e.element?.id;
                     const step = map.stepOfElement.get(id);
-                    if (step) return cb.current.onStepClick(step.sid, step.stepId);
-                    if (map.sidOfPool.has(id)) return cb.current.onPoolClick(map.sidOfPool.get(id)!);
+                    if (step) return cb.current.onStepClick({ rowId: step.rowId, index: step.index, stepId: step.stepId });
+                    const inst = map.instanceOfPool.get(id);
+                    if (inst) return cb.current.onRowClick(inst.rowId);
+                    const row = map.rowOfGroup.get(id);
+                    if (row) cb.current.onRowClick(row);
                 });
-                // Les grappes suivent leurs procédures
-                eventBus.on(['commandStack.elements.move.postExecuted', 'commandStack.shape.resize.postExecuted'], (e: any) => {
-                    const shapes = e.context?.shapes ?? [e.context?.shape];
-                    if (shapes.some((s: any) => s?.type === 'bpmn:Participant')) refitGroups();
-                });
-                eventBus.on('commandStack.changed', () => cb.current.onChange());
-                eventBus.on('canvas.viewbox.changed', () => cb.current.onChange());
+                eventBus.on('canvas.viewbox.changed', () => cb.current.onViewChange());
 
+                // Dernière vue enregistrée, sinon la rangée sélectionnée
                 if (savedViewbox) canvas.viewbox(savedViewbox);
-                else canvas.zoom('fit-viewport', 'auto');
+                else {
+                    canvas.zoom('fit-viewport', 'auto');
+                    const group = activeRowId ? registry.get(map.groupOfRow.get(activeRowId)) : null;
+                    if (group) {
+                        const vb = canvas.viewbox();
+                        centerOn(group, Math.min(1, (vb.outer.width / group.width) * 0.95, (vb.outer.height / group.height) * 0.95));
+                    }
+                }
                 setReady(true);
             } catch (e: any) {
                 if (!destroyed) setError(e.message || 'Carte indisponible');
             }
         })();
-        return () => { destroyed = true; modelerRef.current?.destroy(); modelerRef.current = null; };
-        // Reconstruite seulement quand le diagramme change (thème, réorganisation)
+        return () => { destroyed = true; viewerRef.current?.destroy(); viewerRef.current = null; };
+        // Reconstruite quand le diagramme change (thème, rangées modifiées)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [map]);
 
-    // Étape active et procédure sélectionnée
     useEffect(() => {
         if (!ready) return;
         const canvas = get('canvas'), registry = get('elementRegistry');
-        registry.getAll().forEach((el: any) => { canvas.removeMarker(el.id, 'pm-active'); canvas.removeMarker(el.id, 'pm-focus'); });
-        const id = activeStep && map.elementOfStep(activeStep.sid, activeStep.stepId);
+        registry.getAll().forEach((el: any) => { canvas.removeMarker(el.id, 'pm-active'); canvas.removeMarker(el.id, 'pm-row-active'); });
+        rowTags.current.forEach((tag, rowId) => tag.classList.toggle('on', rowId === activeRowId));
+        const group = activeRowId && map.groupOfRow.get(activeRowId);
+        if (group && registry.get(group)) canvas.addMarker(group, 'pm-row-active');
+        const id = activeStep && map.elementOfStep(activeStep.rowId, activeStep.index, activeStep.stepId);
         if (id && registry.get(id)) canvas.addMarker(id, 'pm-active');
-        const pool = focusSid && map.poolOf.get(focusSid);
-        if (pool && registry.get(pool)) canvas.addMarker(pool, 'pm-focus');
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ready, activeStep, focusSid, map]);
+    }, [ready, activeRowId, activeStep, map]);
 
     return (
         <div className="pm-map w-full h-full" style={{ position: 'relative' }}>
-            <div ref={boxRef} className="w-full h-full" />
+            {/* La molette ne fait défiler la carte que si elle a le focus : on le lui donne au survol */}
+            <div ref={boxRef} className="w-full h-full" onMouseEnter={() => get('canvas')?.focus?.()} />
             {!ready && !error && (
                 <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-slate-400 bg-white">
-                    <Loader2 className="w-5 h-5 animate-spin" />Assemblage des procédures…
+                    <Loader2 className="w-5 h-5 animate-spin" />Assemblage des enchaînements…
                 </div>
             )}
             {error && <div className="absolute inset-0 flex items-center justify-center text-sm text-rose-600 bg-white">{error}</div>}

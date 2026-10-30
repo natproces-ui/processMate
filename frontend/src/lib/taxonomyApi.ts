@@ -44,12 +44,11 @@ export interface TaxonomyFlat extends Omit<TaxonomyNode, 'children'> {}
 
 // ─── API ──────────────────────────────────────────────────────
 
-/** Disposition de la carte « Enchaînement des process » d'un thème (pixels du diagramme). */
+/** Carte « Enchaînement des process » d'un thème : ses rangées et la dernière vue. */
 export interface Box { x: number; y: number; width: number; height: number }
 export interface ProcessMapLayout {
-  pools: Record<string, Box>;       // session_id → bassin de la procédure
-  viewbox?: Box;                     // dernière vue (zoom, déplacement)
-  groupNames?: Record<string, string>; // procédure centrale d'un groupement → nom donné
+  rows?: { id: string; name: string; sids: string[] }[]; // enchaînements : nom et procédures (session_id) dans l'ordre
+  viewbox?: Box;                                          // dernière vue (zoom, déplacement)
 }
 
 export const taxonomyApi = {

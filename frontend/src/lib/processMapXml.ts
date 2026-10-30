@@ -1,14 +1,14 @@
-// lib/processMapXml.ts — Diagramme de collaboration BPMN d'un thème : un bassin par procédure
-// (son BPMN habituel, bpmnGeneratorSimple), reliés par leurs liens.
+// lib/processMapXml.ts — Carte « Enchaînement des process » d'un thème, en diagramme de
+// collaboration BPMN : une rangée par enchaînement (grande fonctionnalité), ses procédures de
+// gauche à droite, du début à la fin (bassins BPMN habituels, bpmnGeneratorSimple).
 //
-// Deux natures de liens :
-// - enchaînement (« Déclenche », « Fait appel à ») : une procédure en lance une autre. Flux de
-//   message de l'étape vers le début de l'autre ; « Fait appel à » fait aussi de l'étape une
-//   activité d'appel (bord épais) ;
-// - liaison (« Nécessite ») : dépendance sans ordre, flux de message de bassin à bassin.
-// Les procédures reliées forment un groupement (groupe BPMN), nommé d'après sa procédure
-// centrale (la plus liée) ou du nom choisi par l'utilisateur. Les identifiants de chaque
-// procédure sont préfixés pour cohabiter dans un même diagramme.
+// - Une procédure peut figurer dans plusieurs rangées : chaque apparition est un bassin distinct.
+// - Entre deux procédures consécutives : flux de message de l'étape qui porte le lien
+//   (« Déclenche », « Fait appel à ») vers le début de la suivante ; « Fait appel à » fait aussi
+//   de l'étape une activité d'appel. Sans lien enregistré entre elles : flèche « puis ».
+// - « Nécessite » n'est pas dans la suite : la procédure nécessaire est un bassin réduit posé
+//   sous celle qui en a besoin, relié en pointillé.
+// Les rangées sont proposées automatiquement (autoRows) puis modifiables par l'utilisateur.
 
 import type { Table1Row } from '@/logic/types';
 import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
@@ -16,36 +16,96 @@ import { elementId } from '@/logic/bpmnGraphModel';
 import { LINK_LABELS, type LinkType } from '@/lib/processLinks';
 import type { Box } from '@/lib/taxonomyApi';
 
-export interface MapProcedure { sid: string; name: string; ref: string; rows: Table1Row[]; category: string }
+export interface MapProcedure { sid: string; name: string; ref: string; rows: Table1Row[]; category: string; subcategory: string }
 export interface MapLink { source: string; target: string; type: LinkType; step_id: string | null }
+export interface MapRow { id: string; name: string; sids: string[] }
 
 export const LINK_COLORS: Record<LinkType, string> = { fait_appel_a: '#7c3aed', declenche: '#d97706', necessite: '#64748b' };
+export const THEN_COLOR = '#94a3b8';
 export const isChain = (t: LinkType) => t !== 'necessite';
+
+/** Une apparition d'une procédure dans une rangée. */
+export interface Instance { rowId: string; index: number; sid: string }
 
 export interface ProcessMap {
     xml: string;
-    poolOf: Map<string, string>;                                  // session_id → id du bassin
-    sidOfPool: Map<string, string>;
-    stepOfElement: Map<string, { sid: string; stepId: string }>;
-    elementOfStep: (sid: string, stepId: string) => string | undefined;
-    groups: Map<string, string[]>;                                // id du groupe → session_ids
-    groupKey: Map<string, string>;                                // id du groupe → session_id de sa procédure centrale
-    titles: Map<string, string>;                                  // id du bassin ou du groupe → titre
-    subtitles: Map<string, string>;                               // id du bassin → catégorie
-    linkTypes: Map<string, LinkType>;                             // id du flux → type de lien
+    instanceOfPool: Map<string, Instance>;
+    poolOf: (rowId: string, index: number) => string;
+    rowOfGroup: Map<string, string>;
+    groupOfRow: Map<string, string>;
+    stepOfElement: Map<string, Instance & { stepId: string }>;
+    elementOfStep: (rowId: string, index: number, stepId: string) => string | undefined;
+    titles: Map<string, string>;                // bassin → « réf · nom »
+    subtitles: Map<string, string>;             // bassin → catégorie
+    dependencyOf: Map<string, string>;          // bassin réduit (nécessite) → session_id
+    linkTypes: Map<string, LinkType | 'puis'>;
 }
 
 const BPMN = 'http://www.omg.org/spec/BPMN/20100524/MODEL';
 const REF_ATTRS = ['id', 'sourceRef', 'targetRef', 'bpmnElement', 'processRef', 'attachedToRef', 'default', 'calledElement'];
 const REF_TEXT = new Set(['flowNodeRef', 'incoming', 'outgoing']);
-const GAP_X = 220, GAP_Y = 200, GAP_GROUPS = 500, GROUP_PAD = 60, GROUP_LABEL = 60;
+const GAP_X = 240, GAP_ROWS = 260, ROW_PAD = 60, ROW_LABEL = 170, DEP_GAP = 110, DEP_W = 300, DEP_H = 70;
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-interface Parsed { proc: MapProcedure; prefix: string; doc: Document; pool: Box }
+// ─── Rangées proposées ────────────────────────────────────────
 
-function parse(proc: MapProcedure, index: number): Parsed {
-    const prefix = `P${index}_`;
+/**
+ * Une rangée par suite d'enchaînements (« Déclenche », « Fait appel à ») : de chaque procédure
+ * qui n'est lancée par aucune autre, on suit les liens jusqu'au bout (une rangée par
+ * embranchement). Les procédures sans enchaînement ont leur propre rangée. Nom par défaut : la
+ * sous-catégorie de la première procédure, complété si plusieurs rangées la partagent.
+ */
+export function autoRows(procs: MapProcedure[], links: MapLink[]): MapRow[] {
+    const by = new Map(procs.map(p => [p.sid, p]));
+    const ref = (s: string) => by.get(s)?.ref || by.get(s)?.name || s;
+    const chain = links.filter(l => isChain(l.type) && by.has(l.source) && by.has(l.target) && l.source !== l.target);
+    const next = (s: string) => [...new Set(chain.filter(l => l.source === s).map(l => l.target))].sort((a, b) => ref(a).localeCompare(ref(b)));
+    const hasIn = new Set(chain.map(l => l.target));
+    const paths: string[][] = [];
+    const walk = (path: string[]) => {
+        const after = next(path[path.length - 1]).filter(n => !path.includes(n));
+        if (after.length === 0) paths.push(path);
+        else after.forEach(n => walk([...path, n]));
+    };
+    const sids = procs.map(p => p.sid).sort((a, b) => ref(a).localeCompare(ref(b)));
+    sids.filter(s => !hasIn.has(s) && next(s).length > 0).forEach(s => walk([s]));
+    const covered = () => new Set(paths.flat());
+    sids.filter(s => !covered().has(s) && next(s).length > 0).forEach(s => { if (!covered().has(s)) walk([s]); });
+    sids.filter(s => !covered().has(s)).forEach(s => paths.push([s]));
+    paths.sort((a, b) => ref(a[0]).localeCompare(ref(b[0])));
+
+    const label = (path: string[]) => {
+        const sub = by.get(path[0])!.subcategory.replace(/^[A-Z]\d*\.\s*/, '');
+        return path.length === 1 || !sub ? by.get(path[0])!.name : sub;
+    };
+    const counts = new Map<string, number>();
+    paths.forEach(p => counts.set(label(p), (counts.get(label(p)) || 0) + 1));
+    return paths.map((path, i) => ({
+        id: `row-${i}-${path[0].slice(0, 8)}`,
+        name: counts.get(label(path))! > 1 ? `${label(path)} – ${by.get(path[0])!.name}` : label(path),
+        sids: path,
+    }));
+}
+
+/** Rangées enregistrées, sans les procédures disparues, et une rangée pour chaque procédure qui n'en a aucune. */
+export function reconcileRows(saved: MapRow[] | undefined, procs: MapProcedure[], links: MapLink[]): MapRow[] {
+    if (!saved?.length) return autoRows(procs, links);
+    const known = new Set(procs.map(p => p.sid));
+    const rows = saved.map(r => ({ ...r, sids: r.sids.filter(s => known.has(s)) })).filter(r => r.sids.length > 0);
+    const placed = new Set(rows.flatMap(r => r.sids));
+    const missing = procs.filter(p => !placed.has(p.sid));
+    if (missing.length) {
+        autoRows(missing, links).forEach(r => rows.push({ ...r, id: `${r.id}-${Date.now().toString(36)}` }));
+    }
+    return rows;
+}
+
+// ─── Diagramme ────────────────────────────────────────────────
+
+interface Parsed { inst: Instance; proc: MapProcedure; prefix: string; doc: Document; pool: Box }
+
+function parse(proc: MapProcedure, inst: Instance, prefix: string): Parsed {
     const doc = new DOMParser().parseFromString(generateBPMNSimple(proc.rows, proc.name), 'application/xml');
     doc.querySelectorAll('*').forEach(el => {
         REF_ATTRS.forEach(a => { const v = el.getAttribute(a); if (v) el.setAttribute(a, prefix + v); });
@@ -54,7 +114,7 @@ function parse(proc: MapProcedure, index: number): Parsed {
     const shape = [...doc.getElementsByTagNameNS('*', 'BPMNShape')].find(s => s.getAttribute('bpmnElement') === `${prefix}Participant_1`);
     const b = shape?.getElementsByTagNameNS('*', 'Bounds')[0];
     const pool = { x: +(b?.getAttribute('x') ?? 0), y: +(b?.getAttribute('y') ?? 0), width: +(b?.getAttribute('width') ?? 600), height: +(b?.getAttribute('height') ?? 400) };
-    return { proc, prefix, doc, pool };
+    return { inst, proc, prefix, doc, pool };
 }
 
 function translate(p: Parsed, to: { x: number; y: number }) {
@@ -68,195 +128,106 @@ function translate(p: Parsed, to: { x: number; y: number }) {
     p.pool = { ...p.pool, x: to.x, y: to.y };
 }
 
-/** Ensembles de procédures reliées (liens dans les deux sens), du plus grand au plus petit. */
-function components(sids: string[], links: MapLink[]): string[][] {
-    const adj = new Map(sids.map(s => [s, new Set<string>()]));
-    links.forEach(l => { if (adj.has(l.source) && adj.has(l.target)) { adj.get(l.source)!.add(l.target); adj.get(l.target)!.add(l.source); } });
-    const seen = new Set<string>(), out: string[][] = [];
-    sids.forEach(s => {
-        if (seen.has(s)) return;
-        const comp: string[] = [], stack = [s];
-        seen.add(s);
-        while (stack.length) { const u = stack.pop()!; comp.push(u); adj.get(u)!.forEach(v => { if (!seen.has(v)) { seen.add(v); stack.push(v); } }); }
-        out.push(comp);
-    });
-    return out.sort((a, b) => b.length - a.length);
-}
+export function buildProcessMap(procs: MapProcedure[], links: MapLink[], rows: MapRow[]): ProcessMap {
+    const by = new Map(procs.map(p => [p.sid, p]));
+    const parsed: Parsed[] = [];
+    const instanceOfPool = new Map<string, Instance>();
+    const stepOfElement = new Map<string, Instance & { stepId: string }>();
+    const titles = new Map<string, string>(), subtitles = new Map<string, string>();
+    const dependencyOf = new Map<string, string>();
+    const linkTypes = new Map<string, LinkType | 'puis'>();
+    const rowOfGroup = new Map<string, string>(), groupOfRow = new Map<string, string>();
+    const prefixOf = (r: number, i: number) => `R${r}I${i}_`;
+    const rowIndex = new Map(rows.map((r, i) => [r.id, i]));
 
-/** Procédure centrale : la plus liée (à égalité, la plus nécessitée). */
-function hubOf(comp: string[], links: MapLink[], refOf: (s: string) => string): string {
-    const score = (s: string) => {
-        const deg = links.filter(l => l.source === s || l.target === s).length;
-        const needed = links.filter(l => l.target === s && l.type === 'necessite').length;
-        return deg * 100 + needed;
-    };
-    return [...comp].sort((a, b) => score(b) - score(a) || refOf(a).localeCompare(refOf(b)))[0];
-}
+    const flows: string[] = [], flowShapes: string[] = [], depParticipants: string[] = [], depShapes: string[] = [];
+    const categoryValues: string[] = [], groupEls: string[] = [], groupShapes: string[] = [];
+    const titleOf = (p: MapProcedure) => `${p.ref ? p.ref + ' · ' : ''}${p.name}`;
+    let y = 0, flowN = 0;
 
-/**
- * Disposition d'un groupement, lue de gauche à droite : procédure centrale au milieu, ce qui
- * passe avant elle à gauche, ce qui passe après à droite. « A déclenche / fait appel à B » : A
- * avant B ; « A nécessite B » : B avant A. Chaque procédure est à hauteur de celle par laquelle
- * on l'atteint, sous les procédures déjà placées dans sa colonne.
- */
-function layoutComponent(comp: string[], hub: string, links: MapLink[], sizeOf: (s: string) => Box, refOf: (s: string) => string) {
-    const col = new Map<string, number>([[hub, 0]]);
-    const parent = new Map<string, string>();
-    const order: string[] = [hub];
-    const neighbours = (u: string) => links
-        .filter(l => (l.source === u || l.target === u) && comp.includes(l.source) && comp.includes(l.target))
-        .map(l => {
-            const v = l.source === u ? l.target : l.source;
-            return { v, before: isChain(l.type) ? l.source === v : l.target === v };
-        })
-        .sort((a, b) => refOf(a.v).localeCompare(refOf(b.v)));
-    for (let i = 0; i < order.length; i++) {
-        const u = order[i], cu = col.get(u)!;
-        neighbours(u).forEach(({ v, before }) => {
-            if (col.has(v)) return;
-            col.set(v, before ? cu - 1 : cu + 1);
-            parent.set(v, u);
-            order.push(v);
+    rows.forEach((row, r) => {
+        const members = row.sids.map((sid, i) => ({ sid, i })).filter(m => by.get(m.sid)?.rows.length);
+        const rowParsed = members.map(({ sid, i }) => parse(by.get(sid)!, { rowId: row.id, index: i, sid }, prefixOf(r, i)));
+        const top = y + ROW_LABEL;
+        let x = 0;
+        rowParsed.forEach(p => { translate(p, { x, y: top }); x += p.pool.width + GAP_X; });
+        const poolsBottom = rowParsed.length ? Math.max(...rowParsed.map(p => p.pool.y + p.pool.height)) : top + 200;
+
+        // Procédures nécessaires, réduites sous celle qui en a besoin
+        let bottom = poolsBottom;
+        rowParsed.forEach(p => {
+            const needs = [...new Set(links.filter(l => l.type === 'necessite' && l.source === p.inst.sid && by.has(l.target)).map(l => l.target))];
+            needs.forEach((target, k) => {
+                const id = `${p.prefix}Need${k}`;
+                const box = { x: p.pool.x + k * (DEP_W + 30), y: poolsBottom + DEP_GAP, width: DEP_W, height: DEP_H };
+                dependencyOf.set(id, target);
+                depParticipants.push(`<participant id="${id}" name="${esc(titleOf(by.get(target)!))}"/>`);
+                depShapes.push(`<bpmndi:BPMNShape id="${id}_di" bpmnElement="${id}" isHorizontal="true"><dc:Bounds x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}"/></bpmndi:BPMNShape>`);
+                const fid = `Flow_${flowN++}`;
+                linkTypes.set(fid, 'necessite');
+                flows.push(`<messageFlow id="${fid}" name="${esc(LINK_LABELS.necessite.label)}" sourceRef="${p.prefix}Participant_1" targetRef="${id}"/>`);
+                flowShapes.push(`<bpmndi:BPMNEdge id="${fid}_di" bpmnElement="${fid}" bioc:stroke="${LINK_COLORS.necessite}" color:border-color="${LINK_COLORS.necessite}">`
+                    + `<di:waypoint x="${box.x + box.width / 2}" y="${p.pool.y + p.pool.height}"/><di:waypoint x="${box.x + box.width / 2}" y="${box.y}"/></bpmndi:BPMNEdge>`);
+                bottom = Math.max(bottom, box.y + box.height);
+            });
         });
-    }
-    // Hauteurs : la centrale à 0, ses voisines centrées sur elle, les autres à hauteur de leur parente
-    const y = new Map<string, number>([[hub, 0]]);
-    const hubBox = sizeOf(hub);
-    const cursor = new Map<number, number>([[0, hubBox.height + GAP_Y]]);
-    [-1, 1].forEach(c => {
-        const ring = order.filter(s => col.get(s) === c && parent.get(s) === hub);
-        const total = ring.reduce((t, s) => t + sizeOf(s).height, 0) + GAP_Y * Math.max(ring.length - 1, 0);
-        cursor.set(c, hubBox.height / 2 - total / 2);
-    });
-    order.slice(1).forEach(s => {
-        const c = col.get(s)!;
-        const wanted = parent.get(s) === hub && Math.abs(c) === 1 ? -Infinity : y.get(parent.get(s)!) ?? 0;
-        const at = Math.max(wanted, cursor.get(c) ?? -Infinity);
-        y.set(s, at === -Infinity ? 0 : at);
-        cursor.set(c, (at === -Infinity ? 0 : at) + sizeOf(s).height + GAP_Y);
-    });
-    // Abscisses : largeur de chaque colonne = sa procédure la plus large
-    const cols = [...new Set(col.values())].sort((a, b) => a - b);
-    const widths = new Map(cols.map(c => [c, Math.max(...order.filter(s => col.get(s) === c).map(s => sizeOf(s).width))]));
-    const xOf = new Map<number, number>();
-    let x = 0;
-    cols.forEach(c => { xOf.set(c, x); x += widths.get(c)! + GAP_X; });
-    const pos = new Map(order.map(s => [s, { x: xOf.get(col.get(s)!)! + (widths.get(col.get(s)!)! - sizeOf(s).width) / 2, y: y.get(s)! }]));
-    const minY = Math.min(...[...pos.values()].map(p => p.y));
-    pos.forEach(p => { p.y -= minY; });
-    return { pos, width: x - GAP_X, height: Math.max(...order.map(s => pos.get(s)!.y + sizeOf(s).height)) };
-}
 
-function bboxOf(boxes: Box[]): Box {
-    const x = Math.min(...boxes.map(b => b.x)), y = Math.min(...boxes.map(b => b.y));
-    return { x, y, width: Math.max(...boxes.map(b => b.x + b.width)) - x, height: Math.max(...boxes.map(b => b.y + b.height)) - y };
-}
-
-export function groupBounds(pools: Box[]): Box {
-    const b = bboxOf(pools);
-    return { x: b.x - GROUP_PAD, y: b.y - GROUP_PAD - GROUP_LABEL, width: b.width + 2 * GROUP_PAD, height: b.height + 2 * GROUP_PAD + GROUP_LABEL };
-}
-
-/**
- * @param saved      positions enregistrées (session_id → bassin) ; les autres procédures sont
- *                   disposées automatiquement sous celles-ci.
- * @param groupNames noms donnés aux groupements (session_id de la procédure centrale → nom).
- */
-export function buildProcessMap(procs: MapProcedure[], links: MapLink[], saved?: Record<string, Box>, groupNames?: Record<string, string>): ProcessMap {
-    const parsed = procs.filter(p => p.rows.length > 0).map(parse);
-    const bySid = new Map(parsed.map(p => [p.proc.sid, p]));
-    const refOf = (s: string) => bySid.get(s)?.proc.ref || bySid.get(s)?.proc.name || s;
-    const sizeOf = (s: string) => bySid.get(s)!.pool;
-    links = links.filter(l => bySid.has(l.source) && bySid.has(l.target) && l.source !== l.target);
-    const comps = components(parsed.map(p => p.proc.sid), links);
-    const hubs = new Map(comps.map(c => [c, hubOf(c, links, refOf)]));
-
-    // Positions : enregistrées, sinon disposition automatique (groupements côte à côte, puis
-    // les procédures seules), sous les procédures déjà placées
-    const placed = parsed.filter(p => saved?.[p.proc.sid]);
-    placed.forEach(p => translate(p, saved![p.proc.sid]));
-    const todo = new Set(parsed.filter(p => !saved?.[p.proc.sid]).map(p => p.proc.sid));
-    let ox = 0;
-    const oy = placed.length ? Math.max(...placed.map(p => p.pool.y + p.pool.height)) + GAP_GROUPS : 0;
-    comps.forEach(comp => {
-        const rest = comp.filter(s => todo.has(s));
-        if (rest.length === 0) return;
-        const hub = rest.includes(hubs.get(comp)!) ? hubs.get(comp)! : hubOf(rest, links, refOf);
-        const { pos, width } = layoutComponent(rest, hub, links, sizeOf, refOf);
-        pos.forEach((p, s) => translate(bySid.get(s)!, { x: ox + p.x, y: oy + GROUP_PAD + GROUP_LABEL + p.y }));
-        ox += width + GAP_GROUPS;
-    });
-
-    const poolOf = new Map(parsed.map(p => [p.proc.sid, `${p.prefix}Participant_1`]));
-    const stepOfElement = new Map<string, { sid: string; stepId: string }>();
-    parsed.forEach(p => p.proc.rows.forEach(r => stepOfElement.set(p.prefix + elementId(r.id, r.typeBpmn as any), { sid: p.proc.sid, stepId: r.id })));
-    const elementOfStep = (sid: string, stepId: string) => {
-        const p = bySid.get(sid);
-        const r = p?.proc.rows.find(x => x.id === stepId);
-        return p && r ? p.prefix + elementId(r.id, r.typeBpmn as any) : undefined;
-    };
-    const startOf = (p: Parsed) => {
-        const r = p.proc.rows.find(x => x.typeBpmn === 'StartEvent');
-        return r ? p.prefix + elementId(r.id, 'StartEvent') : `${p.prefix}Participant_1`;
-    };
-    const boundsOf = (p: Parsed, id: string): Box => {
-        const shape = [...p.doc.getElementsByTagNameNS('*', 'BPMNShape')].find(s => s.getAttribute('bpmnElement') === id);
-        const b = shape?.getElementsByTagNameNS('*', 'Bounds')[0];
-        return b ? { x: +b.getAttribute('x')!, y: +b.getAttribute('y')!, width: +b.getAttribute('width')!, height: +b.getAttribute('height')! } : p.pool;
-    };
-
-    // Liens
-    const linkTypes = new Map<string, LinkType>();
-    const flows: string[] = [], flowShapes: string[] = [];
-    links.forEach((l, i) => {
-        const from = bySid.get(l.source)!, to = bySid.get(l.target)!;
-        let sourceId = `${from.prefix}Participant_1`;
-        if (isChain(l.type) && l.step_id) {
-            const el = elementOfStep(l.source, l.step_id);
-            const node = el && [...from.doc.getElementsByTagNameNS(BPMN, '*')].find(n => n.getAttribute('id') === el);
+        // Enchaînement : chaque procédure vers la suivante de la rangée
+        rowParsed.forEach((a, k) => {
+            const b = rowParsed[k + 1];
+            if (!b) return;
+            const link = links.find(l => isChain(l.type) && l.source === a.inst.sid && l.target === b.inst.sid);
+            let sourceId = `${a.prefix}Participant_1`;
+            const stepRow = link?.step_id ? a.proc.rows.find(x => x.id === link.step_id) : undefined;
+            const stepEl = stepRow && a.prefix + elementId(stepRow.id, stepRow.typeBpmn as any);
+            const node = stepEl && [...a.doc.getElementsByTagNameNS(BPMN, '*')].find(n => n.getAttribute('id') === stepEl);
             if (node) {
-                sourceId = el!;
-                if (l.type === 'fait_appel_a' && node.localName !== 'callActivity') {
-                    const call = from.doc.createElementNS(BPMN, 'callActivity');
-                    [...node.attributes].forEach(a => call.setAttribute(a.name, a.value));
-                    call.setAttribute('calledElement', `${to.prefix}Process_1`);
+                sourceId = stepEl!;
+                if (link!.type === 'fait_appel_a' && node.localName !== 'callActivity') {
+                    const call = a.doc.createElementNS(BPMN, 'callActivity');
+                    [...node.attributes].forEach(at => call.setAttribute(at.name, at.value));
+                    call.setAttribute('calledElement', `${b.prefix}Process_1`);
                     while (node.firstChild) call.appendChild(node.firstChild);
                     node.parentNode!.replaceChild(call, node);
                 }
             }
-        }
-        const targetId = isChain(l.type) ? startOf(to) : `${to.prefix}Participant_1`;
-        const a = boundsOf(from, sourceId), b = boundsOf(to, targetId);
-        const id = `Link_${i}`;
-        linkTypes.set(id, l.type);
-        flows.push(`<messageFlow id="${id}" name="${esc(LINK_LABELS[l.type].label)}" sourceRef="${sourceId}" targetRef="${targetId}"/>`);
-        flowShapes.push(`<bpmndi:BPMNEdge id="${id}_di" bpmnElement="${id}" bioc:stroke="${LINK_COLORS[l.type]}" color:border-color="${LINK_COLORS[l.type]}">`
-            + `<di:waypoint x="${a.x + a.width / 2}" y="${a.y + a.height / 2}"/><di:waypoint x="${b.x + b.width / 2}" y="${b.y + b.height / 2}"/></bpmndi:BPMNEdge>`);
-    });
+            const start = b.proc.rows.find(x => x.typeBpmn === 'StartEvent');
+            const targetId = start ? b.prefix + elementId(start.id, 'StartEvent') : `${b.prefix}Participant_1`;
+            const fid = `Flow_${flowN++}`;
+            const type = link?.type ?? 'puis';
+            const color = link ? LINK_COLORS[link.type] : THEN_COLOR;
+            linkTypes.set(fid, type);
+            const midY = a.pool.y + 40;
+            flows.push(`<messageFlow id="${fid}" name="${esc(link ? LINK_LABELS[link.type].label : 'puis')}" sourceRef="${sourceId}" targetRef="${targetId}"/>`);
+            flowShapes.push(`<bpmndi:BPMNEdge id="${fid}_di" bpmnElement="${fid}" bioc:stroke="${color}" color:border-color="${color}">`
+                + `<di:waypoint x="${a.pool.x + a.pool.width}" y="${midY}"/><di:waypoint x="${b.pool.x}" y="${midY}"/></bpmndi:BPMNEdge>`);
+        });
 
-    // Groupements : un groupe BPMN autour de chaque ensemble d'au moins deux procédures reliées
-    const groups = new Map<string, string[]>(), groupKey = new Map<string, string>();
-    const titles = new Map<string, string>(), subtitles = new Map<string, string>();
-    const categoryValues: string[] = [], groupEls: string[] = [], groupShapes: string[] = [];
-    comps.filter(c => c.length > 1).forEach((comp, k) => {
-        const id = `Cluster_${k}`, hub = hubs.get(comp)!;
-        groups.set(id, comp);
-        groupKey.set(id, hub);
-        titles.set(id, groupNames?.[hub] || bySid.get(hub)!.proc.name);
-        categoryValues.push(`<categoryValue id="ClusterValue_${k}" value=""/>`);
-        groupEls.push(`<group id="${id}" categoryValueRef="ClusterValue_${k}"/>`);
-        const g = groupBounds(comp.map(s => bySid.get(s)!.pool));
-        groupShapes.push(`<bpmndi:BPMNShape id="${id}_di" bpmnElement="${id}"><dc:Bounds x="${g.x}" y="${g.y}" width="${g.width}" height="${g.height}"/></bpmndi:BPMNShape>`);
+        // Cadre et nom de la rangée
+        const gid = `Row_${r}`;
+        rowOfGroup.set(gid, row.id);
+        groupOfRow.set(row.id, gid);
+        categoryValues.push(`<categoryValue id="RowValue_${r}" value=""/>`);
+        groupEls.push(`<group id="${gid}" categoryValueRef="RowValue_${r}"/>`);
+        const width = Math.max(x - GAP_X, 600);
+        groupShapes.push(`<bpmndi:BPMNShape id="${gid}_di" bpmnElement="${gid}"><dc:Bounds x="${-ROW_PAD}" y="${y}" width="${width + 2 * ROW_PAD}" height="${bottom - y + ROW_PAD}"/></bpmndi:BPMNShape>`);
+
+        rowParsed.forEach(p => {
+            const pool = `${p.prefix}Participant_1`;
+            instanceOfPool.set(pool, p.inst);
+            titles.set(pool, titleOf(p.proc));
+            subtitles.set(pool, p.proc.category);
+            p.proc.rows.forEach(s => stepOfElement.set(p.prefix + elementId(s.id, s.typeBpmn as any), { ...p.inst, stepId: s.id }));
+        });
+        parsed.push(...rowParsed);
+        y = bottom + ROW_PAD + GAP_ROWS;
     });
 
     const ser = new XMLSerializer();
     const participants = parsed.map(p => {
-        // Titre affiché au-dessus du bassin (ProcessChainMap) : dans le bassin, il chevaucherait
-        // le nom du premier couloir
+        // Titre affiché au-dessus du bassin (ProcessChainMap), pas dans le bassin
         const el = p.doc.getElementsByTagNameNS(BPMN, 'participant')[0];
         el.removeAttribute('name');
-        titles.set(`${p.prefix}Participant_1`, `${p.proc.ref ? p.proc.ref + ' · ' : ''}${p.proc.name}`);
-        subtitles.set(`${p.prefix}Participant_1`, p.proc.category);
         return ser.serializeToString(el);
     });
     const processes = parsed.map(p => ser.serializeToString(p.doc.getElementsByTagNameNS(BPMN, 'process')[0]));
@@ -266,16 +237,21 @@ export function buildProcessMap(procs: MapProcedure[], links: MapLink[], saved?:
 <definitions xmlns="${BPMN}" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
   xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:bioc="http://bpmn.io/schema/bpmn/biocolor/1.0"
   xmlns:color="http://www.omg.org/spec/BPMN/non-normative/color/1.0" id="ProcessMap" targetNamespace="http://bpmn.io/schema/bpmn">
-<category id="Clusters">${categoryValues.join('')}</category>
-<collaboration id="Collab">${participants.join('')}${flows.join('')}${groupEls.join('')}</collaboration>
+<category id="Rows">${categoryValues.join('')}</category>
+<collaboration id="Collab">${participants.join('')}${depParticipants.join('')}${flows.join('')}${groupEls.join('')}</collaboration>
 ${processes.join('\n')}
 <bpmndi:BPMNDiagram id="ProcessMapDiagram"><bpmndi:BPMNPlane id="ProcessMapPlane" bpmnElement="Collab">
-${groupShapes.join('')}${di.join('\n')}${flowShapes.join('')}
+${groupShapes.join('')}${di.join('\n')}${depShapes.join('')}${flowShapes.join('')}
 </bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
 </definitions>`;
 
     return {
-        xml, poolOf, sidOfPool: new Map([...poolOf].map(([s, p]) => [p, s])), stepOfElement, elementOfStep,
-        groups, groupKey, titles, subtitles, linkTypes,
+        xml, instanceOfPool, stepOfElement, titles, subtitles, dependencyOf, linkTypes, rowOfGroup, groupOfRow,
+        poolOf: (rowId, index) => `${prefixOf(rowIndex.get(rowId) ?? -1, index)}Participant_1`,
+        elementOfStep: (rowId, index, stepId) => {
+            const sid = rows[rowIndex.get(rowId) ?? -1]?.sids[index];
+            const s = sid ? by.get(sid)?.rows.find(x => x.id === stepId) : undefined;
+            return s ? prefixOf(rowIndex.get(rowId)!, index) + elementId(s.id, s.typeBpmn as any) : undefined;
+        },
     };
 }
