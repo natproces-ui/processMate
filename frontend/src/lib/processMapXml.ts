@@ -44,17 +44,21 @@ export interface ProcessMap {
 const BPMN = 'http://www.omg.org/spec/BPMN/20100524/MODEL';
 const REF_ATTRS = ['id', 'sourceRef', 'targetRef', 'bpmnElement', 'processRef', 'attachedToRef', 'default', 'calledElement'];
 const REF_TEXT = new Set(['flowNodeRef', 'incoming', 'outgoing']);
-const GAP_X = 240, GAP_ROWS = 260, ROW_PAD = 60, ROW_LABEL = 170, DEP_GAP = 110, DEP_W = 300, DEP_H = 70;
+// ROW_LABEL : place des titres de procédures dans le cadre ; le nom de la rangée est au-dessus du cadre (GAP_ROWS)
+const GAP_X = 240, GAP_ROWS = 380, ROW_PAD = 60, ROW_LABEL = 80, DEP_GAP = 110, DEP_W = 300, DEP_H = 70;
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // ─── Rangées proposées ────────────────────────────────────────
 
 /**
- * Une rangée par suite d'enchaînements (« Déclenche », « Fait appel à ») : de chaque procédure
- * qui n'est lancée par aucune autre, on suit les liens jusqu'au bout (une rangée par
- * embranchement). Les procédures sans enchaînement ont leur propre rangée. Nom par défaut : la
- * sous-catégorie de la première procédure, complété si plusieurs rangées la partagent.
+ * Une rangée par flux : de chaque procédure qui n'est lancée par aucune autre, on suit les
+ * enchaînements (« Déclenche », « Fait appel à ») jusqu'au bout (une rangée par embranchement).
+ * Le flux est complété par ce qui l'encadre : en tête, ce que sa première procédure nécessite
+ * (ex. se connecter avant un retrait) ; en fin, la procédure qui nécessite la dernière quand il
+ * n'y en a qu'une (ex. se connecter après l'activation de l'accès). Les procédures sans
+ * enchaînement ont leur propre rangée. Nom par défaut : la sous-catégorie de la première
+ * procédure enchaînée, complété si plusieurs rangées la partagent.
  */
 export function autoRows(procs: MapProcedure[], links: MapLink[]): MapRow[] {
     const by = new Map(procs.map(p => [p.sid, p]));
@@ -73,18 +77,24 @@ export function autoRows(procs: MapProcedure[], links: MapLink[]): MapRow[] {
     const covered = () => new Set(paths.flat());
     sids.filter(s => !covered().has(s) && next(s).length > 0).forEach(s => { if (!covered().has(s)) walk([s]); });
     sids.filter(s => !covered().has(s)).forEach(s => paths.push([s]));
-    paths.sort((a, b) => ref(a[0]).localeCompare(ref(b[0])));
+    // Flux complet ; la tête (première procédure enchaînée) sert au tri et au nom
+    const needs = links.filter(l => l.type === 'necessite' && by.has(l.source) && by.has(l.target) && l.source !== l.target);
+    const flows = paths.map(path => {
+        const before = [...new Set(needs.filter(l => l.source === path[0]).map(l => l.target))].filter(s => !path.includes(s));
+        const dependents = [...new Set(needs.filter(l => l.target === path[path.length - 1]).map(l => l.source))].filter(s => !path.includes(s) && !before.includes(s));
+        return { head: path[0], single: path.length === 1, sids: [...before, ...path, ...(dependents.length === 1 ? dependents : [])] };
+    }).sort((a, b) => ref(a.head).localeCompare(ref(b.head)));
 
-    const label = (path: string[]) => {
-        const sub = by.get(path[0])!.subcategory.replace(/^[A-Z]\d*\.\s*/, '');
-        return path.length === 1 || !sub ? by.get(path[0])!.name : sub;
+    const label = (f: { head: string; single: boolean }) => {
+        const sub = by.get(f.head)!.subcategory.replace(/^[A-Z]\d*\.\s*/, '');
+        return f.single || !sub ? by.get(f.head)!.name : sub;
     };
     const counts = new Map<string, number>();
-    paths.forEach(p => counts.set(label(p), (counts.get(label(p)) || 0) + 1));
-    return paths.map((path, i) => ({
-        id: `row-${i}-${path[0].slice(0, 8)}`,
-        name: counts.get(label(path))! > 1 ? `${label(path)} – ${by.get(path[0])!.name}` : label(path),
-        sids: path,
+    flows.forEach(f => counts.set(label(f), (counts.get(label(f)) || 0) + 1));
+    return flows.map((f, i) => ({
+        id: `row-${i}-${f.head.slice(0, 8)}`,
+        name: counts.get(label(f))! > 1 ? `${label(f)} – ${by.get(f.head)!.name}` : label(f),
+        sids: f.sids,
     }));
 }
 
@@ -156,7 +166,9 @@ export function buildProcessMap(procs: MapProcedure[], links: MapLink[], rows: M
         // Procédures nécessaires, réduites sous celle qui en a besoin
         let bottom = poolsBottom;
         rowParsed.forEach(p => {
-            const needs = [...new Set(links.filter(l => l.type === 'necessite' && l.source === p.inst.sid && by.has(l.target)).map(l => l.target))];
+            // Déjà présente plus tôt dans la rangée : la dépendance se lit dans le flux, pas en dessous
+            const earlier = new Set(row.sids.slice(0, p.inst.index));
+            const needs = [...new Set(links.filter(l => l.type === 'necessite' && l.source === p.inst.sid && by.has(l.target) && !earlier.has(l.target)).map(l => l.target))];
             needs.forEach((target, k) => {
                 const id = `${p.prefix}Need${k}`;
                 const box = { x: p.pool.x + k * (DEP_W + 30), y: poolsBottom + DEP_GAP, width: DEP_W, height: DEP_H };

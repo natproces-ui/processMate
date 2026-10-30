@@ -41,10 +41,10 @@ function loadAssets() {
 .pm-map .djs-element.pm-need .djs-visual path { stroke-dasharray: 3 7 !important; stroke-width: 2px !important; }
 .pm-map .pm-pool-title { font: 700 20px/1.2 Inter, system-ui, sans-serif; color: #1e293b; white-space: nowrap; pointer-events: none; }
 .pm-map .pm-pool-title span { margin-left: 10px; padding: 1px 8px; border-radius: 6px; background: #e2e8f0; color: #475569; font-weight: 600; font-size: 15px; }
-.pm-map .pm-row-title { display: flex; align-items: center; gap: 8px; font: 700 26px/1 Inter, system-ui, sans-serif; color: #fff; background: #1e293b;
+.pm-map .pm-row-title { display: flex; align-items: center; gap: 8px; font: 700 34px/1 Inter, system-ui, sans-serif; color: #fff; background: #1e293b;
   padding: 6px 6px 6px 16px; border-radius: 10px; white-space: nowrap; box-shadow: 0 1px 3px rgba(15,23,42,.25); cursor: pointer; }
 .pm-map .pm-row-title.on { background: #2563eb; }
-.pm-map .pm-row-title button { width: 40px; height: 40px; border-radius: 8px; border: 0; background: rgba(255,255,255,.15); color: #fff; font: 700 24px/1 Inter, sans-serif; cursor: pointer; }
+.pm-map .pm-row-title button { width: 48px; height: 48px; border-radius: 8px; border: 0; background: rgba(255,255,255,.15); color: #fff; font: 700 30px/1 Inter, sans-serif; cursor: pointer; }
 .pm-map .pm-row-title button:hover { background: rgba(255,255,255,.3); }
 .pm-map .pm-badge { display: flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 9px; background: #2563eb; color: #fff;
   font: 600 10px/16px Inter, system-ui, sans-serif; box-shadow: 0 1px 3px rgba(15,23,42,.25); pointer-events: none; white-space: nowrap; }`;
@@ -152,8 +152,8 @@ const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function Proces
                     tag.append(name, more);
                     tag.onclick = () => cb.current.onRowClick(rowId);
                     rowTags.current.set(rowId, tag);
-                    // Suit le zoom, sans descendre sous une taille lisible
-                    overlays.add(groupId, { position: { top: 18, left: 18 }, scale: { min: 0.55 }, html: tag });
+                    // Au-dessus du cadre ; suit le zoom, sans descendre sous une taille lisible
+                    overlays.add(groupId, { position: { top: -92, left: 0 }, scale: { min: 0.35 }, html: tag });
                 });
                 map.titles.forEach((title, poolId) => {
                     if (!registry.get(poolId)) return;
