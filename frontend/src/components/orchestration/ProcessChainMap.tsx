@@ -4,8 +4,9 @@
 //
 // Carte bpmn-js d'un thème (lib/processMapXml.ts) en mode « disposition » : on zoome, on
 // déplace la vue, on déplace et redimensionne les procédures (bassins) ; rien d'autre n'est
-// modifiable. Les grappes (catégories) suivent leurs procédures ; cliquer le titre d'une grappe
-// sélectionne ses procédures pour les déplacer ensemble. Cliquer une étape la désigne.
+// modifiable. Les groupements suivent leurs procédures ; cliquer le nom d'un groupement
+// sélectionne ses procédures pour les déplacer ensemble, double-cliquer le renomme. Cliquer une
+// étape la désigne.
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -36,8 +37,12 @@ function loadAssets() {
 .pm-map .djs-element.pm-focus > .djs-visual > rect { stroke: #2563eb !important; stroke-width: 3px !important; }
 .pm-map .djs-element[data-element-id^="Cluster_"] .djs-visual rect { stroke: #94a3b8 !important; stroke-width: 2px !important; }
 .pm-map .pm-pool-title { font: 700 20px/1.2 Inter, system-ui, sans-serif; color: #1e293b; white-space: nowrap; pointer-events: none; }
-.pm-map .pm-cluster-title { font: 700 13px/1 Inter, system-ui, sans-serif; color: #fff; background: #475569; padding: 5px 10px; border-radius: 6px;
-  white-space: nowrap; pointer-events: none; box-shadow: 0 1px 3px rgba(15,23,42,.2); }
+.pm-map .pm-pool-title span { margin-left: 10px; padding: 1px 8px; border-radius: 6px; background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 15px; }
+.pm-map .pm-cluster-title { font: 700 13px/1 Inter, system-ui, sans-serif; color: #fff; background: #334155; padding: 6px 11px; border-radius: 6px;
+  white-space: nowrap; cursor: pointer; box-shadow: 0 1px 3px rgba(15,23,42,.2); outline: none; }
+.pm-map .pm-cluster-title[contenteditable="true"] { background: #fff; color: #0f172a; box-shadow: 0 0 0 2px #2563eb; cursor: text; }
+.pm-map .djs-element.pm-chain .djs-visual path { stroke-dasharray: none !important; stroke-width: 3px !important; }
+.pm-map .djs-element.pm-need .djs-visual path { stroke-dasharray: 3 7 !important; stroke-width: 1.5px !important; opacity: .75; }
 .pm-map .pm-badge { display: flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 9px; background: #2563eb; color: #fff;
   font: 600 10px/16px Inter, system-ui, sans-serif; box-shadow: 0 1px 3px rgba(15,23,42,.25); pointer-events: none; white-space: nowrap; }`;
     document.head.appendChild(style);
@@ -81,14 +86,15 @@ interface Props {
     onStepClick: (sid: string, stepId: string) => void;
     onPoolClick: (sid: string) => void;
     onChange: () => void;                            // disposition ou vue modifiée
+    onRenameGroup: (hubSid: string, name: string) => void;
 }
 
 const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function ProcessChainMap(
-    { map, savedPools, savedViewbox, screenCounts, activeStep, focusSid, onStepClick, onPoolClick, onChange }, ref) {
+    { map, savedPools, savedViewbox, screenCounts, activeStep, focusSid, onStepClick, onPoolClick, onChange, onRenameGroup }, ref) {
     const boxRef = useRef<HTMLDivElement>(null);
     const modelerRef = useRef<any>(null);
-    const cb = useRef({ onStepClick, onPoolClick, onChange });
-    cb.current = { onStepClick, onPoolClick, onChange };
+    const cb = useRef({ onStepClick, onPoolClick, onChange, onRenameGroup });
+    cb.current = { onStepClick, onPoolClick, onChange, onRenameGroup };
     const [ready, setReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -170,17 +176,43 @@ const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function Proces
                 refitGroups();
                 (modeler.get('commandStack') as any).clear();
 
-                // Titres : procédure au-dessus de son bassin (suit le zoom), grappe en étiquette fixe
+                // Titres : procédure (et sa catégorie) au-dessus de son bassin, suit le zoom ;
+                // groupement en étiquette de taille fixe, cliquable et renommable
                 map.titles.forEach((title, id) => {
                     if (!registry.get(id)) return;
-                    const isCluster = map.groups.has(id);
                     const tag = document.createElement('div');
-                    tag.className = isCluster ? 'pm-cluster-title' : 'pm-pool-title';
+                    if (!map.groups.has(id)) {
+                        tag.className = 'pm-pool-title';
+                        tag.textContent = title;
+                        const cat = map.subtitles.get(id);
+                        if (cat) { const chip = document.createElement('span'); chip.textContent = cat; tag.appendChild(chip); }
+                        overlays.add(id, { position: { top: -30, left: 0 }, html: tag });
+                        return;
+                    }
+                    tag.className = 'pm-cluster-title';
                     tag.textContent = title;
-                    overlays.add(id, isCluster
-                        ? { position: { top: 8, left: 8 }, scale: false, html: tag }
-                        : { position: { top: -30, left: 0 }, html: tag });
+                    tag.title = 'Cliquer : sélectionner ses procédures · double-cliquer : renommer';
+                    tag.onclick = () => {
+                        if (tag.isContentEditable) return;
+                        selection.select((map.groups.get(id) ?? []).map(s => registry.get(map.poolOf.get(s))).filter(Boolean));
+                    };
+                    tag.ondblclick = () => {
+                        tag.contentEditable = 'true';
+                        tag.focus();
+                        document.getSelection()?.selectAllChildren(tag);
+                    };
+                    const done = () => {
+                        if (!tag.isContentEditable) return;
+                        tag.contentEditable = 'false';
+                        const name = (tag.textContent || '').trim() || title;
+                        tag.textContent = name;
+                        cb.current.onRenameGroup(map.groupKey.get(id)!, name);
+                    };
+                    tag.onblur = done;
+                    tag.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); tag.blur(); } e.stopPropagation(); };
+                    overlays.add(id, { position: { top: 10, left: 10 }, scale: false, html: tag });
                 });
+                map.linkTypes.forEach((type, id) => { if (registry.get(id)) canvas.addMarker(id, type === 'necessite' ? 'pm-need' : 'pm-chain'); });
 
                 map.stepOfElement.forEach(({ sid, stepId }, id) => {
                     if (!registry.get(id)) return;
@@ -196,8 +228,6 @@ const ProcessChainMap = forwardRef<ProcessChainMapHandle, Props>(function Proces
                     const step = map.stepOfElement.get(id);
                     if (step) return cb.current.onStepClick(step.sid, step.stepId);
                     if (map.sidOfPool.has(id)) return cb.current.onPoolClick(map.sidOfPool.get(id)!);
-                    const members = map.groups.get(id);
-                    if (members) selection.select(members.map(s => registry.get(map.poolOf.get(s))).filter(Boolean));
                 });
                 // Les grappes suivent leurs procédures
                 eventBus.on(['commandStack.elements.move.postExecuted', 'commandStack.shape.resize.postExecuted'], (e: any) => {

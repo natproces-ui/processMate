@@ -49,6 +49,7 @@ export interface Box { x: number; y: number; width: number; height: number }
 export interface ProcessMapLayout {
   pools: Record<string, Box>;       // session_id → bassin de la procédure
   viewbox?: Box;                     // dernière vue (zoom, déplacement)
+  groupNames?: Record<string, string>; // procédure centrale d'un groupement → nom donné
 }
 
 export const taxonomyApi = {

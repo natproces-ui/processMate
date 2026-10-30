@@ -57,6 +57,7 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
     const mapRef = useRef<ProcessChainMapHandle>(null);
     const rightRef = useRef<HTMLDivElement>(null);
     const dirty = useRef(false);
+    const groupNames = useRef<Record<string, string>>({});
     const programmatic = useRef(false);
 
     useEffect(() => {
@@ -103,7 +104,9 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
         if (!themeId) return;
         let cancelled = false;
         setLayout(undefined);
-        taxonomyApi.getMap(themeId).then(r => { if (!cancelled) setLayout(r.layout); }).catch(() => { if (!cancelled) setLayout(null); });
+        taxonomyApi.getMap(themeId)
+            .then(r => { if (cancelled) return; groupNames.current = r.layout?.groupNames ?? {}; setLayout(r.layout); })
+            .catch(() => { if (!cancelled) { groupNames.current = {}; setLayout(null); } });
         return () => { cancelled = true; };
     }, [themeId]);
     useEffect(() => {
@@ -129,10 +132,11 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
         return buildProcessMap(
             themeProcs.map(p => {
                 const c = ancestry(p.taxonomy_id).category;
-                return { sid: p.session_id, name: p.nom, ref: p.ref, rows: rowsOf(p.session_id), cluster: c ? c.name : 'Sans catégorie' };
+                return { sid: p.session_id, name: p.nom, ref: p.ref, rows: rowsOf(p.session_id), category: c ? c.name : '' };
             }),
             links.filter(l => sids.has(l.source) && sids.has(l.target)),
             resetKey > 0 ? undefined : layout?.pools,
+            groupNames.current,
         );
         // resetKey : « Réorganiser » repart de la disposition par catégorie
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -155,7 +159,7 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
         if (!snap) return;
         dirty.current = false;
         setSaveState('saving');
-        taxonomyApi.saveMap(themeId, snap)
+        taxonomyApi.saveMap(themeId, { ...snap, groupNames: groupNames.current })
             .then(r => setSaveState(r.ok ? 'saved' : 'dirty'))
             .catch(() => { dirty.current = true; setSaveState('dirty'); });
     }, [themeId]);
@@ -299,7 +303,7 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
                     <IconButton title="Tout afficher" onClick={() => mapRef.current?.fit()}><Maximize className="w-4 h-4" /></IconButton>
                 </div>
                 <button type="button" onClick={() => { dirty.current = true; setResetKey(k => k + 1); }}
-                    title="Ranger les procédures par catégorie (la disposition actuelle est remplacée)"
+                    title="Disposer automatiquement : procédures reliées regroupées, la plus liée au centre (la disposition actuelle est remplacée)"
                     className="h-9 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 flex items-center gap-1.5">
                     <LayoutGrid className="w-3.5 h-3.5" />Réorganiser
                 </button>
@@ -311,7 +315,10 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
                 <div className="flex-1" />
                 <div className="hidden 2xl:flex items-center gap-3 text-[11px] text-slate-500">
                     {(Object.keys(LINK_COLORS) as LinkType[]).map(t => (
-                        <span key={t} className="flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed" style={{ borderColor: LINK_COLORS[t] }} />{LINK_LABELS[t].label}</span>
+                        <span key={t} className="flex items-center gap-1.5">
+                            <span className={`w-5 ${t === 'necessite' ? 'border-t-2 border-dotted' : 'border-t-[3px]'}`} style={{ borderColor: LINK_COLORS[t] }} />
+                            {LINK_LABELS[t].label}
+                        </span>
                     ))}
                 </div>
                 <button type="button" onClick={() => setPanelOpen(o => !o)} title={panelOpen ? 'Masquer les écrans' : 'Afficher les écrans'}
@@ -333,7 +340,8 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
                             screenCounts={screenCounts} activeStep={active} focusSid={focusSid}
                             onStepClick={onStepClick}
                             onPoolClick={sid => { setFocusSid(sid); if (!panelOpen) setPanelOpen(true); }}
-                            onChange={onMapChange} />
+                            onChange={onMapChange}
+                            onRenameGroup={(hub, name) => { groupNames.current = { ...groupNames.current, [hub]: name }; onMapChange(); }} />
                     ) : (
                         <div className="h-full flex items-center justify-center gap-2 text-sm text-slate-400">
                             <Loader2 className="w-5 h-5 animate-spin" />Chargement des procédures du thème…
