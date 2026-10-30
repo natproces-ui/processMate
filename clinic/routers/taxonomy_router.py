@@ -506,6 +506,36 @@ async def list_taxonomy(flat: bool = False):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ─── Carte « Enchaînement des process » : disposition par thème ───
+# (database/process_maps_schema.sql) — positions des procédures et dernière vue,
+# enregistrées par le front quand l'utilisateur quitte la carte.
+
+class ProcessMapLayout(BaseModel):
+    layout: Dict[str, Any]
+
+
+@router.get("/taxonomy/{theme_id}/map")
+async def get_process_map(theme_id: str):
+    try:
+        rows = get_supabase().table("process_maps").select("layout, updated_at").eq("theme_id", theme_id).execute().data
+        return {"success": True, "layout": rows[0]["layout"] if rows else None,
+                "updated_at": rows[0]["updated_at"] if rows else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/taxonomy/{theme_id}/map")
+async def save_process_map(theme_id: str, body: ProcessMapLayout):
+    try:
+        get_supabase().table("process_maps").upsert({
+            "theme_id": theme_id, "layout": body.layout,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/taxonomy/{node_id}")
 async def get_taxonomy_node(node_id: str):
     """Retourne un nœud avec ses enfants directs."""

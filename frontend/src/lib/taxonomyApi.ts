@@ -44,7 +44,26 @@ export interface TaxonomyFlat extends Omit<TaxonomyNode, 'children'> {}
 
 // ─── API ──────────────────────────────────────────────────────
 
+/** Disposition de la carte « Enchaînement des process » d'un thème (pixels du diagramme). */
+export interface Box { x: number; y: number; width: number; height: number }
+export interface ProcessMapLayout {
+  pools: Record<string, Box>;       // session_id → bassin de la procédure
+  viewbox?: Box;                     // dernière vue (zoom, déplacement)
+}
+
 export const taxonomyApi = {
+  getMap: (themeId: string) =>
+    fetchJSON<{ success: boolean; layout: ProcessMapLayout | null }>(`/api/orchestration/taxonomy/${themeId}/map`),
+
+  // keepalive : la requête part même si la page se ferme (enregistrement en quittant)
+  saveMap: (themeId: string, layout: ProcessMapLayout) =>
+    fetch(`${BASE}/api/orchestration/taxonomy/${themeId}/map`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ layout }),
+      keepalive: true,
+    }),
+
   getTree: () =>
     fetchJSON<{ success: boolean; tree: TaxonomyNode[] }>('/api/orchestration/taxonomy'),
 

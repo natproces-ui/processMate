@@ -20,7 +20,7 @@ const IrritantsPanel         = dynamic(() => import('@/components/orchestration/
 const ComplexityPanel        = dynamic(() => import('@/components/orchestration/ComplexityPanel'),                { loading: PanelSkeleton });
 const ApplicatifsPanel       = dynamic(() => import('@/components/orchestration/ApplicatifsPanel'),              { loading: PanelSkeleton });
 const AnalysisWorkspace      = dynamic(() => import('@/components/analysis/AnalysisWorkspace'),                   { loading: PanelSkeleton });
-const ProcedureLinksView     = dynamic(() => import('@/components/orchestration/ProcedureLinksView'),             { loading: PanelSkeleton });
+const ProcessChainView       = dynamic(() => import('@/components/orchestration/ProcessChainView'),               { loading: PanelSkeleton });
 
 // ── Types ──────────────────────────────────────────────────────
 // Carte BIAN retirée d'ici (redondante avec Créer/Modifier → Créer, qui monte
@@ -42,7 +42,7 @@ const TABS: { id: AnalyserTab; label: string; icon: React.ElementType }[] = [
     { id: 'irritants',   label: 'Irritants',           icon: TriangleAlert },
     { id: 'complexity',  label: 'Complexité',          icon: Gauge        },
     { id: 'applicatifs', label: 'Applicatifs',         icon: Server       },
-    { id: 'liens',       label: 'Bout en bout',        icon: Network      },
+    { id: 'liens',       label: 'Enchaînement des process', icon: Network      },
     { id: 'ia',          label: 'Analyse IA',          icon: MessageSquare },
 ];
 
@@ -113,7 +113,7 @@ export default function AnalyserPanel({
                 </SubPanel>
 
                 <SubPanel active={activeTab === 'liens'}>
-                    <ProcedureLinksView />
+                    <ProcessChainView />
                 </SubPanel>
 
                 <SubPanel active={activeTab === 'ia'}>

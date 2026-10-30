@@ -12,7 +12,7 @@ import { generateBPMNOutillage } from '@/logic/bpmnGeneratorOutillage';
 import { parseWorkflowFromModeler, type ParseResult } from '@/logic/bpmnParser';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import ToolQuickCard from '@/components/orchestration/ToolQuickCard';
-import ProcedureLinksView from '@/components/orchestration/ProcedureLinksView';
+import ProcessChainView from '@/components/orchestration/ProcessChainView';
 import { ScreenHoverCard } from '@/components/orchestration/ScreenHover';
 import type { Table1Row } from '@/logic/types';
 import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeProcedureMetadata, mergeEnrichments } from '@/logic/bpmnTypes';
@@ -1151,8 +1151,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 return row?.outil && ids?.length ? <ScreenHoverCard toolName={row.outil} screenIds={ids} anchor={hoveredStep.rect} /> : null;
             })()}
             {journeyOpen && activeInst?.workflow_db_id && (
-                // Version enregistrée de la procédure et procédures liées, lues en base
-                <ProcedureLinksView initialWorkflowId={activeInst.workflow_db_id} initialDepth={1} onClose={() => setJourneyOpen(false)} />
+                // Version enregistrée : la procédure mise en avant sur la carte de son thème
+                <ProcessChainView initialWorkflowId={activeInst.workflow_db_id} onClose={() => setJourneyOpen(false)} />
             )}
         </div>
     );

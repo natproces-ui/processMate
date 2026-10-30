@@ -102,7 +102,7 @@ const PRODUCTS: ProductModule[] = [
           { label: 'Complexité', desc: 'Évaluation des risques', href: '/orchestration?tab=analyser&subtab=complexity', icon: <BarChart2 className={ic} /> },
           { label: 'Impact réglementaire', desc: 'Conformité et impacts', href: '/orchestration?tab=analyser&subtab=ia', icon: <Shield className={ic} /> },
           { label: 'Cartographie apps', desc: 'Systèmes et applications liés', href: '/orchestration?tab=analyser&subtab=applicatifs', icon: <MapIcon className={ic} /> },
-          { label: 'Bout en bout', desc: 'Procédures enchaînées et leurs écrans', href: '/orchestration?tab=analyser&subtab=liens', icon: <GitBranch className={ic} /> },
+          { label: 'Enchaînement des process', desc: 'Procédures liées par thème et leurs écrans', href: '/orchestration?tab=analyser&subtab=liens', icon: <GitBranch className={ic} /> },
           { label: 'Analyse IA', desc: 'Analyse intelligente', href: '/orchestration?tab=analyser&subtab=ia', icon: <BrainCircuit className={ic} /> },
           { label: 'Carte BIAN', desc: 'Référentiel BIAN v4.0', href: '/orchestration?tab=procedures', icon: <FileText className={ic} /> },
         ],
