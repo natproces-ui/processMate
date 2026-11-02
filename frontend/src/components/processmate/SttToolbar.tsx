@@ -39,13 +39,13 @@ export default function SttToolbar({
                     {dataLength > 0 && <span className="hidden lg:inline text-xs text-slate-400 mr-1">{dataLength} étapes</span>}
                     <ToolBtn icon={<FileText className="w-4 h-4" />} label={isEditingBpmn ? 'Régénérer BPMN' : 'Générer BPMN'}
                         onClick={onGenerateBPMN} disabled={dataLength === 0} variant="primary" />
-                    {bpmnXml && <ToolBtn icon={<FileDown className="w-4 h-4" />} label="Exporter" onClick={onDownloadBPMN} />}
                     <details className="relative" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
                         <summary aria-label="Autres actions du Studio" title="Autres actions du Studio"
                             className="list-none cursor-pointer p-2 text-slate-500 hover:bg-slate-100 rounded-lg [&::-webkit-details-marker]:hidden">
                             <MoreHorizontal className="w-4 h-4" />
                         </summary>
                         <div className="absolute right-0 top-full mt-1 z-40 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                            {bpmnXml && <MenuAction icon={<FileDown className="w-4 h-4" />} label="Exporter le BPMN" onClick={onDownloadBPMN} />}
                             <MenuAction icon={<Network className="w-4 h-4" />} label={detectingInterfaces ? 'Détection…' : 'Interfaces'}
                                 onClick={onDetectInterfaces} disabled={dataLength === 0 || detectingInterfaces} />
                             <MenuAction icon={<SearchCheck className="w-4 h-4" />} label="Erreurs" onClick={onAnalyseErrors} disabled={dataLength === 0} />

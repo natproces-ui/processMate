@@ -751,10 +751,21 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                     });
                 }
 
+                // Vue de départ lisible : le diagramme à la largeur du cadre, depuis le haut (un
+                // diagramme haut, mis en entier dans le cadre, devenait illisible) ; on descend à
+                // la molette, et le zoom reste disponible
                 canvas.zoom('fit-viewport');
                 setTimeout(() => {
-                    const currentZoom = canvas.zoom();
-                    canvas.zoom(Math.min(currentZoom * 0.85, 0.9));
+                    const vb = canvas.viewbox();
+                    const inner = vb.inner;
+                    if (!inner?.width) return;
+                    // La palette d'outils recouvre le bord gauche du canevas : on commence après elle
+                    const palette = containerRef.current?.querySelector('.djs-palette')?.getBoundingClientRect();
+                    const box = containerRef.current?.getBoundingClientRect();
+                    const left = (palette && box ? Math.max(0, palette.right - box.left) : 0) + 20;
+                    const zoom = Math.min(0.9, (vb.outer.width - left - 20) / inner.width);
+                    canvas.zoom(zoom);
+                    canvas.viewbox({ x: inner.x - left / zoom, y: inner.y - 20 / zoom, width: vb.outer.width / zoom, height: vb.outer.height / zoom });
                 }, 50);
                 setLoading(false);
                 onReady?.();

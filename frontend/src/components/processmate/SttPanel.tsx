@@ -12,7 +12,6 @@ import { generateBPMNOutillage } from '@/logic/bpmnGeneratorOutillage';
 import { parseWorkflowFromModeler, type ParseResult } from '@/logic/bpmnParser';
 import ToolDetailPanel from '@/components/orchestration/ToolDetailPanel';
 import ToolQuickCard from '@/components/orchestration/ToolQuickCard';
-import ProcessChainView from '@/components/orchestration/ProcessChainView';
 import { ScreenHoverCard } from '@/components/orchestration/ScreenHover';
 import type { Table1Row } from '@/logic/types';
 import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeProcedureMetadata, mergeEnrichments } from '@/logic/bpmnTypes';
@@ -30,7 +29,7 @@ import Library from '@/components/new-way/Library';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
-    PanelLeftOpen, Table2, Workflow, FileText, Play,
+    PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders } from '@/lib/processing-level';
@@ -101,7 +100,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [editorFullscreen, setEditorFullscreen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
     const [view, setView] = useState<'table' | 'bpmn' | 'fiche'>('table');
-    const [journeyOpen, setJourneyOpen] = useState(false);
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatWidth, setChatWidth] = useState(400);
@@ -344,6 +342,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     }, []);
     const tableHighlightIds = useMemo(() => new Set([...recentAiChangedStepIds, ...focusedStepIds]), [recentAiChangedStepIds, focusedStepIds]);
 
+    const activeEditor = () => (instances.length > 0 ? editorRefs.current[activeTab] : editorRef.current);
     const updateActiveData = (d: Table1Row[]) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: d } : inst));
     const updateActiveEnrichments = (e: Map<string, TaskEnrichment>) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, enrichments: e } : inst));
 
@@ -863,11 +862,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         <v.icon className="w-3.5 h-3.5" />{v.label}
                                     </button>
                                 ))}
-                                <button type="button" onClick={() => setJourneyOpen(true)} disabled={activeData.length === 0 || !activeInst?.workflow_db_id}
-                                    title={activeInst?.workflow_db_id ? 'Parcourir les écrans des étapes, et des process liés' : 'Enregistrez la procédure pour parcourir ses écrans'}
-                                    className="ml-2 mb-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 disabled:opacity-40">
-                                    <Play className="w-3.5 h-3.5" fill="currentColor" />Défiler les écrans
-                                </button>
                             </div>
                             <div className="pb-1.5">
                                 <SttToolbar
@@ -981,7 +975,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 <div className={`bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col ${editorFullscreen ? 'fixed inset-4 z-50 shadow-2xl' : 'flex-1 min-h-[420px]'}`}>
                                     <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
                                         <span className="text-sm font-semibold text-slate-700 truncate">BPMN — {activeTitle}</span>
-                                        <div className="flex flex-wrap items-center gap-2">
+                                        <div className="flex items-center gap-2">
                                             <button type="button" onClick={() => {
                                                 const inst = instances.length > 0 ? activeInst : null;
                                                 if (inst?.workflow_db_id) {
@@ -994,16 +988,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                                 <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                             </button>
-                                            <button type="button" onClick={handleSyncClick} disabled={viewMode === 'outillage'}
-                                                title={viewMode === 'outillage' ? 'Repassez en vue métier pour synchroniser' : 'Relire le diagramme pour mettre à jour le tableau (tâches/applicatifs ajoutés directement sur le canevas)'}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-50 disabled:opacity-40 transition-colors">
-                                                <RotateCw className="w-3.5 h-3.5" />Synchroniser
-                                            </button>
-                                            <button type="button" onClick={toggleViewMode}
-                                                title="Vue IT : l'applicatif devient le titre de chaque tâche — cliquez un applicatif pour voir ses écrans/champs/codes"
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${viewMode === 'outillage' ? 'bg-violet-600 text-white' : 'bg-white border border-violet-300 text-violet-700 hover:bg-violet-50'}`}>
-                                                <Wrench className="w-3.5 h-3.5" />{viewMode === 'outillage' ? 'Vue IT (active)' : 'Vue IT'}
-                                            </button>
                                             {activeInst?.workflow_db_id && currentActorId && (
                                                 <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
                                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -1011,18 +995,36 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                                     Soumettre
                                                 </button>
                                             )}
-                                            <button type="button" onClick={handleDownloadBPMN}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-medium hover:bg-slate-300 transition-colors">
-                                                <Download className="w-3.5 h-3.5" />Télécharger
-                                            </button>
+                                            {viewMode === 'outillage' && (
+                                                <button type="button" onClick={toggleViewMode} title="Revenir à la vue métier"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700">
+                                                    <Wrench className="w-3.5 h-3.5" />Vue IT active
+                                                </button>
+                                            )}
+                                            <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
+                                                <button type="button" title="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomOut className="w-4 h-4 text-slate-600" /></button>
+                                                <button type="button" title="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomIn className="w-4 h-4 text-slate-600" /></button>
+                                                <button type="button" title="Ajuster à la fenêtre" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-slate-100"><Scan className="w-4 h-4 text-slate-600" /></button>
+                                            </div>
                                             <button type="button" title={editorFullscreen ? 'Quitter le plein écran' : 'Plein écran'} onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
-                                                <Maximize2 className="w-4 h-4 text-slate-500" />
+                                                {editorFullscreen ? <Minimize2 className="w-4 h-4 text-slate-500" /> : <Maximize2 className="w-4 h-4 text-slate-500" />}
                                             </button>
-                                            <button type="button" title="Fermer le diagramme"
-                                                onClick={() => { if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: null } : inst)); else setBpmnXml(null); }}
-                                                className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
-                                                <X className="w-4 h-4 text-slate-500" />
-                                            </button>
+                                            {/* Actions moins fréquentes */}
+                                            <details className="relative" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
+                                                <summary aria-label="Autres actions du diagramme" title="Autres actions"
+                                                    className="list-none cursor-pointer p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 [&::-webkit-details-marker]:hidden">
+                                                    <MoreHorizontal className="w-4 h-4" />
+                                                </summary>
+                                                <div className="absolute right-0 top-full mt-1 z-40 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                                                    <DiagramMenuAction icon={<RotateCw className="w-4 h-4" />} label="Synchroniser depuis le diagramme"
+                                                        disabled={viewMode === 'outillage'} onClick={handleSyncClick} />
+                                                    <DiagramMenuAction icon={<Wrench className="w-4 h-4" />} label={viewMode === 'outillage' ? 'Revenir à la vue métier' : 'Vue IT (applicatifs)'} onClick={toggleViewMode} />
+                                                    <DiagramMenuAction icon={<Download className="w-4 h-4" />} label="Télécharger le BPMN" onClick={handleDownloadBPMN} />
+                                                    <div className="my-1 border-t border-slate-100" />
+                                                    <DiagramMenuAction icon={<X className="w-4 h-4" />} label="Fermer le diagramme"
+                                                        onClick={() => { if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: null } : inst)); else setBpmnXml(null); }} />
+                                                </div>
+                                            </details>
                                         </div>
                                     </div>
                                     <div className="flex flex-1 min-h-0">
@@ -1150,11 +1152,15 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 const ids = activeEnrichments.get(hoveredStep.id)?.ecrans;
                 return row?.outil && ids?.length ? <ScreenHoverCard toolName={row.outil} screenIds={ids} anchor={hoveredStep.rect} /> : null;
             })()}
-            {journeyOpen && activeInst?.workflow_db_id && (
-                // Version enregistrée : la procédure mise en avant sur la carte de son thème
-                <ProcessChainView initialWorkflowId={activeInst.workflow_db_id} onClose={() => setJourneyOpen(false)} />
-            )}
         </div>
     );
 }
 
+function DiagramMenuAction({ icon, label, onClick, disabled }: { icon: React.ReactNode; label: string; onClick: () => void; disabled?: boolean }) {
+    return (
+        <button type="button" disabled={disabled} onClick={e => { e.currentTarget.closest('details')?.removeAttribute('open'); onClick(); }}
+            className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-left text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed">
+            {icon}{label}
+        </button>
+    );
+}
