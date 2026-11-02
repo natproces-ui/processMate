@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, FileDown, RotateCcw, Trash2, Network, Wand2, SearchCheck, MoreHorizontal } from 'lucide-react';
+import { FileText, FileDown, RotateCcw, Trash2, Network, Wand2, SearchCheck, MoreHorizontal, Plus } from 'lucide-react';
 
 interface SttToolbarProps {
     /** Sans encadré : intégré dans l’en-tête du Studio */
@@ -18,6 +18,11 @@ interface SttToolbarProps {
     onDetectInterfaces: () => void;
     onAnalyseErrors: () => void;
     onToggleRevision: () => void;
+    onNewProcedure?: () => void;
+    /** Contrôles affichés avant « ⋯ » (zoom du diagramme…) */
+    extraControls?: React.ReactNode;
+    /** Actions ajoutées en tête du menu « ⋯ » (actions du diagramme…) */
+    extraMenu?: React.ReactNode;
 }
 
 type Variant = 'default' | 'primary' | 'toggle' | 'danger';
@@ -28,7 +33,7 @@ export default function SttToolbar({
     bpmnXml, isEditingBpmn, revisionOpen, revisionCount,
     onGenerateBPMN, onDownloadBPMN,
     onResetToDefault, onClearTable, onDetectInterfaces, onAnalyseErrors,
-    onToggleRevision,
+    onToggleRevision, onNewProcedure, extraControls, extraMenu,
 }: SttToolbarProps) {
     return (
         <div role="toolbar" aria-label="Outils du Studio" className={bare ? '' : 'bg-white rounded-xl border border-slate-200 px-3 py-2'}>
@@ -36,15 +41,17 @@ export default function SttToolbar({
                 <ToolBtn icon={<Wand2 className="w-4 h-4" />} label="Révision" active={revisionOpen} onClick={onToggleRevision}
                     variant="toggle" badge={revisionCount > 0 ? revisionCount : undefined} />
                 <div className="ml-auto flex items-center gap-1.5">
-                    {dataLength > 0 && <span className="hidden lg:inline text-xs text-slate-400 mr-1">{dataLength} étapes</span>}
                     <ToolBtn icon={<FileText className="w-4 h-4" />} label={isEditingBpmn ? 'Régénérer BPMN' : 'Générer BPMN'}
                         onClick={onGenerateBPMN} disabled={dataLength === 0} variant="primary" />
+                    {extraControls}
                     <details className="relative" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
                         <summary aria-label="Autres actions du Studio" title="Autres actions du Studio"
                             className="list-none cursor-pointer p-2 text-slate-500 hover:bg-slate-100 rounded-lg [&::-webkit-details-marker]:hidden">
                             <MoreHorizontal className="w-4 h-4" />
                         </summary>
-                        <div className="absolute right-0 top-full mt-1 z-40 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                        <div className="absolute right-0 top-full mt-1 z-40 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                            {extraMenu && <>{extraMenu}<div className="my-1 border-t border-slate-100" /></>}
+                            {onNewProcedure && <MenuAction icon={<Plus className="w-4 h-4" />} label="Nouvelle procédure" onClick={onNewProcedure} />}
                             {bpmnXml && <MenuAction icon={<FileDown className="w-4 h-4" />} label="Exporter le BPMN" onClick={onDownloadBPMN} />}
                             <MenuAction icon={<Network className="w-4 h-4" />} label={detectingInterfaces ? 'Détection…' : 'Interfaces'}
                                 onClick={onDetectInterfaces} disabled={dataLength === 0 || detectingInterfaces} />

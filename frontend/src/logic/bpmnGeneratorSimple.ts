@@ -19,7 +19,8 @@ import {
 // CONSTANTES
 // ─────────────────────────────────────────────────────────────
 
-export const POOL_Y = -98;   // Y du pool (bpmn-js convention)
+// Haut des couloirs : bandeau de titre (30) + ~70 d'air au-dessus du premier élément
+export const POOL_Y = -20;   // Y du pool (bpmn-js convention)
 const LANE_HEADER = 100;   // hauteur de l'en-tête de lane (label)
 export const START_Y = 80;    // Y du premier élément
 export const STEP_Y = 130;   // espacement vertical entre rangs

@@ -238,7 +238,7 @@ export default function Library({ modelerRef }: LibraryProps) {
             >
                 <ToolIcon />
                 <span className="text-[8px] font-semibold text-emerald-700 tracking-tight">
-                    Outil
+                    Applicatif
                 </span>
             </div>
 
@@ -247,7 +247,7 @@ export default function Library({ modelerRef }: LibraryProps) {
                 onClick={handleLinkClick}
                 title={linkMode
                     ? 'Mode Link actif — cliquez sur la source puis la cible (Échap pour annuler)'
-                    : 'Link — relier une tâche à un applicatif'}
+                    : 'Lien — relier une tâche à un applicatif'}
                 className={`
                     w-14 h-14 rounded-lg flex flex-col items-center justify-center gap-1
                     cursor-pointer
@@ -261,7 +261,7 @@ export default function Library({ modelerRef }: LibraryProps) {
                 <LinkIcon active={linkMode} />
                 <span className={`text-[8px] font-semibold tracking-tight ${linkMode ? 'text-blue-600' : 'text-slate-500'
                     }`}>
-                    {linkMode ? 'Actif…' : 'Link'}
+                    {linkMode ? 'Actif…' : 'Lien'}
                 </span>
             </div>
 

@@ -29,6 +29,8 @@ interface BpmnEditorProps {
     /** Survol d'une étape (id de Table1Row) : rectangle à l'écran pour y ancrer un aperçu ;
      *  (null, null) quand la souris la quitte. */
     onStepHover?: (stepId: string | null, rect: DOMRect | null) => void;
+    /** La colonne ProcessMate (Library) est affichée à côté : pas d'« Applicatif » dans la palette. */
+    hideToolPaletteEntry?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -90,6 +92,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
     onModelerReady,
     highlightStepIds,
     onStepHover,
+    hideToolPaletteEntry,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const modelerRef = useRef<any>(null);
@@ -526,6 +529,9 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                             create.start(event, shape);
                         };
 
+                        // Le lien tâche ↔ applicatif se tire depuis le menu contextuel de la tâche
+                        // (ou la colonne ProcessMate du Studio) : pas d'entrée « Link » inerte ici.
+                        if (hideToolPaletteEntry) return {};
                         return {
                             'processmate.tool': {
                                 group: 'tools',
@@ -534,17 +540,6 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                                 action: {
                                     dragstart: createTool,
                                     click: createTool,
-                                },
-                            },
-                            'processmate.link': {
-                                group: 'tools',
-                                className: 'bpmn-icon-connection',
-                                title: 'Link — relier un applicatif à une tâche',
-                                action: {
-                                    click(_event: any) {
-                                        // Le link se crée en tirant depuis le contextPad
-                                        // Cet item est un rappel visuel — le vrai connect est dans le contextPad
-                                    },
                                 },
                             },
                         };

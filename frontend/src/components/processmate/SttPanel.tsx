@@ -58,6 +58,7 @@ const BpmnEditor = dynamic(() => import('@/components/new-way/BpmnEditor'), {
 type Phase = 'upload' | 'discovery' | 'editing';
 
 interface ProcessInstance {
+    category?: string;
     process_id: string; title: string; data: Table1Row[];
     enrichments: Map<string, TaskEnrichment>; bpmnXml: string | null;
     metadata: ProcessMetadata; initialMeta: any;
@@ -270,7 +271,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     });
                 }
                 const xml = savedBpmnXml || generateBPMNSimple(workflow, title);
-                setInstances([{ process_id: proc.id, title, data: workflow, enrichments: enrichMap, bpmnXml: xml, metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: proc.metadata || { nom: title }, status: 'ready', workflow_db_id: proc.id }]);
+                setInstances([{ process_id: proc.id, title, category: proc.category, data: workflow, enrichments: enrichMap, bpmnXml: xml, metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: proc.metadata || { nom: title }, status: 'ready', workflow_db_id: proc.id }]);
                 setActiveTab(0); setPhase('editing'); setUploadOpen(false);
                 showSuccess(`Procédure "${title}" chargée`);
             })
@@ -342,6 +343,16 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     }, []);
     const tableHighlightIds = useMemo(() => new Set([...recentAiChangedStepIds, ...focusedStepIds]), [recentAiChangedStepIds, focusedStepIds]);
 
+    const addProcedureTab = () => {
+        const newInst: ProcessInstance = {
+            process_id: crypto.randomUUID(), title: 'Nouvelle procédure',
+            data: defaultData, enrichments: new Map(), bpmnXml: null,
+            metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: undefined,
+            status: 'ready',
+        };
+        setInstances(prev => [...prev, newInst]);
+        setActiveTab(instances.length);
+    };
     const activeEditor = () => (instances.length > 0 ? editorRefs.current[activeTab] : editorRef.current);
     const updateActiveData = (d: Table1Row[]) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: d } : inst));
     const updateActiveEnrichments = (e: Map<string, TaskEnrichment>) => setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, enrichments: e } : inst));
@@ -760,21 +771,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             {/* ── Contenu principal ── */}
             <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
-                {/* Retour au contexte d’origine */}
-                <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-white border-b border-slate-200">
-                    <div className="flex items-center gap-3 min-w-0">
-                        {onBack && (
-                            <button type="button" onClick={onBack}
-                                className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
-                                <ArrowLeft className="w-3.5 h-3.5" /> Retour
-                            </button>
-                        )}
-                        {activeInst?.workflow_db_id && (
-                            <span className="text-xs text-slate-500 truncate">{activeInst.title}</span>
-                        )}
-                    </div>
-                </div>
-
                 <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
                 {/* Conversation : pleine hauteur, composeur en bas */}
                 {chatOpen && (
@@ -812,45 +808,64 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 )}
                 {/* Procédure : en-tête (onglets + vues + actions) puis la vue choisie en pleine hauteur */}
                 <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
-                    <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5 space-y-2">
-                        <div className="flex items-center gap-2 min-w-0">
+                    <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5">
+                        {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
+                        <div className="flex items-center gap-3 min-w-0">
                             {!chatOpen && (
                                 <button type="button" onClick={() => toggleChat(true)} title="Afficher l’assistant"
                                     className="shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
                                     <PanelLeftOpen className="w-3.5 h-3.5" /> Assistant
                                 </button>
                             )}
-                            {/* Onglets des procédures */}
-                            <div className="flex gap-1 items-center min-w-0 overflow-x-auto">
-                                {instances.length === 0 && <span className="text-sm font-semibold text-slate-800 truncate">{activeTitle || 'Nouvelle procédure'}</span>}
-                                {instances.map((inst, i) => (
-                                    <button type="button" key={inst.process_id} onClick={() => setActiveTab(i)} title={inst.title}
-                                        className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === activeTab ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                                        {inst.status === 'generating' && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse" />}
-                                        {inst.status === 'error' && <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1.5" />}
-                                        {inst.status === 'ready' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />}
-                                        {inst.title.length > 30 ? inst.title.slice(0, 30) + '…' : inst.title}
-                                    </button>
-                                ))}
-                                {instances.length > 0 && (
-                                    <button type="button" title="Nouvelle procédure" onClick={() => {
-                                        const newInst: ProcessInstance = {
-                                            process_id: crypto.randomUUID(), title: 'Nouvelle procédure',
-                                            data: defaultData, enrichments: new Map(), bpmnXml: null,
-                                            metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: undefined,
-                                            status: 'ready',
-                                        };
-                                        setInstances(prev => [...prev, newInst]);
-                                        setActiveTab(instances.length);
-                                    }}
-                                        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors">
-                                        <Plus className="w-3.5 h-3.5" />
+                            {onBack && (
+                                <button type="button" onClick={onBack} title="Retour"
+                                    className="shrink-0 p-1.5 rounded-lg text-blue-600 hover:bg-blue-50">
+                                    <ArrowLeft className="w-4 h-4" />
+                                </button>
+                            )}
+                            <div className="min-w-0 flex-1">
+                                <h1 className="text-base font-bold text-slate-900 truncate" title={activeTitle || 'Nouvelle procédure'}>
+                                    {activeTitle || 'Nouvelle procédure'}
+                                </h1>
+                                <p className="text-xs text-slate-500 truncate">
+                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? ` · ${activeInst.category}` : ''}
+                                </p>
+                            </div>
+                            <div className="shrink-0 flex items-center gap-2">
+                                <button type="button" onClick={() => {
+                                    const inst = instances.length > 0 ? activeInst : null;
+                                    if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
+                                    else setSaveModalOpen(true);
+                                }} disabled={saving || viewMode === 'outillage' || activeData.length === 0}
+                                    title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                    <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
+                                </button>
+                                {activeInst?.workflow_db_id && currentActorId && (
+                                    <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                                        {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                        Soumettre
                                     </button>
                                 )}
                             </div>
                         </div>
-                        <div className="flex flex-wrap items-end justify-between gap-2">
-                            {/* Vues de la procédure */}
+                        {/* Onglets : seulement quand plusieurs procédures sont ouvertes */}
+                        {instances.length > 1 && (
+                            <div className="mt-2 flex gap-1 items-center min-w-0 overflow-x-auto">
+                                {instances.map((inst, i) => (
+                                    <button type="button" key={inst.process_id} onClick={() => setActiveTab(i)} title={inst.title}
+                                        className={`shrink-0 max-w-[260px] truncate px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === activeTab ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                                        {inst.status === 'generating' && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse" />}
+                                        {inst.status === 'error' && <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1.5" />}
+                                        {inst.status === 'ready' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />}
+                                        {inst.title}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {/* Vues et actions */}
+                        <div className="mt-1.5 flex flex-wrap items-end justify-between gap-2">
                             <div role="tablist" aria-label="Vue de la procédure" className="flex gap-1">
                                 {([
                                     { id: 'table' as const, label: 'Tableau', icon: Table2 },
@@ -878,6 +893,34 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     onDetectInterfaces={() => { }}
                                     onAnalyseErrors={() => showError('🔜 Bientôt disponible')}
                                     onToggleRevision={() => setRevisionOpen(o => !o)}
+                                    onNewProcedure={addProcedureTab}
+                                    extraControls={view === 'bpmn' && activeBpmnXml ? (
+                                        <>
+                                            {viewMode === 'outillage' && (
+                                                <button type="button" onClick={toggleViewMode} title="Revenir à la vue métier"
+                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700">
+                                                    <Wrench className="w-3.5 h-3.5" />Vue IT active
+                                                </button>
+                                            )}
+                                            <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
+                                                <button type="button" title="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomOut className="w-4 h-4 text-slate-600" /></button>
+                                                <button type="button" title="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomIn className="w-4 h-4 text-slate-600" /></button>
+                                                <button type="button" title="Ajuster à la fenêtre" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-slate-100"><Scan className="w-4 h-4 text-slate-600" /></button>
+                                            </div>
+                                            <button type="button" title={editorFullscreen ? 'Quitter le plein écran' : 'Plein écran'} onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-slate-100">
+                                                {editorFullscreen ? <Minimize2 className="w-4 h-4 text-slate-500" /> : <Maximize2 className="w-4 h-4 text-slate-500" />}
+                                            </button>
+                                        </>
+                                    ) : undefined}
+                                    extraMenu={view === 'bpmn' && activeBpmnXml ? (
+                                        <>
+                                            <DiagramMenuAction icon={<RotateCw className="w-4 h-4" />} label="Synchroniser depuis le diagramme"
+                                                disabled={viewMode === 'outillage'} onClick={handleSyncClick} />
+                                            <DiagramMenuAction icon={<Wrench className="w-4 h-4" />} label={viewMode === 'outillage' ? 'Revenir à la vue métier' : 'Vue IT (applicatifs)'} onClick={toggleViewMode} />
+                                            <DiagramMenuAction icon={<X className="w-4 h-4" />} label="Fermer le diagramme"
+                                                onClick={() => { if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: null } : inst)); else setBpmnXml(null); }} />
+                                        </>
+                                    ) : undefined}
                                 />
                             </div>
                         </div>
@@ -972,67 +1015,19 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             </>
                         ) : view === 'bpmn' ? (
                             activeBpmnXml ? (
-                                <div className={`bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col ${editorFullscreen ? 'fixed inset-4 z-50 shadow-2xl' : 'flex-1 min-h-[420px]'}`}>
-                                    <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-                                        <span className="text-sm font-semibold text-slate-700 truncate">BPMN — {activeTitle}</span>
-                                        <div className="flex items-center gap-2">
-                                            <button type="button" onClick={() => {
-                                                const inst = instances.length > 0 ? activeInst : null;
-                                                if (inst?.workflow_db_id) {
-                                                    handleSave(inst.title, '', undefined);
-                                                } else {
-                                                    setSaveModalOpen(true);
-                                                }
-                                            }} disabled={saving || viewMode === 'outillage'}
-                                                title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                                                <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
-                                            </button>
-                                            {activeInst?.workflow_db_id && currentActorId && (
-                                                <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                                                    {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                                                    Soumettre
-                                                </button>
-                                            )}
-                                            {viewMode === 'outillage' && (
-                                                <button type="button" onClick={toggleViewMode} title="Revenir à la vue métier"
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700">
-                                                    <Wrench className="w-3.5 h-3.5" />Vue IT active
-                                                </button>
-                                            )}
-                                            <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
-                                                <button type="button" title="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomOut className="w-4 h-4 text-slate-600" /></button>
-                                                <button type="button" title="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomIn className="w-4 h-4 text-slate-600" /></button>
-                                                <button type="button" title="Ajuster à la fenêtre" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-slate-100"><Scan className="w-4 h-4 text-slate-600" /></button>
-                                            </div>
-                                            <button type="button" title={editorFullscreen ? 'Quitter le plein écran' : 'Plein écran'} onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-slate-200 transition-colors">
-                                                {editorFullscreen ? <Minimize2 className="w-4 h-4 text-slate-500" /> : <Maximize2 className="w-4 h-4 text-slate-500" />}
-                                            </button>
-                                            {/* Actions moins fréquentes */}
-                                            <details className="relative" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
-                                                <summary aria-label="Autres actions du diagramme" title="Autres actions"
-                                                    className="list-none cursor-pointer p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 [&::-webkit-details-marker]:hidden">
-                                                    <MoreHorizontal className="w-4 h-4" />
-                                                </summary>
-                                                <div className="absolute right-0 top-full mt-1 z-40 w-60 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-                                                    <DiagramMenuAction icon={<RotateCw className="w-4 h-4" />} label="Synchroniser depuis le diagramme"
-                                                        disabled={viewMode === 'outillage'} onClick={handleSyncClick} />
-                                                    <DiagramMenuAction icon={<Wrench className="w-4 h-4" />} label={viewMode === 'outillage' ? 'Revenir à la vue métier' : 'Vue IT (applicatifs)'} onClick={toggleViewMode} />
-                                                    <DiagramMenuAction icon={<Download className="w-4 h-4" />} label="Télécharger le BPMN" onClick={handleDownloadBPMN} />
-                                                    <div className="my-1 border-t border-slate-100" />
-                                                    <DiagramMenuAction icon={<X className="w-4 h-4" />} label="Fermer le diagramme"
-                                                        onClick={() => { if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: null } : inst)); else setBpmnXml(null); }} />
-                                                </div>
-                                            </details>
-                                        </div>
-                                    </div>
+                                <div className={`bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col ${editorFullscreen ? 'fixed inset-4 z-50 shadow-2xl' : 'flex-1 min-h-[420px] relative'}`}>
+                                    {editorFullscreen && (
+                                        <button type="button" title="Quitter le plein écran" onClick={() => setEditorFullscreen(false)}
+                                            className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-white border border-slate-200 shadow-sm hover:bg-slate-50">
+                                            <Minimize2 className="w-4 h-4 text-slate-600" />
+                                        </button>
+                                    )}
                                     <div className="flex flex-1 min-h-0">
                                         <Library modelerRef={modelerRef} />
                                         <div className="flex-1 min-w-0">
                                             {instances.length > 0
-                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
-                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
+                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} hideToolPaletteEntry />
+                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} hideToolPaletteEntry />
                                             }
                                         </div>
                                     </div>
