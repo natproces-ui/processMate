@@ -29,6 +29,8 @@ interface BpmnEditorProps {
     /** Survol d'une étape (id de Table1Row) : rectangle à l'écran pour y ancrer un aperçu ;
      *  (null, null) quand la souris la quitte. */
     onStepHover?: (stepId: string | null, rect: DOMRect | null) => void;
+    /** Palette d'outils affichée (le Studio la masque tant qu'on ne clique pas sur « Outils ») */
+    paletteOpen?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -68,7 +70,6 @@ function loadBpmnCss() {
         'https://unpkg.com/bpmn-js@17.11.1/dist/assets/bpmn-js.css',
         'https://unpkg.com/bpmn-js@17.11.1/dist/assets/diagram-js.css',
         'https://unpkg.com/bpmn-js@17.11.1/dist/assets/bpmn-font/css/bpmn.css',
-        'https://unpkg.com/bpmn-js-create-append-anything@1.2.0/assets/bpmn-js-create-append-anything.css',
     ];
     hrefs.forEach(href => {
         const link = document.createElement('link');
@@ -90,6 +91,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
     onModelerReady,
     highlightStepIds,
     onStepHover,
+    paletteOpen = true,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const modelerRef = useRef<any>(null);
@@ -876,7 +878,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
     }));
 
     return (
-        <div className="relative w-full h-full bg-white">
+        <div className={`relative w-full h-full bg-white ${paletteOpen ? '' : 'pm-palette-hidden'}`}>
             {loading && (
                 <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
                     <div className="flex flex-col items-center gap-3">
@@ -962,6 +964,10 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
 
             <style>{`
                 .bjs-powered-by { display: none !important; }
+
+                /* ── Palette : masquable, jamais plus haute que le diagramme ── */
+                .pm-palette-hidden .djs-palette { display: none; }
+                .djs-palette { max-height: calc(100% - 40px); overflow-y: auto; overflow-x: hidden; }
 
                 /* ── Palette : groupe ProcessMate (icônes bpmn-js standard) ── */
                 .djs-palette .entry[data-action="processmate.tool"] { color: #1a7a5e; }

@@ -28,7 +28,7 @@ import { LiveBpmn, LiveHeader, LiveTable } from './LiveProcedurePreview';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
-    PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal,
+    PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { processingLevelHeaders } from '@/lib/processing-level';
@@ -98,6 +98,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [revisionOpen, setRevisionOpen] = useState(false);
     const [revisionCount, setRevisionCount] = useState(0);
     const [editorFullscreen, setEditorFullscreen] = useState(false);
+    const [paletteOpen, setPaletteOpen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
     const [view, setView] = useState<'table' | 'bpmn' | 'fiche'>('bpmn');
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
@@ -108,17 +109,19 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         try {
             const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
             if (typeof saved.chatOpen === 'boolean') setChatOpen(saved.chatOpen);
+            if (typeof saved.paletteOpen === 'boolean') setPaletteOpen(saved.paletteOpen);
             if (typeof saved.chatWidth === 'number') setChatWidth(Math.min(720, Math.max(320, saved.chatWidth)));
         } catch { /* préférence facultative */ }
     }, []);
     // Enregistré au moment de l'action (un effet réécrirait les valeurs par défaut au montage)
-    const saveLayout = (patch: { chatOpen?: boolean; chatWidth?: number }) => {
+    const saveLayout = (patch: { chatOpen?: boolean; chatWidth?: number; paletteOpen?: boolean }) => {
         try {
             const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
             localStorage.setItem(LAYOUT_KEY, JSON.stringify({ ...saved, ...patch }));
         } catch { /* facultatif */ }
     };
     const toggleChat = (open: boolean) => { setChatOpen(open); saveLayout({ chatOpen: open }); };
+    const togglePalette = () => { setPaletteOpen(o => { saveLayout({ paletteOpen: !o }); return !o; }); };
     const startChatResize = (e: React.MouseEvent) => {
         e.preventDefault();
         const startX = e.clientX, startW = chatWidth;
@@ -900,6 +903,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                                     <Wrench className="w-3.5 h-3.5" />Vue IT active
                                                 </button>
                                             )}
+                                            <button type="button" onClick={togglePalette} aria-pressed={paletteOpen}
+                                                title={paletteOpen ? 'Masquer les outils de dessin' : 'Afficher les outils de dessin'}
+                                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${paletteOpen ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                                                <Shapes className="w-4 h-4" />Outils
+                                            </button>
                                             <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
                                                 <button type="button" title="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomOut className="w-4 h-4 text-slate-600" /></button>
                                                 <button type="button" title="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomIn className="w-4 h-4 text-slate-600" /></button>
@@ -1021,8 +1029,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     <div className="flex flex-1 min-h-0">
                                         <div className="flex-1 min-w-0">
                                             {instances.length > 0
-                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
-                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
+                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} paletteOpen={paletteOpen} />
+                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} paletteOpen={paletteOpen} />
                                             }
                                         </div>
                                     </div>
