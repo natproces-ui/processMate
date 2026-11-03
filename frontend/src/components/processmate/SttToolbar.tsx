@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { FileText, FileDown, RotateCcw, Trash2, Network, Wand2, SearchCheck, MoreHorizontal, Plus } from 'lucide-react';
 
 interface SttToolbarProps {
@@ -38,6 +39,15 @@ export default function SttToolbar({
     onResetToDefault, onClearTable, onDetectInterfaces, onAnalyseErrors,
     onToggleRevision, onNewProcedure, extraControls, extraMenu,
 }: SttToolbarProps) {
+    // Clic en dehors du menu « ⋯ » : on le referme
+    const menuRef = useRef<HTMLDetailsElement>(null);
+    useEffect(() => {
+        const closeOutside = (event: PointerEvent) => {
+            if (menuRef.current?.open && !menuRef.current.contains(event.target as Node)) menuRef.current.open = false;
+        };
+        document.addEventListener('pointerdown', closeOutside, true);
+        return () => document.removeEventListener('pointerdown', closeOutside, true);
+    }, []);
     const generateLabel = isEditingBpmn ? 'Régénérer le BPMN' : 'Générer le BPMN';
     const hasDiagramSection = !showGenerate || extraMenu || bpmnXml;
     const hasChecks = onDetectInterfaces || onAnalyseErrors;
@@ -52,7 +62,7 @@ export default function SttToolbar({
                             onClick={onGenerateBPMN} disabled={dataLength === 0} variant={isEditingBpmn ? 'secondary' : 'primary'} />
                     )}
                     {extraControls}
-                    <details className="relative" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
+                    <details ref={menuRef} className="relative" onKeyDown={e => { if (e.key === 'Escape') e.currentTarget.open = false; }}>
                         <summary aria-label="Autres actions du Studio" title="Autres actions"
                             className="list-none cursor-pointer p-2 text-slate-500 hover:bg-slate-100 rounded-lg [&::-webkit-details-marker]:hidden">
                             <MoreHorizontal className="w-4 h-4" />
