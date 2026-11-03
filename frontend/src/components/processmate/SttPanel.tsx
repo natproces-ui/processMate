@@ -885,12 +885,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     isEditingBpmn={!!activeBpmnXml}
                                     revisionOpen={revisionOpen}
                                     revisionCount={revisionCount}
+                                    showGenerate={!(view === 'bpmn' && activeBpmnXml)}
                                     onGenerateBPMN={async () => { await handleGenerateBPMN(); setView('bpmn'); }}
                                     onDownloadBPMN={handleDownloadBPMN}
                                     onResetToDefault={() => { setInstances([]); setData(defaultData); setBpmnXml(null); setPhase('upload'); resetCodeSource(); }}
                                     onClearTable={() => { if (instances.length > 0) updateActiveData([]); else setData([]); }}
-                                    onDetectInterfaces={() => { }}
-                                    onAnalyseErrors={() => showError('🔜 Bientôt disponible')}
                                     onToggleRevision={() => setRevisionOpen(o => !o)}
                                     onNewProcedure={addProcedureTab}
                                     extraControls={view === 'bpmn' && activeBpmnXml ? (
@@ -913,11 +912,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     ) : undefined}
                                     extraMenu={view === 'bpmn' && activeBpmnXml ? (
                                         <>
-                                            <DiagramMenuAction icon={<RotateCw className="w-4 h-4" />} label="Synchroniser depuis le diagramme"
+                                            <DiagramMenuAction icon={<RotateCw className="w-4 h-4" />} label="Mettre à jour le tableau depuis le diagramme"
                                                 disabled={viewMode === 'outillage'} onClick={handleSyncClick} />
                                             <DiagramMenuAction icon={<Wrench className="w-4 h-4" />} label={viewMode === 'outillage' ? 'Revenir à la vue métier' : 'Vue IT (applicatifs)'} onClick={toggleViewMode} />
-                                            <DiagramMenuAction icon={<X className="w-4 h-4" />} label="Fermer le diagramme"
-                                                onClick={() => { if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: null } : inst)); else setBpmnXml(null); }} />
                                         </>
                                     ) : undefined}
                                 />
