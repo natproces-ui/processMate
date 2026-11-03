@@ -25,7 +25,6 @@ import SttToolbar from './SttToolbar';
 import ChatInterface, { type GeneratedProcedure } from '@/components/ChatInterface';
 import SaveToBiblioModal from '@/components/SaveToBiblioModal';
 import { LiveBpmn, LiveHeader, LiveTable } from './LiveProcedurePreview';
-import Library from '@/components/new-way/Library';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
@@ -100,7 +99,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [revisionCount, setRevisionCount] = useState(0);
     const [editorFullscreen, setEditorFullscreen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
-    const [view, setView] = useState<'table' | 'bpmn' | 'fiche'>('table');
+    const [view, setView] = useState<'table' | 'bpmn' | 'fiche'>('bpmn');
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatWidth, setChatWidth] = useState(400);
@@ -988,7 +987,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             <>
                                 <Table
                                     data={activeData} enrichments={activeEnrichments}
-                                    processTitle={activeTitle}
+                                    processTitle={activeTitle} hideTitle
                                     onDataChange={instances.length > 0 ? updateActiveData : setData}
                                     onEnrichmentsChange={instances.length > 0 ? updateActiveEnrichments : setEnrichments}
                                     onShowSuccess={showSuccess}
@@ -1023,11 +1022,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         </button>
                                     )}
                                     <div className="flex flex-1 min-h-0">
-                                        <Library modelerRef={modelerRef} />
                                         <div className="flex-1 min-w-0">
                                             {instances.length > 0
-                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} hideToolPaletteEntry />
-                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} hideToolPaletteEntry />
+                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
+                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} />
                                             }
                                         </div>
                                     </div>

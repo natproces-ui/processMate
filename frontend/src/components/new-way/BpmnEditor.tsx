@@ -29,8 +29,6 @@ interface BpmnEditorProps {
     /** Survol d'une étape (id de Table1Row) : rectangle à l'écran pour y ancrer un aperçu ;
      *  (null, null) quand la souris la quitte. */
     onStepHover?: (stepId: string | null, rect: DOMRect | null) => void;
-    /** La colonne ProcessMate (Library) est affichée à côté : pas d'« Applicatif » dans la palette. */
-    hideToolPaletteEntry?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -92,7 +90,6 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
     onModelerReady,
     highlightStepIds,
     onStepHover,
-    hideToolPaletteEntry,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const modelerRef = useRef<any>(null);
@@ -492,19 +489,78 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                     laneHeaderRenderer: ['type', LaneHeaderRenderer],
                 };
 
-                // ── PaletteOutil : item "Outil" avec id Tool_ ────────
+                // ── PaletteOutil : « Applicatif » et « Lien » dans la palette standard ──
+                // Icônes bpmn-js d'origine, groupe séparé après les éléments BPMN.
                 class PaletteOutil {
-                    _palette: any;
                     _create: any;
                     _elementFactory: any;
                     _moddle: any;
+                    _canvas: any;
+                    _eventBus: any;
+                    _modeling: any;
+                    _contextPad: any;
+                    _stopLink: (() => void) | null = null;
 
-                    constructor(palette: any, create: any, elementFactory: any, moddle: any) {
-                        this._palette = palette;
+                    constructor(palette: any, create: any, elementFactory: any, moddle: any,
+                        canvas: any, eventBus: any, modeling: any, contextPad: any) {
                         this._create = create;
                         this._elementFactory = elementFactory;
                         this._moddle = moddle;
+                        this._canvas = canvas;
+                        this._eventBus = eventBus;
+                        this._modeling = modeling;
+                        this._contextPad = contextPad;
                         palette.registerProvider(this);
+                    }
+
+                    // Mode « Lien » : clic sur la tâche puis sur l'applicatif (ou l'inverse).
+                    // Les clics ne sélectionnent rien : pas de menu contextuel pendant le mode.
+                    toggleLink() {
+                        if (this._stopLink) { this._stopLink(); return; }
+                        const canvas = this._canvas, eventBus = this._eventBus;
+                        const container = canvas.getContainer();
+                        const entry = () => container.querySelector('.djs-palette [data-action="processmate.link"]');
+                        let source: any = null;
+
+                        const stop = () => {
+                            if (source) canvas.removeMarker(source, 'pm-link-source');
+                            source = null;
+                            container.classList.remove('pm-link-mode');
+                            entry()?.classList.remove('pm-entry-active');
+                            eventBus.off('element.click', onClick);
+                            document.removeEventListener('keydown', onKey);
+                            this._stopLink = null;
+                        };
+                        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') stop(); };
+                        const onClick = (event: any) => {
+                            const el = event.element;
+                            const linkable = el && (is(el, 'bpmn:Task') || el.id?.startsWith('Tool_'));
+                            if (!linkable) { stop(); return; }
+                            if (!source) {
+                                source = el;
+                                canvas.addMarker(el, 'pm-link-source');
+                            } else if (el.id !== source.id) {
+                                try {
+                                    const assocId = `ToolAssoc_${Date.now()}`;
+                                    const bo = this._moddle.create('bpmn:Association', {
+                                        id: assocId, name: 'link', associationDirection: 'None',
+                                        sourceRef: source.businessObject, targetRef: el.businessObject,
+                                    });
+                                    this._modeling.createConnection(source, el, {
+                                        type: 'bpmn:Association', id: assocId, businessObject: bo,
+                                    }, source.parent);
+                                } catch (err) { console.warn('Lien applicatif :', err); }
+                                stop();
+                            }
+                            return false;
+                        };
+
+                        this._contextPad.close();
+                        container.classList.add('pm-link-mode');
+                        entry()?.classList.add('pm-entry-active');
+                        eventBus.on('element.click', 1500, onClick);
+                        document.addEventListener('keydown', onKey);
+                        this._stopLink = stop;
                     }
 
                     getPaletteEntries() {
@@ -529,24 +585,25 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                             create.start(event, shape);
                         };
 
-                        // Le lien tâche ↔ applicatif se tire depuis le menu contextuel de la tâche
-                        // (ou la colonne ProcessMate du Studio) : pas d'entrée « Link » inerte ici.
-                        if (hideToolPaletteEntry) return {};
                         return {
+                            'processmate.separator': { group: 'processmate', separator: true },
                             'processmate.tool': {
-                                group: 'tools',
+                                group: 'processmate',
                                 className: 'bpmn-icon-service-task',
-                                title: 'Applicatif',
-                                action: {
-                                    dragstart: createTool,
-                                    click: createTool,
-                                },
+                                title: 'Applicatif — glisser sur le diagramme',
+                                action: { dragstart: createTool, click: createTool },
+                            },
+                            'processmate.link': {
+                                group: 'processmate',
+                                className: 'bpmn-icon-connection',
+                                title: 'Lien — cliquer la tâche puis l’applicatif (Échap pour annuler)',
+                                action: { click: () => this.toggleLink() },
                             },
                         };
                     }
                 }
 
-                (PaletteOutil as any).$inject = ['palette', 'create', 'elementFactory', 'moddle'];
+                (PaletteOutil as any).$inject = ['palette', 'create', 'elementFactory', 'moddle', 'canvas', 'eventBus', 'modeling', 'contextPad'];
 
                 const paletteOutilModule = {
                     __init__: ['paletteOutil'],
@@ -906,59 +963,11 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
             <style>{`
                 .bjs-powered-by { display: none !important; }
 
-                /* ── Palette : item Outil — icône SVG custom barre+roue ── */
-                .djs-palette .entry[data-action="processmate.tool"] {
-                    position: relative;
-                    overflow: visible;
-                }
-                /* Masquer l'icône bpmn-font par défaut */
-                .djs-palette .entry[data-action="processmate.tool"]::before {
-                    display: none !important;
-                }
-                /* Injecter notre SVG via background */
-                .djs-palette .entry[data-action="processmate.tool"] {
-                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cline x1='8' y1='4' x2='8' y2='28' stroke='%231a7a5e' stroke-width='2.5' stroke-linecap='round'/%3E%3Cg transform='translate(11,4)'%3E%3Cpath d='M7.5 4.5A1.5 1.5 0 0 0 6 3a1.5 1.5 0 0 0-1.5 1.5 1.5 1.5 0 0 0 1.5 1.5 1.5 1.5 0 0 0 1.5-1.5zM6 1c.3 0 .6.03.88.08l.34 1.02a.85.85 0 0 0 1.06.54l1-.38c.46.35.84.79 1.12 1.3l-.6.88a.85.85 0 0 0 .18 1.14l.9.65c.04.27.06.55.06.83s-.02.56-.06.83l-.9.65a.85.85 0 0 0-.18 1.14l.6.88c-.28.51-.66.95-1.12 1.3l-1-.38a.85.85 0 0 0-1.06.54l-.34 1.02A5 5 0 0 1 6 13a5 5 0 0 1-.88-.08l-.34-1.02a.85.85 0 0 0-1.06-.54l-1 .38c-.46-.35-.84-.79-1.12-1.3l.6-.88a.85.85 0 0 0-.18-1.14l-.9-.65A5 5 0 0 1 1 7c0-.28.02-.56.06-.83l.9-.65A.85.85 0 0 0 2.14 4.38l-.6-.88C1.82 3 2.2 2.56 2.66 2.21l1 .38a.85.85 0 0 0 1.06-.54l.34-1.02A5 5 0 0 1 6 1z' fill='%231a7a5e'/%3E%3C/g%3E%3C/svg%3E");
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    background-size: 28px 28px;
-                }
-                .djs-palette .entry[data-action="processmate.tool"]::after {
-                    content: 'Applicatif';
-                    position: absolute;
-                    bottom: -13px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    font-size: 8px;
-                    color: #1a7a5e;
-                    white-space: nowrap;
-                    font-weight: 700;
-                }
-
-                /* ── Palette : item Link — icône chaîne ── */
-                .djs-palette .entry[data-action="processmate.link"] {
-                    position: relative;
-                    overflow: visible;
-                }
-                .djs-palette .entry[data-action="processmate.link"]::before {
-                    display: none !important;
-                }
-                .djs-palette .entry[data-action="processmate.link"] {
-                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E");
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    background-size: 22px 22px;
-                }
-                .djs-palette .entry[data-action="processmate.link"]::after {
-                    content: 'Link';
-                    position: absolute;
-                    bottom: -13px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    font-size: 8px;
-                    color: #334155;
-                    white-space: nowrap;
-                    font-weight: 700;
-                }
+                /* ── Palette : groupe ProcessMate (icônes bpmn-js standard) ── */
+                .djs-palette .entry[data-action="processmate.tool"] { color: #1a7a5e; }
+                .djs-palette .entry.pm-entry-active { color: #2C7BE5 !important; background: #eff6ff; }
+                .pm-link-mode .djs-hit { cursor: crosshair !important; }
+                .djs-shape.pm-link-source .djs-visual > rect { stroke: #2C7BE5 !important; stroke-width: 2.5px !important; stroke-dasharray: 4 2; }
 
                 /* ── Link outil : ligne pleine noire sans pointillés ── */
                 .djs-connection[data-element-id^="ToolAssoc_"] .djs-visual path {

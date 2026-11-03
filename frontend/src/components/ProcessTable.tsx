@@ -19,6 +19,8 @@ interface TableProps {
     /** Ids d'étapes récemment touchées par une modification IA appliquée — surlignées
      *  jusqu'à la prochaine sauvegarde manuelle. */
     highlightedRowIds?: Set<string>;
+    /** Nom et nombre d'étapes déjà affichés par l'écran parent */
+    hideTitle?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -79,6 +81,7 @@ export default function Table({
     onEnrichmentsChange,
     onShowSuccess,
     highlightedRowIds,
+    hideTitle = false,
 }: TableProps) {
     const [showTable2, setShowTable2] = useState(false);
     const [enrichmentModalOpen, setEnrichmentModalOpen] = useState(false);
@@ -257,18 +260,22 @@ export default function Table({
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="min-w-full border-collapse text-sm">
-                        <caption className="bg-gray-800 text-white p-4 text-left">
-                            <h2 className="text-xl font-bold flex items-center gap-2">
-                                <FileText className="w-5 h-5" />
-                                {processTitle} ({data.length} étapes)
-                            </h2>
-                            <p className="text-xs text-gray-400 mt-1 font-normal">
-                                Glissez <GripVertical className="inline w-3 h-3" /> pour réordonner les étapes — les IDs se mettent à jour automatiquement
-                            </p>
-                        </caption>
+                        {hideTitle ? (
+                            <caption className="sr-only">{processTitle}</caption>
+                        ) : (
+                            <caption className="bg-gray-800 text-white p-4 text-left">
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    <FileText className="w-5 h-5" />
+                                    {processTitle} ({data.length} étapes)
+                                </h2>
+                                <p className="text-xs text-gray-400 mt-1 font-normal">
+                                    Glissez <GripVertical className="inline w-3 h-3" /> pour réordonner les étapes — les IDs se mettent à jour automatiquement
+                                </p>
+                            </caption>
+                        )}
                         <thead className="bg-gray-700 text-white">
                             <tr>
-                                <th className="border border-gray-600 px-2 py-2 w-8" title="Réordonner" />
+                                <th className="border border-gray-600 px-2 py-2 w-8" title="Glisser pour réordonner — les IDs se mettent à jour" />
                                 <th className="border border-gray-600 px-3 py-2 text-left font-semibold">ID</th>
                                 <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Étape</th>
                                 <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Type BPMN</th>
