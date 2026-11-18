@@ -1,5 +1,6 @@
 'use client';
 
+import CircuitBar from '@/components/shared/CircuitBar';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { generateBPMNSimple } from '@/logic/bpmnGeneratorSimple';
@@ -544,6 +545,9 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                     </div>
                 </div>
             )}
+
+            {/* Circuit : campagne, RACI, soumettre / relire / valider (partagé avec le Studio) */}
+            <CircuitBar procedureId={procedure?.id} onSave={async () => { await saveToDb(data, enrichments, draftMeta); }} />
 
             {/* Navigation sections */}
             <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6">

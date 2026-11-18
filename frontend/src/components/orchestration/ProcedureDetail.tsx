@@ -1,5 +1,6 @@
 'use client';
 
+import { formatValidation } from '@/lib/circuitApi';
 import { useState, useEffect, useCallback } from 'react';
 import {
   X, ArrowLeft, RefreshCw, Lock, MessageSquare, CheckCircle2,
@@ -169,6 +170,15 @@ export default function ProcedureDetail({ procedureId, onClose, onStatusChange }
               {procedure.is_finalized && (
                 <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">✓ Finalisée</span>
               )}
+              {(() => {
+                // Circuit de validation : nom (figé) et date de la personne qui a validé
+                const v = (procedure.metadata as Record<string, unknown> | undefined)?.validation as { nom?: string; le?: string } | undefined;
+                return v?.nom && v?.le ? (
+                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium">
+                    {formatValidation({ nom: v.nom, le: v.le })}
+                  </span>
+                ) : null;
+              })()}
             </div>
             <div className="flex gap-4 mt-1 text-xs text-gray-400 flex-wrap">
               {procedure.ref && <span>{procedure.ref}</span>}

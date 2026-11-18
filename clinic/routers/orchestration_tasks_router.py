@@ -8,7 +8,7 @@ import threading
 import uuid
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from database.supabase_client import get_supabase
@@ -1398,12 +1398,41 @@ async def update_task(task_id: str, body: TaskUpdate):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+def _authenticated_actor(request: Optional[Request]) -> Optional[Dict[str, Any]]:
+    """Compte connecté (identifiant de profil + rôle d'organisation), ou None (ancien mode sans jeton)."""
+    user = getattr(getattr(request, "state", None), "user", None) if request is not None else None
+    if user is None:
+        return None
+    from manager import access_control
+    profile = access_control.profile_for(user) or {}
+    return {"id": profile.get("id") or user.id, "role": profile.get("role")}
+
+
 @router.post("/tasks/{task_id}/transition")
-async def transition_task(task_id: str, body: TaskTransition):
+def transition_task_endpoint(task_id: str, body: TaskTransition, request: Request):
+    actor = _authenticated_actor(request)
+    if actor is not None:
+        # L'auteur d'une transition est le compte connecté, jamais un identifiant envoyé par le client.
+        body = body.model_copy(update={"actor_id": actor["id"]})
+    return transition_task(task_id, body, actor)
+
+
+def transition_task(task_id: str, body: TaskTransition, actor: Optional[Dict[str, Any]] = None,
+                    trusted_actor: Optional[str] = None):
+    """Transition d'une tâche (circuit RACI). actor : compte connecté ({id, role}) ;
+    trusted_actor : identifiant déjà vérifié par l'appelant interne (manager/campaign_flow.py)."""
     if body.status not in TASK_STATUSES:
         raise HTTPException(status_code=400, detail=f"Statut invalide: {body.status}")
     try:
         task = _get_task(task_id)
+        acting = trusted_actor or (actor or {}).get("id")
+        if acting is not None:
+            is_assignee = acting == task.get("assigned_to")
+            is_manager = (actor or {}).get("role") in ("admin", "pilote") and not trusted_actor
+            if body.status == "validated" and task.get("task_type") == "validation" and not is_assignee:
+                raise HTTPException(status_code=403, detail="Seul le valideur désigné peut valider cette tâche.")
+            if not is_assignee and not is_manager:
+                raise HTTPException(status_code=403, detail="Seule la personne à qui la tâche est confiée peut la faire avancer.")
         current_status = task.get("status")
         status_changed = body.status != current_status
         allowed = ALLOWED_TRANSITIONS.get(current_status, set())

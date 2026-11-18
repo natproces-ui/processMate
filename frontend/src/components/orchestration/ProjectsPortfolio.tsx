@@ -100,7 +100,7 @@ export default function ProjectsPortfolio() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `portfolio_projets_formalisation.docx`;
+      a.download = `portefeuille_campagnes_formalisation.docx`;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch (e) {
@@ -130,7 +130,7 @@ export default function ProjectsPortfolio() {
       {/* Header */}
       <div className="shrink-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-base font-bold text-gray-900">Portfolio des Projets</h1>
+          <h1 className="text-base font-bold text-gray-900">Portefeuille des campagnes</h1>
           <p className="text-xs text-gray-400 mt-0.5">Vue globale — Administration uniquement</p>
         </div>
         <div className="flex items-center gap-2">
@@ -150,7 +150,7 @@ export default function ProjectsPortfolio() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard label="Projets actifs"    value={active}    icon={TrendingUp}   color="bg-blue-50 text-blue-600"   sub={`sur ${total} projets`} />
+          <KpiCard label="Campagnes actives"    value={active}    icon={TrendingUp}   color="bg-blue-50 text-blue-600"   sub={`sur ${total} campagnes`} />
           <KpiCard label="Procédures total"  value={totalProcs} icon={BarChart2}   color="bg-indigo-50 text-indigo-600" sub={`${doneProcs} formalisées`} />
           <KpiCard label="Avancement moyen"  value={`${avgPct}%`} icon={CheckCircle2} color="bg-green-50 text-green-600" sub={`${completed} terminé(s)`} />
           <KpiCard label="Points d'attention" value={blocked + overdue.length} icon={AlertTriangle} color="bg-red-50 text-red-600" sub={`${blocked} bloqué(s) · ${overdue.length} en retard`} />
@@ -185,20 +185,20 @@ export default function ProjectsPortfolio() {
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-50 flex items-center gap-2">
             <Megaphone className="w-4 h-4 text-orange-500" />
-            <h2 className="text-sm font-bold text-gray-800">Tous les projets ({total})</h2>
+            <h2 className="text-sm font-bold text-gray-800">Toutes les campagnes ({total})</h2>
           </div>
 
           {campaigns.length === 0 ? (
             <div className="py-12 text-center text-gray-300">
               <Megaphone className="w-10 h-10 mx-auto mb-3" />
-              <p className="text-sm">Aucun projet créé</p>
+              <p className="text-sm">Aucune campagne créée</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Projet</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Campagne</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Procédures</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">Avancement</th>

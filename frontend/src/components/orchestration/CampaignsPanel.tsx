@@ -20,6 +20,7 @@ import { CONVERSATIONS_ENABLED } from '@/lib/conversationsApi';
 import { projectsApi } from '@/lib/projectsApi';
 import { CAMPAIGN_SLOTS_ENABLED } from '@/lib/campaignSlotsApi';
 import CampaignSlots from '@/components/orchestration/CampaignSlots';
+import PropositionsPanel from '@/components/orchestration/PropositionsPanel';
 import type { Procedure } from '@/lib/orchestrationApi';
 
 // ─── Types internes ───────────────────────────────────────────
@@ -118,7 +119,7 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">Nouveau projet de formalisation</h3>
+          <h3 className="text-base font-bold text-gray-900">Nouvelle campagne de formalisation</h3>
           <button type="button" title="Fermer" onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -131,7 +132,7 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
             <textarea title="Description" value={description} onChange={e => setDescription(e.target.value)} rows={3}
-              placeholder="Objectif, périmètre, contexte du projet…"
+              placeholder="Objectif, périmètre, contexte de la campagne…"
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -338,7 +339,7 @@ export function AddProceduresModal({
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-100 shrink-0">
-          <h3 className="text-base font-bold text-gray-900">Ajouter des procédures au projet</h3>
+          <h3 className="text-base font-bold text-gray-900">Ajouter des procédures à la campagne</h3>
           <button type="button" title="Fermer" onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
         </div>
 
@@ -524,14 +525,14 @@ function CampaignDetail({
   };
 
   const handleLaunch = async () => {
-    if (!confirm('Lancer ce projet ?')) return;
+    if (!confirm('Lancer cette campagne ?')) return;
     setActionLoading(true);
     try { await campaignsApi.launch(campaign.id); onRefresh(); }
     finally { setActionLoading(false); }
   };
 
   const handleClose = async () => {
-    if (!confirm('Clôturer ce projet ?')) return;
+    if (!confirm('Clôturer cette campagne ?')) return;
     setActionLoading(true);
     try { await campaignsApi.close(campaign.id); onRefresh(); }
     finally { setActionLoading(false); }
@@ -545,14 +546,14 @@ function CampaignDetail({
   };
 
   const handleBlock = async () => {
-    if (!confirm('Marquer ce projet comme bloqué ?')) return;
+    if (!confirm('Marquer cette campagne comme bloquée ?')) return;
     setActionLoading(true);
     try { await campaignsApi.block(campaign.id); onRefresh(); }
     finally { setActionLoading(false); }
   };
 
   const handlePause = async () => {
-    if (!confirm('Mettre ce projet en pause ?')) return;
+    if (!confirm('Mettre cette campagne en pause ?')) return;
     setActionLoading(true);
     try { await campaignsApi.pause(campaign.id); onRefresh(); }
     finally { setActionLoading(false); }
@@ -694,7 +695,7 @@ function CampaignDetail({
         {/* Progression globale */}
         <div>
           <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-            <span className="font-semibold text-gray-700">Progression du projet</span>
+            <span className="font-semibold text-gray-700">Progression de la campagne</span>
             <span className="font-bold text-gray-800">{stats.progress_pct}%</span>
           </div>
           <ProgressBar pct={stats.progress_pct} />
@@ -741,7 +742,7 @@ function CampaignDetail({
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-400">
             <FileText className="w-8 h-8 mb-2 opacity-30" />
-            <p className="text-sm">{(campaign.procedures ?? []).length === 0 ? 'Aucune procédure dans ce projet' : 'Aucun résultat'}</p>
+            <p className="text-sm">{(campaign.procedures ?? []).length === 0 ? 'Aucune procédure dans cette campagne' : 'Aucun résultat'}</p>
             {isAdmin && (campaign.procedures ?? []).length === 0 && (
               <button type="button" onClick={() => setShowAddModal(true)} className="mt-3 text-sm text-blue-600 hover:underline font-medium">
                 + Ajouter des procédures
@@ -755,7 +756,7 @@ function CampaignDetail({
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[30%]">Procédure</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cycle de vie</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut workflow</th>
-                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut projet</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statut dans la campagne</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Terminée</th>
                 <th className="text-left px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jira</th>
                 {isAdmin && <th className="px-3 py-3 w-16" scope="col"><span className="sr-only">Actions</span></th>}
@@ -802,7 +803,7 @@ function CampaignDetail({
                     </td>
                     <td className="px-3 py-3">
                       {isAdmin && campaign.status !== 'archived' ? (
-                        <select title="Statut projet" value={cp.status}
+                        <select title="Statut dans la campagne" value={cp.status}
                           onChange={e => handleStatusChange(cp, e.target.value as CampaignProcedureStatus)}
                           disabled={updatingId === cp.procedure_id}
                           className={`text-xs font-medium px-2 py-0.5 rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 ${PROC_STATUS_COLORS[cp.status].bg} ${PROC_STATUS_COLORS[cp.status].text}`}>
@@ -820,7 +821,7 @@ function CampaignDetail({
                         entityType="campaign_procedure"
                         entityId={cp.id}
                         summary={`[${campaign.title}] ${name}`}
-                        description={`Projet : ${campaign.title}\nProcédure : ${name}${ref ? ` (${ref})` : ''}\nStatut projet : ${PROC_STATUS_LABELS[cp.status]}`}
+                        description={`Campagne : ${campaign.title}\nProcédure : ${name}${ref ? ` (${ref})` : ''}\nStatut dans la campagne : ${PROC_STATUS_LABELS[cp.status]}`}
                         labels={['processmate', 'campagne-formalisation']}
                       />
                     </td>
@@ -828,7 +829,7 @@ function CampaignDetail({
                       <td className="px-3 py-3">
                         {updatingId === cp.procedure_id
                           ? <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                          : <button type="button" title="Retirer du projet" onClick={() => handleRemove(cp)}
+                          : <button type="button" title="Retirer de la campagne" onClick={() => handleRemove(cp)}
                             className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 text-red-400 hover:text-red-600 transition-all">
                             <X className="w-4 h-4" />
                           </button>
@@ -918,13 +919,13 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
               <div className="w-7 h-7 bg-orange-500 rounded-lg flex items-center justify-center">
                 <BarChart2 className="w-4 h-4 text-white" />
               </div>
-              <h1 className="text-base font-bold text-gray-900"> Projets</h1>
+              <h1 className="text-base font-bold text-gray-900">Campagnes</h1>
             </div>
             <div className="flex items-center gap-1">
               <button type="button" onClick={loadCampaigns} title="Actualiser"
                 className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><RefreshCw className="w-3.5 h-3.5" /></button>
               {isAdmin && (
-                <button type="button" onClick={() => setShowCreate(true)} title="Créer un projet"
+                <button type="button" onClick={() => setShowCreate(true)} title="Créer une campagne"
                   className="p-1.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600"><Plus className="w-3.5 h-3.5" /></button>
               )}
             </div>
@@ -970,10 +971,10 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
           ) : filteredCampaigns.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-gray-400">
               <FolderOpen className="w-7 h-7 mb-2 opacity-30" />
-              <p className="text-xs">{campaigns.length === 0 ? 'Aucun projet' : 'Aucun résultat'}</p>
+              <p className="text-xs">{campaigns.length === 0 ? 'Aucune campagne' : 'Aucun résultat'}</p>
               {isAdmin && campaigns.length === 0 && (
                 <button type="button" onClick={() => setShowCreate(true)} className="mt-2 text-xs text-orange-500 hover:underline font-medium">
-                  Créer le premier projet
+                  Créer la première campagne
                 </button>
               )}
             </div>
@@ -1014,7 +1015,9 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
       </div>
 
       {/* ── Détail ── */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {isAdmin && <PropositionsPanel campaigns={campaigns} onTreated={loadCampaigns} />}
+        <div className="flex-1 min-h-0">
         {activeCampaign ? (
           <CampaignDetail key={activeCampaign.id} campaign={activeCampaign}
             onRefresh={refreshActive}
@@ -1026,10 +1029,11 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
             <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mb-4">
               <BarChart2 className="w-8 h-8 text-orange-300" />
             </div>
-            <p className="text-sm font-medium text-gray-500">Sélectionne un projet</p>
-            <p className="text-xs text-gray-400 mt-1">ou crée-en une nouvelle</p>
+            <p className="text-sm font-medium text-gray-500">Sélectionnez une campagne</p>
+            <p className="text-xs text-gray-400 mt-1">ou créez-en une nouvelle</p>
           </div>
         )}
+        </div>
       </div>
 
       {showCreate && (

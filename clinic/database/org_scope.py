@@ -41,6 +41,8 @@ ORG_TABLES = frozenset({
     "jira_links",
     # équipes (prompt 4)
     "equipes", "equipe_membres", "equipe_branches",
+    # propositions au référentiel (prompt 6)
+    "procedure_propositions",
 })
 # Tables communes : catalogue partagé, ou filtrées par l'appartenance dans le code.
 COMMON_TABLES = frozenset({

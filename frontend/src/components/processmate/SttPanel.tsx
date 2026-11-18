@@ -34,6 +34,9 @@ import { API_CONFIG } from '@/lib/api-config';
 import { conversationsApi } from '@/lib/conversationsApi';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
+import CircuitBar from '@/components/shared/CircuitBar';
+import { circuitApi } from '@/lib/circuitApi';
+import { useAuth } from '@/context/AuthContext';
 import VersionHistoryModal from '@/components/shared/VersionHistoryModal';
 import OpenPointsPanel, { readOpenPoints, type OpenPoint } from '@/components/shared/OpenPointsPanel';
 import { applyLabelChanges } from '@/logic/bpmnLabelPatch';
@@ -126,6 +129,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const exportAllowed = !guestMode || GUEST_EXPORT_ENABLED;
     /** Le backend refuse l'enregistrement aux invités et aux comptes non membres : on ne le propose pas */
     const canSave = !guestMode && librarySave;
+    const { access } = useAuth();
+    const [proposing, setProposing] = useState(false);
     const [versionsOpen, setVersionsOpen] = useState(false);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
@@ -351,6 +356,25 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const activeInst = instances[activeTab];
     const chatFirstEmpty = chatFirst && !hasProcedure && instances.length === 0;
     const activeData = instances.length > 0 && activeInst ? activeInst.data : data;
+
+    /** Membre : proposer la procédure au pilote (triage, puis validation) au lieu de l'écrire au référentiel */
+    const proposeToLibrary = async () => {
+        if (!activeInst) return;
+        const message = window.prompt('Un mot pour le pilote (facultatif) :', '');
+        if (message === null) return;
+        setProposing(true);
+        try {
+            const enrich: Record<string, unknown> = {};
+            activeInst.enrichments.forEach((v, k) => { enrich[k] = v; });
+            await circuitApi.propose({
+                titre: activeInst.title || 'Procédure proposée', workflow_json: activeData as unknown[],
+                enrichments_json: enrich, metadata: (activeInst.metadata || {}) as unknown as Record<string, unknown>,
+                message: message || undefined,
+            });
+            showSuccess('Proposition envoyée au pilote');
+        } catch (e) { showError(e instanceof Error ? e.message : 'Proposition impossible'); }
+        finally { setProposing(false); }
+    };
     const activeTitle = instances.length > 0 && activeInst ? activeInst.title : processTitle;
     const activeEnrichments = instances.length > 0 && activeInst ? activeInst.enrichments : enrichments;
     const activeBpmnXml = instances.length > 0 && activeInst ? activeInst.bpmnXml : bpmnXml;
@@ -921,6 +945,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             l&apos;organisation demande un accès membre, donné par un administrateur.
                         </div>
                     )}
+                    {canSave && activeInst?.workflow_db_id && (
+                        <CircuitBar procedureId={activeInst.workflow_db_id}
+                            onSave={async () => { await handleSave(activeInst.title, '', undefined); }} />
+                    )}
                     <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5">
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -958,6 +986,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>}
+                                {canSave && access?.organisations_mode && activeInst && !activeInst.workflow_db_id && activeData.length > 0 && (
+                                    <button type="button" disabled={proposing} onClick={() => void proposeToLibrary()}
+                                        title="Le pilote l'ajoutera à une campagne ou au référentiel ; elle sera validée avant publication"
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                                        <Send className="w-3.5 h-3.5" />{proposing ? 'Envoi…' : 'Proposer au référentiel'}
+                                    </button>
+                                )}
                                 {VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id && (
                                     <button type="button" onClick={() => setVersionsOpen(true)} title="Historique des versions"
                                         className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">
