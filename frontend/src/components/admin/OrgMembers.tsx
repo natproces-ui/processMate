@@ -6,9 +6,9 @@
  * membres d'une autre organisation introuvables).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Search } from 'lucide-react';
+import { KeyRound, Loader2, Search, UserMinus } from 'lucide-react';
 import { useAuth, type OrgRole } from '@/context/AuthContext';
-import { ORG_ROLES, organisationApi, type MemberStatut, type OrgMember } from '@/lib/organisationApi';
+import { ORG_ROLES, organisationApi, type MemberStatut, type OpenTask, type OrgMember } from '@/lib/organisationApi';
 
 const FILTERS: { id: MemberStatut | 'all'; label: string }[] = [
     { id: 'invitee', label: 'En attente' },
@@ -17,7 +17,15 @@ const FILTERS: { id: MemberStatut | 'all'; label: string }[] = [
     { id: 'all', label: 'Tous' },
 ];
 
-export default function OrgMembers({ toolbar }: { toolbar?: React.ReactNode }) {
+interface Props {
+    toolbar?: React.ReactNode;
+    /** incrémenté par le parent pour recharger la liste (compte créé…) */
+    reloadKey?: number;
+    onLink?: (title: string, link: string) => void;
+    onRemoved?: (name: string, openTasks: OpenTask[]) => void;
+}
+
+export default function OrgMembers({ toolbar, reloadKey = 0, onLink, onRemoved }: Props) {
     const { user, profile } = useAuth();
     const [members, setMembers] = useState<OrgMember[]>([]);
     const [loading, setLoading] = useState(true);
@@ -40,7 +48,7 @@ export default function OrgMembers({ toolbar }: { toolbar?: React.ReactNode }) {
         }
     }, []);
 
-    useEffect(() => { void load(); }, [load]);
+    useEffect(() => { void load(); }, [load, reloadKey]);
 
     const counts = useMemo(() => ({
         invitee: members.filter(m => m.statut === 'invitee').length,
@@ -67,6 +75,26 @@ export default function OrgMembers({ toolbar }: { toolbar?: React.ReactNode }) {
         } finally {
             setBusyId(null);
         }
+    };
+
+    const newLink = async (m: OrgMember, name: string) => {
+        setBusyId(m.id);
+        setError(null);
+        try { onLink?.(`Nouveau lien pour ${name}`, await organisationApi.memberLink(m.id)); }
+        catch (e) { setError(e instanceof Error ? e.message : 'Lien impossible'); }
+        finally { setBusyId(null); }
+    };
+
+    const remove = async (m: OrgMember, name: string) => {
+        if (!window.confirm(`Retirer ${name} de l'organisation ? Son nom reste sur ses procédures, tâches et validations.`)) return;
+        setBusyId(m.id);
+        setError(null);
+        try {
+            const tasks = await organisationApi.removeMember(m.id);
+            setMembers(prev => prev.filter(x => x.id !== m.id));
+            onRemoved?.(name, tasks);
+        } catch (e) { setError(e instanceof Error ? e.message : 'Retrait refusé'); }
+        finally { setBusyId(null); }
     };
 
     return (
@@ -113,6 +141,16 @@ export default function OrgMembers({ toolbar }: { toolbar?: React.ReactNode }) {
                                         className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm disabled:opacity-50">
                                         {ORG_ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                                     </select>
+                                    {!self && (
+                                        <div className="flex shrink-0 gap-1">
+                                            <button type="button" disabled={busy} onClick={() => void newLink(m, name)} title="Nouveau lien d’accès"
+                                                aria-label={`Nouveau lien pour ${name}`}
+                                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"><KeyRound className="w-4 h-4" /></button>
+                                            <button type="button" disabled={busy} onClick={() => void remove(m, name)} title="Retirer de l’organisation"
+                                                aria-label={`Retirer ${name}`}
+                                                className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"><UserMinus className="w-4 h-4" /></button>
+                                        </div>
+                                    )}
                                     <div className="flex w-36 shrink-0 justify-end gap-2">
                                         {busy ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
                                             : self ? <span className="text-xs text-slate-400">Actif</span>

@@ -54,10 +54,18 @@ class SafetyNetTest(unittest.TestCase):
                 offenders.append(rel)
         self.assertEqual(offenders, [], "Accès non cloisonné à la base")
 
-    def test_sql_migration_lists_same_tables(self):
-        sql = (ROOT / "database" / "organisations_cloisonnement.sql").read_text(encoding="utf-8")
+    def test_sql_migrations_cover_org_tables(self):
+        """Chaque table cloisonnée a sa colonne organisation_id dans une migration."""
+        db_dir = ROOT / "database"
+        sql = (db_dir / "organisations_cloisonnement.sql").read_text(encoding="utf-8")
         block = sql[sql.index("org_tables text[]"):sql.index("];")]
-        self.assertEqual(set(re.findall(r"'([a-z_]+)'", block)), set(org_scope.ORG_TABLES))
+        covered = set(re.findall(r"'([a-z_]+)'", block))
+        for f in db_dir.glob("*.sql"):
+            text = f.read_text(encoding="utf-8")
+            for name, body in re.findall(r"CREATE TABLE IF NOT EXISTS (\w+) \((.*?)\n\);", text, re.S):
+                if re.search(r"organisation_id\s+UUID NOT NULL", body):
+                    covered.add(name)
+        self.assertEqual(sorted(set(org_scope.ORG_TABLES) - covered), [])
 
 
 class ScopedClientTest(unittest.TestCase):

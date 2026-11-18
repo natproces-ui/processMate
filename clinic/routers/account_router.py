@@ -36,6 +36,12 @@ def me(user: AuthUser = Depends(require_user)):
     access_control.forget_profile(user.id)  # toujours l'état à jour (activation récente…)
     profile = access_control.profile_for(user)
     out = access_control.describe(user, profile, access_control.is_platform_admin(user))
+    if not out["member"] and not (profile or {}).get("organisation_id"):
+        from routers.organisation_router import pending_invitations_for
+        try:
+            out["invitations"] = pending_invitations_for(user)
+        except Exception:
+            out["invitations"] = []
     try:
         # Compte libre (aucune organisation) : son propre profil
         out["profile"] = _full_profile(user, (profile or {}).get("id") or user.id)

@@ -39,11 +39,14 @@ ORG_TABLES = frozenset({
     "irritants", "findings", "pistes", "piste_messages", "specifications",
     "tools", "tool_screens", "tool_screen_fields", "tool_codes", "tool_business_rules", "tool_data_entities",
     "jira_links",
+    # équipes (prompt 4)
+    "equipes", "equipe_membres", "equipe_branches",
 })
 # Tables communes : catalogue partagé, ou filtrées par l'appartenance dans le code.
 COMMON_TABLES = frozenset({
     "bian_scenarios", "organisations", "organisation_members", "platform_admins", "audit_log",
     "guest_usage", "user_profiles", "ai_usage",
+    "organisation_invitations",  # cherchées par e-mail pour l'invité ; filtrées par organisation côté admin
 })
 # Tables personnelles : contrôle par propriétaire (conversation_store, project_store).
 PERSONAL_TABLES = frozenset({

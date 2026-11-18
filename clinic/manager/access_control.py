@@ -82,6 +82,7 @@ RULES: List[Rule] = [
     _r(r"^/api/stt/dictate/?$", GUEST, "POST"),
     # ── Tout compte connecté (espace personnel, outils sans base) ──
     _r(r"^/api/me/?$", USER),
+    _r(r"^/api/invitations/", USER),  # compte libre invité par une organisation
     _r(r"^/api/conversations(/|$)", USER),
     _r(r"^/api/projects/for-campaign/", MEMBER),  # espace de travail d'une campagne
     _r(r"^/api/projects(/|$)", USER),
@@ -91,7 +92,8 @@ RULES: List[Rule] = [
     # ── Plateforme (super-admin processMate) ──
     _r(r"^/api/plateforme(/|$)", PLATFORM),
     # ── Administration ──
-    _r(rf"^/api/organisation/members/{_ID}/?$", MEMBER, "PATCH", roles={"admin"}),
+    _r(rf"^/api/organisation/members/{_ID}/?$", MEMBER, "PATCH,DELETE", roles={"admin"}),
+    _r(r"^/api/organisation/(members|equipes|invitations)(/.*)?$", MEMBER, "POST,PATCH,DELETE", roles={"admin"}),
     _r(rf"^/api/orchestration/users/{_ID}/?$", MEMBER, "PATCH", roles={"admin"}),
     _r(r"^/api/orchestration/procedures/migrate-lifecycle-stages/?$", MEMBER, "POST", roles={"admin"}),
     # ── Pilotage des campagnes : admin ou responsable de processus ──

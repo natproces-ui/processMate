@@ -47,12 +47,14 @@ export type Access = {
   /** organisations activées côté backend (ORGANISATIONS_ENABLED) */
   organisations_mode: boolean;
   organisation: { id: string; nom: string | null; statut: string | null } | null;
+  /** compte libre : invitations d'organisations en attente de sa réponse */
+  invitations: { id: string; organisation: string | null; role: OrgRole }[];
 };
 
 /** Droits impossibles à vérifier (backend injoignable) : aucun accès, mais pas « en attente » */
 const NO_ACCESS: Access = {
   member: false, role: null, status: 'indisponible', is_admin: false, can_manage_campaigns: false,
-  read_only: false, is_platform_admin: false, organisations_mode: false, organisation: null,
+  read_only: false, is_platform_admin: false, organisations_mode: false, organisation: null, invitations: [],
 };
 
 type AuthContextType = {
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         can_manage_campaigns: !!me.can_manage_campaigns, read_only: !!me.read_only,
         is_platform_admin: !!me.is_platform_admin, organisations_mode: !!me.organisations_mode,
         organisation: me.organisation ?? null,
+        invitations: Array.isArray(me.invitations) ? me.invitations : [],
       });
       if (me.profile) setProfile(me.profile as UserProfile);
       return true;

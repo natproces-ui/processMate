@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam, type ConversationSummary } from '@/lib/conversationsApi';
 import { guestStore, GUEST_CONVERSATION_KEY, type GuestConversation } from '@/lib/guestStore';
 import OnboardingCard from '@/components/home/OnboardingCard';
+import InvitationBanner from '@/components/home/InvitationBanner';
 import {
     Zap, PenLine, FolderKanban, FileText, CheckSquare, Megaphone, BarChart3, PenTool,
     BookOpen, Newspaper, Compass, Menu, X, Loader2, RotateCw, LogOut, MessageSquare, Users, Clock, Building2,
@@ -159,6 +160,7 @@ export default function ChatHome() {
                     </section>
                 )}
                 {user && access?.is_admin && access.organisations_mode && <OnboardingCard />}
+                {user && !member && <InvitationBanner />}
                 {user && access?.is_platform_admin && (
                     <section aria-label="Plateforme" className="space-y-0.5">
                         <NavLink href="/plateforme" icon={<Building2 className="w-4 h-4" />} label="Plateforme processMate" />

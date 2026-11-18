@@ -150,6 +150,7 @@ app.include_router(projects_router.router)
 app.include_router(versions_router.router)
 app.include_router(account_router.router)
 app.include_router(organisation_router.router)
+app.include_router(organisation_router.invitations_router)
 app.include_router(platform_router.router)
 
 @app.head("/")
