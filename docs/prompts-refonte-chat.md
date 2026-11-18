@@ -190,7 +190,7 @@ Tâches
 6. Mesure
    - Journalise pour chaque appel : tâche, types de sources, niveau, modèle utilisé, secours
      déclenché ou non, durée, jetons si disponibles. Pas de contenu utilisateur dans les logs.
-   - Écris un script clinic/scripts/eval_models.py (non lancé automatiquement) qui exécute
+   - Écris un script clinic/bench/eval_models.py (non lancé automatiquement) qui exécute
      une tâche donnée sur un dossier de fichiers d'exemple avec plusieurs profils et sort un
      tableau comparatif (durée, jetons, nombre d'étapes, erreurs). Je le lancerai sur les
      22 procédures CMC.
@@ -433,7 +433,7 @@ Tâches
 4. Transition
    - Drapeau STUDIO_AGENT_ENABLED (défaut : false). L'ancien aiguillage reste le chemin par
      défaut tant que je n'ai pas comparé les deux sur les 22 procédures CMC
-     (clinic/scripts/eval_models.py du lot 2, étendu à l'agent).
+     (clinic/bench/eval_models.py du lot 2, étendu à l'agent).
 
 Tests à ajouter
 - Chaque outil (droits compris) ; aucune écriture sans acceptation ; limite d'étapes ;
