@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import EmailPreference from '@/components/shared/EmailPreference';
 
 const JOB_TITLES = [
   'Analyste Processus', 'Auditeur Interne', 'Chef de Projet', 'Consultant',
@@ -257,6 +258,7 @@ export default function ProfilePage() {
           </button>
 
         </form>
+        <div className="mt-6"><EmailPreference /></div>
       </div>
       </div>
     </div>

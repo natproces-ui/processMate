@@ -82,6 +82,8 @@ RULES: List[Rule] = [
     _r(r"^/api/stt/dictate/?$", GUEST, "POST"),
     # ── Tout compte connecté (espace personnel, outils sans base) ──
     _r(r"^/api/me/?$", USER),
+    _r(r"^/api/me/notifications/?$", USER),
+    _r(r"^/api/taches/relances/?$", PUBLIC, "POST"),  # jeton de tâche planifiée ou super-admin, vérifié dans la route
     _r(r"^/api/invitations/", USER),  # compte libre invité par une organisation
     _r(r"^/api/conversations(/|$)", USER),
     _r(r"^/api/projects/for-campaign/", MEMBER),  # espace de travail d'une campagne
@@ -101,6 +103,7 @@ RULES: List[Rule] = [
     _r(rf"^/api/campaigns/{_ID}/?$", MEMBER, "DELETE", roles=MANAGERS),
     _r(rf"^/api/campaigns/{_ID}/(launch|close|block|pause|resume)/?$", MEMBER, "POST", roles=MANAGERS),
     _r(rf"^/api/propositions/{_ID}/traiter/?$", MEMBER, "POST", roles=MANAGERS),
+    _r(r"^/api/bian/couverture/emplacements/?$", MEMBER, "POST", roles=MANAGERS),
     # Emplacements : la structure de la campagne est l'affaire du pilotage
     _r(rf"^/api/campaigns/{_ID}/emplacements(/.*)?$", MEMBER, "POST,PUT,PATCH,DELETE", roles=MANAGERS),
 ]

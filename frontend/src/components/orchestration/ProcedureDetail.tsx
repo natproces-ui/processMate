@@ -1,6 +1,7 @@
 'use client';
 
 import { formatValidation } from '@/lib/circuitApi';
+import BianMappings from '@/components/shared/BianMappings';
 import { useState, useEffect, useCallback } from 'react';
 import {
   X, ArrowLeft, RefreshCw, Lock, MessageSquare, CheckCircle2,
@@ -556,6 +557,7 @@ export default function ProcedureDetail({ procedureId, onClose, onStatusChange }
             })()}
 
             {/* Snapshot finalisation */}
+            <BianMappings procedureId={procedure.id} />
             {procedure.is_finalized && (procedure.metadata?.finalized_snapshot as Record<string, unknown>) && (
               <div className="bg-green-50 rounded-xl border border-green-200 p-5">
                 <h3 className="font-semibold text-green-900 mb-2 flex items-center gap-2">

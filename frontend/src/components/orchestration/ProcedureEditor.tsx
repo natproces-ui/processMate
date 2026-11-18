@@ -752,7 +752,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 ══════════════════════════════════════════════ */}
                 {OPEN_POINTS_UI_ENABLED && activeSection === 'diagramme' && data.length > 0 && (
                     <OpenPointsPanel title={title} points={openPoints} rows={data}
-                        onChange={updateOpenPoints} onAnswer={answerPoint} />
+                        onChange={updateOpenPoints} onAnswer={answerPoint} procedureId={procedure?.id} />
                 )}
                 {activeSection === 'diagramme' && (
                     <div className="space-y-3">

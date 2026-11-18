@@ -43,12 +43,15 @@ ORG_TABLES = frozenset({
     "equipes", "equipe_membres", "equipe_branches",
     # propositions au référentiel (prompt 6)
     "procedure_propositions",
+    # correspondances BIAN de l'organisation (prompt 7)
+    "procedure_bian",
 })
 # Tables communes : catalogue partagé, ou filtrées par l'appartenance dans le code.
 COMMON_TABLES = frozenset({
     "bian_scenarios", "organisations", "organisation_members", "platform_admins", "audit_log",
     "guest_usage", "user_profiles", "ai_usage",
     "organisation_invitations",  # cherchées par e-mail pour l'invité ; filtrées par organisation côté admin
+    "notification_preferences",  # préférences personnelles (par compte)
 })
 # Tables personnelles : contrôle par propriétaire (conversation_store, project_store).
 PERSONAL_TABLES = frozenset({

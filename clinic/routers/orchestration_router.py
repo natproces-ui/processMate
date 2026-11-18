@@ -986,6 +986,16 @@ async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest,
             for key in ("lifecycle_stages", "raci", "remarks"):
                 if key in existing_meta and key not in body.procedure_metadata_json:
                     merged[key] = existing_meta[key]
+            # Tenus par le serveur (circuit de validation) : jamais écrits par le client
+            for key in ("validation", "circuit"):
+                if key in existing_meta:
+                    merged[key] = existing_meta[key]
+                else:
+                    merged.pop(key, None)
+            if "open_points" in body.procedure_metadata_json or "open_points" in existing_meta:
+                from manager.inbox import merge_open_points
+                merged["open_points"] = merge_open_points(existing_meta.get("open_points") or [],
+                                                          merged.get("open_points") or [])
         else:
             merged = existing_meta
         merged["has_unsaved_changes"] = True

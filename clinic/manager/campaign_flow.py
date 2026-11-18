@@ -181,6 +181,9 @@ def submit(procedure_id: str, me: str, message: Optional[str] = None) -> Dict[st
         from routers.orchestration_tasks_router import _ensure_validation_tasks
         for c in raci["C"][1:]:
             _ensure_validation_tasks({**task, "raci_role": "R"}, me, message, c, "C")
+    from manager import inbox
+    for uid in (raci["C"] if to_c else [raci["A"]]):
+        inbox.email_task(uid, f"{'Relire' if to_c else 'Valider'} : {_workflow(procedure_id).get('title')}", procedure_id, me)
     _set_meta(procedure_id, etape="en_relecture" if to_c else "soumise", soumise_par=me,
               soumise_par_nom=person_name(me), soumise_le=_now())
     _sync_slots(procedure_id, "soumise_c" if to_c else "soumise_a")
@@ -195,6 +198,8 @@ def review(procedure_id: str, me: str, decision: str, message: Optional[str] = N
         if not _raci(procedure_id)["A"]:
             raise FlowError("Aucun valideur (A) n'est désigné pour cette procédure.")
         _transition(task["id"], "submitted", me, message, {"override_recipient_role": "A"})
+        from manager import inbox
+        inbox.email_task(_raci(procedure_id)["A"], f"Valider : {_workflow(procedure_id).get('title')}", procedure_id, me)
         _set_meta(procedure_id, etape="soumise", relue_par=me, relue_par_nom=person_name(me), relue_le=_now())
         _sync_slots(procedure_id, "soumise_a")
     elif decision == "renvoyer":

@@ -1158,7 +1158,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     <OpenPointsPanel title={activeTitle} points={activePoints} rows={activeData}
                                         onChange={pts => setPointsFor(instances.length > 0 ? activeInst?.process_id ?? null : null, pts)}
                                         onFocusStep={id => handleFocusSteps([id])}
-                                        onAnswer={answerPoint} />
+                                        onAnswer={answerPoint} procedureId={canSave && access?.organisations_mode ? activeInst?.workflow_db_id : null} />
                                 )}
                                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                                     <button onClick={() => setGuideOpen(!guideOpen)} className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors">

@@ -4,7 +4,10 @@
 // Rangés dans les métadonnées de la procédure (open_points) : ils sont enregistrés avec elle.
 // Origine toujours visible : « Dans la source » (écrit dans le document) ou « Relevé par l'assistant ».
 import { useState } from 'react';
-import { Check, CircleHelp, ClipboardCopy, MessageSquareReply, Plus, X } from 'lucide-react';
+import { Check, CircleHelp, ClipboardCopy, MessageSquareReply, Plus, UserPlus, X } from 'lucide-react';
+import { inboxApi } from '@/lib/inboxApi';
+import { orchestrationApi } from '@/lib/orchestrationApi';
+import { organisationApi } from '@/lib/organisationApi';
 import type { Table1Row } from '@/logic/types';
 
 export interface OpenPoint {
@@ -17,6 +20,9 @@ export interface OpenPoint {
     source: string;
     statut: 'ouvert' | 'repondu' | 'abandonne';
     reponse: string;
+    /** adressé à (tâche « Répondre ») — tenu par le serveur */
+    destinataires?: string[];
+    repondu_par_nom?: string;
 }
 
 const STATUS_LABEL: Record<OpenPoint['statut'], string> = { ouvert: 'Ouvert', repondu: 'Répondu', abandonne: 'Abandonné' };
@@ -44,7 +50,7 @@ export function openPointsAsText(title: string, points: OpenPoint[], rows: Table
     return lines.join('\n').trim();
 }
 
-export default function OpenPointsPanel({ title, points, rows, onChange, onFocusStep, onAnswer }: {
+export default function OpenPointsPanel({ title, points, rows, onChange, onFocusStep, onAnswer, procedureId }: {
     title: string;
     points: OpenPoint[];
     rows: Table1Row[];
@@ -52,7 +58,35 @@ export default function OpenPointsPanel({ title, points, rows, onChange, onFocus
     onFocusStep?: (stepId: string) => void;
     /** Réponse donnée : le texte est proposé dans le chat pour mettre la procédure à jour */
     onAnswer?: (point: OpenPoint, answer: string) => void;
+    /** Procédure enregistrée : on peut adresser un point à une personne ou une équipe */
+    procedureId?: string | null;
 }) {
+    const [addressing, setAddressing] = useState<string | null>(null);
+    const [targets, setTargets] = useState<{ people: { id: string; name: string }[]; teams: { id: string; nom: string }[] } | null>(null);
+    const [addressError, setAddressError] = useState<string | null>(null);
+    const openAddress = async (id: string) => {
+        setAddressing(id);
+        setAddressError(null);
+        if (targets) return;
+        const [users, teams] = await Promise.all([
+            orchestrationApi.listUsers({ active_only: true }).then(r => r.users).catch(() => []),
+            organisationApi.teams().catch(() => []),
+        ]);
+        setTargets({ people: users.map(u => ({ id: u.id, name: u.full_name || u.email })), teams: teams.map(t => ({ id: t.id, nom: t.nom })) });
+    };
+    const sendAddress = async (p: OpenPoint, value: string) => {
+        if (!procedureId || !value) return;
+        const [kind, id] = value.split(':');
+        try {
+            const res = await inboxApi.addressPoint(procedureId, p.id, kind === 'eq' ? { equipe_id: id } : { user_id: id });
+            onChange(points.map(x => x.id === p.id ? { ...x, destinataires: res.destinataires } : x));
+            setAddressing(null);
+        } catch (e) {
+            setAddressError(e instanceof Error && e.message.includes('introuvable')
+                ? 'Enregistrez d’abord la procédure, puis adressez le point.' : (e instanceof Error ? e.message : 'Adressage impossible'));
+        }
+    };
+    const nameOf = (id: string) => targets?.people.find(x => x.id === id)?.name;
     const [answering, setAnswering] = useState<string | null>(null);
     const [answer, setAnswer] = useState('');
     const [newQuestion, setNewQuestion] = useState('');
@@ -120,8 +154,24 @@ export default function OpenPointsPanel({ title, points, rows, onChange, onFocus
                                             {p.statut !== 'ouvert' && <span>· {STATUS_LABEL[p.statut]}</span>}
                                         </p>
                                         {p.source && <p className="mt-0.5 text-[11px] italic text-slate-400">« {p.source} »</p>}
-                                        {p.reponse && <p className="mt-1 text-xs text-emerald-700">Réponse : {p.reponse}</p>}
+                                        {p.reponse && <p className="mt-1 text-xs text-emerald-700">Réponse{p.repondu_par_nom ? ` de ${p.repondu_par_nom}` : ''} : {p.reponse}</p>}
+                                        {p.statut === 'ouvert' && !!p.destinataires?.length && (
+                                            <p className="mt-0.5 text-[11px] text-blue-600">Adressé à {p.destinataires.map(id => nameOf(id) || 'une personne').join(', ')} — en attente de réponse</p>
+                                        )}
                                     </div>
+                                    {procedureId && p.statut === 'ouvert' && (
+                                        addressing === p.id ? (
+                                            <select autoFocus aria-label="Adresser à" defaultValue="" onChange={e => void sendAddress(p, e.target.value)}
+                                                onBlur={() => setAddressing(null)} className="shrink-0 rounded-lg border border-slate-300 px-1.5 py-1 text-xs">
+                                                <option value="" disabled>{targets ? 'Adresser à…' : 'Chargement…'}</option>
+                                                {targets?.teams.map(t => <option key={t.id} value={`eq:${t.id}`}>Équipe {t.nom}</option>)}
+                                                {targets?.people.map(u => <option key={u.id} value={`u:${u.id}`}>{u.name}</option>)}
+                                            </select>
+                                        ) : (
+                                            <button type="button" onClick={() => void openAddress(p.id)} title={p.destinataires?.length ? 'Adressé — adresser à quelqu’un d’autre' : 'Adresser à une personne ou une équipe'}
+                                                className={`p-1.5 rounded-lg hover:bg-blue-50 ${p.destinataires?.length ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'}`}><UserPlus className="w-4 h-4" /></button>
+                                        )
+                                    )}
                                     {p.statut === 'ouvert' ? (
                                         <div className="flex shrink-0 gap-0.5">
                                             <button type="button" onClick={() => { setAnswering(p.id); setAnswer(''); }} title="Répondre"
@@ -146,6 +196,9 @@ export default function OpenPointsPanel({ title, points, rows, onChange, onFocus
                         );
                     })}
                 </ul>
+            )}
+            {addressError && (
+                <p role="alert" className="px-4 py-1.5 text-xs text-red-600">{addressError}</p>
             )}
             <div className="px-4 py-2.5 border-t border-slate-100 flex gap-2">
                 <input value={newQuestion} onChange={e => setNewQuestion(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add(); }}

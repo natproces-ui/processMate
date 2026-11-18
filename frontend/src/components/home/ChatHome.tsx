@@ -13,6 +13,7 @@ import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeCo
 import { guestStore, GUEST_CONVERSATION_KEY, type GuestConversation } from '@/lib/guestStore';
 import OnboardingCard from '@/components/home/OnboardingCard';
 import InvitationBanner from '@/components/home/InvitationBanner';
+import { inboxApi } from '@/lib/inboxApi';
 import {
     Zap, PenLine, FolderKanban, FileText, CheckSquare, Megaphone, BarChart3, PenTool,
     BookOpen, Newspaper, Compass, Menu, X, Loader2, RotateCw, LogOut, MessageSquare, Users, Clock, Building2,
@@ -26,6 +27,11 @@ const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), {
 export default function ChatHome() {
     const { user, loading, signOut, access } = useAuth();
     const member = !!access?.member;
+    const [todo, setTodo] = useState<{ ouvertes: number; en_retard: number } | null>(null);
+    useEffect(() => {
+        if (!member || !access?.organisations_mode) return;
+        inboxApi.counter().then(setTodo).catch(() => setTodo(null));
+    }, [member, access?.organisations_mode]);
     const [navOpen, setNavOpen] = useState(false);
     const [panelKey, setPanelKey] = useState(0);
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -152,7 +158,8 @@ export default function ChatHome() {
                             {access?.organisation?.nom || 'Organisation'}
                         </p>
                         <NavLink href="/orchestration?tab=procedures" icon={<FileText className="w-4 h-4" />} label="Référentiel" />
-                        <NavLink href="/orchestration?tab=taches" icon={<CheckSquare className="w-4 h-4" />} label="À faire" />
+                        <NavLink href="/orchestration?tab=taches" icon={<CheckSquare className="w-4 h-4" />} label="À faire"
+                            badge={todo ? { count: todo.ouvertes, late: todo.en_retard } : undefined} />
                         <NavLink href="/orchestration?tab=campagnes" icon={<Megaphone className="w-4 h-4" />} label="Campagnes" />
                         <NavLink href="/orchestration?tab=analyser" icon={<BarChart3 className="w-4 h-4" />} label="Analyse" />
                         <NavLink href="/orchestration?module=stt" icon={<PenTool className="w-4 h-4" />} label="Studio complet" />
@@ -232,10 +239,16 @@ export default function ChatHome() {
     );
 }
 
-function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+function NavLink({ href, icon, label, badge }: { href: string; icon: React.ReactNode; label: string; badge?: { count: number; late: number } }) {
     return (
         <Link href={href} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 hover:text-slate-900">
             <span className="text-slate-400">{icon}</span>{label}
+            {badge && badge.count > 0 && (
+                <span aria-label={`${badge.count} tâche(s) à faire${badge.late ? `, dont ${badge.late} en retard` : ''}`}
+                    className={`ml-auto min-w-[20px] rounded-full px-1.5 text-center text-[11px] font-semibold ${badge.late ? 'bg-red-100 text-red-700' : 'bg-slate-200 text-slate-700'}`}>
+                    {badge.count}
+                </span>
+            )}
         </Link>
     );
 }

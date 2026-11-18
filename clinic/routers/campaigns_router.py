@@ -263,6 +263,10 @@ def launch_campaign(campaign_id: str, access: Access = Depends(current_access)):
 @router.post("/{campaign_id}/close")
 async def close_campaign(campaign_id: str):
     db = get_supabase()
+    if slots_enabled():
+        from manager import inbox
+        cancelled = await asyncio.to_thread(inbox.cancel_campaign_tasks, campaign_id, "Campagne clôturée")
+        logger.info(f"Campagne {campaign_id[:8]} clôturée : {cancelled} tâche(s) annulée(s)")
     db.table("formalization_campaigns").update({
         "status": "completed",
         "updated_at": datetime.utcnow().isoformat(),
@@ -473,7 +477,15 @@ class SlotsRaci(BaseModel):
 @router.get("/{campaign_id}/emplacements", dependencies=[Depends(_slots)])
 def list_slots(campaign_id: str):
     _call(slots.campaign, campaign_id)
-    return {"emplacements": slots.items(campaign_id), "problemes_lancement": slots.launch_problems(campaign_id)}
+    its = slots.items(campaign_id)
+    try:  # le pilote voit le NOMBRE de points ouverts, jamais les conversations
+        from manager import inbox
+        counts = inbox.open_points_count([i.get("procedure_id") for i in its])
+        for i in its:
+            i["points_ouverts"] = counts.get(i.get("procedure_id"), 0)
+    except Exception:
+        pass
+    return {"emplacements": its, "problemes_lancement": slots.launch_problems(campaign_id)}
 
 
 @router.post("/{campaign_id}/emplacements", dependencies=[Depends(_slots)])

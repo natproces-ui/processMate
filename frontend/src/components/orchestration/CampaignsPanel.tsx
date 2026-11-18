@@ -21,6 +21,7 @@ import { projectsApi } from '@/lib/projectsApi';
 import { CAMPAIGN_SLOTS_ENABLED } from '@/lib/campaignSlotsApi';
 import CampaignSlots from '@/components/orchestration/CampaignSlots';
 import PropositionsPanel from '@/components/orchestration/PropositionsPanel';
+import BianCoveragePanel from '@/components/orchestration/BianCoveragePanel';
 import type { Procedure } from '@/lib/orchestrationApi';
 
 // ─── Types internes ───────────────────────────────────────────
@@ -1017,6 +1018,7 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
       {/* ── Détail ── */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {isAdmin && <PropositionsPanel campaigns={campaigns} onTreated={loadCampaigns} />}
+        {isAdmin && access?.organisations_mode && <BianCoveragePanel campaigns={campaigns} onCreated={refreshActive} />}
         <div className="flex-1 min-h-0">
         {activeCampaign ? (
           <CampaignDetail key={activeCampaign.id} campaign={activeCampaign}
