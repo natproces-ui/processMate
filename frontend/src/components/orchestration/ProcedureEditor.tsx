@@ -584,6 +584,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                             insertText={chatText}
                             onCheckpoint={takeSnapshot}
                             onRestore={restoreSnapshot}
+                            onAgentOpenPoint={point => updateOpenPoints([...openPoints, point as unknown as OpenPoint])}
+                            onAgentAnswerPoint={(id, answer) => updateOpenPoints(openPoints.map(p => p.id === id ? { ...p, statut: 'repondu', reponse: answer } : p))}
                         />
                     </div>
                 )}

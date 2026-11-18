@@ -44,6 +44,7 @@ from manager.guest_limits import GuestLimitError, check_files, client_ip, consum
 from manager.model_routing import TaskKind, routing_scope, scrub_model_names, source_kinds_of
 from manager.processing_level import ProcessingLevel, get_processing_level, processing_level_scope
 from models.discovery_models import ProcessCard, SourceReference, SourceType
+from processor import studio_agent
 from processor.studio_planner import plan_turn
 from processor.office_extract import extract_office, office_type
 
@@ -513,6 +514,21 @@ async def studio_turn(
     async def stream():
         with processing_level_scope(level):  # le niveau suit tout le flux, y compris les tâches parallèles
             try:
+                if studio_agent.enabled():
+                    # Lot 6 : agent outillé (toute écriture est une proposition à accepter)
+                    ctx = studio_agent.AgentContext(message=message, history=history_list, files=sess["files"],
+                                                    workflow=workflow or [], metadata=_loads(current_procedure_metadata, {}) or {})
+                    with routing_scope(TaskKind.AGENT, source_kinds_of(sess["files"])):
+                        async for ev in studio_agent.run_agent(ctx, request.is_disconnected):
+                            yield _sse(ev)
+                    if ctx.to_generate and not await request.is_disconnected():
+                        if guest is not None:
+                            consume(guest, "generations")
+                        sess["proposal"] = ctx.to_generate
+                        async for ev in _generate(request, sess["files"], ctx.to_generate, [p["id"] for p in ctx.to_generate],
+                                                  False, None, message, sess.get("references")):
+                            yield ev
+                    return
                 if not new_files and not sess.get("proposal"):
                     # Sans fichiers ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…)
                     yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "running"})

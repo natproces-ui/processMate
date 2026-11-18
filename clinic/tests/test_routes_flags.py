@@ -63,6 +63,18 @@ class FlagsAndAuthTest(unittest.TestCase):
                                  files={"files": ("a.pdf", b"%PDF-1.4 /Type /Page", "application/pdf")})
         self.assertEqual(r.status_code, 413)
 
+    def test_agent_turn_end_to_end(self):
+        from google.genai import types
+        content = types.Content(role="model", parts=[types.Part.from_text(text="x")])
+        fake = SimpleNamespace(function_calls=None, text="Bonjour, que souhaitez-vous formaliser ?",
+                               candidates=[SimpleNamespace(content=content)])
+        with mock.patch.dict(os.environ, {"STUDIO_AGENT_ENABLED": "true"}), \
+                mock.patch("manager.model_manager.generate_content", return_value=fake):
+            r = self.client.post("/api/studio/turn", data={"session_id": "agent-test", "message": "bonjour"})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("que souhaitez-vous formaliser", r.text)
+        self.assertIn('"type": "done"', r.text)
+
 
 if __name__ == "__main__":
     unittest.main()

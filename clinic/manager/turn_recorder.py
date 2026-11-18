@@ -46,6 +46,9 @@ class TurnRecorder:
             self.generated.append({"id": ev.get("id"), "title": ev.get("title"), "workflow": ev.get("workflow") or [],
                                    "enrichments": ev.get("enrichments") or {},
                                    "procedureMetadata": ev.get("procedureMetadata") or {}})
+        elif t == "agent_proposal":
+            self.payload.setdefault("agentProposals", []).append(
+                {k: ev.get(k) for k in ("proposal_id", "kind", "explanation", "operations", "point", "point_id", "answer")})
         elif t == "open_points":
             # Rangés avec la procédure générée : ils reviennent avec elle à la réouverture
             for g in self.generated:

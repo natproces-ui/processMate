@@ -31,6 +31,7 @@ class TaskKind(str, Enum):
     MODIFICATION_PROCEDURE = "modification_procedure"
     RELECTURE_CRITIQUE = "relecture_critique"
     ANALYSE_CODE = "analyse_code"
+    AGENT = "agent"                              # boucle de l'agent outillé (lot 6) : profil selon les sources
 
 
 class Profile(str, Enum):

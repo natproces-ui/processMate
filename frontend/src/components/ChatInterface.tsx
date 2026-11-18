@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
-import { applyOperations } from '@/logic/workflowOperations';
+import { applyOperations, type Operation } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
 import { getAuthHeaders } from '@/lib/authHeaders';
 import { GUEST_LIMITS } from '@/lib/features';
@@ -76,6 +76,20 @@ interface ChatMessage {
     /** Lot 5 : état de la procédure juste avant la modification faite par ce message */
     checkpoint?: unknown;
     restored?: boolean;
+    /** Lot 6 : propositions de l'agent, à accepter ou refuser */
+    agentProposals?: AgentProposal[];
+}
+
+interface AgentProposal {
+    proposal_id: string;
+    kind: 'modification' | 'point_ouvert' | 'reponse_point';
+    explanation: string;
+    operations?: Operation[];
+    point?: Record<string, unknown>;
+    point_id?: string;
+    answer?: string;
+    /** historique = proposition d'une conversation rouverte, plus actionnable */
+    decision?: 'accepted' | 'refused' | 'historique';
 }
 
 interface StoredGenerated {
@@ -143,6 +157,10 @@ interface ChatInterfaceProps {
     onRestore?: (snapshot: unknown) => void;
     /** Lot 5 : points ouverts relevés pour une procédure générée */
     onOpenPoints?: (key: string, points: unknown[]) => void;
+    /** Lot 6 : point ouvert proposé par l'agent et accepté */
+    onAgentOpenPoint?: (point: Record<string, unknown>) => void;
+    /** Lot 6 : réponse à un point ouvert proposée par l'agent et acceptée */
+    onAgentAnswerPoint?: (pointId: string, answer: string) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -241,6 +259,8 @@ export default function ChatInterface({
     onCheckpoint,
     onRestore,
     onOpenPoints,
+    onAgentOpenPoint,
+    onAgentAnswerPoint,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -328,6 +348,7 @@ export default function ChatInterface({
             proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
             generations: m.generations?.map(g => ({ id: g.key.slice(g.key.indexOf(':') + 1), title: g.title, status: g.status, steps: g.steps, error: g.error })),
             generated: m.generated,
+            agentProposals: m.agentProposals,
         };
     };
 
@@ -345,6 +366,7 @@ export default function ChatInterface({
                 key: `${m.id}:${g.id}`, title: g.title, status: g.status === 'generating' ? 'stopped' : g.status, steps: g.steps, error: g.error,
             })),
             remarks: p.remarks, suggestions: p.suggestions,
+            agentProposals: (p.agentProposals || []).map((a: AgentProposal) => ({ ...a, decision: a.decision || 'historique' })),
         };
     };
 
@@ -588,6 +610,9 @@ export default function ChatInterface({
             case 'open_points':
                 onOpenPoints?.(key(ev.id), ev.points || []);
                 break;
+            case 'agent_proposal':
+                updateMsg(msgId, m => ({ ...m, agentProposals: [...(m.agentProposals || []), ev as AgentProposal] }));
+                break;
             case 'remarks_delta':
                 updateMsg(msgId, m => ({ ...m, remarks: (m.remarks || '') + ev.text }));
                 break;
@@ -732,6 +757,32 @@ export default function ChatInterface({
             headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
             body: JSON.stringify({ session_id: sessionId, procedure_ids: source.selected, merge }),
         }, msgId);
+    };
+
+    // ── Lot 6 : décisions sur les propositions de l'agent ──
+    const decide = (msgId: string, proposalId: string, decision: 'accepted' | 'refused') =>
+        updateMsg(msgId, m => ({ ...m, agentProposals: (m.agentProposals || []).map(a => a.proposal_id === proposalId ? { ...a, decision } : a) }));
+
+    const acceptProposal = (msgId: string, a: AgentProposal) => {
+        if (a.kind === 'modification' && a.operations?.length) {
+            if (currentWorkflow.length > 0 && onCheckpoint) {
+                const snapshot = onCheckpoint();
+                updateMsg(msgId, m => ({ ...m, checkpoint: snapshot, restored: false }));
+            }
+            // Les descriptions éventuelles des opérations ne restent pas dans les lignes du tableau
+            const revised = applyOperations(currentWorkflow, a.operations).map(row => {
+                const copy = { ...row } as Record<string, unknown>;
+                delete copy.description;
+                return copy as unknown as Table1Row;
+            });
+            onWorkflowGenerated(revised, '', new Map(), null);
+            onSuccess('Modification appliquée');
+        } else if (a.kind === 'point_ouvert' && a.point) {
+            onAgentOpenPoint?.(a.point);
+        } else if (a.kind === 'reponse_point' && a.point_id) {
+            onAgentAnswerPoint?.(a.point_id, a.answer || '');
+        }
+        decide(msgId, a.proposal_id, 'accepted');
     };
 
     const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -988,6 +1039,31 @@ export default function ChatInterface({
                                                         <span className="flex-1 text-[14px] leading-snug text-slate-700 group-hover:text-slate-900">{sug}</span>
                                                         <ArrowUpRight className="w-4 h-4 shrink-0 text-slate-300 group-hover:text-blue-500" />
                                                     </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {/* Lot 6 : propositions de l'agent — rien n'est appliqué sans accord */}
+                                        {msg.agentProposals && msg.agentProposals.length > 0 && (
+                                            <div className="space-y-2" aria-label="Propositions de l'assistant">
+                                                {msg.agentProposals.map(a => (
+                                                    <div key={a.proposal_id} className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm">
+                                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                                            {a.kind === 'modification' ? `Modification proposée · ${a.operations?.length || 0} opération${(a.operations?.length || 0) > 1 ? 's' : ''}`
+                                                                : a.kind === 'point_ouvert' ? 'Point à confirmer proposé' : 'Réponse à un point ouvert'}
+                                                        </p>
+                                                        <p className="mt-0.5 text-sm text-slate-700">{a.explanation}</p>
+                                                        {a.decision === 'accepted' ? <p className="mt-1.5 text-xs text-emerald-600">Acceptée</p>
+                                                            : a.decision === 'refused' ? <p className="mt-1.5 text-xs text-slate-400">Refusée</p>
+                                                            : a.decision === 'historique' ? <p className="mt-1.5 text-xs text-slate-400">Proposition d&apos;un échange précédent</p>
+                                                            : (
+                                                                <div className="mt-2 flex gap-2">
+                                                                    <button type="button" onClick={() => acceptProposal(msg.id, a)} disabled={loading || (a.kind === 'modification' && currentWorkflow.length === 0)}
+                                                                        className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-40">Accepter</button>
+                                                                    <button type="button" onClick={() => decide(msg.id, a.proposal_id, 'refused')} disabled={loading}
+                                                                        className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40">Refuser</button>
+                                                                </div>
+                                                            )}
+                                                    </div>
                                                 ))}
                                             </div>
                                         )}

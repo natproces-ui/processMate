@@ -893,6 +893,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onCheckpoint={takeSnapshot}
                         onRestore={restoreSnapshot}
                         onOpenPoints={(key, points) => setPointsFor(key, points as OpenPoint[])}
+                        onAgentOpenPoint={point => setPointsFor(instances.length > 0 ? activeInst?.process_id ?? null : null, [...activePoints, point as unknown as OpenPoint])}
+                        onAgentAnswerPoint={(id, answer) => setPointsFor(instances.length > 0 ? activeInst?.process_id ?? null : null,
+                            activePoints.map(p => p.id === id ? { ...p, statut: 'repondu', reponse: answer } : p))}
                     />
                     </div>
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
