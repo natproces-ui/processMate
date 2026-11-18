@@ -30,26 +30,33 @@ def _db():
     return conv_store._db()
 
 
-MANAGERS = ("admin", "process_owner")
+MANAGERS = ("admin", "pilote")
 
 
 def active_profile(user_id: str) -> Optional[Dict[str, Any]]:
-    rows = (_db().table("user_profiles").select("id,global_role,status")
-            .eq("id", user_id).limit(1).execute().data)
-    return rows[0] if rows and rows[0].get("status") == "active" else None
+    """Appartenance ACTIVE (rôle d'organisation : admin, pilote, contributeur, lecteur).
+
+    En mode organisations, seulement dans l'organisation de la requête.
+    """
+    from manager.access_control import membership_of
+    m = membership_of(user_id)
+    return m if m and m.get("status") == "active" else None
 
 
 def _campaign_role(campaign_id: str, user_id: str) -> Optional[str]:
     profile = active_profile(user_id)
     if not profile:
         return None
-    if profile.get("global_role") in MANAGERS:
-        return "editor"
-    if profile.get("global_role") == "viewer":
-        return "viewer"
+    # La campagne doit exister DANS l'organisation de la requête (lecture cloisonnée)
     camp = (_db().table("formalization_campaigns").select("coordinator_id")
             .eq("id", campaign_id).limit(1).execute().data)
-    if camp and camp[0].get("coordinator_id") == user_id:
+    if not camp:
+        return None
+    if profile.get("role") in MANAGERS:
+        return "editor"
+    if profile.get("role") == "lecteur":
+        return "viewer"
+    if camp[0].get("coordinator_id") == user_id:
         return "editor"
     assigned = (_db().table("campaign_procedures").select("id").eq("campaign_id", campaign_id)
                 .eq("assigned_to", user_id).limit(1).execute().data)

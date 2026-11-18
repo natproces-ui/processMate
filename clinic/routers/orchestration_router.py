@@ -266,15 +266,30 @@ async def list_users(
     try:
         db = get_supabase()
         query = db.table("user_profiles").select("*").order("full_name")
-
-        if active_only:
-            query = query.eq("status", "active")
+        members = access_control.org_member_ids(active_only=active_only)
+        if members is not None:
+            # Mode organisations : uniquement les membres de l'organisation de l'appelant,
+            # avec leur rôle d'organisation (traduit pour les écrans qui lisent global_role).
+            if not members:
+                return {"success": True, "users": [], "total": 0}
+            query = query.in_("id", list(members))
+        else:
+            if active_only:
+                query = query.eq("status", "active")
+            if role:
+                query = query.eq("global_role", role)
         if department:
             query = query.eq("department", department)
-        if role:
-            query = query.eq("global_role", role)
 
         users = query.execute().data or []
+        if members is not None:
+            for u in users:
+                m = members.get(u["id"]) or {}
+                u["org_role"] = m.get("role")
+                u["global_role"] = access_control.TO_LEGACY_ROLE.get(m.get("role") or "", "viewer")
+                u["status"] = m.get("status") or u.get("status")
+            if role:
+                users = [u for u in users if u["global_role"] == role or u["org_role"] == role]
 
         if q:
             needle = q.strip().lower()
@@ -296,8 +311,11 @@ async def list_users(
 def update_user_profile(user_id: str, body: UserProfileUpdate, admin: Access = Depends(require_role("admin"))):
     """Réservé aux administrateurs (dans tous les modes d'AUTH_MODE)."""
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
-    if access_control.organisations_enabled() and ({"global_role", "status"} & updates.keys()):
-        raise HTTPException(status_code=400, detail="Les rôles et statuts se gèrent dans l'administration de l'organisation.")
+    if access_control.organisations_enabled():
+        if {"global_role", "status"} & updates.keys():
+            raise HTTPException(status_code=400, detail="Les rôles et statuts se gèrent dans l'administration de l'organisation.")
+        if not access_control.membership_of(user_id):
+            raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     target_is_self = user_id == (admin.profile or {}).get("id") or user_id == admin.user.id
     if target_is_self and ({"global_role", "status"} & updates.keys()):
         raise HTTPException(status_code=400, detail="Vous ne pouvez pas modifier votre propre rôle ni votre statut.")

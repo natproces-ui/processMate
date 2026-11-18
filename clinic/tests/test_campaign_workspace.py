@@ -79,9 +79,10 @@ class CampaignWorkspaceTest(unittest.TestCase):
     def setUp(self):
         self.db = base()
         fake = SimpleNamespace(table=lambda t: FakeQuery(self.db, t))
-        patcher = mock.patch.object(store, "_db", return_value=fake)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        for patcher in (mock.patch.object(store, "_db", return_value=fake),
+                        mock.patch("database.supabase_client.get_supabase", return_value=fake)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
     def test_created_once_with_instructions(self):
         p1 = store.for_campaign(CAMP, "coord")

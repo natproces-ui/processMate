@@ -133,6 +133,10 @@ def _resolve_user_name(user_id: Optional[str]) -> str:
 def _get_admin_users() -> List[str]:
     """Retourne la liste des IDs des admins actifs."""
     try:
+        from manager import access_control
+        members = access_control.org_member_ids(active_only=True, role="admin")
+        if members is not None:  # mode organisations : les admins de CETTE organisation
+            return list(members)
         rows = get_supabase().table("user_profiles").select("id").eq(
             "global_role", "admin"
         ).eq("status", "active").execute().data or []

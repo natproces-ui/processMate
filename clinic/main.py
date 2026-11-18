@@ -78,6 +78,16 @@ async def studio_processing_level(request, call_next):
         return await call_next(request)
 
 
+# Requête sur une donnée d'organisation sans organisation (ou vers une autre) : 403.
+from database.org_scope import OrgScopeError  # noqa: E402
+
+
+@app.exception_handler(OrgScopeError)
+async def org_scope_error(_request, exc: OrgScopeError):
+    logger.warning(f"Cloisonnement : {exc}")
+    return JSONResponse(status_code=403, content={"detail": "Accès réservé aux membres de l'organisation."})
+
+
 # Contrôle d'accès (manager/access_control.py) : entre le niveau de traitement et CORS.
 app.middleware("http")(access_control.middleware)
 

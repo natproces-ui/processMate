@@ -26,7 +26,9 @@ def _make_httpx_client() -> httpx.Client:
     return httpx.Client()
 
 
-def get_supabase() -> Client:
+def get_raw_supabase() -> Client:
+    """Client brut, NON cloisonné par organisation. Réservé à la plateforme et aux tables
+    communes ; le code métier passe par get_supabase()."""
     global _supabase_client
     if _supabase_client is None:
         url = os.getenv("SUPABASE_URL")
@@ -39,6 +41,15 @@ def get_supabase() -> Client:
         )
         logger.info("✅ Client Supabase initialisé")
     return _supabase_client
+
+
+def get_supabase():
+    """Client Supabase cloisonné par l'organisation de la requête (database/org_scope.py).
+
+    Sans ORGANISATIONS_ENABLED, il se comporte exactement comme le client brut.
+    """
+    from database.org_scope import ScopedClient
+    return ScopedClient(get_raw_supabase())
 
 
 # ─────────────────────────────────────────────────────────────
@@ -169,7 +180,10 @@ def upload_file_to_storage(
     Retourne le storage_path.
     """
     db = get_supabase()
-    storage_path = f"{session_id}/{filename}"
+    from database.org_scope import current_org_id, enabled as orgs_enabled
+    org = current_org_id() if orgs_enabled() else None
+    # Mode organisations : les fichiers d'une organisation sous orgs/<organisation>/
+    storage_path = f"orgs/{org}/{session_id}/{filename}" if org else f"{session_id}/{filename}"
 
     mime = "application/pdf" if file_type == "pdf" else "image/png"
 

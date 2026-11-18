@@ -242,6 +242,47 @@ def is_platform_admin(user: Optional[AuthUser]) -> bool:
     return ok
 
 
+# Vocabulaire d'organisation → ancien vocabulaire (écrans existants qui lisent global_role)
+TO_LEGACY_ROLE = {"admin": "admin", "pilote": "process_owner", "contributeur": "contributor", "lecteur": "viewer"}
+
+
+def membership_of(user_id: str) -> Optional[Dict[str, Any]]:
+    """Appartenance normalisée d'un utilisateur quelconque, ou None.
+
+    En mode organisations : seulement s'il est membre de l'organisation de la requête
+    (une personne d'une autre organisation n'existe pas pour l'appelant).
+    """
+    from database.supabase_client import get_supabase
+    db = get_supabase()
+    if organisations_enabled():
+        from database.org_scope import current_org_id
+        org = current_org_id()
+        if not org:
+            return None
+        rows = (db.table("organisation_members").select("organisation_id,user_id,role,statut")
+                .eq("organisation_id", org).eq("user_id", user_id).limit(1).execute().data)
+        return normalize(rows[0]) if rows else None
+    rows = db.table("user_profiles").select("id,email,global_role,status").eq("id", user_id).limit(1).execute().data
+    return normalize(rows[0]) if rows else None
+
+
+def org_member_ids(active_only: bool = True, role: Optional[str] = None) -> Optional[Dict[str, Dict[str, Any]]]:
+    """Membres de l'organisation de la requête {user_id: appartenance} ; None en ancien mode."""
+    if not organisations_enabled():
+        return None
+    from database.org_scope import current_org_id
+    from database.supabase_client import get_supabase
+    org = current_org_id()
+    if not org:
+        return {}
+    q = get_supabase().table("organisation_members").select("organisation_id,user_id,role,statut").eq("organisation_id", org)
+    if active_only:
+        q = q.eq("statut", "active")
+    if role:
+        q = q.eq("role", role)
+    return {r["user_id"]: normalize(r) for r in (q.execute().data or [])}
+
+
 @dataclass
 class Access:
     user: Optional[AuthUser] = None
@@ -335,6 +376,10 @@ async def middleware(request: Request, call_next):
             denial = (401, "Session invalide ou expirée. Reconnectez-vous.")
     if denial is None:
         cache: Dict[str, Any] = {}
+        if user is not None and organisations_enabled():
+            # Toute requête d'un membre porte son organisation, y compris les routes
+            # « compte » (projets de campagne…) : les données sont cloisonnées par elle.
+            cache["p"] = await asyncio.to_thread(profile_for, user)
 
         def loader(u: AuthUser):
             if "p" not in cache:
@@ -345,6 +390,10 @@ async def middleware(request: Request, call_next):
         denial = await asyncio.to_thread(decide, method, path, user, loader)
         request.state.profile = cache.get("p")
     request.state.user = user
+    access = Access(user=user, profile=getattr(request.state, "profile", None))
+    if organisations_enabled() and access.member and access.organisation_id:
+        from database.org_scope import set_org
+        set_org(access.organisation_id)  # vu par la route et ses threads
 
     if denial:
         if mode == "enforce":
