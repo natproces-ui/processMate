@@ -52,6 +52,9 @@ function ProjectsList() {
             <p className="mt-1 text-sm text-slate-500">
                 Regroupez des sources, des instructions et des conversations. L&apos;assistant d&apos;une conversation du projet voit ses instructions et ses sources, rien d&apos;autre.
             </p>
+            <p className="mt-1 text-xs text-slate-400">
+                Les campagnes de formalisation ont chacune leur projet de travail, ouvert depuis le pilotage de la campagne.
+            </p>
             <div className="mt-6 flex gap-2">
                 <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') create(); }}
                     placeholder="Nom du nouveau projet" aria-label="Nom du nouveau projet"
@@ -72,6 +75,7 @@ function ProjectsList() {
                                 <FolderKanban className="w-5 h-5 shrink-0 text-blue-600" />
                                 <span className="min-w-0">
                                     <span className="block font-medium text-slate-900 truncate">{p.name}</span>
+                                    {p.campaign_id && <span className="mt-0.5 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Campagne</span>}
                                     <span className="block text-xs text-slate-500 line-clamp-2">{p.instructions || 'Aucune instruction'}</span>
                                 </span>
                             </Link>

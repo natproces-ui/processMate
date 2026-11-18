@@ -5,8 +5,66 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
 import PublicShell from '@/components/home/PublicShell';
-import { projectsApi, type Project, type ProjectSource } from '@/lib/projectsApi';
-import { Loader2, MessageSquare, Paperclip, Plus, Trash2, X } from 'lucide-react';
+import { projectsApi, type Project, type ProjectCampaign, type ProjectSource } from '@/lib/projectsApi';
+import { Loader2, Megaphone, MessageSquare, Paperclip, PenLine, Plus, Trash2, X } from 'lucide-react';
+
+const PROC_STATUS: Record<string, string> = {
+    pending: 'À faire', in_progress: 'En cours', formalized: 'Formalisée', validated: 'Validée', skipped: 'Écartée',
+};
+
+/** Campagne liée : ce qu'il faut livrer. Le projet, lui, est l'endroit où l'on travaille. */
+function CampaignBlock({ campaign, projectId }: { campaign: ProjectCampaign; projectId: string }) {
+    const [showAll, setShowAll] = useState(false);
+    const mine = campaign.procedures.filter(p => p.mine);
+    const list = showAll || mine.length === 0 ? campaign.procedures : mine;
+    return (
+        <section aria-labelledby="campaign-title" className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                    <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        <Megaphone className="w-3.5 h-3.5" /> Campagne de formalisation
+                    </p>
+                    <h2 id="campaign-title" className="mt-0.5 text-sm font-semibold text-slate-900">{campaign.title}</h2>
+                    {campaign.end_date && <p className="text-xs text-slate-500">Échéance : {new Date(campaign.end_date).toLocaleDateString('fr-FR')}</p>}
+                </div>
+                <Link href="/orchestration?tab=campagnes" className="text-xs text-blue-600 hover:underline">Pilotage de la campagne</Link>
+            </div>
+            <div>
+                <div className="flex justify-between text-xs text-slate-500">
+                    <span>{campaign.stats.done} / {campaign.stats.total} procédures formalisées</span>
+                    <span>{campaign.stats.progress_pct} %</span>
+                </div>
+                <div className="mt-1 h-1.5 rounded-full bg-slate-100" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={campaign.stats.progress_pct}>
+                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${campaign.stats.progress_pct}%` }} />
+                </div>
+            </div>
+            <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-slate-700">{mine.length > 0 && !showAll ? 'Mes procédures' : 'Procédures de la campagne'}</h3>
+                {mine.length > 0 && mine.length < campaign.procedures.length && (
+                    <button type="button" onClick={() => setShowAll(v => !v)} className="text-xs text-slate-500 hover:text-slate-800">
+                        {showAll ? 'Seulement les miennes' : `Toutes (${campaign.procedures.length})`}
+                    </button>
+                )}
+            </div>
+            {list.length === 0 ? <p className="text-xs text-slate-400">Aucune procédure dans la campagne.</p> : (
+                <ul className="divide-y divide-slate-100">
+                    {list.map(p => (
+                        <li key={p.procedure_id} className="flex items-center gap-3 py-2">
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm text-slate-800">{p.procedure_nom || 'Procédure sans nom'}</p>
+                                <p className="text-xs text-slate-400">{[p.procedure_ref, PROC_STATUS[p.status] || p.status].filter(Boolean).join(' · ')}</p>
+                            </div>
+                            <Link href={`/?projet=${projectId}&procedure=${p.procedure_id}`}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">
+                                <PenLine className="w-3.5 h-3.5" /> Formaliser
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
+    );
+}
 
 export default function ProjetPage() {
     return (
@@ -23,6 +81,7 @@ function ProjectDetail() {
     const [project, setProject] = useState<Project | null>(null);
     const [sources, setSources] = useState<ProjectSource[]>([]);
     const [conversations, setConversations] = useState<{ id: string; title: string; updated_at: string }[]>([]);
+    const [campaign, setCampaign] = useState<ProjectCampaign | null>(null);
     const [instructions, setInstructions] = useState('');
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
@@ -37,6 +96,7 @@ function ProjectDetail() {
             setInstructions(data.project.instructions || '');
             setSources(data.sources);
             setConversations(data.conversations);
+            setCampaign(data.campaign ?? null);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : 'Projet introuvable');
         }
@@ -92,6 +152,8 @@ function ProjectDetail() {
                     </Link>
                 </div>
             </div>
+
+            {campaign && <CampaignBlock campaign={campaign} projectId={project.id} />}
 
             <section aria-labelledby="instructions-title" className="space-y-2">
                 <h2 id="instructions-title" className="text-sm font-semibold text-slate-800">Instructions</h2>

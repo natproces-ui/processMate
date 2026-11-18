@@ -25,7 +25,6 @@ def _enabled() -> None:
 class CreateBody(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     instructions: str = ""
-    campaign_id: Optional[str] = None
 
 
 class UpdateBody(BaseModel):
@@ -58,8 +57,17 @@ async def list_projects(user: AuthUser = Depends(require_user)):
 
 @router.post("", dependencies=[Depends(_enabled)])
 async def create_project(body: CreateBody, user: AuthUser = Depends(require_user)):
-    p = await asyncio.to_thread(store.create, user.id, body.name.strip(), body.instructions, body.campaign_id)
+    p = await asyncio.to_thread(store.create, user.id, body.name.strip(), body.instructions)
     return {"project": _public({**p, "my_role": "owner"})}
+
+
+@router.post("/for-campaign/{campaign_id}", dependencies=[Depends(_enabled)])
+async def campaign_workspace(campaign_id: str, user: AuthUser = Depends(require_user)):
+    """Espace de travail d'une campagne : renvoyé, ou créé à la première ouverture."""
+    p = await asyncio.to_thread(store.for_campaign, campaign_id, user.id)
+    if not p:
+        raise HTTPException(404, "Campagne introuvable ou accès réservé aux membres de l'organisation")
+    return {"project": _public(p)}
 
 
 @router.get("/{project_id}", dependencies=[Depends(_enabled)])
@@ -71,8 +79,12 @@ async def get_project(project_id: str, user: AuthUser = Depends(require_user)):
         asyncio.to_thread(store.sources, project_id),
         asyncio.to_thread(conv_store.list_for, user.id, 100, False, None, project_id),
     )
+    campaign = None
+    if p.get("campaign_id"):
+        campaign = await asyncio.to_thread(store.campaign_summary, p["campaign_id"], user.id)
     return {"project": _public(p), "sources": [_public_source(s) for s in srcs],
-            "conversations": [{k: c.get(k) for k in ("id", "title", "updated_at")} for c in convs]}
+            "conversations": [{k: c.get(k) for k in ("id", "title", "updated_at")} for c in convs],
+            "campaign": campaign}
 
 
 @router.patch("/{project_id}", dependencies=[Depends(_enabled)])

@@ -16,6 +16,8 @@ import JiraLinkButton from '@/components/shared/JiraLinkButton';
 import { taxonomyApi, type TaxonomyNode } from '@/lib/taxonomyApi';
 import { useProceduresStore } from '@/store/proceduresStore';
 import { useAuth } from '@/context/AuthContext';
+import { CONVERSATIONS_ENABLED } from '@/lib/conversationsApi';
+import { projectsApi } from '@/lib/projectsApi';
 import type { Procedure } from '@/lib/orchestrationApi';
 
 // ─── Types internes ───────────────────────────────────────────
@@ -462,9 +464,11 @@ function CampaignDetail({
   onDelete: () => void;
   onOpenProcedure?: (id: string) => void;
 }) {
-  const { profile } = useAuth();
+  const { access } = useAuth();
   const { procedures: allProcedures } = useProceduresStore();
-  const isAdmin = profile?.global_role === 'admin';
+  // Pilotage : admin ou responsable de processus (même règle que le backend)
+  const isAdmin = !!access?.can_manage_campaigns;
+  const [openingWorkspace, setOpeningWorkspace] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<CampaignProcedureStatus | 'all'>('all');
@@ -580,6 +584,18 @@ function CampaignDetail({
     }
   };
 
+  /** Espace de travail de la campagne : un projet (instructions, sources, conversations) */
+  const openWorkspace = async () => {
+    setOpeningWorkspace(true);
+    try {
+      const project = await projectsApi.forCampaign(campaign.id);
+      window.location.href = `/projet/?id=${project.id}`;
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Espace de travail indisponible');
+      setOpeningWorkspace(false);
+    }
+  };
+
   const stats = campaign.stats;
   const isOverdue = campaign.end_date && campaign.status === 'active' && new Date(campaign.end_date) < new Date();
 
@@ -611,6 +627,14 @@ function CampaignDetail({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {CONVERSATIONS_ENABLED && (
+              <button type="button" onClick={openWorkspace} disabled={openingWorkspace}
+                title="Instructions, sources et conversations partagées pour formaliser les procédures de la campagne"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-700 disabled:opacity-50">
+                {openingWorkspace ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FolderOpen className="w-3.5 h-3.5" />}
+                Espace de travail
+              </button>
+            )}
             <button type="button" onClick={handleDownloadReport} disabled={downloading}
               title="Générer et télécharger le rapport Word"
               className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-200 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-50 disabled:opacity-50">
@@ -656,7 +680,7 @@ function CampaignDetail({
                   Reprendre
                 </button>
               )}
-              <button type="button" title="Supprimer le projet" onClick={handleDelete} disabled={actionLoading}
+              <button type="button" title="Supprimer la campagne" onClick={handleDelete} disabled={actionLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-red-200 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-50 disabled:opacity-50">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -827,9 +851,9 @@ interface CampaignsPanelProps {
 }
 
 export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps) {
-  const { profile } = useAuth();
+  const { access } = useAuth();
   const { fetchProcedures } = useProceduresStore();
-  const isAdmin = profile?.global_role === 'admin';
+  const isAdmin = !!access?.can_manage_campaigns;
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);

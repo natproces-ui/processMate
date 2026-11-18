@@ -3,7 +3,8 @@
 -- Pas de mémoire implicite : l'assistant d'une conversation du projet voit les
 -- instructions et les sources du projet, rien d'autre.
 -- Prérequis : conversations_schema.sql (conversations.project_id).
--- Campagnes : NON fusionnées. Lien facultatif projects.campaign_id seulement.
+-- Campagnes : NON fusionnées. Une campagne (ce qu'il faut livrer) a au plus UN projet
+-- de travail (l'endroit où l'on formalise) : projects.campaign_id, unique.
 -- Fichiers : bucket privé « processmate-files », préfixe projects/<project>/.
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS projects (
 );
 
 CREATE INDEX IF NOT EXISTS projects_owner_idx ON projects (owner_id, updated_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS projects_campaign_unique ON projects (campaign_id) WHERE campaign_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS project_members (
   project_id  UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

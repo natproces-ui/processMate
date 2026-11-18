@@ -5,6 +5,14 @@ Accès : le propriétaire, ou un membre (project_members). Écriture des instruc
 des sources : propriétaire ou éditeur. Toutes les fonctions publiques vérifient l'accès.
 
 Activation : avec les conversations (CONVERSATIONS_ENABLED).
+
+Projet de campagne (projects.campaign_id) : l'espace de travail d'une campagne de
+formalisation. La campagne dit CE QU'IL FAUT LIVRER (procédures, responsables,
+échéances, avancement) ; le projet est L'ENDROIT OÙ L'ON TRAVAILLE (instructions,
+sources, conversations). Un seul projet par campagne, créé à la demande (for_campaign).
+Les droits y sont calculés depuis la campagne, sans liste de membres à synchroniser :
+admin / responsable de processus / coordinateur / affecté à une procédure → éditeur ;
+autre membre actif de l'organisation → lecture ; compte non membre → aucun accès.
 """
 
 import hashlib
@@ -22,12 +30,53 @@ def _db():
     return conv_store._db()
 
 
+MANAGERS = ("admin", "process_owner")
+
+
+def active_profile(user_id: str) -> Optional[Dict[str, Any]]:
+    rows = (_db().table("user_profiles").select("id,global_role,status")
+            .eq("id", user_id).limit(1).execute().data)
+    return rows[0] if rows and rows[0].get("status") == "active" else None
+
+
+def _campaign_role(campaign_id: str, user_id: str) -> Optional[str]:
+    profile = active_profile(user_id)
+    if not profile:
+        return None
+    if profile.get("global_role") in MANAGERS:
+        return "editor"
+    if profile.get("global_role") == "viewer":
+        return "viewer"
+    camp = (_db().table("formalization_campaigns").select("coordinator_id")
+            .eq("id", campaign_id).limit(1).execute().data)
+    if camp and camp[0].get("coordinator_id") == user_id:
+        return "editor"
+    assigned = (_db().table("campaign_procedures").select("id").eq("campaign_id", campaign_id)
+                .eq("assigned_to", user_id).limit(1).execute().data)
+    return "editor" if assigned else "viewer"
+
+
 def _role(project: Dict[str, Any], user_id: str) -> Optional[str]:
     if project.get("owner_id") == user_id:
         return "owner"
     rows = (_db().table("project_members").select("role")
             .eq("project_id", project["id"]).eq("user_id", user_id).execute().data)
-    return rows[0]["role"] if rows else None
+    if rows:
+        return rows[0]["role"]
+    if project.get("campaign_id"):
+        return _campaign_role(project["campaign_id"], user_id)
+    return None
+
+
+def _my_campaign_ids(user_id: str) -> List[str]:
+    """Campagnes dont l'utilisateur est coordinateur ou affecté à une procédure."""
+    if not active_profile(user_id):
+        return []
+    ids = {c["id"] for c in _db().table("formalization_campaigns").select("id")
+           .eq("coordinator_id", user_id).execute().data}
+    ids |= {c["campaign_id"] for c in _db().table("campaign_procedures").select("campaign_id")
+            .eq("assigned_to", user_id).execute().data}
+    return sorted(ids)
 
 
 def get_accessible(project_id: str, user_id: str, write: bool = False) -> Optional[Dict[str, Any]]:
@@ -56,14 +105,72 @@ def list_for(user_id: str, include_archived: bool = False) -> List[Dict[str, Any
             shared = shared.is_("archived_at", "null")
         known = {r["id"] for r in rows}
         rows += [r for r in shared.execute().data if r["id"] not in known]
+    campaign_ids = _my_campaign_ids(user_id)
+    if campaign_ids:
+        camp = _db().table("projects").select("*").in_("campaign_id", campaign_ids)
+        if not include_archived:
+            camp = camp.is_("archived_at", "null")
+        known = {r["id"] for r in rows}
+        rows += [r for r in camp.execute().data if r["id"] not in known]
     return rows
 
 
-def create(user_id: str, name: str, instructions: str = "", campaign_id: Optional[str] = None) -> Dict[str, Any]:
+def create(user_id: str, name: str, instructions: str = "") -> Dict[str, Any]:
+    """Projet personnel. Le lien à une campagne passe uniquement par for_campaign."""
     row = {"owner_id": user_id, "name": (name or "Nouveau projet")[:120], "instructions": instructions or ""}
-    if campaign_id and conv_store.is_uuid(campaign_id):
-        row["campaign_id"] = campaign_id
     return _db().table("projects").insert(row).execute().data[0]
+
+
+def _campaign_instructions(campaign: Dict[str, Any]) -> str:
+    lines = [f"Campagne de formalisation « {campaign.get('title')} »."]
+    if campaign.get("description"):
+        lines.append(f"Objectif : {campaign['description']}")
+    if campaign.get("end_date"):
+        lines.append(f"Échéance : {campaign['end_date']}.")
+    lines.append("Formalisez chaque procédure de la campagne avec les conventions et le vocabulaire "
+                 "ci-dessous (à compléter par le coordinateur).")
+    return "\n".join(lines)
+
+
+def for_campaign(campaign_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    """Projet de travail de la campagne : le renvoie, ou le crée au premier appel.
+
+    Réservé aux membres actifs. None si la campagne n'existe pas ou si l'accès est refusé.
+    """
+    if not conv_store.is_uuid(campaign_id) or not active_profile(user_id):
+        return None
+    existing = (_db().table("projects").select("id").eq("campaign_id", campaign_id)
+                .order("created_at").limit(1).execute().data)
+    if not existing:
+        camp = (_db().table("formalization_campaigns").select("id,title,description,end_date")
+                .eq("id", campaign_id).limit(1).execute().data)
+        if not camp:
+            return None
+        row = {"owner_id": user_id, "name": f"Campagne · {camp[0]['title']}"[:120],
+               "instructions": _campaign_instructions(camp[0]), "campaign_id": campaign_id}
+        try:
+            existing = _db().table("projects").insert(row).execute().data
+        except Exception:  # créé au même instant par quelqu'un d'autre (index unique)
+            existing = (_db().table("projects").select("id").eq("campaign_id", campaign_id)
+                        .limit(1).execute().data)
+    return get_accessible(existing[0]["id"], user_id) if existing else None
+
+
+def campaign_summary(campaign_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    """Avancement de la campagne liée, pour la page du projet (membres actifs seulement)."""
+    if not active_profile(user_id):
+        return None
+    from routers.campaigns_router import _enrich_campaign  # mêmes statistiques que le pilotage
+    rows = _db().table("formalization_campaigns").select("*").eq("id", campaign_id).limit(1).execute().data
+    if not rows:
+        return None
+    c = _enrich_campaign(rows[0], _db(), with_lifecycle=True)
+    procs = [{"procedure_id": p["procedure_id"], "procedure_nom": p.get("procedure_nom") or "",
+              "procedure_ref": p.get("procedure_ref") or "", "status": p.get("status"),
+              "mine": p.get("assigned_to") == user_id}
+             for p in c.get("procedures", [])]
+    procs.sort(key=lambda p: (not p["mine"], p["procedure_nom"]))
+    return {k: c.get(k) for k in ("id", "title", "status", "start_date", "end_date", "stats")} | {"procedures": procs}
 
 
 def update(project_id: str, user_id: str, **fields) -> Optional[Dict[str, Any]]:
