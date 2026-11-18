@@ -11,7 +11,7 @@ import json
 import os
 from datetime import datetime
 from config import GOOGLE_API_KEY
-from manager.model_manager import generate_content, get_models_for_request
+from manager.model_manager import generate_content
 
 logger = logging.getLogger(__name__)
 
@@ -528,7 +528,6 @@ async def dot_parser_info():
     return {
         "module": "DOT to Table Converter",
         "version": "5.0.0 - BPMN Swimlanes",
-        "model": get_models_for_request()[0].value,
         "description": "Transformation avec swimlanes BPMN correctes (Département/Acteur/Outil distincts)",
         "swimlanes": {
             "département": "Direction/Service organisationnel (Direction RH, IT, Commercial...)",

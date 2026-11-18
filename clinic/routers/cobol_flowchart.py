@@ -12,7 +12,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from flowcharts.cobol_flowchart_generator import CobolFlowchartGenerator
-from config import GEMINI_MODEL_FLASH
+
 
 # ✅ Charger le fichier .env
 load_dotenv()
@@ -465,7 +465,6 @@ async def health_check():
             },
             "api_key_configured": "✅",
             "version": "3.0",
-            "model": GEMINI_MODEL_FLASH,
             "capabilities": [
                 "✅ Traduction technique → métier",
                 "✅ Flowcharts métier professionnels",

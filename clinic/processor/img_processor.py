@@ -138,7 +138,6 @@ class ImageProcessor:
             # PHASE 4 : Métadonnées enrichies
             # ============================================
             metadata = self._build_metadata(validated, image)
-            metadata["model_used"] = result["model_used"]
             metadata["attempts"] = result["attempts"]
             metadata["enrichments_count"] = len(enrichments_dict)
             metadata["classification"] = {
@@ -201,7 +200,6 @@ class ImageProcessor:
             validated = self._validate_and_normalize_workflow(improved_data)
             
             comparison = self._build_comparison_metadata(workflow, validated)
-            comparison["model_used"] = result["model_used"]
             comparison["attempts"] = result["attempts"]
             
             return {
@@ -257,7 +255,6 @@ class ImageProcessor:
             logger.info(f"✓ Vérification reçue ({len(response.text)} caractères)")
             
             verification_result = self._parse_verification_response(response.text)
-            verification_result["model_used"] = result["model_used"]
             verification_result["attempts"] = result["attempts"]
             
             return verification_result

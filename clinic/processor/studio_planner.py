@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from google.genai import types
 
 from manager.model_manager import GeminiModel, generate_content
+from config import MODEL_ROUTING_ENABLED
 from prompts.studio_planner_prompt import build_planner_prompt
 
 logger = logging.getLogger(__name__)
@@ -166,7 +167,9 @@ def plan_turn(
         parts,
         config=types.GenerateContentConfig(temperature=0.1, response_mime_type="application/json"),
         task_name="Aiguillage Studio",
-        models=[GeminiModel.LITE, GeminiModel.FLASH],  # toujours rapide : la qualité se joue à la génération
+        # Toujours rapide : la qualité se joue à la génération. Avec le routage activé,
+        # la table de model_routing (profil « routage ») décide, toujours sans PRO en Rapide/Normale.
+        models=None if MODEL_ROUTING_ENABLED else [GeminiModel.LITE, GeminiModel.FLASH],
     )
     try:
         data = _parse_json(response.text)

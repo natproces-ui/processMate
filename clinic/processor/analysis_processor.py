@@ -511,7 +511,7 @@ async def run_analysis(session_id, instruction, procedure_ids, files):
     )
     return {
         "artifact": artifact, "message": assistant_message,
-        "model_used": result.get("model_used"), "sources_meta": sources_meta,
+        "sources_meta": sources_meta,
         "autonomous": autonomous,
     }
 

@@ -93,7 +93,6 @@ Réponds UNIQUEMENT avec un seul mot : text_only ou contains_diagram"""
                 "debug": {
                     "raw_response": classification_text,
                     "filename": filename,
-                    "model_used": result["model_used"]
                 }
             }
 

@@ -58,7 +58,7 @@ export interface InterfaceDetectionResult {
     interfaces: InterfaceDetectee[];
     resume: InterfaceResume;
     metadata: {
-        model_used: string;
+        model_used?: string;
         attempts: number;
         taches_analysees: number;
         total_etapes_workflow: number;

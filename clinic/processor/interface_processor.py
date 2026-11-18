@@ -85,7 +85,6 @@ class InterfaceProcessor:
             "interfaces": validated,
             "resume": resume,
             "metadata": {
-                "model_used": result["model_used"],
                 "attempts": result["attempts"],
                 "taches_analysees": taches_analysees,
                 "total_etapes_workflow": len(workflow)

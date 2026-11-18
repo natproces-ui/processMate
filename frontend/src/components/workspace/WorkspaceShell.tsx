@@ -581,7 +581,7 @@ function RevisionTool({
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400 p-6">
       <Loader2 className="w-7 h-7 animate-spin text-blue-500" />
-      <p className="text-sm text-center">Gemini révise la procédure…</p>
+      <p className="text-sm text-center">L’assistant révise la procédure…</p>
       <p className="text-[11px] text-gray-300 text-center">20 à 60 secondes</p>
     </div>
   );
@@ -594,7 +594,7 @@ function RevisionTool({
       <div>
         <p className="font-semibold text-gray-800 text-sm">Révision IA</p>
         <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-          Gemini analyse la procédure et identifie les lacunes, ambiguïtés et points d&apos;amélioration
+          L’assistant analyse la procédure et identifie les lacunes, ambiguïtés et points d&apos;amélioration
         </p>
       </div>
       <button type="button" onClick={onRun}

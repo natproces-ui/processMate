@@ -348,7 +348,7 @@ export default function CorrectionsPanel() {
         </div>
         <div className="text-center">
           <p className="font-semibold text-gray-700 text-sm">Analyse en cours…</p>
-          <p className="text-xs text-gray-400 mt-1">Gemini examine les annotations du document</p>
+          <p className="text-xs text-gray-400 mt-1">L’assistant examine les annotations du document</p>
           <p className="text-[11px] text-gray-300 mt-2">Cela peut prendre 20 à 60 secondes</p>
         </div>
       </div>

@@ -7,10 +7,12 @@ import logging
 from typing import Optional, Callable, Any, Dict, List
 from enum import Enum
 import asyncio
+import time
 from google import genai
 from google.genai import errors as genai_errors
 from google.api_core import exceptions as google_exceptions
-from config import GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE, GEMINI_MODEL_TRANSCRIBE, GOOGLE_API_KEY
+from config import (GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE, GEMINI_MODEL_TRANSCRIBE, GOOGLE_API_KEY,
+                    GEMINI_MODEL_VISION_FAST, GEMINI_MODEL_CODE_FAST, MODEL_ROUTING_ENABLED)
 from manager.processing_level import ProcessingLevel, get_processing_level
 
 logger = logging.getLogger(__name__)
@@ -21,6 +23,10 @@ class GeminiModel(Enum):
     PRO = GEMINI_MODEL_PRO      # Approfondi : réfléchit davantage
     FLASH = GEMINI_MODEL_FLASH  # Normal : équilibre rapidité / qualité
     LITE = GEMINI_MODEL_LITE    # Rapide
+    # Profils spécialisés (manager/model_routing.py). Si une valeur égale une autre,
+    # le membre devient un alias (comportement normal d'Enum) : aucun impact.
+    VISION_FAST = GEMINI_MODEL_VISION_FAST  # images et PDF scannés, niveau Rapide
+    CODE_FAST = GEMINI_MODEL_CODE_FAST      # code source, niveau Rapide
 
 
 # Modèle principal puis secours, par niveau. Sans en-tête X-Processing-Level → Normal.
@@ -32,7 +38,21 @@ _MODELS_BY_LEVEL = {
 
 
 def get_models_for_request() -> List[GeminiModel]:
+    """Chaîne de modèles de la requête courante.
+
+    Par défaut : selon le niveau seul. Si MODEL_ROUTING_ENABLED et qu'un routing_scope est
+    posé (tâche + types de sources), selon la table de model_routing.
+    """
     level = get_processing_level() or ProcessingLevel.NORMAL
+    if MODEL_ROUTING_ENABLED:
+        from manager.model_routing import current_routing, resolve
+        routing = current_routing()
+        if routing is not None:
+            task, kinds = routing
+            chain = list(dict.fromkeys(GeminiModel[name] for name in resolve(task, kinds, level)))
+            logger.info(f"🧭 Routage : tâche={task.value} sources={','.join(kinds) or '-'} "
+                        f"niveau={level.value} → {chain[0].value}")
+            return chain
     return list(dict.fromkeys(_MODELS_BY_LEVEL[level]))
 
 
@@ -45,6 +65,15 @@ def _is_retryable(e: Exception) -> bool:
 
 
 _shared_client: Optional[genai.Client] = None
+
+
+def _log_call(task_name: str, model: "GeminiModel", started: float, response: Any = None, fallback: bool = False) -> None:
+    """Mesure par appel : tâche, modèle, secours, durée, jetons. Jamais de contenu utilisateur."""
+    usage = getattr(response, "usage_metadata", None)
+    tokens_in = getattr(usage, "prompt_token_count", None)
+    tokens_out = getattr(usage, "candidates_token_count", None)
+    logger.info(f"📏 {task_name} | modèle={model.value} | secours={'oui' if fallback else 'non'} | "
+                f"{time.monotonic() - started:.1f}s | jetons={tokens_in}/{tokens_out}")
 
 
 def _client() -> genai.Client:
@@ -95,11 +124,13 @@ def generate_content_stream(contents: Any, config: Any = None, task_name: str = 
     for i, model in enumerate(models):
         started = False
         try:
+            t0 = time.monotonic()
             for chunk in _client().models.generate_content_stream(model=model.value, contents=contents, config=config):
                 text = getattr(chunk, "text", None)
                 if text:
                     started = True
                     yield text
+            _log_call(task_name, model, t0, chunk if started else None, fallback=i > 0)
             return
         except Exception as e:
             if not started and i + 1 < len(models) and _is_retryable(e):
@@ -118,8 +149,11 @@ def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini
     """
     models = models or get_models_for_request()  # liste imposée (ex : aiguillage toujours rapide)
     for i, model in enumerate(models):
+        started = time.monotonic()
         try:
-            return _client().models.generate_content(model=model.value, contents=contents, config=config)
+            response = _client().models.generate_content(model=model.value, contents=contents, config=config)
+            _log_call(task_name, model, started, response, fallback=i > 0)
+            return response
         except Exception as e:
             if i + 1 < len(models) and _is_retryable(e):
                 logger.warning(f"⚠️ {task_name} : échec sur {model.value} ({str(e)[:120]}) → {models[i + 1].value}")
@@ -168,9 +202,9 @@ class ModelRetryStrategy:
             # Retry pour timeouts (1 seule fois maintenant)
             for attempt in range(1, self.max_retries + 1):
                 try:
+                    t0 = time.monotonic()
                     result = await task_func(model.value)
-
-                    logger.info(f"✅ {task_name} réussi avec {model.value} (tentative {attempt})")
+                    _log_call(task_name, model, t0, result, fallback=model_index > 0)
 
                     return {
                         "success": True,

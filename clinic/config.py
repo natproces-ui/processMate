@@ -31,6 +31,18 @@ GEMINI_MODEL_FLASH = os.getenv("GEMINI_MODEL_FLASH", "gemini-3.8-flash")
 GEMINI_MODEL_LITE = os.getenv("GEMINI_MODEL_LITE", "gemini-3.5-flash-lite")
 # Dictée vocale : modèle dédié (API Interactions, SDK google-genai >= 2.x)
 GEMINI_MODEL_TRANSCRIBE = os.getenv("GEMINI_MODEL_TRANSCRIBE", "gemini-3.5-transcribe")
+
+# Choix du modèle selon la tâche et le type de source (manager/model_routing.py).
+# Valeurs relevées le 18/11/2026 sur https://ai.google.dev/gemini-api/docs/models :
+# gemini-3.6-flash (stable) « équilibre rapidité et capacités multimodales » → images et PDF
+# scannés en Rapide ; gemini-3.8-flash (stable) orienté code et agents. Gemini 4 (carbon,
+# argon, hydrogen) est listé sans statut : on ne l'utilise pas par défaut, mais chaque
+# variable ci-dessous peut le désigner.
+GEMINI_MODEL_VISION_FAST = os.getenv("GEMINI_MODEL_VISION_FAST", "gemini-3.6-flash")
+GEMINI_MODEL_CODE_FAST = os.getenv("GEMINI_MODEL_CODE_FAST", GEMINI_MODEL_FLASH)
+GEMINI_MODEL_EMBEDDING = os.getenv("GEMINI_MODEL_EMBEDDING", "gemini-embedding-2")
+# Drapeau : sans lui, seul le niveau (Rapide / Normale / Approfondie) choisit le modèle, comme avant.
+MODEL_ROUTING_ENABLED = os.getenv("MODEL_ROUTING_ENABLED", "false").lower() == "true"
 if not GOOGLE_API_KEY and IS_PRODUCTION:
     raise ValueError("❌ GOOGLE_API_KEY manquante en production !")
 

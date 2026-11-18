@@ -36,6 +36,7 @@ from pydantic import BaseModel
 
 from manager.auth import AuthUser, get_optional_user
 from manager.guest_limits import GuestLimitError, check_files, client_ip, consume, guest_keys, load_limits
+from manager.model_routing import TaskKind, routing_scope, scrub_model_names, source_kinds_of
 from manager.processing_level import ProcessingLevel, get_processing_level, processing_level_scope
 from models.discovery_models import ProcessCard, SourceReference, SourceType
 from processor.studio_planner import plan_turn
@@ -185,8 +186,9 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
             try:
                 card = _card(proc, files)
                 src = [f for f in src_pool if f["file_id"] in {s.file_id for s in card.sources}] or src_pool
-                result = await processor.generate_process(selected_card=card, src_files=src, ref_files=ref_files,
-                                                          instructions=instructions, on_progress=on_progress)
+                with routing_scope(TaskKind.GENERATION_PROCEDURE, source_kinds_of(src)):
+                    result = await processor.generate_process(selected_card=card, src_files=src, ref_files=ref_files,
+                                                              instructions=instructions, on_progress=on_progress)
                 queue.put_nowait(("done", proc, result, None))
             except Exception as e:
                 logger.error(f"❌ Génération Studio « {proc.get('title')} » : {e}", exc_info=True)
@@ -214,7 +216,7 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
                     yield _sse({"type": "procedure_ready", "id": proc["id"], **done,
                                 "enrichments": result.get("enrichments") or {}})
                 else:
-                    yield _sse({"type": "procedure_error", "id": proc["id"], "title": proc["title"], "message": str(error)[:300]})
+                    yield _sse({"type": "procedure_error", "id": proc["id"], "title": proc["title"], "message": scrub_model_names(str(error))[:300]})
             if await request.is_disconnected():
                 logger.info("⏹️ Génération Studio interrompue par l'utilisateur")
                 stopped = True
@@ -240,7 +242,8 @@ async def _stream_remarks(request: Request, procedures: List[Dict[str, Any]], me
     end = object()
     full, sent = "", 0
     try:
-        stream = generate_content_stream(build_remarks_prompt(procedures, message), task_name="Remarques Studio")
+        with routing_scope(TaskKind.RELECTURE_CRITIQUE, ["texte"]):
+            stream = generate_content_stream(build_remarks_prompt(procedures, message), task_name="Remarques Studio")
         while True:
             chunk = await asyncio.to_thread(next, stream, end)
             if chunk is end:
@@ -338,7 +341,8 @@ async def studio_turn(
                 n = len(sess["files"])
                 label = f"Lecture de {n} fichier{'s' if n > 1 else ''}" if new_files else "Analyse de la demande"
                 yield _sse({"type": "status", "id": "plan", "label": label, "state": "running"})
-                plan = await asyncio.to_thread(plan_turn, message, new_files, has_workflow, history_list, sess.get("proposal"))
+                with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(new_files)):
+                    plan = await asyncio.to_thread(plan_turn, message, new_files, has_workflow, history_list, sess.get("proposal"))
                 found = len(plan.procedures)
                 done_label = (f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
                               if plan.action in ("generate", "propose", "merge") else label)
@@ -367,7 +371,7 @@ async def studio_turn(
                 yield _sse({"type": "error", "message": str(e), "limit": True})
             except Exception as e:
                 logger.error(f"❌ Tour Studio : {e}", exc_info=True)
-                yield _sse({"type": "error", "message": str(e)[:300]})
+                yield _sse({"type": "error", "message": scrub_model_names(str(e))[:300]})
             finally:
                 yield _sse({"type": "done"})
 
@@ -379,10 +383,11 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
     from processor.chat_processor import ChatProcessor
     chat_files = [{"filename": f["filename"], "content": f["data"],
                    "content_type": "application/pdf" if f["type"] == "pdf" else "image/*", "type": f["type"]} for f in files]
-    result = await ChatProcessor().process_message(
-        message=message, files=chat_files, history=history, current_workflow=workflow,
-        current_enrichments=_loads(enrichments_raw, None), current_procedure_metadata=_loads(metadata_raw, None),
-    )
+    with routing_scope(TaskKind.MODIFICATION_PROCEDURE, source_kinds_of(files) if files else ["texte"]):
+        result = await ChatProcessor().process_message(
+            message=message, files=chat_files, history=history, current_workflow=workflow,
+            current_enrichments=_loads(enrichments_raw, None), current_procedure_metadata=_loads(metadata_raw, None),
+        )
     yield _sse({"type": "chat_result", "result": result})
 
 
@@ -415,7 +420,7 @@ async def studio_generate(request: Request, body: GenerateRequest,
                     yield ev
             except Exception as e:
                 logger.error(f"❌ Génération Studio : {e}", exc_info=True)
-                yield _sse({"type": "error", "message": str(e)[:300]})
+                yield _sse({"type": "error", "message": scrub_model_names(str(e))[:300]})
             finally:
                 yield _sse({"type": "done"})
 

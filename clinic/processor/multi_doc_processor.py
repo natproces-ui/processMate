@@ -727,7 +727,6 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
             "enrichments": enrichments_dict,
             "procedureMetadata": procedure_metadata,
             "metadata": {
-                "model_used": result["model_used"],
                 "attempts": result["attempts"],
                 "sources_used": [f["filename"] for f in relevant_srcs],
                 "refs_used": [f["filename"] for f in ref_files],
