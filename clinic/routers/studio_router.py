@@ -30,11 +30,13 @@ import time
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from manager.processing_level import get_processing_level, processing_level_scope
+from manager.auth import AuthUser, get_optional_user
+from manager.guest_limits import GuestLimitError, check_files, client_ip, consume, guest_keys, load_limits
+from manager.processing_level import ProcessingLevel, get_processing_level, processing_level_scope
 from models.discovery_models import ProcessCard, SourceReference, SourceType
 from processor.studio_planner import plan_turn
 from processor.office_extract import extract_office, office_type
@@ -264,6 +266,29 @@ async def _stream_remarks(request: Request, procedures: List[Dict[str, Any]], me
     yield _sse({"type": "status", "id": "remarks", "label": "Relecture de la procédure", "state": "done"})
 
 
+def _guest(request: Request, user: Optional[AuthUser]):
+    """Clés de comptage d'un invité, ou None (utilisateur connecté, ou limites désactivées)."""
+    if user is not None or not load_limits().enabled:
+        return None
+    ip = client_ip(request.headers, request.client.host if request.client else None)
+    return guest_keys(request.headers.get("x-device-id"), ip)
+
+
+def _level_for(guest) -> Optional[ProcessingLevel]:
+    """Un invité n'a pas accès au niveau Approfondi : rabattu sur Normal."""
+    level = get_processing_level()
+    if guest is not None and level == ProcessingLevel.DEEP:
+        return ProcessingLevel.NORMAL
+    return level
+
+
+def _consume_or_raise(keys, kind: str) -> None:
+    try:
+        consume(keys, kind)
+    except GuestLimitError as e:
+        raise HTTPException(e.status, str(e))
+
+
 def _streaming(gen) -> StreamingResponse:
     return StreamingResponse(gen, media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -279,9 +304,17 @@ async def studio_turn(
     current_enrichments: Optional[str] = Form(None),
     current_procedure_metadata: Optional[str] = Form(None),
     files: List[UploadFile] = File(default=[]),
+    user: Optional[AuthUser] = Depends(get_optional_user),
 ):
     _purge_sessions()
+    guest = _guest(request, user)
     new_files = await _read_files(files)
+    if guest is not None:
+        try:
+            check_files(new_files)
+        except GuestLimitError as e:
+            raise HTTPException(e.status, str(e))
+        _consume_or_raise(guest, "turns")
     history_list = _loads(history, [])
     workflow = _loads(current_workflow, None)
     has_workflow = bool(workflow)
@@ -289,7 +322,7 @@ async def studio_turn(
     sess["updated"] = time.time()
     if new_files:  # nouveaux fichiers = nouveau contexte
         sess["files"], sess["proposal"] = new_files, None
-    level = get_processing_level()
+    level = _level_for(guest)
 
     async def stream():
         with processing_level_scope(level):  # le niveau suit tout le flux, y compris les tâches parallèles
@@ -320,6 +353,8 @@ async def studio_turn(
                 if plan.action == "propose":
                     yield _sse({"type": "proposal", "procedures": plan.procedures, "selected": [p["id"] for p in plan.procedures]})
                 elif plan.action in ("generate", "merge"):
+                    if guest is not None:
+                        consume(guest, "generations")  # GuestLimitError → message d'erreur ci-dessous
                     async for ev in _generate(request, sess["files"], plan.procedures, plan.targets,
                                               plan.action == "merge", plan.merged_title, message,
                                               sess.get("references")):
@@ -328,6 +363,8 @@ async def studio_turn(
                     async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata):
                         yield ev
                 # answer : la réponse a déjà été envoyée
+            except GuestLimitError as e:
+                yield _sse({"type": "error", "message": str(e), "limit": True})
             except Exception as e:
                 logger.error(f"❌ Tour Studio : {e}", exc_info=True)
                 yield _sse({"type": "error", "message": str(e)[:300]})
@@ -358,13 +395,17 @@ class GenerateRequest(BaseModel):
 
 
 @router.post("/generate")
-async def studio_generate(request: Request, body: GenerateRequest):
+async def studio_generate(request: Request, body: GenerateRequest,
+                          user: Optional[AuthUser] = Depends(get_optional_user)):
     """Génère la sélection faite par l'utilisateur dans une proposition."""
     sess = _sessions.get(body.session_id)
     if not sess or not sess.get("proposal"):
         raise HTTPException(404, "Conversation expirée : rejoignez les fichiers à nouveau.")
+    guest = _guest(request, user)
+    if guest is not None:
+        _consume_or_raise(guest, "generations")
     sess["updated"] = time.time()
-    level = get_processing_level()
+    level = _level_for(guest)
 
     async def stream():
         with processing_level_scope(level):

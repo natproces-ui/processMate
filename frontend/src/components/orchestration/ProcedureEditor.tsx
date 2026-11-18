@@ -100,6 +100,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     // ─── UI ───────────────────────────────────────────────────
     const [activeSection, setActiveSection] = useState<Section>('caracteristiques');
     const [chatOpen, setChatOpen] = useState(false);
+    const [chatMounted, setChatMounted] = useState(false);
+    useEffect(() => { if (chatOpen) setChatMounted(true); }, [chatOpen]);
     const [editorFullscreen, setEditorFullscreen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveModalOpen, setSaveModalOpen] = useState(false);
@@ -516,15 +518,18 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
                 {/* Chat */}
-                {chatOpen && (
-                    <ChatInterface
-                        currentWorkflow={data}
-                        currentEnrichments={enrichments}
-                        currentProcedureMetadata={meta}
-                        onWorkflowGenerated={handleWorkflowFromChat}
-                        onError={showError}
-                        onSuccess={showSuccess}
-                    />
+                {/* Monté dès la première ouverture puis seulement masqué : la conversation survit au masquage */}
+                {chatMounted && (
+                    <div hidden={!chatOpen}>
+                        <ChatInterface
+                            currentWorkflow={data}
+                            currentEnrichments={enrichments}
+                            currentProcedureMetadata={meta}
+                            onWorkflowGenerated={handleWorkflowFromChat}
+                            onError={showError}
+                            onSuccess={showSuccess}
+                        />
+                    </div>
                 )}
 
                 {/* ══════════════════════════════════════════════

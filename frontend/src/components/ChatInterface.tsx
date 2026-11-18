@@ -5,6 +5,7 @@ import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
 import { applyOperations } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
+import { getAuthHeaders } from '@/lib/authHeaders';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
@@ -109,6 +110,8 @@ interface ChatInterfaceProps {
     onFilesSent?: (files: File[]) => void;
     /** Clic sur « étape N » dans une réponse : surligner ces étapes dans le tableau */
     onFocusSteps?: (ids: string[]) => void;
+    /** Activité (nombre de messages, réponse en cours) : indicateur quand l'assistant est masqué */
+    onActivity?: (activity: { messages: number; busy: boolean }) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -197,6 +200,7 @@ export default function ChatInterface({
     onCollapse,
     onFilesSent,
     onFocusSteps,
+    onActivity,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -255,6 +259,10 @@ export default function ChatInterface({
     useEffect(() => {
         initSession();
     }, []);
+
+    useEffect(() => {
+        onActivity?.({ messages: messages.length, busy: loading });
+    }, [messages.length, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Identifiant de conversation local : plus de session créée en base à chaque ouverture
     const initSession = async () => {
@@ -404,7 +412,7 @@ export default function ChatInterface({
                 applyChatResult(ev.result, msgId);
                 break;
             case 'error':
-                updateMsg(msgId, m => ({ ...m, content: m.content || 'Une erreur est survenue.' }));
+                updateMsg(msgId, m => ({ ...m, content: ev.limit ? ev.message : (m.content || 'Une erreur est survenue.') }));
                 onError(ev.message || 'Erreur lors du traitement');
                 break;
         }
@@ -417,10 +425,14 @@ export default function ChatInterface({
         updateMsg(msgId, m => ({ ...m, streaming: true, startedAt: Date.now() }));
         setLoading(true);
         try {
-            const res = await fetch(url, { ...init, signal: controller.signal });
+            const headers = { ...(await getAuthHeaders()), ...((init.headers as Record<string, string>) || {}) };
+            const res = await fetch(url, { ...init, headers, signal: controller.signal });
             if (!res.ok || !res.body) {
                 const detail = await res.json().then(d => d.detail).catch(() => null);
-                throw new Error(detail || `Erreur serveur (${res.status})`);
+                // 401 (session expirée), 413 et 429 (limites du mode invité) : message lisible tel quel
+                const err: Error & { userFacing?: boolean } = new Error(detail || `Erreur serveur (${res.status})`);
+                err.userFacing = [401, 413, 429].includes(res.status) && !!detail;
+                throw err;
             }
             const reader = res.body.getReader();
             const decoder = new TextDecoder();
@@ -454,7 +466,7 @@ export default function ChatInterface({
                 }));
                 setTimeout(() => stoppedKeys.forEach(k => onProcedureError?.(k, 'Arrêté')), 0);
             } else {
-                updateMsg(msgId, m => ({ ...m, content: m.content || 'Une erreur est survenue.' }));
+                updateMsg(msgId, m => ({ ...m, content: m.content || (err?.userFacing ? err.message : 'Une erreur est survenue.') }));
                 onError(err?.message || 'Erreur lors du traitement');
             }
         } finally {

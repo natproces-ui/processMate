@@ -103,6 +103,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [view, setView] = useState<'table' | 'bpmn' | 'fiche'>('bpmn');
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
+    const [chatActivity, setChatActivity] = useState({ messages: 0, busy: false });
     const [chatWidth, setChatWidth] = useState(400);
     const LAYOUT_KEY = 'processmate-studio-layout';
     useEffect(() => {
@@ -775,8 +776,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
 
                 <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
                 {/* Conversation : pleine hauteur, composeur en bas */}
-                {chatOpen && (
-                <aside aria-label="Conversation" style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
+                {/* Toujours monté : masquer l'assistant ne doit pas effacer la conversation */}
+                <aside aria-label="Conversation" hidden={!chatOpen} style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
                     className="relative shrink-0 h-[55vh] lg:h-auto lg:w-[var(--chat-w)] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white">
                     <ChatInterface
                         inputContextVisible={codeSourceOpen}
@@ -802,21 +803,25 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onFilesSent={files => setSourceFiles(prev => [...prev, ...files].slice(-20))}
                         onFocusSteps={handleFocusSteps}
                         onCollapse={() => toggleChat(false)}
+                        onActivity={setChatActivity}
                     />
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
                         onMouseDown={startChatResize}
                         className="hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-blue-400/30" />
                 </aside>
-                )}
                 {/* Procédure : en-tête (onglets + vues + actions) puis la vue choisie en pleine hauteur */}
                 <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
                     <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5">
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
                         <div className="flex items-center gap-3 min-w-0">
                             {!chatOpen && (
-                                <button type="button" onClick={() => toggleChat(true)} title="Afficher l’assistant"
+                                <button type="button" onClick={() => toggleChat(true)}
+                                    title={chatActivity.busy ? 'Afficher l’assistant (réponse en cours)' : 'Afficher l’assistant'}
                                     className="shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
                                     <PanelLeftOpen className="w-3.5 h-3.5" /> Assistant
+                                    {chatActivity.busy
+                                        ? <span aria-label="Réponse en cours" className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                        : chatActivity.messages > 0 && <span className="min-w-[18px] rounded-full bg-slate-100 px-1.5 text-[10px] font-semibold text-slate-600">{chatActivity.messages}</span>}
                                 </button>
                             )}
                             {onBack && (

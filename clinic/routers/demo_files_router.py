@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from fastapi.responses import Response
 
 from database.supabase_client import get_supabase
+from manager.auth import require_user
 
 logger = logging.getLogger(__name__)
 
@@ -30,16 +31,8 @@ MAX_BYTES = 20 * 1024 * 1024  # même limite que le chat (ChatInterface.addFiles
 
 
 def require_admin(authorization: str = Header(default="")) -> str:
-    token = authorization.removeprefix("Bearer ").strip()
-    if not token:
-        raise HTTPException(401, "Connexion requise")
+    user = require_user(authorization)  # 401 si absent ou invalide (manager/auth.py)
     db = get_supabase()
-    try:
-        user = db.auth.get_user(token).user
-    except Exception:
-        user = None
-    if not user:
-        raise HTTPException(401, "Session invalide ou expirée")
     profile = db.table("user_profiles").select("global_role").eq("id", user.id).execute().data
     if not profile or profile[0].get("global_role") != "admin":
         raise HTTPException(403, "Réservé aux administrateurs")
