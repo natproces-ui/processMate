@@ -172,9 +172,19 @@ def campaign_summary(campaign_id: str, user_id: str) -> Optional[Dict[str, Any]]
     if not rows:
         return None
     c = _enrich_campaign(rows[0], _db(), with_lifecycle=True)
-    procs = [{"procedure_id": p["procedure_id"], "procedure_nom": p.get("procedure_nom") or "",
+    from manager.campaign_items import raci_of
+
+    def mine(p: Dict[str, Any]) -> bool:
+        if p.get("assigned_to") == user_id:
+            return True
+        try:  # emplacements : « mes procédures » = celles dont je suis R
+            return user_id in raci_of(p)["R"]
+        except Exception:
+            return False
+
+    procs = [{"id": p.get("id"), "procedure_id": p.get("procedure_id"), "procedure_nom": p.get("procedure_nom") or "",
               "procedure_ref": p.get("procedure_ref") or "", "status": p.get("status"),
-              "mine": p.get("assigned_to") == user_id}
+              "echeance": p.get("echeance"), "mine": mine(p)}
              for p in c.get("procedures", [])]
     procs.sort(key=lambda p: (not p["mine"], p["procedure_nom"]))
     return {k: c.get(k) for k in ("id", "title", "status", "start_date", "end_date", "stats")} | {"procedures": procs}

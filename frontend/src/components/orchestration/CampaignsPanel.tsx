@@ -18,6 +18,8 @@ import { useProceduresStore } from '@/store/proceduresStore';
 import { useAuth } from '@/context/AuthContext';
 import { CONVERSATIONS_ENABLED } from '@/lib/conversationsApi';
 import { projectsApi } from '@/lib/projectsApi';
+import { CAMPAIGN_SLOTS_ENABLED } from '@/lib/campaignSlotsApi';
+import CampaignSlots from '@/components/orchestration/CampaignSlots';
 import type { Procedure } from '@/lib/orchestrationApi';
 
 // ─── Types internes ───────────────────────────────────────────
@@ -649,7 +651,7 @@ function CampaignDetail({
                 {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
                 Synchroniser
               </button>
-              {campaign.status === 'draft' && (
+              {campaign.status === 'draft' && !CAMPAIGN_SLOTS_ENABLED && (
                 <button type="button" onClick={handleLaunch} disabled={actionLoading}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
                   {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlayCircle className="w-3.5 h-3.5" />}
@@ -705,6 +707,12 @@ function CampaignDetail({
         </div>
       </div>
 
+      {CAMPAIGN_SLOTS_ENABLED ? (
+        <div className="flex-1 min-h-0">
+          <CampaignSlots campaignId={campaign.id} campaignStatus={campaign.status} canManage={isAdmin}
+            onChanged={onRefresh} onOpenProcedure={onOpenProcedure} />
+        </div>
+      ) : (<>
       {/* Barre d'outils */}
       <div className="shrink-0 px-5 py-3 bg-white border-b border-gray-100 flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
@@ -834,6 +842,7 @@ function CampaignDetail({
           </table>
         )}
       </div>
+      </>)}
 
       {showAddModal && (
         <AddProceduresModal campaignId={campaign.id} alreadyAdded={alreadyAdded}

@@ -9,7 +9,8 @@ import { projectsApi, type Project, type ProjectCampaign, type ProjectSource } f
 import { Loader2, Megaphone, MessageSquare, Paperclip, PenLine, Plus, Trash2, X } from 'lucide-react';
 
 const PROC_STATUS: Record<string, string> = {
-    pending: 'À faire', in_progress: 'En cours', formalized: 'Formalisée', validated: 'Validée', skipped: 'Écartée',
+    pending: 'À faire', in_progress: 'En cours', submitted: 'Soumise', in_review: 'En relecture',
+    formalized: 'Formalisée', validated: 'Validée', skipped: 'Écartée',
 };
 
 /** Campagne liée : ce qu'il faut livrer. Le projet, lui, est l'endroit où l'on travaille. */
@@ -49,15 +50,18 @@ function CampaignBlock({ campaign, projectId }: { campaign: ProjectCampaign; pro
             {list.length === 0 ? <p className="text-xs text-slate-400">Aucune procédure dans la campagne.</p> : (
                 <ul className="divide-y divide-slate-100">
                     {list.map(p => (
-                        <li key={p.procedure_id} className="flex items-center gap-3 py-2">
+                        <li key={p.id || p.procedure_id || p.procedure_nom} className="flex items-center gap-3 py-2">
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm text-slate-800">{p.procedure_nom || 'Procédure sans nom'}</p>
-                                <p className="text-xs text-slate-400">{[p.procedure_ref, PROC_STATUS[p.status] || p.status].filter(Boolean).join(' · ')}</p>
+                                <p className="text-xs text-slate-400">{[p.procedure_ref, PROC_STATUS[p.status] || p.status,
+                                    p.echeance ? `échéance ${new Date(p.echeance).toLocaleDateString('fr-FR')}` : null].filter(Boolean).join(' · ')}</p>
                             </div>
-                            <Link href={`/?projet=${projectId}&procedure=${p.procedure_id}`}
-                                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">
-                                <PenLine className="w-3.5 h-3.5" /> Formaliser
-                            </Link>
+                            {p.procedure_id ? (
+                                <Link href={`/?projet=${projectId}&procedure=${p.procedure_id}`}
+                                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-50">
+                                    <PenLine className="w-3.5 h-3.5" /> Formaliser
+                                </Link>
+                            ) : <span className="shrink-0 text-[11px] text-slate-400">au lancement</span>}
                         </li>
                     ))}
                 </ul>

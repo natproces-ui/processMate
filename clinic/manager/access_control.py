@@ -100,6 +100,8 @@ RULES: List[Rule] = [
     _r(r"^/api/campaigns/?$", MEMBER, "POST", roles=MANAGERS),
     _r(rf"^/api/campaigns/{_ID}/?$", MEMBER, "DELETE", roles=MANAGERS),
     _r(rf"^/api/campaigns/{_ID}/(launch|close|block|pause|resume)/?$", MEMBER, "POST", roles=MANAGERS),
+    # Emplacements : la structure de la campagne est l'affaire du pilotage
+    _r(rf"^/api/campaigns/{_ID}/emplacements(/.*)?$", MEMBER, "POST,PUT,PATCH,DELETE", roles=MANAGERS),
 ]
 DEFAULT_API_LEVEL = MEMBER
 

@@ -27,7 +27,7 @@ export interface ProjectCampaign {
     start_date: string | null;
     end_date: string | null;
     stats: { total: number; done: number; in_progress: number; pending: number; progress_pct: number };
-    procedures: { procedure_id: string; procedure_nom: string; procedure_ref: string; status: string; mine: boolean }[];
+    procedures: { id?: string; procedure_id: string | null; procedure_nom: string; procedure_ref: string; status: string; echeance?: string | null; mine: boolean }[];
 }
 
 const base = () => API_CONFIG.getFullUrl('/api/projects');

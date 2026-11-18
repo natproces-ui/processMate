@@ -3,14 +3,19 @@ Campagnes de formalisation — ProcessMate
 Coordonne la formalisation groupée de procédures avec suivi du cycle de vie réel.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
+import asyncio
+import os
 import uuid
 import logging
 
 from database.supabase_client import get_supabase
+from manager import access_control as ac
+from manager import campaign_items as slots
+from manager.access_control import Access, current_access
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/campaigns", tags=["Campagnes"])
@@ -92,7 +97,7 @@ def _enrich_campaign(campaign: dict, db, with_lifecycle: bool = True) -> dict:
     procs = cp_res.data or []
 
     if with_lifecycle and procs:
-        proc_ids = [p["procedure_id"] for p in procs]
+        proc_ids = [p["procedure_id"] for p in procs if p.get("procedure_id")]
         wf_res = db.table("workflows").select("id, procedure_metadata_json, taxonomy_id").in_("id", proc_ids).execute()
         wf_map = {r["id"]: r for r in (wf_res.data or [])}
 
@@ -120,8 +125,8 @@ def _enrich_campaign(campaign: dict, db, with_lifecycle: bool = True) -> dict:
     def _is_in_progress(p: dict) -> bool:
         lc = p.get("lifecycle")
         if lc:
-            return lc["formalisation_in_progress"] or p["status"] == "in_progress"
-        return p["status"] == "in_progress"
+            return lc["formalisation_in_progress"] or p["status"] in ("in_progress", "submitted", "in_review")
+        return p["status"] in ("in_progress", "submitted", "in_review")
 
     total = len(procs)
     done = sum(1 for p in procs if _is_done(p))
@@ -153,7 +158,7 @@ async def list_campaigns():
 
         # Récupère lifecycle + nom/ref pour chaque procédure
         if procs:
-            pids = [p["procedure_id"] for p in procs]
+            pids = [p["procedure_id"] for p in procs if p.get("procedure_id")]
             wf_res = db.table("workflows").select("id, procedure_metadata_json, taxonomy_id").in_("id", pids).execute()
             wf_map = {r["id"]: r for r in (wf_res.data or [])}
             for p in procs:
@@ -174,7 +179,7 @@ async def list_campaigns():
 
         def _is_ip(p):
             lc = p.get("lifecycle")
-            return (lc and lc["formalisation_in_progress"]) or p["status"] == "in_progress"
+            return (lc and lc["formalisation_in_progress"]) or p["status"] in ("in_progress", "submitted", "in_review")
 
         done = sum(1 for p in procs if _is_done(p))
         in_progress = sum(1 for p in procs if not _is_done(p) and _is_ip(p))
@@ -243,7 +248,10 @@ async def delete_campaign(campaign_id: str):
 
 
 @router.post("/{campaign_id}/launch")
-async def launch_campaign(campaign_id: str):
+def launch_campaign(campaign_id: str, access: Access = Depends(current_access)):
+    if slots_enabled():
+        # Emplacements : vérifications (RACI, échéance), procédures vides, tâches « Formaliser »
+        return {"success": True, "status": "active", **_launch_v2(campaign_id, access)}
     db = get_supabase()
     db.table("formalization_campaigns").update({
         "status": "active",
@@ -301,7 +309,7 @@ async def sync_campaign(campaign_id: str):
     if not procs:
         return {"success": True, "synced": 0}
 
-    pids = [p["procedure_id"] for p in procs]
+    pids = [p["procedure_id"] for p in procs if p.get("procedure_id")]
     wf_res = db.table("workflows").select("id, procedure_metadata_json").in_("id", pids).execute()
     wf_map = {r["id"]: r for r in (wf_res.data or [])}
 
@@ -398,3 +406,156 @@ async def update_procedure_status(campaign_id: str, procedure_id: str, body: Cam
     db.table("campaign_procedures").update(updates) \
         .eq("campaign_id", campaign_id).eq("procedure_id", procedure_id).execute()
     return {"success": True}
+
+
+# ─── Emplacements (prompt 5) ──────────────────────────────────
+# Procédures attendues d'une campagne : voir manager/campaign_items.py.
+# Actif avec CAMPAIGN_SLOTS_ENABLED=true (sinon 404, ancien comportement intact).
+
+def slots_enabled() -> bool:
+    return os.getenv("CAMPAIGN_SLOTS_ENABLED", "false").strip().lower() == "true"
+
+
+def _slots() -> None:
+    if not slots_enabled():
+        raise HTTPException(404, "Emplacements de campagne non activés")
+
+
+def _call(fn, *args, **kwargs):
+    try:
+        return fn(*args, **kwargs)
+    except slots.CampaignError as e:
+        raise HTTPException(e.status, {"message": str(e), "details": e.details} if e.details else str(e))
+
+
+class SlotEntry(BaseModel):
+    titre: Optional[str] = None
+    reference: Optional[str] = None
+    procedure_id: Optional[str] = None
+    taxonomy_id: Optional[str] = None
+    equipe_id: Optional[str] = None
+    echeance: Optional[str] = None
+    origine: Optional[str] = None
+    notes: Optional[str] = None
+    raci: Optional[Dict[str, Any]] = None
+
+
+class SlotsCreate(BaseModel):
+    entries: List[SlotEntry]
+    force: bool = False
+
+
+class SlotUpdate(BaseModel):
+    procedure_nom: Optional[str] = None
+    procedure_ref: Optional[str] = None
+    taxonomy_id: Optional[str] = None
+    equipe_id: Optional[str] = None
+    echeance: Optional[str] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    procedure_id: Optional[str] = None
+    unlink: bool = False
+
+
+class SlotsBulk(BaseModel):
+    ids: List[str]
+    echeance: Optional[str] = None
+    equipe_id: Optional[str] = None
+    status: Optional[str] = None
+
+
+class SlotsRaci(BaseModel):
+    ids: List[str]
+    raci: Dict[str, Any]
+    partial: bool = False
+
+
+@router.get("/{campaign_id}/emplacements", dependencies=[Depends(_slots)])
+def list_slots(campaign_id: str):
+    _call(slots.campaign, campaign_id)
+    return {"emplacements": slots.items(campaign_id), "problemes_lancement": slots.launch_problems(campaign_id)}
+
+
+@router.post("/{campaign_id}/emplacements", dependencies=[Depends(_slots)])
+def create_slots(campaign_id: str, body: SlotsCreate, access: Access = Depends(current_access)):
+    entries = [e.model_dump(exclude_none=True) for e in body.entries]
+    return _call(slots.create_items, campaign_id, entries, access.user.id, body.force)
+
+
+@router.patch("/{campaign_id}/emplacements/{item_id}", dependencies=[Depends(_slots)])
+def update_slot(campaign_id: str, item_id: str, body: SlotUpdate):
+    fields = body.model_dump(exclude_none=True)
+    fields.pop("unlink", None)
+    if body.unlink:
+        _call(slots.link, campaign_id, item_id, None)
+        fields.pop("procedure_id", None)
+    return {"emplacement": _call(slots.update_item, campaign_id, item_id, fields)}
+
+
+@router.patch("/{campaign_id}/emplacements", dependencies=[Depends(_slots)])
+def bulk_update_slots(campaign_id: str, body: SlotsBulk):
+    fields = {k: v for k, v in (("echeance", body.echeance), ("equipe_id", body.equipe_id), ("status", body.status)) if v is not None}
+    for iid in body.ids:
+        _call(slots.update_item, campaign_id, iid, fields)
+    return {"success": True, "count": len(body.ids)}
+
+
+@router.put("/{campaign_id}/emplacements/raci", dependencies=[Depends(_slots)])
+def set_slots_raci(campaign_id: str, body: SlotsRaci):
+    return {"success": True, "count": _call(slots.set_raci, campaign_id, body.ids, body.raci, body.partial)}
+
+
+@router.delete("/{campaign_id}/emplacements/{item_id}", dependencies=[Depends(_slots)])
+def delete_slot(campaign_id: str, item_id: str):
+    _call(slots.delete_item, campaign_id, item_id)
+    return {"success": True}
+
+
+@router.post("/{campaign_id}/emplacements/depuis-document", dependencies=[Depends(_slots)])
+async def slots_from_document(campaign_id: str, files: List[UploadFile] = File(...),
+                              access: Access = Depends(current_access)):
+    """Lit un document et PROPOSE des emplacements (rien n'est créé : on coche, puis POST)."""
+    from processor.studio_planner import plan_turn
+    from routers.studio_router import _read_files  # mêmes formats et limites que le chat
+    from manager.model_routing import TaskKind, routing_scope, source_kinds_of
+    _call(slots.campaign, campaign_id)
+    entries = await _read_files(files)
+    with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(entries)):
+        plan = await asyncio.to_thread(
+            plan_turn, "Liste toutes les procédures décrites dans ce document, sans les générer.", entries, False, [], None)
+    candidates = [{"titre": p.get("title") or p.get("titre") or "", "resume": p.get("summary") or p.get("description") or ""}
+                  for p in plan.procedures if (p.get("title") or p.get("titre"))]
+    # Le document rejoint les sources du projet de la campagne (si les projets sont actifs)
+    try:
+        from manager import conversation_store, project_store
+        if conversation_store.enabled():
+            project = await asyncio.to_thread(project_store.for_campaign, campaign_id, access.user.id)
+            if project:
+                await asyncio.to_thread(project_store.add_sources, project["id"], access.user.id, entries)
+    except Exception as e:
+        logger.warning(f"Document non ajouté au projet de la campagne : {str(e)[:120]}")
+    doublons = await asyncio.to_thread(slots.duplicates, campaign_id, [c["titre"] for c in candidates], [])
+    return {"candidats": candidates, "doublons": doublons, "fichiers": [f["filename"] for f in entries]}
+
+
+def _launch_v2(campaign_id: str, access: Access) -> Dict[str, Any]:
+    from routers.orchestration_router import create_procedure_shell
+    from routers.orchestration_tasks_router import TaskCreate, _create_task_core
+
+    def shell(nom, ref, taxonomy_id):
+        return create_procedure_shell(nom, ref, taxonomy_id, created_from="campagne")["id"]
+
+    def task(procedure_id, assigned_to, assigned_by, titre, echeance, metadata):
+        body = TaskCreate(title=titre, assigned_to=assigned_to, assigned_by=assigned_by, raci_role="R",
+                          task_type="formalization", due_date=echeance, metadata=metadata)
+        return _create_task_core(procedure_id, body, send_email=False)
+
+    result = _call(slots.launch, campaign_id, access.user.id, shell, task)
+    try:  # espace de travail de la campagne (projet), s'il n'existe pas encore
+        from manager import conversation_store, project_store
+        if conversation_store.enabled():
+            project_store.for_campaign(campaign_id, access.user.id)
+    except Exception as e:
+        logger.warning(f"Projet de campagne non créé : {str(e)[:120]}")
+    ac.audit("campagne.lancee", access.user, access.organisation_id, "campagne", campaign_id, result)
+    return result

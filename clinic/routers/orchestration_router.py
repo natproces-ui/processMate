@@ -621,6 +621,40 @@ class CreateProcedureRequest(BaseModel):
 
 
 
+def create_procedure_shell(nom: str, ref: Optional[str] = None, taxonomy_id: Optional[str] = None,
+                           created_from: str = "campagne", description: Optional[str] = None,
+                           category: Optional[str] = None) -> Dict[str, Any]:
+    """Procédure vide (brouillon) dans le référentiel : session + workflow v1. Renvoie la ligne workflow."""
+    db = get_supabase()
+    session_result = db.table("sessions").insert({"title": nom.strip()}).execute()
+    if not session_result.data:
+        raise HTTPException(status_code=500, detail="Échec création session")
+    session_id = session_result.data[0]["id"]
+    _init_stages = [dict(s) for s in DEFAULT_LIFECYCLE_STAGES]
+    _init_stages[0]["status"] = "in_progress"
+    meta = {
+        "nom": nom.strip(), "ref": ref, "category": category, "objet": description,
+        "status": "Brouillon", "lifecycle_stages": _init_stages,
+        "raci": {"people": [], "matrix": {}}, "remarks": [], "created_from": created_from,
+    }
+    wf_row: dict = {
+        "session_id": session_id, "title": nom.strip(), "workflow_json": [], "enrichments_json": {},
+        "procedure_metadata_json": normalize_procedure_metadata(meta), "version": 1,
+    }
+    if taxonomy_id:
+        wf_row["taxonomy_id"] = taxonomy_id
+    try:
+        result = db.table("workflows").insert(wf_row).execute()
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Échec création workflow")
+    except Exception:
+        db.table("sessions").delete().eq("id", session_id).execute()  # pas de session orpheline
+        raise
+    _proc_event(procedure_id=result.data[0]["id"], event_type="procedure_created",
+                message=f"Procedure creee: {nom.strip()}", payload={"category": category, "source": created_from})
+    return result.data[0]
+
+
 @router.post("/procedures")
 async def create_procedure(body: CreateProcedureRequest):
     if not body.nom.strip():
