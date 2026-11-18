@@ -79,6 +79,8 @@ interface Props {
     guestMode?: boolean;
     /** Projet des conversations créées ici */
     projectId?: string;
+    /** Enregistrement dans le référentiel de l'organisation (compte membre, hors lecture seule) */
+    librarySave?: boolean;
 }
 
 const defaultData: Table1Row[] = [
@@ -90,7 +92,7 @@ const defaultData: Table1Row[] = [
     { id: '6', étape: 'Fin du processus', typeBpmn: 'EndEvent', département: 'Back Office', acteur: 'Gestionnaire', typeActeur: 'interne', condition: '', outputs: [], outil: '' },
 ];
 
-export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId }: Props) {
+export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true }: Props) {
     const { invalidate } = useProceduresStore();
     const [processingLevel, setProcessingLevel] = useProcessingLevel();
     const [phase, setPhase] = useState<Phase>('upload');
@@ -122,6 +124,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     // « Chat d'abord » : le panneau de procédure s'ouvre à droite dès qu'une procédure existe
     const [hasProcedure, setHasProcedure] = useState(false);
     const exportAllowed = !guestMode || GUEST_EXPORT_ENABLED;
+    /** Le backend refuse l'enregistrement aux invités et aux comptes non membres : on ne le propose pas */
+    const canSave = !guestMode && librarySave;
     const [versionsOpen, setVersionsOpen] = useState(false);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
@@ -911,6 +915,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             <span>pour conserver ce travail.</span>
                         </div>
                     )}
+                    {!guestMode && !librarySave && (
+                        <div className="shrink-0 bg-slate-100 border-b border-slate-200 px-4 py-2 text-xs text-slate-600">
+                            Votre travail est conservé dans cette conversation. L&apos;enregistrement dans le référentiel de
+                            l&apos;organisation demande un accès membre, donné par un administrateur.
+                        </div>
+                    )}
                     <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5">
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -939,7 +949,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 </p>
                             </div>
                             <div className="shrink-0 flex items-center gap-2">
-                                {!guestMode && <button type="button" onClick={() => {
+                                {canSave && <button type="button" onClick={() => {
                                     const inst = instances.length > 0 ? activeInst : null;
                                     if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
                                     else setSaveModalOpen(true);
@@ -948,7 +958,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>}
-                                {VERSIONS_ENABLED && !guestMode && activeInst?.workflow_db_id && (
+                                {VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id && (
                                     <button type="button" onClick={() => setVersionsOpen(true)} title="Historique des versions"
                                         className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">
                                         <History className="w-3.5 h-3.5" />Versions

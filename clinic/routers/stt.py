@@ -5,7 +5,9 @@ Router STT (Speech-To-Text) pour ProcessMate
 - Support du workflow BPMN complet
 """
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Request
+from manager.auth import AuthUser, get_optional_user
+from manager import guest_limits
 from fastapi.responses import JSONResponse
 from google.api_core.exceptions import ResourceExhausted
 import logging
@@ -320,7 +322,8 @@ async def transcribe_and_parse(file: UploadFile = File(...)):
 
 
 @router.post("/dictate")
-async def dictate(file: UploadFile = File(...)):
+async def dictate(request: Request, file: UploadFile = File(...),
+                  user: Optional[AuthUser] = Depends(get_optional_user)):
     """Dictée du composeur : renvoie uniquement le texte transcrit.
 
     Contrairement à /transcribe, rien n'est converti en étapes : le texte va dans
@@ -331,6 +334,17 @@ async def dictate(file: UploadFile = File(...)):
     audio_bytes = await file.read()
     if not audio_bytes:
         raise HTTPException(status_code=400, detail="Fichier audio vide")
+    if user is None:
+        # Invité : 10 Mo d'audio au plus, et la dictée compte comme un message du jour
+        if len(audio_bytes) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Enregistrement trop long pour le mode invité.")
+        limits = guest_limits.load_limits()
+        if limits.enabled:
+            ip = guest_limits.client_ip(request.headers, request.client.host if request.client else None)
+            try:
+                guest_limits.consume(guest_limits.guest_keys(request.headers.get("x-device-id"), ip), "turns", limits)
+            except guest_limits.GuestLimitError as e:
+                raise HTTPException(status_code=e.status, detail=str(e))
     try:
         transcription = await transcribe_audio(audio_bytes, file.content_type)
     except ValueError as e:

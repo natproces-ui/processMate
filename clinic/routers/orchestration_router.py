@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from manager import version_store
 from manager.auth import AuthUser, get_optional_user
+from manager import access_control
+from manager.access_control import Access, require_role
 from datetime import datetime
 import asyncio
 import json
@@ -291,8 +293,12 @@ async def list_users(
 
 
 @router.patch("/users/{user_id}")
-async def update_user_profile(user_id: str, body: UserProfileUpdate):
+def update_user_profile(user_id: str, body: UserProfileUpdate, admin: Access = Depends(require_role("admin"))):
+    """Réservé aux administrateurs (dans tous les modes d'AUTH_MODE)."""
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    target_is_self = user_id == (admin.profile or {}).get("id") or user_id == admin.user.id
+    if target_is_self and ({"global_role", "status"} & updates.keys()):
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas modifier votre propre rôle ni votre statut.")
 
     if "global_role" in updates and updates["global_role"] not in VALID_USER_ROLES:
         raise HTTPException(status_code=400, detail=f"Rôle utilisateur invalide: {updates['global_role']}")
@@ -302,8 +308,18 @@ async def update_user_profile(user_id: str, body: UserProfileUpdate):
 
     try:
         db = get_supabase()
+        if updates.get("global_role", "admin") != "admin" or updates.get("status", "active") != "active":
+            # Ne jamais retirer le dernier administrateur actif
+            admins = (db.table("user_profiles").select("id").eq("global_role", "admin")
+                      .eq("status", "active").execute().data or [])
+            if [a["id"] for a in admins] == [user_id]:
+                raise HTTPException(status_code=400, detail="Il doit rester au moins un administrateur actif.")
         db.table("user_profiles").update(updates).eq("id", user_id).execute()
+        access_control.forget_profile()  # rôles et statuts relus au prochain appel
+        logger.info(f"Profil {user_id[:8]} modifié par l'admin {admin.user.id[:8]} : {sorted(updates)}")
         return {"success": True}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1067,7 +1083,7 @@ _STATUS_TO_STAGE_IDX: Dict[str, int] = {
 
 
 @router.post("/procedures/migrate-lifecycle-stages")
-async def migrate_lifecycle_stages():
+def migrate_lifecycle_stages(admin: Access = Depends(require_role("admin"))):
     """Renomme les étapes ET synchronise les statuts pour toutes les procédures existantes."""
     try:
         db = get_supabase()

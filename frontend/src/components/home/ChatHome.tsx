@@ -13,7 +13,7 @@ import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeCo
 import { guestStore, GUEST_CONVERSATION_KEY, type GuestConversation } from '@/lib/guestStore';
 import {
     Zap, PenLine, FolderKanban, FileText, CheckSquare, Megaphone, BarChart3, PenTool,
-    BookOpen, Newspaper, Compass, Menu, X, Loader2, RotateCw, LogOut, MessageSquare,
+    BookOpen, Newspaper, Compass, Menu, X, Loader2, RotateCw, LogOut, MessageSquare, Users, Clock,
 } from 'lucide-react';
 
 const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), {
@@ -22,11 +22,14 @@ const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), {
 });
 
 export default function ChatHome() {
-    const { user, loading, signOut } = useAuth();
+    const { user, loading, signOut, access } = useAuth();
+    const member = !!access?.member;
     const [navOpen, setNavOpen] = useState(false);
     const [panelKey, setPanelKey] = useState(0);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [projectId, setProjectId] = useState<string | undefined>();
+    /** Procédure du référentiel ouverte depuis une campagne (?procedure=) */
+    const [procedureId, setProcedureId] = useState<string | undefined>();
     const [recents, setRecents] = useState<ConversationSummary[]>([]);
     const [recentsLoading, setRecentsLoading] = useState(false);
     const [guestWork, setGuestWork] = useState<GuestConversation | null>(null);
@@ -36,8 +39,11 @@ export default function ChatHome() {
 
     useEffect(() => {
         setActiveId(readConversationParam());
-        const p = new URLSearchParams(window.location.search).get('projet');
+        const params = new URLSearchParams(window.location.search);
+        const p = params.get('projet');
         if (p) setProjectId(p);
+        const proc = params.get('procedure');
+        if (proc) setProcedureId(proc);
     }, []);
 
     const loadRecents = useCallback(async () => {
@@ -138,15 +144,22 @@ export default function ChatHome() {
                         </ul>
                     )}
                 </section>
-                {user && (
-                    <section aria-label="Espace ProcessMate" className="space-y-0.5">
-                        <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Espace ProcessMate</p>
+                {user && member && (
+                    <section aria-label="Espace de l'organisation" className="space-y-0.5">
+                        <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Organisation</p>
                         <NavLink href="/orchestration?tab=procedures" icon={<FileText className="w-4 h-4" />} label="Référentiel" />
                         <NavLink href="/orchestration?tab=taches" icon={<CheckSquare className="w-4 h-4" />} label="À faire" />
                         <NavLink href="/orchestration?tab=campagnes" icon={<Megaphone className="w-4 h-4" />} label="Campagnes" />
                         <NavLink href="/orchestration?tab=analyser" icon={<BarChart3 className="w-4 h-4" />} label="Analyse" />
                         <NavLink href="/orchestration?module=stt" icon={<PenTool className="w-4 h-4" />} label="Studio complet" />
+                        {access?.is_admin && <NavLink href="/admin" icon={<Users className="w-4 h-4" />} label="Utilisateurs" />}
                     </section>
+                )}
+                {user && access && !member && (
+                    <p className="flex gap-2 rounded-lg bg-slate-100 px-2.5 py-2 text-xs text-slate-600">
+                        <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
+                        <span>L&apos;accès au référentiel de l&apos;organisation est donné par un administrateur.</span>
+                    </p>
                 )}
             </div>
             <div className="shrink-0 border-t border-slate-200 p-2 space-y-0.5">
@@ -199,7 +212,9 @@ export default function ChatHome() {
                     </div>
                 )}
                 <div className="flex-1 min-h-0">
-                    <SttPanel key={panelKey} chatFirst guestMode={!user} projectId={projectId} />
+                    <SttPanel key={panelKey} chatFirst guestMode={!user} projectId={projectId}
+                        workflowId={member ? procedureId : undefined}
+                        librarySave={member && !access?.read_only} />
                 </div>
             </div>
         </div>

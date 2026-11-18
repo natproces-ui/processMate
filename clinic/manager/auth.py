@@ -29,6 +29,7 @@ _cache: Dict[str, Tuple[float, "AuthUser"]] = {}
 class AuthUser:
     id: str
     email: Optional[str] = None
+    email_confirmed: bool = False
 
 
 def _token_from_header(authorization: str) -> str:
@@ -49,7 +50,8 @@ def _verify(token: str) -> Optional[AuthUser]:
         user = None
     if not user:
         return None
-    auth_user = AuthUser(id=user.id, email=getattr(user, "email", None))
+    auth_user = AuthUser(id=user.id, email=getattr(user, "email", None),
+                         email_confirmed=bool(getattr(user, "email_confirmed_at", None)))
     if len(_cache) > 5000:
         _cache.clear()
     _cache[key] = (now + _CACHE_TTL, auth_user)

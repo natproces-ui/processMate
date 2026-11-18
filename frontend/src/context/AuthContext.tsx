@@ -3,6 +3,11 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
+import { API_CONFIG } from '@/lib/api-config';
+import { installApiAuth } from '@/lib/apiAuth';
+
+// Jeton ajouté à tous les appels au backend, avant le moindre rendu
+installApiAuth();
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -23,10 +28,27 @@ export type ProfileUpdates = Partial<Pick<UserProfile,
   'full_name' | 'display_name' | 'avatar_url' | 'phone' | 'job_title' | 'department'
 >>;
 
+/** Accès décidé par le backend (GET /api/me) — mêmes règles que manager/access_control.py */
+export type Access = {
+  /** membre actif de l'organisation : référentiel, campagnes, orchestration */
+  member: boolean;
+  role: UserProfile['global_role'] | null;
+  status: string | null;
+  is_admin: boolean;
+  can_manage_campaigns: boolean;
+  read_only: boolean;
+};
+
+/** Droits impossibles à vérifier (backend injoignable) : aucun accès, mais pas « en attente » */
+const NO_ACCESS: Access = { member: false, role: null, status: 'indisponible', is_admin: false, can_manage_campaigns: false, read_only: false };
+
 type AuthContextType = {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
+  /** null tant que /api/me n'a pas répondu */
+  access: Access | null;
+  refreshAccess: () => Promise<void>;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, fullName: string, jobTitle?: string, department?: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
@@ -44,9 +66,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser]       = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [access, setAccess] = useState<Access | null>(null);
   const [loading, setLoading] = useState(true);
 
+  /** Profil + droits via le backend ; true si la réponse a été exploitée. */
+  const fetchMe = async (): Promise<boolean> => {
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 6_000);
+      const res = await fetch(API_CONFIG.getFullUrl('/api/me'), { signal: controller.signal });
+      clearTimeout(tid);
+      if (!res.ok) return false;
+      const me = await res.json();
+      setAccess({
+        member: !!me.member, role: me.role ?? null, status: me.status ?? null, is_admin: !!me.is_admin,
+        can_manage_campaigns: !!me.can_manage_campaigns, read_only: !!me.read_only,
+      });
+      if (me.profile) setProfile(me.profile as UserProfile);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const fetchProfile = async (userId: string, email?: string): Promise<void> => {
+    if (await fetchMe()) return;
+    // Backend injoignable : lecture directe de sa propre ligne (droits inconnus → aucun)
+    setAccess(NO_ACCESS);
     const withTimeout = (p: Promise<{ data: any }>): Promise<{ data: any }> =>
       Promise.race([p, new Promise<{ data: null }>(r => setTimeout(() => r({ data: null }), 5_000))]);
     try {
@@ -102,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       try {
         if (session?.user) await fetchProfile(session.user.id, session.user.email ?? undefined);
-        else setProfile(null);
+        else { setProfile(null); setAccess(null); }
       } finally {
         setLoading(false);
       }
@@ -113,6 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(fallback);
       subscription.unsubscribe();
     };
+    // Abonnement unique à la session ; fetchProfile n'utilise que des setters (stables)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -144,6 +192,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (updates: ProfileUpdates) => {
     if (!user) return { error: 'Non authentifié' };
+    try {
+      const res = await fetch(API_CONFIG.getFullUrl('/api/me'), {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        setProfile(prev => prev ? { ...prev, ...updates } : prev);
+        return { error: null };
+      }
+      if (res.status !== 404) {
+        const err = await res.json().catch(() => ({}));
+        return { error: err.detail ?? `Erreur ${res.status}` };
+      }
+    } catch { /* backend injoignable : écriture directe ci-dessous */ }
     const { error } = await supabase
       .from('user_profiles')
       .update(updates)
@@ -155,10 +216,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setAccess(null);
   };
 
+  const refreshAccess = async () => { if (user) await fetchMe(); };
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, updateProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, access, refreshAccess, loading, signIn, signUp, signOut, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

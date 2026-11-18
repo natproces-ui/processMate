@@ -44,8 +44,10 @@ from routers import (
     orchestration_router, irritants_router, orchestration_tasks_router,
     analysis_router, taxonomy_router, campaigns_router, reports_router, corrections_router,
     workspace_router, specifications_router, tools_router, jira_router, bian_scenarios_router,
-    studio_router, demo_files_router, conversations_router, projects_router, versions_router
+    studio_router, demo_files_router, conversations_router, projects_router, versions_router,
+    account_router
 )
+from manager import access_control
 
 
 # ✅ NOUVEAUX ROUTERS
@@ -54,12 +56,11 @@ from routers import process_discovery, process_generation
 app = FastAPI(
     title="BPMN Process Generator API",
     description="API complète pour la génération et l'analyse de processus BPMN",
-    version="4.0.0"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    **CORS_CONFIG
+    version="4.0.0",
+    # Documentation interactive : pas en production (elle décrit toute la surface d'attaque)
+    docs_url=None if IS_PRODUCTION else "/docs",
+    redoc_url=None if IS_PRODUCTION else "/redoc",
+    openapi_url=None if IS_PRODUCTION else "/openapi.json",
 )
 
 @app.middleware("http")
@@ -77,6 +78,17 @@ async def studio_processing_level(request, call_next):
         return await call_next(request)
 
 
+# Contrôle d'accès (manager/access_control.py) : entre le niveau de traitement et CORS.
+app.middleware("http")(access_control.middleware)
+
+# CORS en DERNIER = couche la plus externe : les refus 401/403/422 portent aussi les
+# en-têtes CORS, sinon le navigateur les montre comme des erreurs réseau.
+app.add_middleware(
+    CORSMiddleware,
+    **CORS_CONFIG
+)
+
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("=" * 60)
@@ -85,6 +97,10 @@ async def startup_event():
     logger.info(f"🌍 Environment: {'PRODUCTION' if IS_PRODUCTION else 'DEVELOPMENT'}")
     logger.info(f"🔗 Frontend URL: {FRONTEND_URL}")
     logger.info(f"🔑 Google API Key: {'✅ Configured' if GOOGLE_API_KEY else '❌ Missing'}")
+    mode = access_control.auth_mode()
+    logger.info(f"🔒 Contrôle d'accès : {mode}")
+    if mode != "enforce":
+        logger.warning("⚠️ AUTH_MODE n'est pas « enforce » : les accès non autorisés sont seulement journalisés.")
     logger.info("=" * 60)
 
 # Routers existants
@@ -122,6 +138,7 @@ app.include_router(demo_files_router.router)
 app.include_router(conversations_router.router)
 app.include_router(projects_router.router)
 app.include_router(versions_router.router)
+app.include_router(account_router.router)
 
 @app.head("/")
 async def head_root():
