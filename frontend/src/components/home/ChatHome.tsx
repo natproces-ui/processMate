@@ -146,7 +146,9 @@ export default function ChatHome() {
                 </section>
                 {user && member && (
                     <section aria-label="Espace de l'organisation" className="space-y-0.5">
-                        <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Organisation</p>
+                        <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400 truncate" title={access?.organisation?.nom ?? undefined}>
+                            {access?.organisation?.nom || 'Organisation'}
+                        </p>
                         <NavLink href="/orchestration?tab=procedures" icon={<FileText className="w-4 h-4" />} label="Référentiel" />
                         <NavLink href="/orchestration?tab=taches" icon={<CheckSquare className="w-4 h-4" />} label="À faire" />
                         <NavLink href="/orchestration?tab=campagnes" icon={<Megaphone className="w-4 h-4" />} label="Campagnes" />

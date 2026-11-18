@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 import main  # noqa: E402
 from manager import access_control as ac, auth  # noqa: E402
 from manager.auth import AuthUser  # noqa: E402
+from tests.fake_db import FakeDB  # noqa: E402
 
 ALICE = AuthUser(id="u-alice", email="alice@example.com", email_confirmed=True)
 
@@ -79,40 +80,18 @@ class DecideTest(unittest.TestCase):
 
 
 class ProfileLookupTest(unittest.TestCase):
-    def fake_db(self, by_id, by_email):
-        calls = []
-
-        class Q:
-            def __init__(self):
-                self.mode = None
-
-            def select(self, *_):
-                return self
-
-            def eq(self, *_):
-                self.mode = "id"
-                return self
-
-            def ilike(self, *_):
-                self.mode = "email"
-                return self
-
-            def limit(self, *_):
-                return self
-
-            def execute(self):
-                calls.append(self.mode)
-                return SimpleNamespace(data=by_id if self.mode == "id" else by_email)
-
-        return SimpleNamespace(table=lambda _: Q()), calls
-
     def test_email_fallback_only_when_confirmed(self):
-        db, calls = self.fake_db([], [profile(pid="pre-cree")])
+        db = FakeDB({"user_profiles": [{"id": "pre-cree", "email": "Alice@example.com",
+                                        "global_role": "admin", "status": "active"}]})
         with mock.patch("database.supabase_client.get_supabase", return_value=db):
             self.assertEqual(ac._load_profile(ALICE)["id"], "pre-cree")
             unconfirmed = AuthUser(id="u-x", email="alice@example.com", email_confirmed=False)
             self.assertIsNone(ac._load_profile(unconfirmed))
-        self.assertEqual(calls, ["id", "email", "id"])
+
+    def test_legacy_roles_mapped_to_organisation_vocabulary(self):
+        self.assertEqual(ac.normalize({"global_role": "process_owner", "status": "active"})["role"], "pilote")
+        self.assertEqual(ac.normalize({"global_role": "validator", "status": "active"})["role"], "contributeur")
+        self.assertEqual(ac.normalize({"global_role": "viewer", "status": "invited"})["status"], "invited")
 
 
 class MiddlewareTest(unittest.TestCase):

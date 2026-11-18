@@ -29,18 +29,31 @@ export type ProfileUpdates = Partial<Pick<UserProfile,
 >>;
 
 /** Accès décidé par le backend (GET /api/me) — mêmes règles que manager/access_control.py */
+export type OrgRole = 'admin' | 'pilote' | 'contributeur' | 'lecteur';
+
 export type Access = {
   /** membre actif de l'organisation : référentiel, campagnes, orchestration */
   member: boolean;
-  role: UserProfile['global_role'] | null;
+  /** rôle dans l'organisation (vocabulaire d'organisation, quel que soit le mode) */
+  role: OrgRole | null;
+  /** active, invited, suspended, organisation_suspendue, indisponible */
   status: string | null;
+  /** administrateur de l'organisation */
   is_admin: boolean;
   can_manage_campaigns: boolean;
   read_only: boolean;
+  /** super-admin processMate (console des organisations) */
+  is_platform_admin: boolean;
+  /** organisations activées côté backend (ORGANISATIONS_ENABLED) */
+  organisations_mode: boolean;
+  organisation: { id: string; nom: string | null; statut: string | null } | null;
 };
 
 /** Droits impossibles à vérifier (backend injoignable) : aucun accès, mais pas « en attente » */
-const NO_ACCESS: Access = { member: false, role: null, status: 'indisponible', is_admin: false, can_manage_campaigns: false, read_only: false };
+const NO_ACCESS: Access = {
+  member: false, role: null, status: 'indisponible', is_admin: false, can_manage_campaigns: false,
+  read_only: false, is_platform_admin: false, organisations_mode: false, organisation: null,
+};
 
 type AuthContextType = {
   user: User | null;
@@ -81,6 +94,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccess({
         member: !!me.member, role: me.role ?? null, status: me.status ?? null, is_admin: !!me.is_admin,
         can_manage_campaigns: !!me.can_manage_campaigns, read_only: !!me.read_only,
+        is_platform_admin: !!me.is_platform_admin, organisations_mode: !!me.organisations_mode,
+        organisation: me.organisation ?? null,
       });
       if (me.profile) setProfile(me.profile as UserProfile);
       return true;

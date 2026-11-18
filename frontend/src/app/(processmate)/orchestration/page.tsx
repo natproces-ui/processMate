@@ -209,7 +209,9 @@ function ProceduresPanel({
 function ProcessMateInner() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { profile, user } = useAuth();
+    const { profile, user, access } = useAuth();
+    // Rôle d'acteur : décidé par le backend (/api/me), pas par l'ancien global_role
+    const myActorRole: ActorRole = access?.is_admin ? 'admin' : 'user';
     const { procedures, fetchProcedures } = useProceduresStore();
 
     const navigation = resolveProcessMateNavigation(searchParams);
@@ -237,7 +239,7 @@ function ProcessMateInner() {
             email: profile.email,
             job_title: profile.job_title ?? undefined,
             department: profile.department ?? undefined,
-            role: mapRole(profile.global_role),
+            role: myActorRole,
             global_role: profile.global_role,
         });
 
@@ -258,7 +260,7 @@ function ProcessMateInner() {
                 // Role comes from Supabase profile (authoritative), not the backend list
                 const matched = mapped.find(a => a.email === profile.email);
                 setCurrentActor(matched
-                    ? { ...matched, role: mapRole(profile.global_role) }
+                    ? { ...matched, role: myActorRole }
                     : actorFromProfile()
                 );
             })
@@ -267,7 +269,7 @@ function ProcessMateInner() {
                 setCurrentActor(actorFromProfile());
             })
             .finally(() => setActorsLoading(false));
-    }, [profile]);
+    }, [profile, myActorRole]);
 
     const [activeTab, setActiveTab] = useState<OrchestraTab>(navigation.tab as OrchestraTab);
     const [sidebarOpen, setSidebarOpen] = useState(true);

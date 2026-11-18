@@ -11,6 +11,7 @@ import { ArrowLeft, Loader2, Search } from 'lucide-react';
 import MemberGuard from '@/components/auth/MemberGuard';
 import { useAuth } from '@/context/AuthContext';
 import { orchestrationApi, type UserProfile } from '@/lib/orchestrationApi';
+import OrgMembers from '@/components/admin/OrgMembers';
 
 type Role = UserProfile['global_role'];
 type Status = UserProfile['status'];
@@ -161,10 +162,31 @@ function UsersAdmin() {
     );
 }
 
+/** Mode organisations : administration de l'organisation de l'admin connecté */
+function OrganisationAdmin() {
+    const { access } = useAuth();
+    return (
+        <main className="h-full overflow-y-auto">
+            <div className="mx-auto max-w-5xl px-4 py-6">
+                <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
+                    <ArrowLeft className="w-4 h-4" /> Retour au chat
+                </Link>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{access?.organisation?.nom}</p>
+                <h1 className="text-xl font-semibold text-slate-900">Administration de l&apos;organisation</h1>
+                <p className="mt-1 text-sm text-slate-600">
+                    Activez les comptes, choisissez leur rôle, suspendez un accès. Les conversations de chacun restent privées.
+                </p>
+                <div className="mt-5"><OrgMembers /></div>
+            </div>
+        </main>
+    );
+}
+
 export default function AdminPage() {
+    const { access } = useAuth();
     return (
         <MemberGuard admin>
-            <UsersAdmin />
+            {access?.organisations_mode ? <OrganisationAdmin /> : <UsersAdmin />}
         </MemberGuard>
     );
 }

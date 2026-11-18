@@ -3,6 +3,7 @@
 import React from 'react';
 import { ChevronLeft, BarChart3, FileText, Workflow, CheckSquare, PenTool, PenLine, Megaphone, BookOpen, Compass, Zap } from 'lucide-react';
 import type { MainModule } from '@/lib/processmate-navigation';
+import { useAuth } from '@/context/AuthContext';
 
 export type ActiveModule = MainModule;
 
@@ -32,10 +33,12 @@ const ORCHESTRATION_ITEMS = [
 ];
 
 export default function ProcessMateSidebar({ activeTab, activeModule, setActiveTab, setActiveModule, sidebarOpen, setSidebarOpen }: SidebarProps) {
+    const { access } = useAuth();
+    const orgName = access?.organisation?.nom;
     return (
         <aside aria-label="Navigation ProcessMate" className={[sidebarOpen ? 'w-56' : 'w-14', 'h-full shrink-0 bg-white border-r border-slate-200 flex flex-col transition-[width] duration-200'].join(' ')}>
             <div className="shrink-0 h-14 flex items-center gap-2 px-3 border-b border-blue-500 bg-blue-600">
-                {sidebarOpen && <><Zap className="w-5 h-5 text-white shrink-0" /><span className="text-sm font-bold text-white flex-1 truncate">ProcessMate</span></>}
+                {sidebarOpen && <><Zap className="w-5 h-5 text-white shrink-0" /><span className="flex-1 min-w-0"><span className="block text-sm font-bold text-white truncate">ProcessMate</span>{orgName && <span className="block text-[11px] text-white/70 truncate" title={orgName}>{orgName}</span>}</span></>}
                 <button type="button" onClick={() => setSidebarOpen(!sidebarOpen)}
                     aria-label={sidebarOpen ? 'Réduire la navigation' : 'Développer la navigation'} aria-expanded={sidebarOpen}
                     title={sidebarOpen ? 'Réduire la navigation' : 'Développer la navigation'}

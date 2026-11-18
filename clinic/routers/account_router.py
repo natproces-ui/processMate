@@ -35,9 +35,10 @@ def _full_profile(user: AuthUser, profile_id: Optional[str]) -> Optional[Dict[st
 def me(user: AuthUser = Depends(require_user)):
     access_control.forget_profile(user.id)  # toujours l'état à jour (activation récente…)
     profile = access_control.profile_for(user)
-    out = access_control.describe(user, profile)
+    out = access_control.describe(user, profile, access_control.is_platform_admin(user))
     try:
-        out["profile"] = _full_profile(user, (profile or {}).get("id"))
+        # Compte libre (aucune organisation) : son propre profil
+        out["profile"] = _full_profile(user, (profile or {}).get("id") or user.id)
     except Exception:
         out["profile"] = None
     return out
@@ -55,10 +56,11 @@ class ProfileUpdate(BaseModel):
 @router.patch("/me")
 def update_me(body: ProfileUpdate, user: AuthUser = Depends(require_user)):
     profile = access_control.profile_for(user)
-    if not profile:
+    profile_id = (profile or {}).get("id") or user.id
+    if not _full_profile(user, profile_id):
         raise HTTPException(404, "Profil introuvable")
     updates = body.model_dump(exclude_unset=True)
     if updates:
         from database.supabase_client import get_supabase
-        get_supabase().table("user_profiles").update(updates).eq("id", profile["id"]).execute()
+        get_supabase().table("user_profiles").update(updates).eq("id", profile_id).execute()
     return {"success": True}
