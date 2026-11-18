@@ -71,6 +71,9 @@ export const conversationsApi = {
         call<{ conversation: ConversationSummary }>(`/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).then(r => r.conversation),
     remove: (id: string) => call<{ success: boolean }>(`/${id}`, { method: 'DELETE' }),
     removeSource: (id: string, sourceId: string) => call<{ success: boolean }>(`/${id}/sources/${sourceId}`, { method: 'DELETE' }),
+    /** Reprend dans le compte une conversation faite en mode invité */
+    importGuest: (body: { title?: string; messages: { role: string; content: string; payload: Record<string, unknown> }[] }) =>
+        call<{ conversation: ConversationSummary }>('/import', { method: 'POST', body: JSON.stringify(body) }).then(r => r.conversation),
 };
 
 /** Paramètre d'URL ?c=<id> : rouvrir une conversation par lien, sans recharger la page. */

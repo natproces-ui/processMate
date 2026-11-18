@@ -336,6 +336,17 @@ async def _conversation_session(conv: Dict[str, Any]) -> Dict[str, Any]:
             files.append(_entry_from_source(src, data))
         except Exception as e:
             logger.warning(f"⚠️ Source « {src.get('filename')} » non rechargée : {str(e)[:120]}")
+    if conv.get("project_id"):
+        # Sources du projet, partagées par toutes ses conversations (placées en premier)
+        from manager import project_store
+        project_files = []
+        for src in await asyncio.to_thread(project_store.sources, conv["project_id"]):
+            try:
+                data = await asyncio.to_thread(store.download, src["storage_path"])
+                project_files.append(_entry_from_source(src, data))
+            except Exception as e:
+                logger.warning(f"⚠️ Source de projet « {src.get('filename')} » non rechargée : {str(e)[:120]}")
+        files = project_files + files
     state = conv.get("state") or {}
     sess = {"files": files, "proposal": state.get("proposal"), "references": state.get("references"),
             "persisted": True}
@@ -365,7 +376,14 @@ async def _server_history(conv: Dict[str, Any]) -> List[Dict[str, str]]:
             await asyncio.to_thread(store.update, conv["id"], conv["owner_id"], summary=summary, summary_upto=upto)
         except Exception as e:
             logger.warning(f"⚠️ Résumé de conversation indisponible : {str(e)[:120]}")
-    return store.history_for_model(msgs, summary, upto)
+    history = store.history_for_model(msgs, summary, upto)
+    if conv.get("project_id"):
+        from manager import project_store
+        project = await asyncio.to_thread(project_store.get_accessible, conv["project_id"], conv["owner_id"])
+        intro = project_store.instructions_message(project) if project else None
+        if intro:
+            history.insert(0, intro)
+    return history
 
 
 def _record(gen, conv: Optional[Dict[str, Any]], sess: Dict[str, Any], ix: Optional[Dict[str, Any]] = None):

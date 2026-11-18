@@ -11,7 +11,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace('/auth/login');
+      // Retour à la page demandée après connexion (projets, espace…)
+      const next = window.location.pathname + window.location.search;
+      router.replace(`/auth/login/?next=${encodeURIComponent(next)}`);
     }
   }, [user, loading, router]);
 

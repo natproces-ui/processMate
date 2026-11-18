@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { CHAT_HOME } from '@/lib/features';
 
 export default function LoginForm() {
   const router = useRouter();
@@ -31,7 +32,11 @@ export default function LoginForm() {
       }
       setLoading(false);
     } else {
-      router.replace('/orchestration');
+      // ?next=/chemin : retour à la page demandée (chemin interne uniquement).
+      // Avec le chat en page d'accueil, on y revient ; sinon l'espace ProcessMate, comme avant.
+      const next = new URLSearchParams(window.location.search).get('next');
+      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : null;
+      router.replace(safeNext || (CHAT_HOME ? '/' : '/orchestration'));
     }
   };
 

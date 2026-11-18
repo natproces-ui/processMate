@@ -59,10 +59,47 @@ async def list_conversations(
     return {"conversations": [_public(r) for r in rows]}
 
 
+async def _check_project(project_id: Optional[str], user: AuthUser) -> None:
+    if project_id:
+        from manager import project_store
+        if not await asyncio.to_thread(project_store.get_accessible, project_id, user.id):
+            raise HTTPException(404, "Projet introuvable")
+
+
 @router.post("", dependencies=[Depends(_enabled)])
 async def create_conversation(body: CreateBody, user: AuthUser = Depends(require_user)):
+    await _check_project(body.project_id, user)
     conv = await asyncio.to_thread(store.create, user.id, body.title or "Nouvelle conversation",
                                    body.procedure_ids, body.project_id)
+    return {"conversation": _public(conv)}
+
+
+class ImportMessage(BaseModel):
+    role: str = Field(pattern="^(user|assistant|clarify)$")
+    content: str = Field(default="", max_length=50_000)
+    payload: dict = Field(default_factory=dict)
+
+
+class ImportBody(BaseModel):
+    title: Optional[str] = None
+    messages: List[ImportMessage] = Field(default_factory=list, max_length=200)
+
+
+@router.post("/import", dependencies=[Depends(_enabled)])
+async def import_guest_conversation(body: ImportBody, user: AuthUser = Depends(require_user)):
+    """Reprend dans le compte le travail fait en mode invité (gardé dans le navigateur).
+    Les fichiers de l'invité n'ont jamais été envoyés au stockage : seuls les messages et les
+    procédures générées sont repris."""
+    import json as _json
+    if len(_json.dumps([m.payload for m in body.messages], default=str)) > 5_000_000:
+        raise HTTPException(413, "Conversation trop volumineuse pour être reprise")
+    first_user = next((m.content for m in body.messages if m.role == "user" and m.content), "")
+    conv = await asyncio.to_thread(store.create, user.id, body.title or store.title_from(first_user, []))
+
+    def _insert():
+        for m in body.messages:
+            store.add_message(conv["id"], m.role, m.content, m.payload)
+    await asyncio.to_thread(_insert)
     return {"conversation": _public(conv)}
 
 
@@ -98,6 +135,7 @@ async def update_conversation(conversation_id: str, body: UpdateBody, user: Auth
     if body.archived is not None:
         fields["archived_at"] = datetime.now(timezone.utc).isoformat() if body.archived else None
     if body.project_id is not None:
+        await _check_project(body.project_id or None, user)
         fields["project_id"] = body.project_id or None
     if fields:
         conv = await asyncio.to_thread(store.update, conversation_id, user.id, **fields)

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { conversationsApi } from '@/lib/conversationsApi';
+import { GUEST_EXPORT_ENABLED } from '@/lib/features';
 import { processingLevelHeaders } from '@/lib/processing-level';
 import type { StudioTool } from '@/lib/processmate-navigation';
 import ProcessingLevelSelector, { useProcessingLevel } from './ProcessingLevelSelector';
@@ -65,7 +66,15 @@ interface ProcessInstance {
     status: 'generating' | 'ready' | 'error'; workflow_db_id?: string;
 }
 
-interface Props { workflowId?: string; onBack?: () => void; currentActorId?: string; fromClinic?: boolean; initialTool?: StudioTool; }
+interface Props {
+    workflowId?: string; onBack?: () => void; currentActorId?: string; fromClinic?: boolean; initialTool?: StudioTool;
+    /** Page d'accueil « chat d'abord » : le chat occupe l'écran tant qu'aucune procédure n'existe */
+    chatFirst?: boolean;
+    /** Invité : rien n'est enregistré (pas d'Enregistrer / Soumettre), export selon GUEST_EXPORT_ENABLED */
+    guestMode?: boolean;
+    /** Projet des conversations créées ici */
+    projectId?: string;
+}
 
 const defaultData: Table1Row[] = [
     { id: '1', étape: 'Début du processus', typeBpmn: 'StartEvent', département: 'Front Office', acteur: 'Client', typeActeur: 'externe', condition: '', outputs: [{ targetId: '2', label: '' }], outil: '' },
@@ -76,7 +85,7 @@ const defaultData: Table1Row[] = [
     { id: '6', étape: 'Fin du processus', typeBpmn: 'EndEvent', département: 'Back Office', acteur: 'Gestionnaire', typeActeur: 'interne', condition: '', outputs: [], outil: '' },
 ];
 
-export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool }: Props) {
+export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId }: Props) {
     const { invalidate } = useProceduresStore();
     const [processingLevel, setProcessingLevel] = useProcessingLevel();
     const [phase, setPhase] = useState<Phase>('upload');
@@ -105,6 +114,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatActivity, setChatActivity] = useState({ messages: 0, busy: false });
+    // « Chat d'abord » : le panneau de procédure s'ouvre à droite dès qu'une procédure existe
+    const [hasProcedure, setHasProcedure] = useState(false);
+    const exportAllowed = !guestMode || GUEST_EXPORT_ENABLED;
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
     const linkConversation = (procedureId: string) => {
@@ -327,6 +339,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     }, [fromClinic]);
 
     const activeInst = instances[activeTab];
+    const chatFirstEmpty = chatFirst && !hasProcedure && instances.length === 0;
     const activeData = instances.length > 0 && activeInst ? activeInst.data : data;
     const activeTitle = instances.length > 0 && activeInst ? activeInst.title : processTitle;
     const activeEnrichments = instances.length > 0 && activeInst ? activeInst.enrichments : enrichments;
@@ -459,7 +472,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
 
     // ── Procédures générées depuis la conversation : un onglet par procédure ──
     const handleProcedureStarted = useCallback((key: string, title: string) => {
-        setPhase('editing'); setUploadOpen(false);
+        setPhase('editing'); setUploadOpen(false); setHasProcedure(true);
         setInstances(prev => {
             if (prev.some(i => i.process_id === key)) return prev;
             // Premier onglet de la conversation : il devient l'onglet actif
@@ -674,6 +687,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         workflow: Table1Row[], title: string,
         newEnrichments: Map<string, TaskEnrichment>, procedureMetadata?: any,
     ) => {
+        setHasProcedure(true);
         if (instances.length > 0) {
             const newTitle = title || activeInst?.title || '';
             const xml = safeGenerateBpmn(workflow, newTitle);
@@ -786,8 +800,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
                 {/* Conversation : pleine hauteur, composeur en bas */}
                 {/* Toujours monté : masquer l'assistant ne doit pas effacer la conversation */}
-                <aside aria-label="Conversation" hidden={!chatOpen} style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
-                    className="relative shrink-0 h-[55vh] lg:h-auto lg:w-[var(--chat-w)] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white">
+                <aside aria-label="Conversation" hidden={!chatOpen && !chatFirstEmpty} style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
+                    className={chatFirstEmpty
+                        ? 'relative flex-1 min-h-0 min-w-0 bg-white'
+                        : 'relative shrink-0 h-[55vh] lg:h-auto lg:w-[var(--chat-w)] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white'}>
+                    <div className={chatFirstEmpty ? 'h-full mx-auto w-full max-w-3xl' : 'h-full'}>
                     <ChatInterface
                         inputContextVisible={codeSourceOpen}
                         inputContext={inputContext}
@@ -817,13 +834,23 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         restoreGenerated={!workflowId}
                         syncUrl
                         onConversationChange={id => { conversationIdRef.current = id; }}
+                        projectId={projectId}
+                        guestPersistence={guestMode}
                     />
+                    </div>
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
                         onMouseDown={startChatResize}
-                        className="hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-blue-400/30" />
+                        className={chatFirstEmpty ? 'hidden' : 'hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-blue-400/30'} />
                 </aside>
                 {/* Procédure : en-tête (onglets + vues + actions) puis la vue choisie en pleine hauteur */}
-                <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
+                <div hidden={chatFirstEmpty} className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
+                    {guestMode && (
+                        <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex flex-wrap items-center gap-x-2">
+                            <span>Mode invité : rien n&apos;est enregistré.</span>
+                            <a href="/auth/signup/" className="font-semibold underline">Créez un compte</a>
+                            <span>pour conserver ce travail.</span>
+                        </div>
+                    )}
                     <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5">
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
                         <div className="flex items-center gap-3 min-w-0">
@@ -852,7 +879,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 </p>
                             </div>
                             <div className="shrink-0 flex items-center gap-2">
-                                <button type="button" onClick={() => {
+                                {!guestMode && <button type="button" onClick={() => {
                                     const inst = instances.length > 0 ? activeInst : null;
                                     if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
                                     else setSaveModalOpen(true);
@@ -860,7 +887,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
-                                </button>
+                                </button>}
                                 {activeInst?.workflow_db_id && currentActorId && (
                                     <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -891,7 +918,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     { id: 'table' as const, label: 'Tableau', icon: Table2 },
                                     { id: 'bpmn' as const, label: 'BPMN', icon: Workflow },
                                     { id: 'fiche' as const, label: 'Fiche & export', icon: FileText },
-                                ]).map(v => (
+                                ]).filter(v => exportAllowed || v.id !== 'fiche').map(v => (
                                     <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)}
                                         className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${view === v.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
                                         <v.icon className="w-3.5 h-3.5" />{v.label}
@@ -908,7 +935,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     revisionCount={revisionCount}
                                     showGenerate={!(view === 'bpmn' && activeBpmnXml)}
                                     onGenerateBPMN={async () => { await handleGenerateBPMN(); setView('bpmn'); }}
-                                    onDownloadBPMN={handleDownloadBPMN}
+                                    onDownloadBPMN={exportAllowed ? handleDownloadBPMN : () => showError('Export réservé aux comptes : créez un compte gratuit pour télécharger.')}
                                     onResetToDefault={() => { setInstances([]); setData(defaultData); setBpmnXml(null); setPhase('upload'); resetCodeSource(); }}
                                     onClearTable={() => { if (instances.length > 0) updateActiveData([]); else setData([]); }}
                                     onToggleRevision={() => setRevisionOpen(o => !o)}

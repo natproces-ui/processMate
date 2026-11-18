@@ -6,6 +6,8 @@ import { TaskEnrichment } from '@/logic/bpmnTypes';
 import { applyOperations } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
 import { getAuthHeaders } from '@/lib/authHeaders';
+import { GUEST_LIMITS } from '@/lib/features';
+import { guestStore, GUEST_CONVERSATION_KEY } from '@/lib/guestStore';
 import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam, type ConversationSource, type StoredMessage } from '@/lib/conversationsApi';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
@@ -69,6 +71,13 @@ interface ChatMessage {
     endedAt?: number;
     /** Fichiers d'origine d'un message utilisateur (pour réessayer / modifier) */
     files?: File[];
+    /** Mode invité : procédures générées complètes, gardées dans le navigateur */
+    generated?: StoredGenerated[];
+}
+
+interface StoredGenerated {
+    id: string; title: string; workflow: Table1Row[];
+    enrichments: Record<string, TaskEnrichment>; procedureMetadata: Record<string, unknown>;
 }
 
 interface ChatInterfaceProps {
@@ -121,6 +130,10 @@ interface ChatInterfaceProps {
     restoreGenerated?: boolean;
     /** Refléter la conversation dans l'URL (?c=) — un seul chat par page doit le faire */
     syncUrl?: boolean;
+    /** Projet de la conversation créée (lot 4) */
+    projectId?: string;
+    /** Invité : garder la conversation dans le navigateur et appliquer les limites avant envoi */
+    guestPersistence?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -214,6 +227,8 @@ export default function ChatInterface({
     onConversationChange,
     restoreGenerated = true,
     syncUrl = false,
+    projectId,
+    guestPersistence = false,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -229,7 +244,8 @@ export default function ChatInterface({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [addMenuOpen, setAddMenuOpen] = useState(false);
     const [demoFilesOpen, setDemoFilesOpen] = useState(false);
-    const { profile, user } = useAuth();
+    const { profile, user, loading: authLoading } = useAuth();
+    const guestMode = guestPersistence && !authLoading && !user;
     // Conversations enregistrées : drapeau + utilisateur connecté. Sinon, comportement d'avant.
     const persistent = CONVERSATIONS_ENABLED && !!user;
     const [conversationId, setConversationIdState] = useState<string | null>(null);
@@ -292,6 +308,17 @@ export default function ChatInterface({
         onConversationChange?.(id);
     };
 
+    /** Inverse de toChatMessage : ce qui est gardé d'un message (sans les fichiers eux-mêmes) */
+    const toPayload = (m: ChatMessage): Record<string, unknown> => {
+        if (m.role === 'user') return m.attachments?.length ? { attachments: m.attachments.map(({ name, type, size }) => ({ name, type, size })) } : {};
+        return {
+            intent: m.intent, steps: m.steps, totalSteps: m.totalSteps, title: m.title, operationsCount: m.operationsCount,
+            proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
+            generations: m.generations?.map(g => ({ id: g.key.slice(g.key.indexOf(':') + 1), title: g.title, status: g.status, steps: g.steps, error: g.error })),
+            generated: m.generated,
+        };
+    };
+
     const toChatMessage = (m: StoredMessage): ChatMessage => {
         const p = m.payload || {};
         const base: ChatMessage = { id: m.id, role: m.role, content: m.content || '', createdAt: new Date(m.created_at) };
@@ -309,27 +336,33 @@ export default function ChatInterface({
         };
     };
 
+    /** Affiche des messages enregistrés et rouvre les onglets de leurs procédures générées */
+    const showStored = (stored: StoredMessage[], keepGenerated: boolean) => {
+        const msgs = stored.map(toChatMessage);
+        // La dernière proposition reste modifiable si rien n'a suivi
+        const last = msgs[msgs.length - 1];
+        if (last?.proposal && stored[stored.length - 1]?.payload?.proposal?.submitted !== true) {
+            last.proposal = { ...last.proposal, submitted: false };
+        }
+        if (keepGenerated) stored.forEach((m, i) => { if (m.payload?.generated) msgs[i].generated = m.payload.generated; });
+        setMessages(msgs);
+        if (restoreGenerated) {
+            for (const m of stored) {
+                for (const g of (m.payload?.generated || []) as StoredGenerated[]) {
+                    const key = `${m.id}:${g.id}`;
+                    onProcedureStarted?.(key, g.title);
+                    onProcedureReady?.({ key, title: g.title, workflow: g.workflow || [], enrichments: new Map(Object.entries(g.enrichments || {})), procedureMetadata: g.procedureMetadata || {} });
+                }
+            }
+        }
+    };
+
     const openConversation = async (id: string) => {
         try {
             const data = await conversationsApi.get(id);
-            const msgs = data.messages.map(toChatMessage);
-            // La dernière proposition reste modifiable si rien n'a suivi
-            const last = msgs[msgs.length - 1];
-            if (last?.proposal && data.messages[data.messages.length - 1]?.payload?.proposal?.submitted !== true) {
-                last.proposal = { ...last.proposal, submitted: false };
-            }
-            setMessages(msgs);
+            showStored(data.messages, false);
             setSources(data.sources);
             setConversation(id);
-            if (restoreGenerated) {
-                for (const m of data.messages) {
-                    for (const g of (m.payload?.generated || []) as { id: string; title: string; workflow: Table1Row[]; enrichments: Record<string, TaskEnrichment>; procedureMetadata: Record<string, unknown> }[]) {
-                        const key = `${m.id}:${g.id}`;
-                        onProcedureStarted?.(key, g.title);
-                        onProcedureReady?.({ key, title: g.title, workflow: g.workflow || [], enrichments: new Map(Object.entries(g.enrichments || {})), procedureMetadata: g.procedureMetadata || {} });
-                    }
-                }
-            }
         } catch (err: unknown) {
             if (syncUrl) writeConversationParam(null);
             onError(`Conversation introuvable : ${err instanceof Error ? err.message : ''}`.trim());
@@ -362,6 +395,30 @@ export default function ChatInterface({
         })();
     }, [persistent, procedureId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // ── Mode invité : la conversation reste dans ce navigateur ──
+    const guestRestoreStartedRef = useRef(false);
+    const guestRestoredRef = useRef(false);
+    useEffect(() => {
+        if (!guestMode || guestRestoreStartedRef.current) return;
+        guestRestoreStartedRef.current = true;
+        guestStore.get(GUEST_CONVERSATION_KEY).then(saved => {
+            // Sauvegarde autorisée seulement une fois la lecture terminée : sinon la liste encore
+            // vide du montage effacerait la conversation avant qu'elle soit restaurée.
+            guestRestoredRef.current = true;
+            if (!saved?.messages?.length) return;
+            showStored(saved.messages.map(m => ({ ...m, id: crypto.randomUUID(), created_at: saved.savedAt, payload: m.payload as Record<string, any> })), true); // eslint-disable-line @typescript-eslint/no-explicit-any
+        });
+    }, [guestMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        // Liste vide : on n'efface rien ici (« Nouvelle conversation » s'en charge explicitement)
+        if (!guestMode || !guestRestoredRef.current || loading || messages.length === 0) return;
+        guestStore.set(GUEST_CONVERSATION_KEY, {
+            savedAt: new Date().toISOString(),
+            messages: messages.map(m => ({ role: m.role, content: m.content, payload: toPayload(m) })),
+        });
+    }, [messages, loading, guestMode]);
+
     // Identifiant de conversation local : plus de session créée en base à chaque ouverture
     const initSession = async () => {
         setSessionId(crypto.randomUUID());
@@ -370,7 +427,15 @@ export default function ChatInterface({
 
     // ── Gestion fichiers ─────────────────────────────────────
     const addFiles = useCallback((incoming: File[]) => {
-        const toAdd = incoming.slice(0, MAX_ATTACHMENTS - attachedFiles.length);
+        const maxFiles = guestMode ? GUEST_LIMITS.maxFiles : MAX_ATTACHMENTS;
+        if (guestMode && attachedFiles.length + incoming.length > maxFiles) {
+            onError(`Mode invité : ${maxFiles} fichier${maxFiles > 1 ? 's' : ''} à la fois. Créez un compte pour en joindre davantage.`);
+        }
+        if (guestMode) {
+            const tooBig = incoming.find(f => f.size > GUEST_LIMITS.maxFileMb * 1024 * 1024);
+            if (tooBig) { onError(`Mode invité : « ${tooBig.name} » dépasse ${GUEST_LIMITS.maxFileMb} Mo.`); return; }
+        }
+        const toAdd = incoming.slice(0, Math.max(0, maxFiles - attachedFiles.length));
         const newFiles: AttachedFile[] = [];
 
         for (const file of toAdd) {
@@ -399,7 +464,7 @@ export default function ChatInterface({
         }
 
         setAttachedFiles(prev => [...prev, ...newFiles]);
-    }, [attachedFiles, onError]);
+    }, [attachedFiles, onError, guestMode]);
 
     const removeFile = (id: string) =>
         setAttachedFiles(prev => prev.filter(f => f.id !== id));
@@ -491,7 +556,10 @@ export default function ChatInterface({
             case 'procedure_ready': {
                 const enrichMap = new Map<string, TaskEnrichment>();
                 Object.entries(ev.enrichments || {}).forEach(([id, enr]: [string, any]) => enrichMap.set(id, enr));
-                updateMsg(msgId, m => ({ ...m, generations: (m.generations || []).map(g => g.key === key(ev.id) ? { ...g, title: ev.title, status: 'ready', steps: ev.workflow?.length || 0 } : g) }));
+                updateMsg(msgId, m => ({
+                    ...m, generations: (m.generations || []).map(g => g.key === key(ev.id) ? { ...g, title: ev.title, status: 'ready', steps: ev.workflow?.length || 0 } : g),
+                    ...(guestMode ? { generated: [...(m.generated || []), { id: ev.id, title: ev.title, workflow: ev.workflow || [], enrichments: ev.enrichments || {}, procedureMetadata: ev.procedureMetadata || {} }] } : {}),
+                }));
                 onProcedureReady?.({ key: key(ev.id), title: ev.title, workflow: ev.workflow || [], enrichments: enrichMap, procedureMetadata: ev.procedureMetadata || {} });
                 break;
             }
@@ -599,7 +667,7 @@ export default function ChatInterface({
         let sid = sessionId;
         if (persistent && !conversationIdRef.current) {
             try {
-                const created = await conversationsApi.create({ procedure_ids: procedureId ? [procedureId] : [] });
+                const created = await conversationsApi.create({ procedure_ids: procedureId ? [procedureId] : [], project_id: projectId || null });
                 sid = created.id;
                 setConversation(created.id);
             } catch (err: unknown) {
@@ -694,6 +762,7 @@ export default function ChatInterface({
         setSessionId(null);
         setSources([]);
         if (conversationIdRef.current) setConversation(null);
+        if (guestMode) guestStore.remove(GUEST_CONVERSATION_KEY);
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
         await initSession();
         requestAnimationFrame(() => textareaRef.current?.focus());
@@ -1038,6 +1107,11 @@ export default function ChatInterface({
 
                             </div>
                             <div className="ml-auto flex items-center gap-2">
+                                {guestMode && (
+                                    <span className="hidden sm:inline text-[11px] text-slate-400" title="Créez un compte pour conserver votre travail et lever ces limites">
+                                        Invité · {GUEST_LIMITS.maxFiles} fichier, {GUEST_LIMITS.maxFileMb} Mo, {GUEST_LIMITS.maxPages} pages max · rien n&apos;est enregistré
+                                    </span>
+                                )}
                                 {processingLevel && onProcessingLevelChange && <ProcessingLevelSelector value={processingLevel} onChange={onProcessingLevelChange} />}
                             <button
                                 aria-label={loading ? 'Arrêter' : 'Envoyer le message'}
