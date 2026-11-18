@@ -17,7 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow, Presentation, FolderOpen
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -73,6 +73,9 @@ interface ChatMessage {
     files?: File[];
     /** Mode invité : procédures générées complètes, gardées dans le navigateur */
     generated?: StoredGenerated[];
+    /** Lot 5 : état de la procédure juste avant la modification faite par ce message */
+    checkpoint?: unknown;
+    restored?: boolean;
 }
 
 interface StoredGenerated {
@@ -134,6 +137,12 @@ interface ChatInterfaceProps {
     projectId?: string;
     /** Invité : garder la conversation dans le navigateur et appliquer les limites avant envoi */
     guestPersistence?: boolean;
+    /** Lot 5 : instantané de la procédure pris juste avant une modification par le chat */
+    onCheckpoint?: () => unknown;
+    /** Lot 5 : revenir à un instantané (bouton « Restaurer l'état d'avant ») */
+    onRestore?: (snapshot: unknown) => void;
+    /** Lot 5 : points ouverts relevés pour une procédure générée */
+    onOpenPoints?: (key: string, points: unknown[]) => void;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -229,6 +238,9 @@ export default function ChatInterface({
     syncUrl = false,
     projectId,
     guestPersistence = false,
+    onCheckpoint,
+    onRestore,
+    onOpenPoints,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -494,6 +506,11 @@ export default function ChatInterface({
             updateMsg(msgId, m => ({ ...m, intent: 'explain', content: data.answer || '' }));
             return;
         }
+        // Point de restauration : l'état d'avant, pris avant que la modification ne s'applique
+        if (currentWorkflow.length > 0 && onCheckpoint) {
+            const snapshot = onCheckpoint();
+            updateMsg(msgId, m => ({ ...m, checkpoint: snapshot }));
+        }
         if (intent === 'patch') {
             const operations = data.operations || [];
             const applied = applyOperations(currentWorkflow, operations);
@@ -567,6 +584,9 @@ export default function ChatInterface({
                 updateMsg(msgId, m => ({ ...m, generations: (m.generations || []).map(g => g.key === key(ev.id) ? { ...g, status: 'error', error: ev.message } : g) }));
                 onProcedureError?.(key(ev.id), ev.message);
                 onError(`« ${ev.title} » : ${ev.message}`);
+                break;
+            case 'open_points':
+                onOpenPoints?.(key(ev.id), ev.points || []);
                 break;
             case 'remarks_delta':
                 updateMsg(msgId, m => ({ ...m, remarks: (m.remarks || '') + ev.text }));
@@ -979,6 +999,15 @@ export default function ChatInterface({
                                                 {msg.content && <MsgAction label={copiedId === msg.id ? 'Copié' : 'Copier'} onClick={() => copyMessage(msg)}>{copiedId === msg.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</MsgAction>}
                                                 {msg.id === [...messages].reverse().find(m => m.role === 'assistant')?.id && (
                                                     <MsgAction label="Réessayer" onClick={() => retryFrom(msg.id)} disabled={loading}><RotateCcw className="w-3.5 h-3.5" /></MsgAction>
+                                                )}
+                                                {msg.checkpoint !== undefined && onRestore && (
+                                                    msg.restored
+                                                        ? <span className="self-center px-1.5 text-[11px] text-slate-400">État d&apos;avant restauré</span>
+                                                        : <button type="button" disabled={loading}
+                                                            onClick={() => { onRestore(msg.checkpoint); updateMsg(msg.id, m => ({ ...m, restored: true })); onSuccess('État d’avant restauré'); }}
+                                                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40">
+                                                            <Undo2 className="w-3.5 h-3.5" /> Restaurer l&apos;état d&apos;avant
+                                                        </button>
                                                 )}
                                             </div>
                                         )}

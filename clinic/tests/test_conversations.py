@@ -82,6 +82,15 @@ class RecorderTest(unittest.TestCase):
         self.assertEqual(p["remarks"], "Bon travail.")
         self.assertEqual(p["generated"][0]["workflow"][1]["id"], "2")
 
+    def test_open_points_follow_generated_procedure(self):
+        r = TurnRecorder()
+        r.feed({"type": "procedure_ready", "id": "p1", "title": "X", "workflow": [{"id": "1"}],
+                "enrichments": {}, "procedureMetadata": {"objet": "o"}})
+        r.feed({"type": "open_points", "id": "p1", "points": [{"id": "a", "question": "Qui valide ?"}]})
+        meta = r.finish()["payload"]["generated"][0]["procedureMetadata"]
+        self.assertEqual(meta["objet"], "o")
+        self.assertEqual(meta["open_points"][0]["question"], "Qui valide ?")
+
     def test_stopped(self):
         r = TurnRecorder()
         r.feed({"type": "status", "id": "plan", "label": "Lecture", "state": "running"})

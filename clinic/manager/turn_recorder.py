@@ -46,6 +46,11 @@ class TurnRecorder:
             self.generated.append({"id": ev.get("id"), "title": ev.get("title"), "workflow": ev.get("workflow") or [],
                                    "enrichments": ev.get("enrichments") or {},
                                    "procedureMetadata": ev.get("procedureMetadata") or {}})
+        elif t == "open_points":
+            # Rangés avec la procédure générée : ils reviennent avec elle à la réouverture
+            for g in self.generated:
+                if g.get("id") == ev.get("id"):
+                    g["procedureMetadata"] = {**(g.get("procedureMetadata") or {}), "open_points": ev.get("points") or []}
         elif t == "procedure_error":
             self._set_generation(ev.get("id"), status="error", error=ev.get("message"))
         elif t == "remarks_delta":

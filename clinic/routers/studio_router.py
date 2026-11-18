@@ -26,6 +26,7 @@ ce que l'utilisateur l'enregistre (avec son emplacement dans la taxonomie).
 import asyncio
 import hashlib
 import json
+import os
 import logging
 import time
 import uuid
@@ -216,7 +217,7 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
                 if error is None:
                     done = {"title": result.get("title") or proc["title"], "workflow": result.get("workflow") or [],
                             "procedureMetadata": result.get("procedureMetadata") or {}}
-                    ready.append(done)
+                    ready.append({**done, "id": proc["id"]})
                     yield _sse({"type": "procedure_ready", "id": proc["id"], **done,
                                 "enrichments": result.get("enrichments") or {}})
                 else:
@@ -235,6 +236,35 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
     if ready and not stopped:
         async for ev in _stream_remarks(request, ready, message):
             yield ev
+        if os.getenv("OPEN_POINTS_ENABLED", "false").lower() == "true" and not await request.is_disconnected():
+            async for ev in _open_points(ready, files):
+                yield ev
+
+
+async def _open_points(procedures: List[Dict[str, Any]], files: List[Dict[str, Any]]):
+    """Points ouverts de chaque procédure générée (lot 5). Facultatif : une erreur n'interrompt rien."""
+    from manager.model_manager import generate_content
+    from prompts.open_points_prompt import build_prompt, parse
+
+    yield _sse({"type": "status", "id": "open_points", "label": "Relevé des points à confirmer", "state": "running"})
+    # Texte des sources disponible sans appel IA (Word, PowerPoint) ; les PDF ne sont pas relus ici
+    source_texts = [f"--- {f['filename']} ---\n{(f.get('office') or {}).get('text', '')}" for f in files if f.get("office")]
+
+    def _one(proc):
+        with routing_scope(TaskKind.RELECTURE_CRITIQUE, ["texte"]):
+            response = generate_content(build_prompt(proc, source_texts), None, "Points ouverts")
+        return parse(response.text or "", [str(r.get("id")) for r in proc.get("workflow") or []])
+
+    results = await asyncio.gather(*(asyncio.to_thread(_one, p) for p in procedures), return_exceptions=True)
+    total = 0
+    for proc, points in zip(procedures, results):
+        if isinstance(points, Exception):
+            logger.warning(f"⚠️ Points ouverts indisponibles pour « {proc.get('title')} » : {points}")
+            continue
+        total += len(points)
+        yield _sse({"type": "open_points", "id": proc["id"], "points": points})
+    label = f"{total} point{'s' if total > 1 else ''} à confirmer" if total else "Aucun point à confirmer relevé"
+    yield _sse({"type": "status", "id": "open_points", "label": label, "state": "done"})
 
 
 async def _stream_remarks(request: Request, procedures: List[Dict[str, Any]], message: str):

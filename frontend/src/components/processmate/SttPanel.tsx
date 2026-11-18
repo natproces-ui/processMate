@@ -28,11 +28,16 @@ import { LiveBpmn, LiveHeader, LiveTable } from './LiveProcedurePreview';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
-    PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes,
+    PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes, History,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { conversationsApi } from '@/lib/conversationsApi';
-import { GUEST_EXPORT_ENABLED } from '@/lib/features';
+import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
+import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
+import VersionHistoryModal from '@/components/shared/VersionHistoryModal';
+import OpenPointsPanel, { readOpenPoints, type OpenPoint } from '@/components/shared/OpenPointsPanel';
+import { applyLabelChanges } from '@/logic/bpmnLabelPatch';
+import { diffWorkflows, isEmptyDiff, isLabelOnly } from '@/logic/workflowDiff';
 import { processingLevelHeaders } from '@/lib/processing-level';
 import type { StudioTool } from '@/lib/processmate-navigation';
 import ProcessingLevelSelector, { useProcessingLevel } from './ProcessingLevelSelector';
@@ -117,6 +122,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     // « Chat d'abord » : le panneau de procédure s'ouvre à droite dès qu'une procédure existe
     const [hasProcedure, setHasProcedure] = useState(false);
     const exportAllowed = !guestMode || GUEST_EXPORT_ENABLED;
+    const [versionsOpen, setVersionsOpen] = useState(false);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
     const linkConversation = (procedureId: string) => {
@@ -583,7 +589,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 // Une sauvegarde manuelle depuis le Studio efface le tampon "modifications
                 // récentes de l'IA" — l'utilisateur a vu et repris la main sur la procédure.
                 const exportEdits = exportEditsRef.current[activeTab] ?? {};
-                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, saveRows as unknown[], enrichObj, { ...exportEdits, recent_ai_changes: null }, currentXml);
+                const openPoints = readOpenPoints(inst.initialMeta);
+                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, saveRows as unknown[], enrichObj, { ...exportEdits, ...(openPoints.length ? { open_points: openPoints } : {}), recent_ai_changes: null }, currentXml);
                 linkConversation(inst.workflow_db_id);
                 setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, initialMeta: { ...i.initialMeta, ...exportEdits, recent_ai_changes: null } } : i));
             } else {
@@ -690,7 +697,14 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         setHasProcedure(true);
         if (instances.length > 0) {
             const newTitle = title || activeInst?.title || '';
-            const xml = safeGenerateBpmn(workflow, newTitle);
+            // Libellés seulement : le diagramme existant est modifié sur place (positions conservées)
+            const diff = activeInst ? diffWorkflows(activeInst.data, workflow) : null;
+            const patched = BPMN_PRESERVE_LAYOUT && diff && activeInst?.bpmnXml && isLabelOnly(diff) && (!title || title === activeInst.title)
+                ? applyLabelChanges(activeInst.bpmnXml, diff) : null;
+            const xml = patched ?? safeGenerateBpmn(workflow, newTitle);
+            if (BPMN_PRESERVE_LAYOUT && !patched && diff && !isEmptyDiff(diff) && activeInst?.bpmnXml) {
+                showSuccess('Diagramme recalculé : sa mise en page manuelle a été réinitialisée.');
+            }
             setInstances(prev => prev.map((inst, i) => i === activeTab ? {
                 ...inst, data: workflow, title: title || inst.title,
                 enrichments: mergeEnrichments(inst.enrichments, newEnrichments), bpmnXml: xml,
@@ -708,6 +722,46 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             if (procedureMetadata) setInitialMeta((prev: any) => mergeProcedureMetadata(prev, procedureMetadata));
         }
     }, [activeTab, instances, activeInst, processTitle, safeGenerateBpmn]);
+
+    // ── Lot 5 : points de restauration du chat ──
+    const takeSnapshot = useCallback(() => ({
+        processId: instances.length > 0 ? activeInst?.process_id : null,
+        data: activeData, enrichments: new Map(activeEnrichments), initialMeta: activeInitialMeta, bpmnXml: activeBpmnXml,
+    }), [instances, activeInst, activeData, activeEnrichments, activeInitialMeta, activeBpmnXml]);
+
+    const restoreSnapshot = useCallback((raw: unknown) => {
+        const snap = raw as ReturnType<typeof takeSnapshot>;
+        if (snap.processId) {
+            const idx = instances.findIndex(i => i.process_id === snap.processId);
+            if (idx < 0) { showError('Procédure introuvable : onglet fermé ?'); return; }
+            setInstances(prev => prev.map((inst, i) => i === idx ? { ...inst, data: snap.data, enrichments: snap.enrichments, initialMeta: snap.initialMeta, bpmnXml: snap.bpmnXml } : inst));
+            setActiveTab(idx);
+            if (snap.bpmnXml) editorRefs.current[idx]?.importXml(snap.bpmnXml);
+        } else {
+            setData(snap.data); setEnrichments(snap.enrichments); setInitialMeta(snap.initialMeta); setBpmnXml(snap.bpmnXml);
+            if (snap.bpmnXml) editorRef.current?.importXml(snap.bpmnXml);
+        }
+    }, [instances]);
+
+    // ── Lot 5 : points ouverts (rangés dans les métadonnées de la procédure) ──
+    const setPointsFor = useCallback((processId: string | null, points: OpenPoint[]) => {
+        if (processId) setInstances(prev => prev.map(inst => inst.process_id === processId ? { ...inst, initialMeta: { ...(inst.initialMeta || {}), open_points: points } } : inst));
+        else setInitialMeta((prev: Record<string, unknown> | undefined) => ({ ...(prev || {}), open_points: points }));
+    }, []);
+    const activePoints = readOpenPoints(activeInitialMeta);
+    const answerPoint = (point: OpenPoint, answer: string) => {
+        const step = activeData.find(r => r.id === point.step_id);
+        setChatOpen(true);
+        setDictation({ id: Date.now(), text: `Réponse au point ouvert « ${point.question} »${step ? ` (étape « ${step.étape} »)` : ''} : ${answer}. Mets la procédure à jour en conséquence.` });
+    };
+
+    const handleVersionRestored = (v: VersionDetail) => {
+        const enrichMap = new Map<string, TaskEnrichment>(Object.entries(v.enrichments_json || {}) as [string, TaskEnrichment][]);
+        const xml = v.bpmn_xml || safeGenerateBpmn(v.workflow_json || [], activeTitle);
+        setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: v.workflow_json || [], enrichments: enrichMap, bpmnXml: xml, initialMeta: { ...(inst.initialMeta || {}), ...(v.metadata || {}) } } : inst));
+        if (xml) editorRefs.current[activeTab]?.importXml(xml);
+        showSuccess(`Version ${v.version} restaurée`);
+    };
 
     const toggleRecording = async () => {
         if (!recording) {
@@ -836,6 +890,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onConversationChange={id => { conversationIdRef.current = id; }}
                         projectId={projectId}
                         guestPersistence={guestMode}
+                        onCheckpoint={takeSnapshot}
+                        onRestore={restoreSnapshot}
+                        onOpenPoints={(key, points) => setPointsFor(key, points as OpenPoint[])}
                     />
                     </div>
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
@@ -888,6 +945,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>}
+                                {VERSIONS_ENABLED && !guestMode && activeInst?.workflow_db_id && (
+                                    <button type="button" onClick={() => setVersionsOpen(true)} title="Historique des versions"
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">
+                                        <History className="w-3.5 h-3.5" />Versions
+                                    </button>
+                                )}
                                 {activeInst?.workflow_db_id && currentActorId && (
                                     <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
                                         className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
@@ -1043,6 +1106,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     onShowSuccess={showSuccess}
                                     highlightedRowIds={tableHighlightIds}
                                 />
+                                {OPEN_POINTS_UI_ENABLED && activeData.length > 0 && (
+                                    <OpenPointsPanel title={activeTitle} points={activePoints} rows={activeData}
+                                        onChange={pts => setPointsFor(instances.length > 0 ? activeInst?.process_id ?? null : null, pts)}
+                                        onFocusStep={id => handleFocusSteps([id])}
+                                        onAnswer={answerPoint} />
+                                )}
                                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
                                     <button onClick={() => setGuideOpen(!guideOpen)} className="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
@@ -1117,6 +1186,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 </div>
             </div>
 
+            {versionsOpen && activeInst?.workflow_db_id && (
+                <VersionHistoryModal procedureId={activeInst.workflow_db_id} currentWorkflow={activeData}
+                    onClose={() => setVersionsOpen(false)} onRestored={handleVersionRestored} />
+            )}
             <SaveToBiblioModal open={saveModalOpen} initialNom={activeTitle} onClose={() => setSaveModalOpen(false)} onConfirm={handleSave} />
 
             {outillageTool && (

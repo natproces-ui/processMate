@@ -19,10 +19,16 @@ import ProcessLinksEditor from '@/components/orchestration/ProcessLinksEditor';
 import ProcessChainView from '@/components/orchestration/ProcessChainView';
 import { ScreenHoverCard, ScreenHoverTarget } from '@/components/orchestration/ScreenHover';
 import { LINK_LABELS, type ProcedureLinks, type StepLink } from '@/lib/processLinks';
+import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
+import { BPMN_PRESERVE_LAYOUT, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
+import VersionHistoryModal from '@/components/shared/VersionHistoryModal';
+import OpenPointsPanel, { readOpenPoints, type OpenPoint } from '@/components/shared/OpenPointsPanel';
+import { applyLabelChanges } from '@/logic/bpmnLabelPatch';
+import { diffWorkflows, isEmptyDiff, isLabelOnly } from '@/logic/workflowDiff';
 import {
     Download, Save, Maximize2, X, MessageSquare,
     CheckCircle, AlertCircle, Loader2,
-    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench, RotateCw, Link2, Play,
+    Edit2, Check, FileText, Settings2, GitBranch, AlignLeft, Wrench, RotateCw, Link2, Play, History,
 } from 'lucide-react';
 
 const BpmnEditor = dynamic(() => import('@/components/new-way/BpmnEditor'), {
@@ -110,6 +116,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     const [managingTool, setManagingTool] = useState<string | null>(null);
     const [walkthroughOpen, setWalkthroughOpen] = useState(false);
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
+    const [versionsOpen, setVersionsOpen] = useState(false);
+    const [chatText, setChatText] = useState<{ id: number; text: string }>();
 
     // ─── Modes édition ────────────────────────────────────────
     const [editingCaract, setEditingCaract] = useState(false);
@@ -417,12 +425,15 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
         newEnrichments: Map<string, TaskEnrichment>,
         procedureMetadata?: any,
     ) => {
+        // Libellés seulement : le diagramme existant est modifié sur place (positions conservées)
+        const diff = diffWorkflows(data, workflow);
+        let xml: string | null = BPMN_PRESERVE_LAYOUT && bpmnXml && isLabelOnly(diff) ? applyLabelChanges(bpmnXml, diff) : null;
         setData(workflow);
         setDraftData(workflow);
-        let xml: string | null = null;
-        if (workflow.length > 0) {
+        if (!xml && workflow.length > 0) {
             try { xml = generateBPMNSimple(workflow, title); }
             catch (err: any) { showError(`Diagramme non régénéré : ${err.message || 'erreur inconnue'}`); }
+            if (BPMN_PRESERVE_LAYOUT && xml && bpmnXml && !isEmptyDiff(diff)) showSuccess('Diagramme recalculé : sa mise en page manuelle a été réinitialisée.');
         }
         setBpmnXml(xml);
         if (xml) editorRef.current?.importXml(xml);
@@ -434,7 +445,39 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
             setMeta(prev => readMeta(mergeProcedureMetadata(prev, procedureMetadata)));
             setDraftMeta(prev => readMeta(mergeProcedureMetadata(prev, procedureMetadata)));
         }
-    }, [title]);
+    }, [title, data, bpmnXml]);
+
+    // ─── Lot 5 : points de restauration du chat, versions, points ouverts ──
+    const takeSnapshot = () => ({ data, enrichments: new Map(enrichments), meta, bpmnXml });
+    const restoreSnapshot = (raw: unknown) => {
+        const snap = raw as ReturnType<typeof takeSnapshot>;
+        setData(snap.data); setDraftData(snap.data);
+        setEnrichments(snap.enrichments); setDraftEnrichments(snap.enrichments);
+        setMeta(snap.meta); setDraftMeta(snap.meta);
+        setBpmnXml(snap.bpmnXml);
+        if (snap.bpmnXml) editorRef.current?.importXml(snap.bpmnXml);
+    };
+    const handleVersionRestored = (v: VersionDetail) => {
+        const map = new Map<string, TaskEnrichment>(Object.entries(v.enrichments_json || {}) as [string, TaskEnrichment][]);
+        const m = readMeta({ ...meta, ...(v.metadata || {}) });
+        const rows = v.workflow_json || [];
+        const xml = v.bpmn_xml || (rows.length ? generateBPMNSimple(rows, title) : null);
+        setData(rows); setDraftData(rows); setEnrichments(map); setDraftEnrichments(map); setMeta(m); setDraftMeta(m);
+        setBpmnXml(xml);
+        if (xml) editorRef.current?.importXml(xml);
+        showSuccess(`Version ${v.version} restaurée`);
+    };
+    const openPoints = readOpenPoints(meta);
+    const updateOpenPoints = async (points: OpenPoint[]) => {
+        const m = { ...meta, open_points: points };
+        setMeta(m); setDraftMeta(m);
+        try { await saveToDb(data, enrichments, m); } catch { /* erreur déjà affichée */ }
+    };
+    const answerPoint = (point: OpenPoint, answer: string) => {
+        const step = data.find(r => r.id === point.step_id);
+        setChatOpen(true);
+        setChatText({ id: Date.now(), text: `Réponse au point ouvert « ${point.question} »${step ? ` (étape « ${step.étape} »)` : ''} : ${answer}. Mets la procédure à jour en conséquence.` });
+    };
 
     // ─── Config sections ──────────────────────────────────────
     const SECTIONS: { id: Section; label: string; icon: React.ReactNode }[] = [
@@ -484,6 +527,13 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
             {!hideHeader && (
                 <div className="flex-shrink-0 bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between gap-4">
                     <h2 className="text-base font-bold text-slate-800 truncate">{title}</h2>
+                    <div className="flex items-center gap-2">
+                    {VERSIONS_ENABLED && (
+                        <button type="button" onClick={() => setVersionsOpen(true)} title="Historique des versions"
+                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:border-slate-300">
+                            <History className="w-3.5 h-3.5" />Versions
+                        </button>
+                    )}
                     <button type="button" onClick={() => setChatOpen(o => !o)}
                         className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${chatOpen
                             ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
@@ -491,6 +541,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                         <MessageSquare className="w-3.5 h-3.5" />
                         {chatOpen ? 'Masquer le chat' : 'Chat IA'}
                     </button>
+                    </div>
                 </div>
             )}
 
@@ -530,6 +581,9 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                             onSuccess={showSuccess}
                             procedureId={procedure?.id}
                             restoreGenerated={false}
+                            insertText={chatText}
+                            onCheckpoint={takeSnapshot}
+                            onRestore={restoreSnapshot}
                         />
                     </div>
                 )}
@@ -690,6 +744,10 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                 {/* ══════════════════════════════════════════════
                     DIAGRAMME
                 ══════════════════════════════════════════════ */}
+                {OPEN_POINTS_UI_ENABLED && activeSection === 'diagramme' && data.length > 0 && (
+                    <OpenPointsPanel title={title} points={openPoints} rows={data}
+                        onChange={updateOpenPoints} onAnswer={answerPoint} />
+                )}
                 {activeSection === 'diagramme' && (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -1015,6 +1073,10 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
             </div>
 
             {/* Modale sauvegarde */}
+            {versionsOpen && (
+                <VersionHistoryModal procedureId={procedure.id} currentWorkflow={data}
+                    onClose={() => setVersionsOpen(false)} onRestored={handleVersionRestored} />
+            )}
             <SaveToBiblioModal
                 open={saveModalOpen}
                 initialNom={title}

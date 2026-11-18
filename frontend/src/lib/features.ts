@@ -14,3 +14,9 @@ export const GUEST_LIMITS = {
     maxFileMb: num(process.env.NEXT_PUBLIC_GUEST_MAX_FILE_MB, 5),
     maxPages: num(process.env.NEXT_PUBLIC_GUEST_MAX_PAGES, 15),
 };
+
+/** Lot 5 : panneau des points ouverts (Studio et espace de travail). */
+export const OPEN_POINTS_UI_ENABLED = process.env.NEXT_PUBLIC_OPEN_POINTS_ENABLED === 'true';
+/** Lot 5 : une modification du chat qui ne touche que des libellés met à jour le diagramme
+ *  sur place (mise en page conservée) au lieu de le régénérer. */
+export const BPMN_PRESERVE_LAYOUT = process.env.NEXT_PUBLIC_BPMN_PRESERVE_LAYOUT === 'true';

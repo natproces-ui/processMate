@@ -4,9 +4,11 @@ Router Orchestration — Gestion centralisée des procédures ProcessMate
 Données stockées dans procedure_metadata_json (Supabase workflows table)
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from manager import version_store
+from manager.auth import AuthUser, get_optional_user
 from datetime import datetime
 import asyncio
 import json
@@ -895,10 +897,13 @@ class SaveWorkflowDataRequest(BaseModel):
     enrichments_json: Dict = {}
     procedure_metadata_json: Optional[Dict] = None
     bpmn_xml: Optional[str] = None
+    # Lot 5 : origine de la version créée par cet enregistrement (manuel par défaut)
+    version_source: Optional[str] = None
 
 
 @router.patch("/procedures/{workflow_id}/workflow")
-async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest):
+async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest,
+                             user: Optional[AuthUser] = Depends(get_optional_user)):
     """Met à jour le tableau de travail (workflow_json + enrichments) d'une procédure existante."""
     try:
         db = get_supabase()
@@ -925,6 +930,9 @@ async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest):
         }
         db.table("workflows").update(update).eq("id", workflow_id).execute()
         logger.info(f"💾 workflow_json mis à jour — {workflow_id}")
+        # Version (lot 5, drapeau VERSIONS_ENABLED) : ne fait jamais échouer l'enregistrement
+        version_store.record_save(workflow_id, wf, update, body.version_source or "manuel",
+                                  user.id if user else None)
         return {"success": True, "workflow_id": workflow_id, "session_id": wf["session_id"]}
     except HTTPException:
         raise
