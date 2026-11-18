@@ -124,4 +124,6 @@ if IS_PRODUCTION:
     logger.info(f"📡 Frontend URL: {FRONTEND_URL}")
 else:
     logger.info("🔧 Mode DÉVELOPPEMENT activé")
-    logger.info(f"📡 Frontend URL: {FRONTEND_URL}")
+    logger.info(f"📡 Frontend URL: {FRONTEND_URL}")# API Interactions de Gemini pour l'aiguillage du Studio (lot 3). Repli automatique sur
+# generateContent en cas d'erreur. Désactivé par défaut.
+STUDIO_USE_INTERACTIONS = os.getenv("STUDIO_USE_INTERACTIONS", "false").lower() == "true"

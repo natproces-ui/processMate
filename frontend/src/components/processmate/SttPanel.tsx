@@ -31,6 +31,7 @@ import {
     PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
+import { conversationsApi } from '@/lib/conversationsApi';
 import { processingLevelHeaders } from '@/lib/processing-level';
 import type { StudioTool } from '@/lib/processmate-navigation';
 import ProcessingLevelSelector, { useProcessingLevel } from './ProcessingLevelSelector';
@@ -104,6 +105,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatActivity, setChatActivity] = useState({ messages: 0, busy: false });
+    // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
+    const conversationIdRef = useRef<string | null>(null);
+    const linkConversation = (procedureId: string) => {
+        const id = conversationIdRef.current;
+        if (id) conversationsApi.update(id, { link_procedure_id: procedureId }).catch(() => { /* lien facultatif */ });
+    };
     const [chatWidth, setChatWidth] = useState(400);
     const LAYOUT_KEY = 'processmate-studio-layout';
     useEffect(() => {
@@ -564,6 +571,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 // récentes de l'IA" — l'utilisateur a vu et repris la main sur la procédure.
                 const exportEdits = exportEditsRef.current[activeTab] ?? {};
                 await orchestrationApi.saveWorkflowData(inst.workflow_db_id, saveRows as unknown[], enrichObj, { ...exportEdits, recent_ai_changes: null }, currentXml);
+                linkConversation(inst.workflow_db_id);
                 setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, initialMeta: { ...i.initialMeta, ...exportEdits, recent_ai_changes: null } } : i));
             } else {
                 const res = await orchestrationApi.createProcedure({ nom, category, taxonomy_id: taxonomyId });
@@ -573,6 +581,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 // Métadonnées générées (objet, périmètre, dates, annexes…) + saisies du formulaire d'export
                 const fullMeta = { ...(activeInitialMeta ?? {}), ...(exportEditsRef.current[activeTab] ?? {}), nom, category };
                 await orchestrationApi.saveWorkflowData(newId, saveRows as unknown[], enrichObj, fullMeta, currentXml);
+                linkConversation(newId);
                 if (inst) setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, workflow_db_id: newId, title: nom } : i));
                 invalidate();
             }
@@ -804,6 +813,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onFocusSteps={handleFocusSteps}
                         onCollapse={() => toggleChat(false)}
                         onActivity={setChatActivity}
+                        procedureId={workflowId}
+                        restoreGenerated={!workflowId}
+                        syncUrl
+                        onConversationChange={id => { conversationIdRef.current = id; }}
                     />
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
                         onMouseDown={startChatResize}

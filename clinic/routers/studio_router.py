@@ -24,6 +24,7 @@ ce que l'utilisateur l'enregistre (avec son emplacement dans la taxonomie).
   done              {}
 """
 import asyncio
+import hashlib
 import json
 import logging
 import time
@@ -34,7 +35,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from manager import conversation_store as store
 from manager.auth import AuthUser, get_optional_user
+from manager.turn_recorder import TurnRecorder
+from manager.model_manager import interactions_scope
 from manager.guest_limits import GuestLimitError, check_files, client_ip, consume, guest_keys, load_limits
 from manager.model_routing import TaskKind, routing_scope, scrub_model_names, source_kinds_of
 from manager.processing_level import ProcessingLevel, get_processing_level, processing_level_scope
@@ -292,6 +296,112 @@ def _consume_or_raise(keys, kind: str) -> None:
         raise HTTPException(e.status, str(e))
 
 
+# ── Conversations enregistrées (lot 3) ─────────────────────────
+# Une conversation enregistrée utilise son identifiant comme session_id : si l'identifiant
+# envoyé est une conversation de l'utilisateur connecté (et CONVERSATIONS_ENABLED), le tour
+# lit et écrit en base ; sinon, comportement d'avant (session en mémoire).
+
+async def _owned_conversation(session_id: str, user: Optional[AuthUser]) -> Optional[Dict[str, Any]]:
+    if user is None or not store.enabled() or not store.is_uuid(session_id):
+        return None
+    try:
+        return await asyncio.to_thread(store.get_owned, session_id, user.id)
+    except Exception as e:
+        logger.warning(f"⚠️ Conversation illisible ({str(e)[:120]}) : mode session en mémoire")
+        return None
+
+
+def _entry_from_source(src: Dict[str, Any], data: bytes) -> Dict[str, Any]:
+    """Même forme qu'une entrée de _read_files, à partir d'une source enregistrée."""
+    entry = {"file_id": src["id"], "filename": src["filename"], "data": data, "type": src["type"],
+             "size": src.get("size") or len(data), "sha256": src.get("sha256")}
+    if src["type"] in ("docx", "pptx"):
+        try:
+            entry["office"] = extract_office(data, src["type"])
+        except Exception as e:
+            logger.warning(f"⚠️ Source « {src['filename']} » illisible : {str(e)[:120]}")
+    return entry
+
+
+async def _conversation_session(conv: Dict[str, Any]) -> Dict[str, Any]:
+    """Session du tour, reconstruite depuis la base si le serveur a redémarré."""
+    sess = _sessions.get(conv["id"])
+    if sess and sess.get("persisted"):
+        return sess
+    srcs = await asyncio.to_thread(store.sources, conv["id"])
+    files = []
+    for src in srcs:
+        try:
+            data = await asyncio.to_thread(store.download, src["storage_path"])
+            files.append(_entry_from_source(src, data))
+        except Exception as e:
+            logger.warning(f"⚠️ Source « {src.get('filename')} » non rechargée : {str(e)[:120]}")
+    state = conv.get("state") or {}
+    sess = {"files": files, "proposal": state.get("proposal"), "references": state.get("references"),
+            "persisted": True}
+    _sessions[conv["id"]] = sess
+    return sess
+
+
+def forget_session(conversation_id: str) -> None:
+    """À appeler quand les sources changent hors d'un tour (retrait d'une source)."""
+    _sessions.pop(conversation_id, None)
+
+
+async def _server_history(conv: Dict[str, Any]) -> List[Dict[str, str]]:
+    """Historique pour le modèle, construit depuis la base (résumé des anciens échanges si long)."""
+    msgs = await asyncio.to_thread(store.messages, conv["id"])
+    summary, upto = conv.get("summary"), conv.get("summary_upto") or 0
+    if store.needs_summary(msgs, upto):
+        new_upto = len(msgs) - store.RECENT_MESSAGES
+        try:
+            from manager.model_manager import generate_content
+            prompt = ("Résume en français, en 15 lignes au plus, les échanges ci-dessous entre un utilisateur et "
+                      "l'assistant de formalisation de procédures : demandes, décisions prises, procédures produites, "
+                      "points restés ouverts. N'invente rien.\n\n" + store.summary_input(msgs, summary, new_upto))
+            with routing_scope(TaskKind.SYNTHESE_COURTE, ["texte"]):
+                response = await asyncio.to_thread(generate_content, prompt, None, "Résumé de conversation")
+            summary, upto = (response.text or "").strip() or summary, new_upto
+            await asyncio.to_thread(store.update, conv["id"], conv["owner_id"], summary=summary, summary_upto=upto)
+        except Exception as e:
+            logger.warning(f"⚠️ Résumé de conversation indisponible : {str(e)[:120]}")
+    return store.history_for_model(msgs, summary, upto)
+
+
+def _record(gen, conv: Optional[Dict[str, Any]], sess: Dict[str, Any], ix: Optional[Dict[str, Any]] = None):
+    """Relaie le flux tel quel et, pour une conversation enregistrée, sauvegarde la réponse à la fin
+    (y compris si l'utilisateur arrête : le message est enregistré comme arrêté)."""
+    if conv is None:
+        return gen
+
+    async def wrapper():
+        recorder, finished = TurnRecorder(), False
+        try:
+            async for chunk in gen:
+                for line in chunk.splitlines():
+                    if line.startswith("data: "):
+                        try:
+                            ev = json.loads(line[6:])
+                        except ValueError:
+                            continue
+                        if ev.get("type") == "done":
+                            finished = True
+                        recorder.feed(ev)
+                yield chunk
+        finally:
+            try:
+                msg = recorder.finish(stopped=not finished)
+                ids = (ix or {}).get("ids") or []
+                store.add_message(conv["id"], msg["role"], msg["content"], msg["payload"],
+                                  interaction_id=ids[-1] if ids else None)
+                state = {"proposal": sess.get("proposal"), "references": sess.get("references")}
+                store.update(conv["id"], conv["owner_id"], state=state)
+            except Exception as e:
+                logger.error(f"❌ Réponse non enregistrée dans la conversation {conv['id']} : {e}")
+
+    return wrapper()
+
+
 def _streaming(gen) -> StreamingResponse:
     return StreamingResponse(gen, media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -321,11 +431,36 @@ async def studio_turn(
     history_list = _loads(history, [])
     workflow = _loads(current_workflow, None)
     has_workflow = bool(workflow)
-    sess = _sessions.setdefault(session_id, {"files": [], "proposal": None})
+    conv = await _owned_conversation(session_id, user)
+    plan_files = new_files
+    if conv is None:
+        sess = _sessions.setdefault(session_id, {"files": [], "proposal": None})
+        if new_files:  # nouveaux fichiers = nouveau contexte
+            sess["files"], sess["proposal"] = new_files, None
+    else:
+        # Conversation enregistrée : les sources s'ajoutent (dédoublonnées) au lieu de se remplacer
+        sess = await _conversation_session(conv)
+        if new_files:
+            try:
+                added = await asyncio.to_thread(store.add_sources, conv["id"], user.id, new_files)
+            except RuntimeError as e:
+                raise HTTPException(502, str(e))
+            by_sha = {hashlib.sha256(f["data"]).hexdigest(): f for f in new_files}
+            for row in added:
+                f = by_sha.get(row["sha256"])
+                if f:
+                    sess["files"].append({**f, "file_id": row["id"], "sha256": row["sha256"]})
+            sess["proposal"] = None
+            plan_files = sess["files"]  # la proposition porte sur toutes les sources actives
+        history_list = await _server_history(conv)
+        attachments = [{"name": f["filename"], "type": f["type"], "size": f["size"]} for f in new_files]
+        await asyncio.to_thread(store.add_message, conv["id"], "user", message.strip(),
+                                {"attachments": attachments} if attachments else {})
+        if conv.get("title") in (None, "", "Nouvelle conversation"):
+            await asyncio.to_thread(store.update, conv["id"], user.id, title=store.title_from(message, new_files))
     sess["updated"] = time.time()
-    if new_files:  # nouveaux fichiers = nouveau contexte
-        sess["files"], sess["proposal"] = new_files, None
     level = _level_for(guest)
+    ix = {"store": user is not None, "ids": []}  # API Interactions : rien de conservé pour un invité
 
     async def stream():
         with processing_level_scope(level):  # le niveau suit tout le flux, y compris les tâches parallèles
@@ -341,8 +476,8 @@ async def studio_turn(
                 n = len(sess["files"])
                 label = f"Lecture de {n} fichier{'s' if n > 1 else ''}" if new_files else "Analyse de la demande"
                 yield _sse({"type": "status", "id": "plan", "label": label, "state": "running"})
-                with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(new_files)):
-                    plan = await asyncio.to_thread(plan_turn, message, new_files, has_workflow, history_list, sess.get("proposal"))
+                with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(plan_files)), interactions_scope(ix):
+                    plan = await asyncio.to_thread(plan_turn, message, plan_files, has_workflow, history_list, sess.get("proposal"))
                 found = len(plan.procedures)
                 done_label = (f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
                               if plan.action in ("generate", "propose", "merge") else label)
@@ -375,7 +510,7 @@ async def studio_turn(
             finally:
                 yield _sse({"type": "done"})
 
-    return _streaming(stream())
+    return _streaming(_record(stream(), conv, sess, ix))
 
 
 async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw):
@@ -403,10 +538,17 @@ class GenerateRequest(BaseModel):
 async def studio_generate(request: Request, body: GenerateRequest,
                           user: Optional[AuthUser] = Depends(get_optional_user)):
     """Génère la sélection faite par l'utilisateur dans une proposition."""
-    sess = _sessions.get(body.session_id)
+    conv = await _owned_conversation(body.session_id, user)
+    sess = await _conversation_session(conv) if conv else _sessions.get(body.session_id)
     if not sess or not sess.get("proposal"):
         raise HTTPException(404, "Conversation expirée : rejoignez les fichiers à nouveau.")
     guest = _guest(request, user)
+    if conv:
+        n = len(body.procedure_ids)
+        text = (f"Fusionner les {n} procédures sélectionnées en une seule" if body.merge
+                else ("Générer les " + str(n) + " procédures sélectionnées") if n > 1 else "Générer la procédure sélectionnée")
+        await asyncio.to_thread(_mark_proposal_submitted, conv["id"], body.procedure_ids)
+        await asyncio.to_thread(store.add_message, conv["id"], "user", text, {})
     if guest is not None:
         _consume_or_raise(guest, "generations")
     sess["updated"] = time.time()
@@ -424,4 +566,14 @@ async def studio_generate(request: Request, body: GenerateRequest,
             finally:
                 yield _sse({"type": "done"})
 
-    return _streaming(stream())
+    return _streaming(_record(stream(), conv, sess))
+
+
+def _mark_proposal_submitted(conversation_id: str, selected: List[str]) -> None:
+    """La dernière proposition enregistrée passe en « soumise » (cases figées à la réouverture)."""
+    for m in reversed(store.messages(conversation_id)):
+        prop = (m.get("payload") or {}).get("proposal")
+        if prop:
+            payload = {**m["payload"], "proposal": {**prop, "selected": selected, "submitted": True}}
+            store.update_message_payload(m["id"], conversation_id, payload)
+            return

@@ -6,6 +6,7 @@ import { TaskEnrichment } from '@/logic/bpmnTypes';
 import { applyOperations } from '@/logic/workflowOperations';
 import { API_CONFIG } from '@/lib/api-config';
 import { getAuthHeaders } from '@/lib/authHeaders';
+import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam, type ConversationSource, type StoredMessage } from '@/lib/conversationsApi';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
@@ -112,6 +113,14 @@ interface ChatInterfaceProps {
     onFocusSteps?: (ids: string[]) => void;
     /** Activité (nombre de messages, réponse en cours) : indicateur quand l'assistant est masqué */
     onActivity?: (activity: { messages: number; busy: boolean }) => void;
+    /** Conversations enregistrées : procédure enregistrée liée (rouvre sa dernière conversation) */
+    procedureId?: string;
+    /** Conversation courante (null = pas encore enregistrée) */
+    onConversationChange?: (conversationId: string | null) => void;
+    /** Rouvrir les onglets des procédures générées en rechargeant une conversation */
+    restoreGenerated?: boolean;
+    /** Refléter la conversation dans l'URL (?c=) — un seul chat par page doit le faire */
+    syncUrl?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -201,6 +210,10 @@ export default function ChatInterface({
     onFilesSent,
     onFocusSteps,
     onActivity,
+    procedureId,
+    onConversationChange,
+    restoreGenerated = true,
+    syncUrl = false,
 }: ChatInterfaceProps) {
 
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -216,7 +229,13 @@ export default function ChatInterface({
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [addMenuOpen, setAddMenuOpen] = useState(false);
     const [demoFilesOpen, setDemoFilesOpen] = useState(false);
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
+    // Conversations enregistrées : drapeau + utilisateur connecté. Sinon, comportement d'avant.
+    const persistent = CONVERSATIONS_ENABLED && !!user;
+    const [conversationId, setConversationIdState] = useState<string | null>(null);
+    const conversationIdRef = useRef<string | null>(null);
+    const [sources, setSources] = useState<ConversationSource[]>([]);
+    const loadedConversationRef = useRef(false);
     const isAdmin = profile?.global_role === 'admin';
     const [dragging, setDragging] = useState(false);
 
@@ -263,6 +282,85 @@ export default function ChatInterface({
     useEffect(() => {
         onActivity?.({ messages: messages.length, busy: loading });
     }, [messages.length, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Conversations enregistrées ───────────────────────────
+    const setConversation = (id: string | null) => {
+        conversationIdRef.current = id;
+        setConversationIdState(id);
+        if (id) setSessionId(id); // la conversation sert de session au Studio
+        if (syncUrl) writeConversationParam(id);
+        onConversationChange?.(id);
+    };
+
+    const toChatMessage = (m: StoredMessage): ChatMessage => {
+        const p = m.payload || {};
+        const base: ChatMessage = { id: m.id, role: m.role, content: m.content || '', createdAt: new Date(m.created_at) };
+        if (m.role === 'user') {
+            return { ...base, attachments: (p.attachments || []).map((a: { name: string; type: FileKind; size?: number }) => ({ name: a.name, type: a.type, size: a.size })) };
+        }
+        return {
+            ...base,
+            intent: p.intent, steps: p.steps, totalSteps: p.totalSteps, title: p.title, operationsCount: p.operationsCount,
+            proposal: p.proposal ? { procedures: p.proposal.procedures || [], selected: p.proposal.selected || [], submitted: p.proposal.submitted ?? true } : undefined,
+            generations: (p.generations || []).map((g: { id: string; title: string; status: TurnGeneration['status']; steps?: number; error?: string }) => ({
+                key: `${m.id}:${g.id}`, title: g.title, status: g.status === 'generating' ? 'stopped' : g.status, steps: g.steps, error: g.error,
+            })),
+            remarks: p.remarks, suggestions: p.suggestions,
+        };
+    };
+
+    const openConversation = async (id: string) => {
+        try {
+            const data = await conversationsApi.get(id);
+            const msgs = data.messages.map(toChatMessage);
+            // La dernière proposition reste modifiable si rien n'a suivi
+            const last = msgs[msgs.length - 1];
+            if (last?.proposal && data.messages[data.messages.length - 1]?.payload?.proposal?.submitted !== true) {
+                last.proposal = { ...last.proposal, submitted: false };
+            }
+            setMessages(msgs);
+            setSources(data.sources);
+            setConversation(id);
+            if (restoreGenerated) {
+                for (const m of data.messages) {
+                    for (const g of (m.payload?.generated || []) as { id: string; title: string; workflow: Table1Row[]; enrichments: Record<string, TaskEnrichment>; procedureMetadata: Record<string, unknown> }[]) {
+                        const key = `${m.id}:${g.id}`;
+                        onProcedureStarted?.(key, g.title);
+                        onProcedureReady?.({ key, title: g.title, workflow: g.workflow || [], enrichments: new Map(Object.entries(g.enrichments || {})), procedureMetadata: g.procedureMetadata || {} });
+                    }
+                }
+            }
+        } catch (err: unknown) {
+            if (syncUrl) writeConversationParam(null);
+            onError(`Conversation introuvable : ${err instanceof Error ? err.message : ''}`.trim());
+        }
+    };
+
+    const refreshSources = async (id: string) => {
+        try { setSources((await conversationsApi.get(id)).sources); } catch { /* affichage seulement */ }
+    };
+
+    const removeSource = async (sourceId: string) => {
+        const id = conversationIdRef.current;
+        if (!id) return;
+        try {
+            await conversationsApi.removeSource(id, sourceId);
+            setSources(prev => prev.filter(s => s.id !== sourceId));
+        } catch (err: unknown) {
+            onError(err instanceof Error ? err.message : 'Retrait impossible');
+        }
+    };
+
+    // Ouverture : ?c= dans l'URL (Studio), sinon la dernière conversation de la procédure ouverte
+    useEffect(() => {
+        if (!persistent || loadedConversationRef.current) return;
+        loadedConversationRef.current = true;
+        (async () => {
+            let id = syncUrl ? readConversationParam() : null;
+            if (!id && procedureId) id = (await conversationsApi.latestForProcedure(procedureId).catch(() => null))?.id ?? null;
+            if (id) await openConversation(id);
+        })();
+    }, [persistent, procedureId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Identifiant de conversation local : plus de session créée en base à chaque ouverture
     const initSession = async () => {
@@ -498,8 +596,19 @@ export default function ChatInterface({
         if (overrideInput === undefined) setInput('');
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
+        let sid = sessionId;
+        if (persistent && !conversationIdRef.current) {
+            try {
+                const created = await conversationsApi.create({ procedure_ids: procedureId ? [procedureId] : [] });
+                sid = created.id;
+                setConversation(created.id);
+            } catch (err: unknown) {
+                onError(`Conversation non enregistrée : ${err instanceof Error ? err.message : ''}`);
+            }
+        }
+
         const form = new FormData();
-        form.append('session_id', sessionId);
+        form.append('session_id', sid);
         form.append('message', text.trim());
         form.append('history', JSON.stringify(buildHistory()));
         if (currentWorkflow && currentWorkflow.length > 0) form.append('current_workflow', JSON.stringify(currentWorkflow));
@@ -516,6 +625,7 @@ export default function ChatInterface({
         const msgId = newAssistantMessage();
         await streamEvents(API_CONFIG.getFullUrl(API_CONFIG.endpoints.studioTurn),
             { method: 'POST', headers: processingLevelHeaders(processingLevel), body: form }, msgId);
+        if (persistent && conversationIdRef.current && files.length > 0) refreshSources(conversationIdRef.current);
     };
 
     // Choix dans une proposition : générer la sélection ou la fusionner en une seule procédure
@@ -582,6 +692,8 @@ export default function ChatInterface({
         setCollapsed(false);
         onNewConversation?.();
         setSessionId(null);
+        setSources([]);
+        if (conversationIdRef.current) setConversation(null);
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
         await initSession();
         requestAnimationFrame(() => textareaRef.current?.focus());
@@ -820,6 +932,24 @@ export default function ChatInterface({
                 <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100"}>
                     {inputContext && <div hidden={!inputContextVisible} className="border-b border-slate-100 p-3 bg-slate-50/50 rounded-t-2xl">{inputContext}</div>}
                     <div className="px-3 py-2">
+                    {/* ── Sources enregistrées de la conversation (elles s'ajoutent d'un message à l'autre) ── */}
+                    {persistent && conversationId && sources.length > 0 && (
+                        <div className="pb-2 pt-1" aria-label="Sources de la conversation">
+                            <p className="text-[11px] font-medium text-slate-400 mb-1">Sources de la conversation</p>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {sources.map(src => (
+                                    <span key={src.id} className="inline-flex items-center gap-1 max-w-[220px] rounded-lg border border-slate-200 bg-slate-50 pl-2 pr-1 py-0.5 text-[11px] text-slate-600">
+                                        <span className="truncate" title={src.filename}>{src.filename}</span>
+                                        <button type="button" aria-label={`Retirer la source ${src.filename}`} title="Retirer cette source"
+                                            onClick={() => removeSource(src.id)} disabled={loading}
+                                            className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-white disabled:opacity-40">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     {/* ── Fichiers attachés ─────────────────── */}
                     {attachedFiles.length > 0 && (
                         <div className="pb-2 pt-1 flex gap-2 flex-wrap">

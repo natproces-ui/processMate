@@ -4,15 +4,18 @@ VERSION OPTIMISÉE : 1 tentative par modèle avant switch
 """
 
 import logging
-from typing import Optional, Callable, Any, Dict, List
+from typing import Optional, Callable, Any, Dict, Iterator, List
 from enum import Enum
 import asyncio
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from types import SimpleNamespace
 from google import genai
 from google.genai import errors as genai_errors
 from google.api_core import exceptions as google_exceptions
 from config import (GEMINI_MODEL_PRO, GEMINI_MODEL_FLASH, GEMINI_MODEL_LITE, GEMINI_MODEL_TRANSCRIBE, GOOGLE_API_KEY,
-                    GEMINI_MODEL_VISION_FAST, GEMINI_MODEL_CODE_FAST, MODEL_ROUTING_ENABLED)
+                    GEMINI_MODEL_VISION_FAST, GEMINI_MODEL_CODE_FAST, MODEL_ROUTING_ENABLED, STUDIO_USE_INTERACTIONS)
 from manager.processing_level import ProcessingLevel, get_processing_level
 
 logger = logging.getLogger(__name__)
@@ -139,6 +142,80 @@ def generate_content_stream(contents: Any, config: Any = None, task_name: str = 
             raise
 
 
+# ── API Interactions (lot 3) ────────────────────────────────────
+# Recommandée par Google depuis juin 2026 (generateContent est « legacy »). Utilisée pour les
+# appels faits dans un interactions_scope, si STUDIO_USE_INTERACTIONS=true. Toute erreur ou
+# tout contenu non convertible → repli sur generateContent, sans effet visible.
+# store=False pour un invité : Google ne conserve rien. L'identifiant de l'interaction est
+# remonté dans le scope (enregistré sur le message de la conversation).
+
+_interactions: ContextVar[Optional[Dict[str, Any]]] = ContextVar("interactions_scope", default=None)
+
+
+@contextmanager
+def interactions_scope(scope: Dict[str, Any]) -> Iterator[None]:
+    """scope = {"store": bool, "ids": []} — partagé par référence avec l'appelant."""
+    token = _interactions.set(scope)
+    try:
+        yield
+    finally:
+        _interactions.reset(token)
+
+
+def _to_interaction_input(contents: Any) -> Optional[List[Dict[str, Any]]]:
+    """Convertit les contenus generateContent (texte, inline_data, images PIL). None si impossible."""
+    import base64
+    import io
+    items = contents if isinstance(contents, list) else [contents]
+    out: List[Dict[str, Any]] = []
+    for c in items:
+        if isinstance(c, str):
+            out.append({"type": "text", "text": c})
+        elif isinstance(c, dict) and "inline_data" in c:
+            data = c["inline_data"].get("data")
+            mime = c["inline_data"].get("mime_type", "")
+            if isinstance(data, bytes):
+                data = base64.b64encode(data).decode()
+            kind = "image" if mime.startswith("image/") else "document" if mime == "application/pdf" else None
+            if not kind:
+                return None
+            out.append({"type": kind, "data": data, "mime_type": mime})
+        elif c.__class__.__module__.startswith("PIL."):
+            buf = io.BytesIO()
+            c.save(buf, format="PNG")
+            out.append({"type": "image", "data": base64.b64encode(buf.getvalue()).decode(), "mime_type": "image/png"})
+        else:
+            return None
+    return out
+
+
+def _try_interaction(model: "GeminiModel", contents: Any, config: Any, task_name: str):
+    scope = _interactions.get()
+    if not STUDIO_USE_INTERACTIONS or scope is None:
+        return None
+    client = _client()
+    payload = _to_interaction_input(contents)
+    if not hasattr(client, "interactions") or payload is None:
+        return None
+    started = time.monotonic()
+    try:
+        kwargs: Dict[str, Any] = {"model": model.value, "input": payload, "store": bool(scope.get("store"))}
+        temperature = getattr(config, "temperature", None)
+        if temperature is not None:
+            kwargs["generation_config"] = {"temperature": temperature}
+        it = client.interactions.create(**kwargs)
+        text = getattr(it, "output_text", None)
+        if not text:
+            return None
+        if getattr(it, "id", None) and scope.get("store"):
+            scope.setdefault("ids", []).append(it.id)
+        logger.info(f"📏 {task_name} | API Interactions | modèle={model.value} | {time.monotonic() - started:.1f}s")
+        return SimpleNamespace(text=text, usage_metadata=getattr(it, "usage", None))
+    except Exception as e:
+        logger.warning(f"⚠️ {task_name} : API Interactions indisponible ({str(e)[:120]}) → generateContent")
+        return None
+
+
 def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini",
                      models: Optional[List[GeminiModel]] = None):
     """Appel Gemini synchrone avec la chaîne de secours du niveau courant.
@@ -150,6 +227,9 @@ def generate_content(contents: Any, config: Any = None, task_name: str = "Gemini
     models = models or get_models_for_request()  # liste imposée (ex : aiguillage toujours rapide)
     for i, model in enumerate(models):
         started = time.monotonic()
+        via_interactions = _try_interaction(model, contents, config, task_name)
+        if via_interactions is not None:
+            return via_interactions
         try:
             response = _client().models.generate_content(model=model.value, contents=contents, config=config)
             _log_call(task_name, model, started, response, fallback=i > 0)

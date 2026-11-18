@@ -528,6 +528,8 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                             onWorkflowGenerated={handleWorkflowFromChat}
                             onError={showError}
                             onSuccess={showSuccess}
+                            procedureId={procedure?.id}
+                            restoreGenerated={false}
                         />
                     </div>
                 )}
