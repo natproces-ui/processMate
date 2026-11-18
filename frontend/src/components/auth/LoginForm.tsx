@@ -64,6 +64,7 @@ export default function LoginForm() {
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium text-gray-700">Mot de passe</label>
+          <Link href="/mot-de-passe/?oubli=1" className="text-xs text-blue-600 hover:underline">Mot de passe oublié ?</Link>
         </div>
         <input
           type="password"

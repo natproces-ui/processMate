@@ -77,6 +77,8 @@ def _log_call(task_name: str, model: "GeminiModel", started: float, response: An
     tokens_out = getattr(usage, "candidates_token_count", None)
     logger.info(f"📏 {task_name} | modèle={model.value} | secours={'oui' if fallback else 'non'} | "
                 f"{time.monotonic() - started:.1f}s | jetons={tokens_in}/{tokens_out}")
+    from manager import usage_meter  # consommation par organisation (console plateforme)
+    usage_meter.record(task_name, tokens_in, tokens_out)
 
 
 def _client() -> genai.Client:

@@ -11,9 +11,10 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam, type ConversationSummary } from '@/lib/conversationsApi';
 import { guestStore, GUEST_CONVERSATION_KEY, type GuestConversation } from '@/lib/guestStore';
+import OnboardingCard from '@/components/home/OnboardingCard';
 import {
     Zap, PenLine, FolderKanban, FileText, CheckSquare, Megaphone, BarChart3, PenTool,
-    BookOpen, Newspaper, Compass, Menu, X, Loader2, RotateCw, LogOut, MessageSquare, Users, Clock,
+    BookOpen, Newspaper, Compass, Menu, X, Loader2, RotateCw, LogOut, MessageSquare, Users, Clock, Building2,
 } from 'lucide-react';
 
 const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), {
@@ -157,7 +158,13 @@ export default function ChatHome() {
                         {access?.is_admin && <NavLink href="/admin" icon={<Users className="w-4 h-4" />} label="Utilisateurs" />}
                     </section>
                 )}
-                {user && access && !member && (
+                {user && access?.is_admin && access.organisations_mode && <OnboardingCard />}
+                {user && access?.is_platform_admin && (
+                    <section aria-label="Plateforme" className="space-y-0.5">
+                        <NavLink href="/plateforme" icon={<Building2 className="w-4 h-4" />} label="Plateforme processMate" />
+                    </section>
+                )}
+                {user && access && !member && !access.is_platform_admin && (
                     <p className="flex gap-2 rounded-lg bg-slate-100 px-2.5 py-2 text-xs text-slate-600">
                         <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
                         <span>L&apos;accès au référentiel de l&apos;organisation est donné par un administrateur.</span>

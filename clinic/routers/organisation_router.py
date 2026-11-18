@@ -101,6 +101,22 @@ async def get_members(access: Access = Depends(current_access)):
     return {"members": await asyncio.to_thread(list_members, access.organisation_id)}
 
 
+def onboarding(org_id: str) -> Dict[str, bool]:
+    """Premiers pas d'un nouvel espace : taxonomie, comptes, première campagne."""
+    db = _db()  # tables d'organisation : lecture cloisonnée par la requête
+    members = db.table("organisation_members").select("user_id").eq("organisation_id", org_id).execute().data
+    return {
+        "taxonomie": bool(db.table("process_taxonomy").select("id").limit(1).execute().data),
+        "comptes": len(members) > 1,
+        "campagne": bool(db.table("formalization_campaigns").select("id").limit(1).execute().data),
+    }
+
+
+@router.get("/demarrage", dependencies=[Depends(_enabled)])
+async def get_onboarding(access: Access = Depends(current_access)):
+    return {"etapes": await asyncio.to_thread(onboarding, access.organisation_id)}
+
+
 class MemberUpdate(BaseModel):
     role: Optional[str] = None
     statut: Optional[str] = None
