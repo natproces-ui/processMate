@@ -5,6 +5,7 @@ Intent detection → routing vers la bonne logique
 """
 
 import asyncio
+import contextlib
 import logging
 import json
 import re
@@ -13,6 +14,7 @@ import base64
 from typing import List, Dict, Any, Optional
 
 from manager.model_manager import GeminiModelManager
+from manager.model_routing import TaskKind, current_routing, routing_scope
 from processor.intent_detector import detect_intent, IntentResult
 from processor.img_processor import ImageProcessor
 from processor.explain_processor import ExplainProcessor
@@ -118,12 +120,17 @@ class ChatProcessor:
 
         logger.info(f"💬 Chat — has_workflow={has_workflow}, files={filenames}")
 
-        intent_result = await detect_intent(
-            message=message,
-            has_workflow=has_workflow,
-            filenames=filenames,
-            history=history  # ← historique passé au classifier
-        )
+        # Comprendre la demande = aiguillage (modèle léger), même quand le tour est routé
+        # comme une génération ou une modification : en Approfondi, inutile de payer le modèle
+        # le plus lourd pour classer une phrase.
+        routing = current_routing()
+        with routing_scope(TaskKind.AIGUILLAGE, routing[1]) if routing else contextlib.nullcontext():
+            intent_result = await detect_intent(
+                message=message,
+                has_workflow=has_workflow,
+                filenames=filenames,
+                history=history  # ← historique passé au classifier
+            )
 
         logger.info(f"🎯 Intent: {intent_result.intent} — {intent_result.summary}")
 

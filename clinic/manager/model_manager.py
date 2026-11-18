@@ -182,7 +182,11 @@ def _to_interaction_input(contents: Any) -> Optional[List[Dict[str, Any]]]:
             out.append({"type": kind, "data": data, "mime_type": mime})
         elif c.__class__.__module__.startswith("PIL."):
             buf = io.BytesIO()
-            c.save(buf, format="PNG")
+            img = c
+            if img.mode not in ("RGB", "RGBA", "L", "LA"):
+                # CMYK (diapositives, scans d'imprimeur), palettes… : PNG n'accepte que ces modes
+                img = img.convert("RGBA" if "transparency" in img.info or img.mode == "PA" else "RGB")
+            img.save(buf, format="PNG")
             out.append({"type": "image", "data": base64.b64encode(buf.getvalue()).decode(), "mime_type": "image/png"})
         else:
             return None
@@ -194,11 +198,15 @@ def _try_interaction(model: "GeminiModel", contents: Any, config: Any, task_name
     if not STUDIO_USE_INTERACTIONS or scope is None:
         return None
     client = _client()
-    payload = _to_interaction_input(contents)
-    if not hasattr(client, "interactions") or payload is None:
+    if not hasattr(client, "interactions"):
         return None
     started = time.monotonic()
     try:
+        # Toute erreur de conversion ou d'appel → generateContent : l'API Interactions
+        # n'est qu'une voie préférée, jamais une cause d'échec du tour.
+        payload = _to_interaction_input(contents)
+        if payload is None:
+            return None
         kwargs: Dict[str, Any] = {"model": model.value, "input": payload, "store": bool(scope.get("store"))}
         temperature = getattr(config, "temperature", None)
         if temperature is not None:
