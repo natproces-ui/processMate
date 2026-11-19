@@ -35,12 +35,13 @@ class UpdateBody(BaseModel):
     archived: Optional[bool] = None
     link_procedure_id: Optional[str] = None
     project_id: Optional[str] = None
+    pinned: Optional[bool] = None
 
 
 def _public(conv: dict) -> dict:
     """Champs exposés au navigateur (l'état interne de la proposition reste côté serveur)."""
     return {k: conv.get(k) for k in ("id", "title", "procedure_ids", "project_id", "created_at",
-                                     "updated_at", "archived_at")}
+                                     "updated_at", "archived_at", "pinned_at")}
 
 
 def _public_source(src: dict) -> dict:
@@ -54,8 +55,9 @@ async def list_conversations(
     procedure_id: Optional[str] = None,
     project_id: Optional[str] = None,
     archived: bool = False,
+    q: Optional[str] = Query(None, max_length=80),
 ):
-    rows = await asyncio.to_thread(store.list_for, user.id, limit, archived, procedure_id, project_id)
+    rows = await asyncio.to_thread(store.list_for, user.id, limit, archived, procedure_id, project_id, q)
     return {"conversations": [_public(r) for r in rows]}
 
 
@@ -137,6 +139,8 @@ async def update_conversation(conversation_id: str, body: UpdateBody, user: Auth
     if body.project_id is not None:
         await _check_project(body.project_id or None, user)
         fields["project_id"] = body.project_id or None
+    if body.pinned is not None:
+        fields["pinned_at"] = datetime.now(timezone.utc).isoformat() if body.pinned else None
     if fields:
         conv = await asyncio.to_thread(store.update, conversation_id, user.id, **fields)
     if body.link_procedure_id:

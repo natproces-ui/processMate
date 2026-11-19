@@ -122,10 +122,19 @@ def list_for(user_id: str, include_archived: bool = False) -> List[Dict[str, Any
     return rows
 
 
-def create(user_id: str, name: str, instructions: str = "") -> Dict[str, Any]:
+def create(user_id: str, name: str, instructions: str = "", description: str = "") -> Dict[str, Any]:
     """Projet personnel. Le lien à une campagne passe uniquement par for_campaign."""
     row = {"owner_id": user_id, "name": (name or "Nouveau projet")[:120], "instructions": instructions or ""}
-    return _db().table("projects").insert(row).execute().data[0]
+    if description:
+        row["description"] = description[:2000]
+    try:
+        return _db().table("projects").insert(row).execute().data[0]
+    except Exception:
+        if "description" not in row:
+            raise
+        row.pop("description")  # colonne pas encore créée (migration chat_projets.sql)
+        row["instructions"] = (description + ("\n\n" + instructions if instructions else "")).strip()
+        return _db().table("projects").insert(row).execute().data[0]
 
 
 def _campaign_instructions(campaign: Dict[str, Any]) -> str:
@@ -193,8 +202,10 @@ def campaign_summary(campaign_id: str, user_id: str) -> Optional[Dict[str, Any]]
 def update(project_id: str, user_id: str, **fields) -> Optional[Dict[str, Any]]:
     if not get_accessible(project_id, user_id, write=True):
         return None
-    data = {k: v for k, v in fields.items() if k in {"name", "instructions", "archived_at", "campaign_id"}}
-    data["updated_at"] = conv_store._now()
+    data = {k: v for k, v in fields.items()
+            if k in {"name", "instructions", "archived_at", "campaign_id", "description", "pinned_at"}}
+    if not set(data) <= {"pinned_at"}:  # épingler ne fait pas remonter le projet
+        data["updated_at"] = conv_store._now()
     return _db().table("projects").update(data).eq("id", project_id).execute().data[0]
 
 

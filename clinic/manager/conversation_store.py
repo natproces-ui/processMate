@@ -68,28 +68,42 @@ def get_owned(conversation_id: str, owner_id: str) -> Optional[Dict[str, Any]]:
     return rows[0] if rows else None
 
 
+_LIST_COLS = "id,title,procedure_ids,project_id,created_at,updated_at,archived_at"
+
+
 def list_for(owner_id: str, limit: int = 50, include_archived: bool = False,
-             procedure_id: Optional[str] = None, project_id: Optional[str] = None) -> List[Dict[str, Any]]:
-    q = (_db().table("conversations")
-         .select("id,title,procedure_ids,project_id,created_at,updated_at,archived_at")
-         .eq("owner_id", owner_id))
-    if not include_archived:
-        q = q.is_("archived_at", "null")
-    if procedure_id:
-        q = q.contains("procedure_ids", [procedure_id])
-    if project_id:
-        q = q.eq("project_id", project_id)
-    return q.order("updated_at", desc=True).limit(max(1, min(limit, 200))).execute().data
+             procedure_id: Optional[str] = None, project_id: Optional[str] = None,
+             search: Optional[str] = None) -> List[Dict[str, Any]]:
+    def query(cols: str):
+        q = _db().table("conversations").select(cols).eq("owner_id", owner_id)
+        if not include_archived:
+            q = q.is_("archived_at", "null")
+        if procedure_id:
+            q = q.contains("procedure_ids", [procedure_id])
+        if project_id:
+            q = q.eq("project_id", project_id)
+        if search and search.strip():
+            q = q.ilike("title", f"%{search.strip()[:80]}%")
+        return q.order("updated_at", desc=True).limit(max(1, min(limit, 200))).execute().data
+    try:
+        return query(_LIST_COLS + ",pinned_at")
+    except Exception:  # colonne pinned_at pas encore créée (migration chat_projets.sql)
+        return query(_LIST_COLS)
 
 
-_UPDATABLE = {"title", "archived_at", "state", "summary", "summary_upto", "procedure_ids", "project_id"}
+_UPDATABLE = {"title", "archived_at", "state", "summary", "summary_upto", "procedure_ids", "project_id", "pinned_at"}
+# Renommer ou épingler ne fait pas remonter la conversation dans les récents
+_SILENT = {"title", "pinned_at"}
 
 
 def update(conversation_id: str, owner_id: str, **fields) -> Optional[Dict[str, Any]]:
     if not get_owned(conversation_id, owner_id):
         return None
     data = {k: v for k, v in fields.items() if k in _UPDATABLE}
-    data["updated_at"] = _now()
+    if not set(data) <= _SILENT:
+        data["updated_at"] = _now()
+    if not data:
+        return get_owned(conversation_id, owner_id)
     rows = (_db().table("conversations").update(data)
             .eq("id", conversation_id).eq("owner_id", owner_id).execute().data)
     return rows[0] if rows else None

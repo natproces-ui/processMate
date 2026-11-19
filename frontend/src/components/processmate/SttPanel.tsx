@@ -84,6 +84,8 @@ interface Props {
     projectId?: string;
     /** Enregistrement dans le référentiel de l'organisation (compte membre, hors lecture seule) */
     librarySave?: boolean;
+    /** Premier message envoyé tout seul (nouvelle conversation lancée depuis un projet) */
+    initialMessage?: string;
 }
 
 const defaultData: Table1Row[] = [
@@ -95,7 +97,8 @@ const defaultData: Table1Row[] = [
     { id: '6', étape: 'Fin du processus', typeBpmn: 'EndEvent', département: 'Back Office', acteur: 'Gestionnaire', typeActeur: 'interne', condition: '', outputs: [], outil: '' },
 ];
 
-export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true }: Props) {
+export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage }: Props) {
+    const autoSend = useMemo(() => (initialMessage?.trim() ? { id: 1, text: initialMessage } : undefined), [initialMessage]);
     const { invalidate } = useProceduresStore();
     const [processingLevel, setProcessingLevel] = useProcessingLevel();
     const [phase, setPhase] = useState<Phase>('upload');
@@ -894,6 +897,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         recording={recording} processing={processing}
                         onToggleRecording={toggleRecording} onCancelRecording={cancelRecording}
                         insertText={dictation}
+                        autoSendText={autoSend}
                         onNewConversation={() => { setUploadOpen(false); setCodeSourceOpen(false); }}
                         onProcessingLevelChange={setProcessingLevel}
                         processingLevel={processingLevel}

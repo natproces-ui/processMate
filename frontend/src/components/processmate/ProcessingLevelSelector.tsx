@@ -61,14 +61,14 @@ export default function ProcessingLevelSelector({ value, onChange }: {
             setMenuAbove(above >= menuHeight + 8 || above > below);
         }} onKeyDown={e => { if (e.key === 'Escape' && menuRef.current) { menuRef.current.open = false; menuRef.current.querySelector('summary')?.focus(); } }}>
             <summary aria-label={`Niveau d’analyse : ${selected.label}`} title={selected.description}
-                className="list-none inline-flex items-center gap-1.5 cursor-pointer rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 [&::-webkit-details-marker]:hidden">
-                {selected.label}<ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                className="list-none inline-flex items-center gap-1.5 cursor-pointer rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 [&::-webkit-details-marker]:hidden">
+                {selected.label}<ChevronDown className="w-3.5 h-3.5 text-neutral-900" />
             </summary>
             <fieldset className={["absolute right-0 z-40 w-64 max-w-[calc(100vw-2rem)] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg", menuAbove ? "bottom-full mb-2" : "top-full mt-2"].join(" ")}>
                 <legend className="sr-only">Niveau d’analyse</legend>
                 {PROCESSING_LEVELS.map(option => (
                     <label key={option.value}
-                        className={['relative flex items-center gap-2 cursor-pointer rounded-lg px-3 py-2.5 text-sm transition-colors', value === option.value ? 'bg-blue-50 text-blue-800' : 'text-slate-700 hover:bg-slate-50'].join(' ')}>
+                        className={['relative flex items-center gap-2 cursor-pointer rounded-lg px-3 py-2.5 text-sm transition-colors', value === option.value ? 'bg-neutral-100 text-neutral-900 font-medium' : 'text-neutral-900 hover:bg-neutral-50'].join(' ')}>
                         <input type="radio" name={groupName} value={option.value} checked={value === option.value}
                             aria-label={option.label} aria-describedby={`${groupName}-${option.value}-description`}
                             onChange={() => { onChange(option.value); if (menuRef.current) { menuRef.current.open = false; menuRef.current.querySelector('summary')?.focus(); } }}

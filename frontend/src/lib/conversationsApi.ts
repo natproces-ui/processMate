@@ -19,6 +19,7 @@ export interface ConversationSummary {
     created_at: string;
     updated_at: string;
     archived_at: string | null;
+    pinned_at?: string | null;
 }
 
 export interface StoredMessage {
@@ -53,8 +54,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const conversationsApi = {
-    list: (params: { limit?: number; procedureId?: string; projectId?: string; archived?: boolean } = {}) => {
+    list: (params: { limit?: number; procedureId?: string; projectId?: string; archived?: boolean; q?: string } = {}) => {
         const q = new URLSearchParams();
+        if (params.q?.trim()) q.set('q', params.q.trim());
         if (params.limit) q.set('limit', String(params.limit));
         if (params.procedureId) q.set('procedure_id', params.procedureId);
         if (params.projectId) q.set('project_id', params.projectId);
@@ -68,7 +70,7 @@ export const conversationsApi = {
         call<{ conversation: ConversationSummary; messages: StoredMessage[]; sources: ConversationSource[] }>(`/${id}`),
     latestForProcedure: (procedureId: string) =>
         call<{ conversation: ConversationSummary | null }>(`/latest?procedure_id=${encodeURIComponent(procedureId)}`).then(r => r.conversation),
-    update: (id: string, body: { title?: string; archived?: boolean; link_procedure_id?: string; project_id?: string | null }) =>
+    update: (id: string, body: { title?: string; archived?: boolean; link_procedure_id?: string; project_id?: string | null; pinned?: boolean }) =>
         call<{ conversation: ConversationSummary }>(`/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).then(r => r.conversation),
     remove: (id: string) => call<{ success: boolean }>(`/${id}`, { method: 'DELETE' }),
     removeSource: (id: string, sourceId: string) => call<{ success: boolean }>(`/${id}/sources/${sourceId}`, { method: 'DELETE' }),

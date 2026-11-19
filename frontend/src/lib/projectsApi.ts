@@ -9,8 +9,11 @@ import { getAuthHeaders } from '@/lib/authHeaders';
 export interface Project {
     id: string;
     name: string;
+    /** « Qu'essayez-vous de faire ? » — affiché sous le nom du projet */
+    description?: string;
     instructions: string;
     campaign_id: string | null;
+    pinned_at?: string | null;
     created_at: string;
     updated_at: string;
     archived_at: string | null;
@@ -45,15 +48,15 @@ async function call<T>(path: string, init: RequestInit = {}, json = true): Promi
 }
 
 export const projectsApi = {
-    list: () => call<{ projects: Project[] }>('').then(r => r.projects),
-    create: (body: { name: string; instructions?: string }) =>
+    list: (archived = false) => call<{ projects: Project[] }>(archived ? '?archived=true' : '').then(r => r.projects),
+    create: (body: { name: string; instructions?: string; description?: string }) =>
         call<{ project: Project }>('', { method: 'POST', body: JSON.stringify(body) }).then(r => r.project),
     get: (id: string) =>
         call<{ project: Project; sources: ProjectSource[]; conversations: { id: string; title: string; updated_at: string }[]; campaign?: ProjectCampaign | null }>(`/${id}`),
     /** Espace de travail d'une campagne (créé à la première ouverture) */
     forCampaign: (campaignId: string) =>
         call<{ project: Project }>(`/for-campaign/${campaignId}`, { method: 'POST' }).then(r => r.project),
-    update: (id: string, body: { name?: string; instructions?: string; archived?: boolean }) =>
+    update: (id: string, body: { name?: string; instructions?: string; description?: string; archived?: boolean; pinned?: boolean }) =>
         call<{ project: Project }>(`/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).then(r => r.project),
     remove: (id: string) => call<{ success: boolean }>(`/${id}`, { method: 'DELETE' }),
     addSources: (id: string, files: File[]) => {

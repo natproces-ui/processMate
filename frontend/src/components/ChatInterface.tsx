@@ -111,6 +111,8 @@ interface ChatInterfaceProps {
     onNewConversation?: () => void;
     /** Texte dicté à insérer dans le champ (id change à chaque dictée) */
     insertText?: { id: number; text: string };
+    /** Message envoyé tout seul à l'ouverture (« Nouvelle conversation dans <projet> ») */
+    autoSendText?: { id: number; text: string };
     currentWorkflow: Table1Row[];
     currentEnrichments?: Map<string, TaskEnrichment>;
     currentProcedureMetadata?: Record<string, unknown> | null;
@@ -233,7 +235,7 @@ function IntentBadge({ intent }: { intent: Intent }) {
 
 export default function ChatInterface({
     processingLevel, onProcessingLevelChange, inputContext, inputContextVisible = true, onOpenDocuments, onOpenCode,
-    recording = false, processing = false, onToggleRecording, onCancelRecording, onNewConversation, insertText,
+    recording = false, processing = false, onToggleRecording, onCancelRecording, onNewConversation, insertText, autoSendText,
     currentWorkflow,
     currentEnrichments,
     currentProcedureMetadata,
@@ -302,6 +304,15 @@ export default function ChatInterface({
     }, [insertText?.id]); // eslint-disable-line react-hooks/exhaustive-deps
     const addMenuRef = useRef<HTMLDivElement>(null);
 
+    // Envoi automatique d'un premier message (page d'un projet → nouvelle conversation)
+    const autoSentRef = useRef<number | null>(null);
+    useEffect(() => {
+        if (!autoSendText?.text.trim() || autoSentRef.current === autoSendText.id) return;
+        autoSentRef.current = autoSendText.id;
+        const t = setTimeout(() => { void sendMessage(autoSendText.text); }, 0);
+        return () => clearTimeout(t);
+    }, [autoSendText?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Menu « + » : se ferme au clic extérieur ou avec Échap (plus besoin de recliquer sur +)
     useEffect(() => {
         if (!addMenuOpen) return;
@@ -338,7 +349,18 @@ export default function ChatInterface({
         if (id) setSessionId(id); // la conversation sert de session au Studio
         if (syncUrl) writeConversationParam(id);
         onConversationChange?.(id);
+        // La barre latérale (récents) se met à jour sans rechargement
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('processmate:conversation', { detail: { id } }));
     };
+
+    // Fin d'une réponse : le titre de la conversation a pu être donné par le serveur
+    const wasLoadingRef = useRef(false);
+    useEffect(() => {
+        if (wasLoadingRef.current && !loading && conversationIdRef.current && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('processmate:conversation', { detail: { id: conversationIdRef.current } }));
+        }
+        wasLoadingRef.current = loading;
+    }, [loading]);
 
     /** Inverse de toChatMessage : ce qui est gardé d'un message (sans les fichiers eux-mêmes) */
     const toPayload = (m: ChatMessage): Record<string, unknown> => {
@@ -886,11 +908,11 @@ export default function ChatInterface({
                         ? 'flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-5 bg-gradient-to-b from-slate-50/80 to-white'
                         : 'overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60'}>
                         {isSidebar && messages.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-center px-6 text-slate-400">
-                                <Sparkles className="w-6 h-6 mb-3 text-slate-300" />
-                                <p className="text-base text-slate-700 font-semibold">Que souhaitez-vous formaliser ?</p>
-                                <p className="text-sm text-slate-500 mt-1">Joignez des documents, dictez ou décrivez une procédure.</p>
-                                <p className="text-xs mt-1.5 leading-relaxed">Je repère les procédures qu&apos;ils contiennent : une seule est générée directement, plusieurs vous sont proposées. Vous pouvez aussi demander de tout fusionner.</p>
+                            <div className="h-full flex flex-col items-center justify-center text-center px-6 text-neutral-600">
+                                <Sparkles className="w-6 h-6 mb-3 text-neutral-900" />
+                                <p className="text-xl text-neutral-900 font-semibold">Que souhaitez-vous formaliser ?</p>
+                                <p className="text-[15px] text-neutral-900 mt-1">Joignez des documents, dictez ou décrivez une procédure.</p>
+                                <p className="text-sm mt-1.5 leading-relaxed">Je repère les procédures qu&apos;ils contiennent : une seule est générée directement, plusieurs vous sont proposées. Vous pouvez aussi demander de tout fusionner.</p>
                             </div>
                         )}
                         {messages.map(msg => (
@@ -1103,7 +1125,7 @@ export default function ChatInterface({
                             </div>
                         ))}
                 </div>
-                <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100"}>
+                <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-neutral-900/70 bg-white shadow-sm focus-within:border-neutral-900"}>
                     {inputContext && <div hidden={!inputContextVisible} className="border-b border-slate-100 p-3 bg-slate-50/50 rounded-t-2xl">{inputContext}</div>}
                     <div className="px-3 py-2">
                     {/* ── Sources enregistrées de la conversation (elles s'ajoutent d'un message à l'autre) ── */}
@@ -1169,7 +1191,7 @@ export default function ChatInterface({
                                     <button type="button" aria-label="Ajouter un contenu" title="Ajouter un contenu"
                                         aria-haspopup="menu" aria-expanded={addMenuOpen}
                                         onClick={() => setAddMenuOpen(o => !o)}
-                                        className={`p-2 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${addMenuOpen ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
+                                        className={`p-2 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${addMenuOpen ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-900 hover:bg-neutral-100'}`}>
                                         <Plus className={`w-4 h-4 transition-transform ${addMenuOpen ? 'rotate-45' : ''}`} />
                                     </button>
                                     {addMenuOpen && (
@@ -1204,7 +1226,7 @@ export default function ChatInterface({
 
                                 {onToggleRecording && <button type="button" onClick={onToggleRecording} disabled={processing}
                                     aria-pressed={recording}
-                                    className={['inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium disabled:opacity-50', recording ? 'bg-red-50 text-red-600' : 'text-slate-600 hover:bg-slate-100'].join(' ')}>
+                                    className={['inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium disabled:opacity-50', recording ? 'bg-red-50 text-red-600' : 'text-neutral-900 hover:bg-neutral-100'].join(' ')}>
                                     {recording ? <Square className="w-4 h-4" /> : processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
                                     {recording ? 'Arrêter le vocal' : processing ? 'Traitement vocal…' : 'Vocal'}
                                 </button>}
@@ -1228,8 +1250,8 @@ export default function ChatInterface({
                                     w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors
                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
                                     ${!loading && (!input.trim() && attachedFiles.length === 0)
-                                        ? 'bg-slate-200 text-white cursor-not-allowed'
-                                        : 'bg-slate-900 text-white hover:bg-slate-700'
+                                        ? 'bg-neutral-300 text-white cursor-not-allowed'
+                                        : 'bg-neutral-900 text-white hover:bg-neutral-700'
                                     }
                                 `}
                             >

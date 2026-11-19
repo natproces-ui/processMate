@@ -25,17 +25,20 @@ def _enabled() -> None:
 class CreateBody(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     instructions: str = ""
+    description: str = Field(default="", max_length=2000)
 
 
 class UpdateBody(BaseModel):
     name: Optional[str] = Field(default=None, max_length=120)
     instructions: Optional[str] = None
+    description: Optional[str] = Field(default=None, max_length=2000)
     archived: Optional[bool] = None
+    pinned: Optional[bool] = None
 
 
 def _public(p: dict) -> dict:
-    return {k: p.get(k) for k in ("id", "name", "instructions", "campaign_id", "created_at", "updated_at",
-                                  "archived_at", "my_role")}
+    return {k: p.get(k) for k in ("id", "name", "description", "instructions", "campaign_id", "created_at",
+                                  "updated_at", "archived_at", "pinned_at", "my_role")}
 
 
 def _public_source(s: dict) -> dict:
@@ -50,14 +53,16 @@ def _forget_project_sessions() -> None:
 
 
 @router.get("", dependencies=[Depends(_enabled)])
-async def list_projects(user: AuthUser = Depends(require_user)):
-    rows = await asyncio.to_thread(store.list_for, user.id)
+async def list_projects(user: AuthUser = Depends(require_user), archived: bool = False):
+    rows = await asyncio.to_thread(store.list_for, user.id, archived)
+    if archived:  # onglet « Archivés » : seulement les projets archivés
+        rows = [r for r in rows if r.get("archived_at")]
     return {"projects": [_public({**r, "my_role": "owner" if r["owner_id"] == user.id else "member"}) for r in rows]}
 
 
 @router.post("", dependencies=[Depends(_enabled)])
 async def create_project(body: CreateBody, user: AuthUser = Depends(require_user)):
-    p = await asyncio.to_thread(store.create, user.id, body.name.strip(), body.instructions)
+    p = await asyncio.to_thread(store.create, user.id, body.name.strip(), body.instructions, body.description.strip())
     return {"project": _public({**p, "my_role": "owner"})}
 
 
@@ -96,6 +101,10 @@ async def update_project(project_id: str, body: UpdateBody, user: AuthUser = Dep
         fields["instructions"] = body.instructions
     if body.archived is not None:
         fields["archived_at"] = datetime.now(timezone.utc).isoformat() if body.archived else None
+    if body.description is not None:
+        fields["description"] = body.description.strip()
+    if body.pinned is not None:
+        fields["pinned_at"] = datetime.now(timezone.utc).isoformat() if body.pinned else None
     p = await asyncio.to_thread(store.update, project_id, user.id, **fields)
     if not p:
         raise HTTPException(404, "Projet introuvable ou lecture seule")
