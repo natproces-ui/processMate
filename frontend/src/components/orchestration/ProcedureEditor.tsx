@@ -420,6 +420,18 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
     // détruire (bpmnXml: null) — évite d'obliger un clic manuel sur "Générer le diagramme".
     // Régénération complète (pas de patch incrémental) : les positions/ajouts manuels
     // faits directement dans l'éditeur BPMN sont donc réinitialisés à chaque modif chat.
+    // Procédure réécrite depuis le chat : les étapes s'affichent pendant l'écriture (aperçu,
+    // jamais enregistré : le brouillon n'est mis à jour qu'avec la version finale)
+    const handleWorkflowPreview = useCallback((rows: Table1Row[]) => {
+        if (rows.length === 0) return; // abandon : le chat restaure le point de retour
+        setData(rows);
+        try {
+            const xml = generateBPMNSimple(rows, title);
+            setBpmnXml(xml);
+            if (xml) editorRef.current?.importXml(xml);
+        } catch { /* aperçu partiel non dessinable : le tableau suffit */ }
+    }, [title]);
+
     const handleWorkflowFromChat = useCallback((
         workflow: Table1Row[],
         _: string,
@@ -581,6 +593,7 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                             currentEnrichments={enrichments}
                             currentProcedureMetadata={meta}
                             onWorkflowGenerated={handleWorkflowFromChat}
+                            onWorkflowPreview={handleWorkflowPreview}
                             onError={showError}
                             onSuccess={showSuccess}
                             procedureId={procedure?.id}
