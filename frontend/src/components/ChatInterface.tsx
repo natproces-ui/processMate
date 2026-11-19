@@ -19,7 +19,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     ArrowUp, ArrowDown, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2
+    Sparkles, HelpCircle, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -186,54 +186,6 @@ const ACCEPTED_TYPES: Record<string, FileKind> = {
     'image/jpg': 'image',
     'image/webp': 'image',
 };
-
-function IntentBadge({ intent }: { intent: Intent }) {
-    const config: Record<Intent, { icon: React.ReactNode; label: string; color: string }> = {
-        generate: {
-            icon: <Sparkles className="w-3 h-3" />,
-            label: 'Génération',
-            color: 'bg-blue-100 text-blue-700'
-        },
-        patch: {
-            icon: <Wand2 className="w-3 h-3" />,
-            label: 'Révision',
-            color: 'bg-violet-100 text-violet-700'
-        },
-        regen: {
-            icon: <RefreshCw className="w-3 h-3" />,
-            label: 'Regénération',
-            color: 'bg-amber-100 text-amber-700'
-        },
-        web_search: {
-            icon: <Globe className="w-3 h-3" />,
-            label: 'Recherche web',
-            color: 'bg-green-100 text-green-700'
-        },
-        clarify: {
-            icon: <HelpCircle className="w-3 h-3" />,
-            label: 'Clarification',
-            color: 'bg-slate-100 text-slate-600'
-        },
-        transcribe: {
-            icon: <FileText className="w-3 h-3" />,
-            label: 'Transcription',
-            color: 'bg-teal-100 text-teal-700'
-        },
-        explain: {
-            icon: <BookOpen className="w-3 h-3" />,
-            label: 'Explication',
-            color: 'bg-indigo-100 text-indigo-700'
-        },
-    };
-
-    const c = config[intent];
-    return (
-        <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${c.color}`}>
-            {c.icon}
-            {c.label}
-        </span>
-    );
-}
 
 // ─────────────────────────────────────────────────────────────
 // COMPOSANT PRINCIPAL
@@ -1025,17 +977,13 @@ export default function ChatInterface({
                                                 open={openSteps.has(msg.id)}
                                                 onToggle={() => setOpenSteps(s => { const n = new Set(s); if (n.has(msg.id)) n.delete(msg.id); else n.add(msg.id); return n; })} />
                                         )}
-                                        {msg.intent && msg.intent !== 'explain' && <IntentBadge intent={msg.intent} />}
                                         {msg.content && <MiniMarkdown text={msg.content} onStepClick={onFocusSteps} />}
-                                        {msg.totalSteps !== undefined && msg.totalSteps > 0 && (
-                                            <p className="text-xs text-emerald-600 font-medium">✓ {msg.totalSteps} étape{msg.totalSteps > 1 ? 's' : ''}</p>
-                                        )}
                                         {msg.intent === 'patch' && msg.changes && msg.changes.length > 0 ? (
                                             <ChangeSummary changes={msg.changes} undone={msg.restored} disabled={loading}
                                                 onShow={onFocusSteps}
                                                 onUndo={msg.checkpoint !== undefined && onRestore ? () => { onRestore(msg.checkpoint); updateMsg(msg.id, m => ({ ...m, restored: true })); onSuccess('Modifications annulées'); } : undefined} />
                                         ) : msg.operationsCount !== undefined && msg.intent === 'patch' && (
-                                            <p className="text-xs text-violet-600 font-medium">
+                                            <p className="text-xs text-neutral-600">
                                                 ✓ {msg.operationsCount} opération{msg.operationsCount > 1 ? 's' : ''} appliquée{msg.operationsCount > 1 ? 's' : ''}
                                             </p>
                                         )}
