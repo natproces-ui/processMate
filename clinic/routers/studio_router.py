@@ -588,7 +588,7 @@ async def _with_title(gen, task: Optional["asyncio.Task"]):
         if not sent and (task.done() or '"type": "done"' in chunk):
             sent = True
             try:
-                title = await asyncio.wait_for(asyncio.shield(task), timeout=8)
+                title = await asyncio.wait_for(asyncio.shield(task), timeout=4)
             except Exception:
                 title = None
             if title:

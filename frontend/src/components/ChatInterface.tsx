@@ -335,7 +335,10 @@ export default function ChatInterface({
     const wasLoadingRef = useRef(false);
     useEffect(() => {
         if (wasLoadingRef.current && !loading && conversationIdRef.current && typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('processmate:conversation', { detail: { id: conversationIdRef.current } }));
+            const id = conversationIdRef.current;
+            window.dispatchEvent(new CustomEvent('processmate:conversation', { detail: { id } }));
+            // le titre trouvé juste après la réponse arrive dans la barre latérale quelques secondes plus tard
+            setTimeout(() => window.dispatchEvent(new CustomEvent('processmate:conversation-refresh', { detail: { id } })), 5000);
         }
         wasLoadingRef.current = loading;
     }, [loading]);

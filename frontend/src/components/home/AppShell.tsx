@@ -113,8 +113,13 @@ export default function AppShell({
         const onConv = () => { void loadRecents(); };
         const onProj = () => { void loadProjects(); };
         window.addEventListener('processmate:conversation', onConv);
+        window.addEventListener('processmate:conversation-refresh', onConv); // titre trouvé après la réponse
         window.addEventListener('processmate:projects', onProj);
-        return () => { window.removeEventListener('processmate:conversation', onConv); window.removeEventListener('processmate:projects', onProj); };
+        return () => {
+            window.removeEventListener('processmate:conversation', onConv);
+            window.removeEventListener('processmate:conversation-refresh', onConv);
+            window.removeEventListener('processmate:projects', onProj);
+        };
     }, [loadRecents, loadProjects]);
 
     useEffect(() => {
