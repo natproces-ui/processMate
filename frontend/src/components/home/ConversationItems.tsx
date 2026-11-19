@@ -145,7 +145,6 @@ export function ConversationHeader({ conv, projectName, onChanged }: {
     conv: ConversationSummary; projectName?: string | null; onChanged: (conv: ConversationSummary | null) => void;
 }) {
     const [renaming, setRenaming] = useState(false);
-    const [title, setTitle] = useState(conv.title);
     const [moving, setMoving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const update = async (body: Parameters<typeof conversationsApi.update>[1], optimistic: Partial<ConversationSummary>) => {
@@ -153,7 +152,7 @@ export function ConversationHeader({ conv, projectName, onChanged }: {
         try { onChanged(await conversationsApi.update(conv.id, body)); } catch { onChanged(conv); }
     };
     const items: MenuItem[] = [
-        { label: 'Renommer', icon: <Pencil />, onSelect: () => { setTitle(conv.title); setRenaming(true); } },
+        { label: 'Renommer', icon: <Pencil />, onSelect: () => setRenaming(true) },
         conv.pinned_at
             ? { label: 'Désépingler', icon: <PinOff />, onSelect: () => void update({ pinned: false }, { pinned_at: null }) }
             : { label: 'Épingler', icon: <Pin />, onSelect: () => void update({ pinned: true }, { pinned_at: new Date().toISOString() }) },
@@ -170,11 +169,11 @@ export function ConversationHeader({ conv, projectName, onChanged }: {
             )}
             {renaming ? (
                 <InlineRename value={conv.title} className="max-w-[320px]" onCancel={() => setRenaming(false)}
-                    onSave={t => { setRenaming(false); setTitle(t); void update({ title: t }, { title: t }); }} />
+                    onSave={t => { setRenaming(false); void update({ title: t }, { title: t }); }} />
             ) : (
                 <span className="flex min-w-0 items-center">
                     <button type="button" onClick={() => setRenaming(true)} title="Renommer"
-                        className="max-w-[360px] truncate rounded-md px-1.5 py-1 font-medium hover:bg-neutral-100">{title || conv.title}</button>
+                        className="max-w-[360px] truncate rounded-md px-1.5 py-1 font-medium hover:bg-neutral-100">{conv.title}</button>
                     <RowMenu label="Actions sur la conversation" items={items} align="left" />
                 </span>
             )}

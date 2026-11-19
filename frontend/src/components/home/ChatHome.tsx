@@ -119,7 +119,8 @@ export default function ChatHome() {
             onOpenConversation={(id, proj) => open(id, proj)}
             onNewConversation={() => open(null, null)}
             onConversationDeleted={id => { if (id === activeId) open(null, null); }}
-            headerLeft={!activeId && project && (
+            /* undefined (pas false) quand une conversation est ouverte : l'en-tête affiche alors « Projet / Titre » */
+            headerLeft={activeId || !project ? undefined : (
                 <Link href={`/projet/?id=${project.id}`} className="flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-neutral-900 hover:bg-neutral-100">
                     <FolderOpen className="w-4 h-4 shrink-0" /><span className="truncate">{project.name}</span>
                 </Link>

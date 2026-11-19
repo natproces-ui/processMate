@@ -608,6 +608,12 @@ export default function ChatInterface({
     const handleEvent = (msgId: string, ev: any) => {
         const key = (id: string) => `${msgId}:${id}`; // unique dans la conversation (p1 peut revenir à chaque tour)
         switch (ev.type) {
+            case 'conversation_title':
+                // vrai titre trouvé par le serveur : en-tête et barre latérale se mettent à jour
+                if (conversationIdRef.current && typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('processmate:conversation', { detail: { id: conversationIdRef.current, title: ev.title } }));
+                }
+                break;
             case 'status':
                 updateMsg(msgId, m => {
                     const steps = [...(m.steps || [])];

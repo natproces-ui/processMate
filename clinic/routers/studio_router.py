@@ -505,8 +505,11 @@ async def studio_turn(
         attachments = [{"name": f["filename"], "type": f["type"], "size": f["size"]} for f in new_files]
         await asyncio.to_thread(store.add_message, conv["id"], "user", message.strip(),
                                 {"attachments": attachments} if attachments else {})
-        if conv.get("title") in (None, "", "Nouvelle conversation"):
-            await asyncio.to_thread(store.update, conv["id"], user.id, title=store.title_from(message, new_files))
+    # Vrai titre (« Ouverture de compte étudiant au Maroc »), trouvé en parallèle de la réponse
+    title_task = None
+    if conv is not None:
+        from manager import conversation_title
+        title_task = asyncio.create_task(asyncio.to_thread(conversation_title.ensure_title, conv, message, new_files))
     sess["updated"] = time.time()
     level = _level_for(guest)
     ix = {"store": user is not None, "ids": []}  # API Interactions : rien de conservé pour un invité
@@ -574,7 +577,23 @@ async def studio_turn(
             finally:
                 yield _sse({"type": "done"})
 
-    return _streaming(_record(stream(), conv, sess, ix))
+    return _streaming(_record(_with_title(stream(), title_task), conv, sess, ix))
+
+
+async def _with_title(gen, task: Optional["asyncio.Task"]):
+    """Relaie le flux et y glisse le titre de la conversation dès qu'il est trouvé
+    (au plus tard juste avant la fin du tour), pour l'en-tête et la barre latérale."""
+    sent = task is None
+    async for chunk in gen:
+        if not sent and (task.done() or '"type": "done"' in chunk):
+            sent = True
+            try:
+                title = await asyncio.wait_for(asyncio.shield(task), timeout=8)
+            except Exception:
+                title = None
+            if title:
+                yield _sse({"type": "conversation_title", "title": title})
+        yield chunk
 
 
 def _file_volume(f: Dict[str, Any]) -> str:
