@@ -5,6 +5,7 @@ import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { API_CONFIG } from '@/lib/api-config';
 import { installApiAuth } from '@/lib/apiAuth';
+import { setAccessToken } from '@/lib/authHeaders';
 
 // Jeton ajouté à tous les appels au backend, avant le moindre rendu
 installApiAuth();
@@ -149,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(async ({ data: { session } }) => {
         if (cancelled) return;
         clearTimeout(fallback);
+        setAccessToken(session?.access_token ?? null);
         setSession(session);
         setUser(session?.user ?? null);
         try {
@@ -161,15 +163,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Rappel SYNCHRONE : tout appel Supabase (ou au backend) fait ici attendrait le verrou de
+    // session tenu pendant ce rappel → blocage. Le travail asynchrone est donc reporté.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAccessToken(session?.access_token ?? null);
       setSession(session);
       setUser(session?.user ?? null);
-      try {
-        if (session?.user) await fetchProfile(session.user.id, session.user.email ?? undefined);
-        else { setProfile(null); setAccess(null); }
-      } finally {
-        setLoading(false);
-      }
+      setTimeout(() => {
+        void (async () => {
+          try {
+            if (session?.user) await fetchProfile(session.user.id, session.user.email ?? undefined);
+            else { setProfile(null); setAccess(null); }
+          } finally {
+            setLoading(false);
+          }
+        })();
+      }, 0);
     });
 
     return () => {
@@ -233,6 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setAccessToken(null);
     setProfile(null);
     setAccess(null);
   };
