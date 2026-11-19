@@ -24,6 +24,28 @@ export default function MemberGuard({ children, admin = false }: { children: Rea
     if (allowed) return <>{children}</>;
 
     const suspended = access.status === 'suspended';
+    if (access.is_platform_admin && !admin) {
+        // Super-admin : n'est membre d'aucune organisation, son espace est la console
+        return (
+            <main className="h-screen flex items-center justify-center bg-gray-50 px-4">
+                <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h1 className="text-lg font-semibold text-slate-900">Vous êtes administrateur de la plateforme</h1>
+                    <p className="mt-2 text-sm text-slate-600">
+                        Ce compte gère les espaces des organisations ; il n&apos;accède pas à leurs procédures. Pour travailler
+                        dans une organisation, utilisez un compte membre de celle-ci.
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                        <Link href="/plateforme" className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-medium text-white hover:bg-slate-700">
+                            Ouvrir la console
+                        </Link>
+                        <Link href="/" className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                            Aller au chat
+                        </Link>
+                    </div>
+                </div>
+            </main>
+        );
+    }
     if (access.status === 'organisation_suspendue') {
         return (
             <main className="h-screen flex items-center justify-center bg-gray-50 px-4">
