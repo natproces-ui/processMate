@@ -12,7 +12,7 @@ import { CheckCircle2, ChevronRight, CircleStop, Loader2 } from 'lucide-react';
 export interface TraceStep { id: string; label: string; state: 'running' | 'done' | 'stopped'; startedAt?: number; endedAt?: number }
 
 const fmt = (ms: number) => {
-    const s = Math.max(0, Math.round(ms / 1000));
+    const s = Math.max(1, Math.round(ms / 1000));
     return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')}`;
 };
 

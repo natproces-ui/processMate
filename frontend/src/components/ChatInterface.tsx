@@ -555,7 +555,6 @@ export default function ChatInterface({
             const changes = diffWorkflows(currentWorkflow, revised);
             updateMsg(msgId, m => ({ ...m, intent: 'patch', content: data.explanation || 'Modifications appliquées', operationsCount: data.operations_count || 0, changes }));
             onWorkflowGenerated(revised, '', described, null);
-            onSuccess(`✓ ${data.explanation}`);
             return;
         }
         // generate / regen / web_search / transcribe
@@ -564,7 +563,6 @@ export default function ChatInterface({
         const enrichMap = new Map<string, TaskEnrichment>();
         if (data.enrichments) Object.entries(data.enrichments).forEach(([id, enr]: [string, any]) => enrichMap.set(id, enr));
         onWorkflowGenerated(data.workflow, data.title, enrichMap, data.procedureMetadata || null);
-        onSuccess(`✓ ${totalSteps} étapes — "${data.title}"`);
     };
 
     // Aperçu d'une procédure écrite en direct : point de retour pris avant la première ligne
@@ -981,7 +979,7 @@ export default function ChatInterface({
                                         {msg.intent === 'patch' && msg.changes && msg.changes.length > 0 ? (
                                             <ChangeSummary changes={msg.changes} undone={msg.restored} disabled={loading}
                                                 onShow={onFocusSteps}
-                                                onUndo={msg.checkpoint !== undefined && onRestore ? () => { onRestore(msg.checkpoint); updateMsg(msg.id, m => ({ ...m, restored: true })); onSuccess('Modifications annulées'); } : undefined} />
+                                                onUndo={msg.checkpoint !== undefined && onRestore ? () => { onRestore(msg.checkpoint); updateMsg(msg.id, m => ({ ...m, restored: true })); } : undefined} />
                                         ) : msg.operationsCount !== undefined && msg.intent === 'patch' && (
                                             <p className="text-xs text-neutral-600">
                                                 ✓ {msg.operationsCount} opération{msg.operationsCount > 1 ? 's' : ''} appliquée{msg.operationsCount > 1 ? 's' : ''}
