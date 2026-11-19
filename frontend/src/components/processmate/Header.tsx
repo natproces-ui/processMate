@@ -68,21 +68,21 @@ export default function ProcessMateHeader({
         .toUpperCase();
 
     return (
-        <div className="shrink-0 h-14 bg-white border-b border-gray-200 shadow-sm flex items-center justify-between px-6">
+        <div className="shrink-0 h-14 bg-white border-b border-neutral-200 flex items-center justify-between px-6">
 
             {/* Gauche : logo + breadcrumb */}
             <div className="flex items-center gap-3 min-w-0">
                 <Link href="/" className="flex items-center gap-1.5 shrink-0 group" title="Accueil">
-                    <div className="w-6 h-6 bg-blue-600 rounded-md flex items-center justify-center group-hover:bg-blue-700 transition-colors">
+                    <div className="w-6 h-6 bg-neutral-900 rounded-md flex items-center justify-center group-hover:bg-neutral-700 transition-colors">
                         <Zap className="w-3.5 h-3.5 text-white" />
                     </div>
                 </Link>
-                <span className="text-gray-200 shrink-0">/</span>
-                <span className="text-sm font-bold text-blue-700 shrink-0">{moduleLabel}</span>
+                <span className="text-neutral-400 shrink-0">/</span>
+                <span className="text-sm font-semibold text-neutral-900 shrink-0">{moduleLabel}</span>
                 {tabLabel && (
                     <>
-                        <span className="text-gray-300 shrink-0">/</span>
-                        <span className="text-sm font-medium text-gray-700 truncate">{tabLabel}</span>
+                        <span className="text-neutral-400 shrink-0">/</span>
+                        <span className="text-sm font-medium text-neutral-900 truncate">{tabLabel}</span>
                     </>
                 )}
             </div>
@@ -94,7 +94,7 @@ export default function ProcessMateHeader({
                     <button
                         type="button"
                         onClick={onOpenStudio}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-neutral-900 bg-white hover:bg-neutral-100 border border-neutral-300 rounded-lg transition-colors"
                         title="Ouvrir BPMN Studio"
                     >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -110,22 +110,22 @@ export default function ProcessMateHeader({
                     type="button"
                     onClick={onSettingsClick}
                     title="Paramètres"
-                    className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
                 >
                     <Settings className="w-4 h-4" />
                 </button>
 
-                <div className="w-px h-6 bg-gray-200" />
+                <div className="w-px h-6 bg-neutral-200" />
 
                 {/* Avatar + nom */}
                 <Link href="/profile" className="flex items-center gap-2.5 group">
                     <div className="text-right hidden sm:block">
-                        <p className="text-xs text-gray-400 leading-none">{currentActorTitle || 'Utilisateur'}</p>
-                        <p className="text-sm font-semibold text-gray-800 leading-tight mt-0.5 group-hover:text-blue-600 transition-colors">
+                        <p className="text-xs text-neutral-500 leading-none">{currentActorTitle || 'Utilisateur'}</p>
+                        <p className="text-sm font-semibold text-neutral-900 leading-tight mt-0.5 group-hover:underline transition-colors">
                             {currentActorName || 'ProcessMate'}
                         </p>
                     </div>
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-bold text-white text-xs shrink-0 bg-blue-600 ring-2 ring-transparent group-hover:ring-blue-300 transition-all">
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-bold text-white text-xs shrink-0 bg-neutral-900 ring-2 ring-transparent group-hover:ring-neutral-300 transition-all">
                         {profile?.avatar_url
                             ? <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
                             : initials
@@ -133,8 +133,8 @@ export default function ProcessMateHeader({
                     </div>
                 </Link>
 
-                <div className="w-px h-6 bg-gray-200" />
-                <LogoutButton iconOnly className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" />
+                <div className="w-px h-6 bg-neutral-200" />
+                <LogoutButton iconOnly className="p-2 text-neutral-900 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" />
             </div>
         </div>
     );
