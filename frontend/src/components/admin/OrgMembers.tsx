@@ -21,7 +21,7 @@ interface Props {
     toolbar?: React.ReactNode;
     /** incrémenté par le parent pour recharger la liste (compte créé…) */
     reloadKey?: number;
-    onLink?: (title: string, link: string) => void;
+    onLink?: (title: string, link: string, emailedTo?: string | false) => void;
     onRemoved?: (name: string, openTasks: OpenTask[]) => void;
 }
 
@@ -80,7 +80,10 @@ export default function OrgMembers({ toolbar, reloadKey = 0, onLink, onRemoved }
     const newLink = async (m: OrgMember, name: string) => {
         setBusyId(m.id);
         setError(null);
-        try { onLink?.(`Nouveau lien pour ${name}`, await organisationApi.memberLink(m.id)); }
+        try {
+            const r = await organisationApi.memberLink(m.id, true);
+            onLink?.(`Nouveau lien pour ${name}`, r.lien, r.email_envoye ? (m.email || name) : false);
+        }
         catch (e) { setError(e instanceof Error ? e.message : 'Lien impossible'); }
         finally { setBusyId(null); }
     };

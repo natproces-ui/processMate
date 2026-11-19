@@ -57,9 +57,10 @@ export const organisationApi = {
     updateMember: (userId: string, body: { role?: OrgRole; statut?: MemberStatut }) =>
         call<{ member: OrgMember }>(`/members/${userId}`, { method: 'PATCH', body: JSON.stringify(body) }).then(r => r.member),
     /** Compte nouveau → lien à transmettre ; compte déjà inscrit → invitation qu'il doit accepter */
-    createMember: (body: { email: string; full_name: string; role: OrgRole; job_title?: string; department?: string; equipes?: string[] }) =>
-        call<{ invitation: boolean; id?: string; lien?: string; email?: string }>('/members', { method: 'POST', body: JSON.stringify(body) }),
-    memberLink: (userId: string) => call<{ lien: string }>(`/members/${userId}/lien`, { method: 'POST' }).then(r => r.lien),
+    createMember: (body: { email: string; full_name: string; role: OrgRole; job_title?: string; department?: string; equipes?: string[]; envoyer_email?: boolean }) =>
+        call<{ invitation: boolean; id?: string; lien?: string; email?: string; email_envoye?: boolean }>('/members', { method: 'POST', body: JSON.stringify(body) }),
+    memberLink: (userId: string, envoyer_email = true) =>
+        call<{ lien: string; email_envoye: boolean }>(`/members/${userId}/lien`, { method: 'POST', body: JSON.stringify({ envoyer_email }) }),
     removeMember: (userId: string) =>
         call<{ taches_a_reaffecter: OpenTask[] }>(`/members/${userId}`, { method: 'DELETE' }).then(r => r.taches_a_reaffecter),
     invitations: () => call<{ invitations: PendingInvitation[] }>('/invitations').then(r => r.invitations),

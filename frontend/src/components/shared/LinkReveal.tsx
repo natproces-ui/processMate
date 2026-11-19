@@ -4,7 +4,11 @@
 import { useState } from 'react';
 import { Check, Copy, X } from 'lucide-react';
 
-export default function LinkReveal({ title, link, onClose, note }: { title: string; link: string; onClose: () => void; note?: string }) {
+export default function LinkReveal({ title, link, onClose, note, emailedTo }: {
+    title: string; link: string; onClose: () => void; note?: string;
+    /** adresse à laquelle le lien vient d'être envoyé ; false = envoi échoué ; undefined = pas d'envoi */
+    emailedTo?: string | false;
+}) {
     const [copied, setCopied] = useState(false);
     const copy = async () => {
         try {
@@ -21,10 +25,21 @@ export default function LinkReveal({ title, link, onClose, note }: { title: stri
                     <h2 id="link-reveal-title" className="text-base font-semibold text-slate-900">{title}</h2>
                     <button type="button" onClick={onClose} aria-label="Fermer" className="p-1 rounded text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">
-                    Envoyez ce lien à la personne : il lui permet de choisir son mot de passe. Il ne sera plus affiché ;
-                    en cas de perte, générez-en un nouveau.
-                </p>
+                {emailedTo ? (
+                    <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                        Envoyé par e-mail à <b>{emailedTo}</b> : son identifiant et le lien pour choisir son mot de passe.
+                        Vous pouvez aussi copier le lien ci-dessous.
+                    </p>
+                ) : emailedTo === false ? (
+                    <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        L&apos;e-mail n&apos;a pas pu partir. Transmettez ce lien vous-même : il permet de choisir le mot de passe.
+                    </p>
+                ) : (
+                    <p className="mt-2 text-sm text-slate-600">
+                        Envoyez ce lien à la personne : il lui permet de choisir son mot de passe. Il ne sera plus affiché ;
+                        en cas de perte, générez-en un nouveau.
+                    </p>
+                )}
                 {note && <p className="mt-2 text-sm text-amber-700">{note}</p>}
                 <div className="mt-3 flex gap-2">
                     <input readOnly value={link} aria-label="Lien d'accès" onFocus={e => e.currentTarget.select()}

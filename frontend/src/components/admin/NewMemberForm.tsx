@@ -11,7 +11,7 @@ const inputCls = 'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-
 interface Props {
     teams: Team[];
     onClose: () => void;
-    onCreated: (result: { name: string; link?: string; invitedEmail?: string }) => void;
+    onCreated: (result: { name: string; link?: string; invitedEmail?: string; emailedTo?: string | false }) => void;
 }
 
 export default function NewMemberForm({ teams, onClose, onCreated }: Props) {
@@ -21,6 +21,7 @@ export default function NewMemberForm({ teams, onClose, onCreated }: Props) {
     const [jobTitle, setJobTitle] = useState('');
     const [department, setDepartment] = useState('');
     const [teamIds, setTeamIds] = useState<string[]>([]);
+    const [sendEmail, setSendEmail] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +33,10 @@ export default function NewMemberForm({ teams, onClose, onCreated }: Props) {
             const r = await organisationApi.createMember({
                 email: email.trim(), full_name: fullName.trim(), role,
                 job_title: jobTitle.trim() || undefined, department: department.trim() || undefined, equipes: teamIds,
+                envoyer_email: sendEmail,
             });
-            onCreated({ name: fullName.trim(), link: r.lien, invitedEmail: r.invitation ? r.email : undefined });
+            onCreated({ name: fullName.trim(), link: r.lien, invitedEmail: r.invitation ? r.email : undefined,
+                emailedTo: sendEmail && r.lien ? (r.email_envoye ? email.trim() : false) : undefined });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Création impossible');
         } finally {
@@ -92,6 +95,10 @@ export default function NewMemberForm({ teams, onClose, onCreated }: Props) {
                         </div>
                     </fieldset>
                 )}
+                <label className="mt-4 flex items-center gap-2 text-xs text-slate-600">
+                    <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                    Envoyer par e-mail l&apos;identifiant et le lien pour choisir le mot de passe
+                </label>
                 {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
                 <div className="mt-5 flex justify-end gap-2">
                     <button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">Annuler</button>

@@ -20,7 +20,7 @@ export default function OrganisationAdmin() {
     const [teams, setTeams] = useState<Team[]>([]);
     const [invitations, setInvitations] = useState<PendingInvitation[]>([]);
     const [reloadKey, setReloadKey] = useState(0);
-    const [reveal, setReveal] = useState<{ title: string; link: string } | null>(null);
+    const [reveal, setReveal] = useState<{ title: string; link: string; emailedTo?: string | false } | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [removed, setRemoved] = useState<{ name: string; tasks: OpenTask[] } | null>(null);
 
@@ -100,7 +100,7 @@ export default function OrganisationAdmin() {
                         </section>
                     )}
                     <OrgMembers reloadKey={reloadKey}
-                        onLink={(title, link) => setReveal({ title, link })}
+                        onLink={(title, link, emailedTo) => setReveal({ title, link, emailedTo })}
                         onRemoved={(name, tasks) => setRemoved({ name, tasks })} />
                     <details className="mt-4 text-sm text-slate-600">
                         <summary className="cursor-pointer text-slate-700">Ce que permet chaque rôle</summary>
@@ -114,14 +114,14 @@ export default function OrganisationAdmin() {
 
             {creating && (
                 <NewMemberForm teams={teams} onClose={() => setCreating(false)}
-                    onCreated={({ name, link, invitedEmail }) => {
+                    onCreated={({ name, link, invitedEmail, emailedTo }) => {
                         setCreating(false);
                         setReloadKey(k => k + 1);
-                        if (link) setReveal({ title: `Compte créé pour ${name}`, link });
+                        if (link) setReveal({ title: `Compte créé pour ${name}`, link, emailedTo });
                         else if (invitedEmail) setNotice(`${invitedEmail} a déjà un compte processMate : une invitation lui sera proposée à sa prochaine connexion. Elle doit l’accepter.`);
                     }} />
             )}
-            {reveal && <LinkReveal title={reveal.title} link={reveal.link} onClose={() => setReveal(null)} />}
+            {reveal && <LinkReveal title={reveal.title} link={reveal.link} emailedTo={reveal.emailedTo} onClose={() => setReveal(null)} />}
         </main>
     );
 }

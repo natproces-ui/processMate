@@ -79,6 +79,7 @@ class CreateOrganisation(BaseModel):
     slug: Optional[str] = Field(default=None, max_length=60)
     admin_nom: str = Field(min_length=2, max_length=120)
     admin_email: str = Field(min_length=5, max_length=200)
+    envoyer_email: bool = True  # le lien part aussi par e-mail à l'admin (il reste affiché)
 
 
 def _link_error(e: account_links.AccountLinkError):
@@ -117,14 +118,18 @@ def create_organisation(body: CreateOrganisation, actor: AuthUser = Depends(ac.r
         db.table("organisations").delete().eq("id", org["id"]).execute()
         raise
     ac.forget_profile(acc.user_id)
+    sent = body.envoyer_email and account_links.email_link(
+        email, body.admin_nom.strip(), org["nom"], "admin", acc.link, "processMate", not acc.created)
     ac.audit("organisation.creee", actor, org["id"], "organisation", org["id"],
-             {"nom": org["nom"], "slug": slug, "admin": acc.user_id, "compte_existant": not acc.created})
+             {"nom": org["nom"], "slug": slug, "admin": acc.user_id, "compte_existant": not acc.created,
+              "email_envoye": bool(sent)})
     return {"organisation": _summary([org])[0], "admin_id": acc.user_id, "lien": acc.link,
-            "compte_existant": not acc.created}
+            "compte_existant": not acc.created, "email_envoye": bool(sent)}
 
 
 class NewLink(BaseModel):
     admin_id: str
+    envoyer_email: bool = True
 
 
 @router.post("/organisations/{org_id}/lien", dependencies=DEPS)
@@ -134,15 +139,19 @@ def regenerate_admin_link(org_id: str, body: NewLink, actor: AuthUser = Depends(
          .eq("user_id", body.admin_id).limit(1).execute().data)
     if not m or m[0]["role"] != "admin":
         raise HTTPException(404, "Administrateur introuvable dans cette organisation")
-    prof = db.table("user_profiles").select("email").eq("id", body.admin_id).limit(1).execute().data
+    prof = db.table("user_profiles").select("email,full_name").eq("id", body.admin_id).limit(1).execute().data
     if not prof or not prof[0].get("email"):
         raise HTTPException(404, "Adresse e-mail introuvable")
     try:
         link = account_links.new_link(prof[0]["email"])
     except account_links.AccountLinkError as e:
         _link_error(e)
-    ac.audit("organisation.lien_admin", actor, org_id, "membre", body.admin_id)
-    return {"lien": link}
+    org = db.table("organisations").select("nom").eq("id", org_id).limit(1).execute().data
+    sent = body.envoyer_email and account_links.email_link(
+        prof[0]["email"], prof[0].get("full_name"), org[0]["nom"] if org else "processMate", "admin", link,
+        "processMate", True)
+    ac.audit("organisation.lien_admin", actor, org_id, "membre", body.admin_id, {"email_envoye": bool(sent)})
+    return {"lien": link, "email_envoye": bool(sent)}
 
 
 class OrgStatus(BaseModel):

@@ -21,6 +21,7 @@ def _no_real_services(monkeypatch):
     import email_sender
     monkeypatch.setattr(email_sender, "send_task_email", refuse)
     monkeypatch.setattr(email_sender, "send_tasks_digest_email", refuse)
+    monkeypatch.setattr(email_sender, "send_access_email", refuse)
     try:
         from routers import orchestration_tasks_router as otr
         monkeypatch.setattr(otr, "send_task_email", refuse)

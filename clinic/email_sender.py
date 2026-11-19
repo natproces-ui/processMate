@@ -302,3 +302,50 @@ def _send_resend(to_email: str, subject: str, html: str, api_key: str) -> None:
         if resp.status >= 400:
             body = resp.read()
             raise RuntimeError(f"Resend {resp.status}: {body}")
+
+
+# ── Accès à un espace (lien pour choisir son mot de passe) ─────────────────────
+
+def _esc(text: str) -> str:
+    import html as _html
+    return _html.escape(text or "")
+
+
+def send_access_email(to_email: str, to_name: str, organisation: str, role_label: str, link: str,
+                      invited_by: str = "processMate", existing_account: bool = False) -> bool:
+    """E-mail d'accès : identifiant (l'e-mail) + lien pour choisir son mot de passe.
+
+    Aucun mot de passe n'est envoyé. Renvoie True si l'e-mail est parti (pour le dire à
+    l'expéditeur), False sinon — le lien reste alors affiché pour être transmis à la main.
+    """
+    if not to_email or not link:
+        return False
+    action = "définir un nouveau mot de passe" if existing_account else "choisir votre mot de passe"
+    html = f"""<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+  <h2 style="font-size:18px">Votre accès à l'espace {_esc(organisation)}</h2>
+  <p>Bonjour {_esc(to_name) or ''},</p>
+  <p>{_esc(invited_by)} vous a ouvert un accès à processMate, dans l'espace <b>{_esc(organisation)}</b>
+     (rôle : {_esc(role_label)}).</p>
+  <p><b>Votre identifiant :</b> {_esc(to_email)}</p>
+  <p>Cliquez ci-dessous pour {action}, puis connectez-vous avec votre identifiant.</p>
+  <p style="margin:24px 0"><a href="{_esc(link)}" style="background:#0f172a;color:#fff;padding:10px 18px;
+     border-radius:8px;text-decoration:none">Accéder à mon espace</a></p>
+  <p style="font-size:12px;color:#64748b">Ce lien est personnel et valable pour une durée limitée. S'il a expiré,
+     demandez-en un nouveau à la personne qui vous a invité.</p>
+</div>"""
+    subject = f"[ProcessMate] Votre accès à l'espace {organisation}"
+    try:
+        email_user, email_pass = os.environ.get("EMAIL_USER"), os.environ.get("EMAIL_PASS")
+        resend_key = os.environ.get("RESEND_API_KEY")
+        if email_user and email_pass:
+            _send_gmail(to_email, subject, html, email_user, email_pass)
+        elif resend_key:
+            _send_resend(to_email, subject, html, resend_key)
+        else:
+            logger.warning("send_access_email: aucun fournisseur email configure (EMAIL_USER/RESEND_API_KEY)")
+            return False
+        logger.info(f"E-mail d'accès envoyé ({organisation})")
+        return True
+    except Exception as exc:
+        logger.warning(f"send_access_email echec : {str(exc)[:160]}")
+        return False

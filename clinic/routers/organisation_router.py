@@ -151,6 +151,12 @@ class NewMember(BaseModel):
     job_title: Optional[str] = Field(default=None, max_length=120)
     department: Optional[str] = Field(default=None, max_length=120)
     equipes: List[str] = []
+    envoyer_email: bool = True  # le lien part aussi par e-mail (il reste affiché)
+
+
+def _org_name(org_id: str) -> str:
+    rows = _db().table("organisations").select("nom").eq("id", org_id).limit(1).execute().data
+    return rows[0]["nom"] if rows else "processMate"
 
 
 def create_member(org_id: str, actor: Access, body: NewMember) -> Dict[str, Any]:
@@ -192,24 +198,31 @@ def create_member(org_id: str, actor: Access, body: NewMember) -> Dict[str, Any]
         db.table("user_profiles").update(extra).eq("id", acc.user_id).execute()
     if body.equipes:
         set_user_teams(org_id, acc.user_id, body.equipes)
-    ac.audit("membre.cree", actor.user, org_id, "membre", acc.user_id, {"role": body.role})
-    return {"invitation": False, "id": acc.user_id, "lien": acc.link}
+    sent = body.envoyer_email and account_links.email_link(
+        email, body.full_name.strip(), _org_name(org_id), body.role, acc.link,
+        actor.user.email or "L'administrateur de votre organisation", not acc.created)
+    ac.audit("membre.cree", actor.user, org_id, "membre", acc.user_id, {"role": body.role, "email_envoye": bool(sent)})
+    return {"invitation": False, "id": acc.user_id, "lien": acc.link, "email_envoye": bool(sent)}
 
 
-def member_link(org_id: str, actor: Access, user_id: str) -> str:
+def member_link(org_id: str, actor: Access, user_id: str, send_email: bool = True) -> Dict[str, Any]:
     db = _db()
-    if not (db.table("organisation_members").select("user_id").eq("organisation_id", org_id)
-            .eq("user_id", user_id).limit(1).execute().data):
+    member = (db.table("organisation_members").select("user_id,role").eq("organisation_id", org_id)
+              .eq("user_id", user_id).limit(1).execute().data)
+    if not member:
         raise HTTPException(404, "Membre introuvable")
-    prof = db.table("user_profiles").select("email").eq("id", user_id).limit(1).execute().data
+    prof = db.table("user_profiles").select("email,full_name").eq("id", user_id).limit(1).execute().data
     if not prof or not prof[0].get("email"):
         raise HTTPException(404, "Adresse e-mail introuvable")
     try:
         link = account_links.new_link(prof[0]["email"])
     except account_links.AccountLinkError as e:
         raise HTTPException(e.status, str(e))
-    ac.audit("membre.nouveau_lien", actor.user, org_id, "membre", user_id)
-    return link
+    sent = send_email and account_links.email_link(
+        prof[0]["email"], prof[0].get("full_name"), _org_name(org_id), member[0]["role"], link,
+        actor.user.email or "L'administrateur de votre organisation", True)
+    ac.audit("membre.nouveau_lien", actor.user, org_id, "membre", user_id, {"email_envoye": bool(sent)})
+    return {"lien": link, "email_envoye": bool(sent)}
 
 
 OPEN_TASK_STATUSES = ("todo", "in_progress", "submitted", "changes_requested", "waiting_info", "blocked")
@@ -332,10 +345,14 @@ def post_member(body: NewMember, access: Access = Depends(current_access)):
     return create_member(access.organisation_id, access, body)
 
 
+class LinkOptions(BaseModel):
+    envoyer_email: bool = True
+
+
 @router.post("/members/{user_id}/lien", dependencies=[Depends(_enabled)])
-def post_member_link(user_id: str, access: Access = Depends(current_access)):
+def post_member_link(user_id: str, body: Optional[LinkOptions] = None, access: Access = Depends(current_access)):
     _require_admin(access)
-    return {"lien": member_link(access.organisation_id, access, user_id)}
+    return member_link(access.organisation_id, access, user_id, (body or LinkOptions()).envoyer_email)
 
 
 @router.delete("/members/{user_id}", dependencies=[Depends(_enabled)])

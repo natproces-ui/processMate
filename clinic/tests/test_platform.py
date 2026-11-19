@@ -135,3 +135,22 @@ class PlatformTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AccessEmailTest(PlatformTest):
+    def test_link_sent_by_email_and_still_shown(self):
+        with mock.patch("email_sender.send_access_email", return_value=True) as send:
+            r = self.create()
+        self.assertTrue(r.json()["email_envoye"])
+        self.assertTrue(r.json()["lien"])
+        args = send.call_args.args
+        self.assertEqual((args[0], args[2], args[3]), ("nadia@cmt.fr", "Crédit Mutuel Test", "administrateur"))
+
+    def test_email_can_be_skipped_or_fail(self):
+        with mock.patch("email_sender.send_access_email", return_value=True) as send:
+            r = self.create(envoyer_email=False)
+        send.assert_not_called()
+        self.assertFalse(r.json()["email_envoye"])
+        with mock.patch("email_sender.send_access_email", return_value=False):
+            r = self.client.post("/api/plateforme/organisations/org-a/lien", json={"admin_id": "adminA"}, headers=self.as_("super"))
+        self.assertEqual((r.status_code, r.json()["email_envoye"]), (200, False))

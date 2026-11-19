@@ -29,11 +29,11 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const platformApi = {
     list: () => call<{ organisations: PlatformOrg[]; hors_organisation_mois: Usage }>('/organisations'),
-    create: (body: { nom: string; slug?: string; admin_nom: string; admin_email: string }) =>
-        call<{ organisation: PlatformOrg; admin_id: string; lien: string; compte_existant: boolean }>(
+    create: (body: { nom: string; slug?: string; admin_nom: string; admin_email: string; envoyer_email?: boolean }) =>
+        call<{ organisation: PlatformOrg; admin_id: string; lien: string; compte_existant: boolean; email_envoye: boolean }>(
             '/organisations', { method: 'POST', body: JSON.stringify(body) }),
-    newAdminLink: (orgId: string, adminId: string) =>
-        call<{ lien: string }>(`/organisations/${orgId}/lien`, { method: 'POST', body: JSON.stringify({ admin_id: adminId }) }),
+    newAdminLink: (orgId: string, adminId: string, envoyer_email = true) =>
+        call<{ lien: string; email_envoye: boolean }>(`/organisations/${orgId}/lien`, { method: 'POST', body: JSON.stringify({ admin_id: adminId, envoyer_email }) }),
     setStatus: (orgId: string, statut: 'active' | 'suspendue') =>
         call<{ organisation: PlatformOrg }>(`/organisations/${orgId}`, { method: 'PATCH', body: JSON.stringify({ statut }) }),
 };

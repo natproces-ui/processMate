@@ -106,3 +106,18 @@ def new_link(email: str) -> str:
         except Exception as e:
             logger.info(f"Lien {kind} refusé : {str(e)[:120]}")
     raise AccountLinkError("Nouveau lien impossible pour le moment.", 502)
+
+
+ROLE_LABELS = {"admin": "administrateur", "pilote": "pilote", "contributeur": "contributeur", "lecteur": "lecteur"}
+
+
+def email_link(email: str, full_name: Optional[str], organisation: str, role: str, link: str,
+               invited_by: Optional[str] = None, existing_account: bool = False) -> bool:
+    """Envoie le lien d'accès par e-mail (identifiant + lien). True si parti. Ne lève jamais."""
+    try:
+        import email_sender
+        return email_sender.send_access_email(email, full_name or "", organisation, ROLE_LABELS.get(role, role),
+                                              link, invited_by or "processMate", existing_account)
+    except Exception as e:
+        logger.warning(f"E-mail d'accès non envoyé : {str(e)[:120]}")
+        return False

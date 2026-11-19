@@ -15,8 +15,9 @@ import LinkReveal from '@/components/shared/LinkReveal';
 const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200';
 
-function CreateForm({ onCreated }: { onCreated: (org: PlatformOrg, link: string, existing: boolean) => void }) {
+function CreateForm({ onCreated }: { onCreated: (org: PlatformOrg, link: string, existing: boolean, emailedTo: string | false | undefined) => void }) {
     const [nom, setNom] = useState('');
+    const [sendEmail, setSendEmail] = useState(true);
     const [adminNom, setAdminNom] = useState('');
     const [adminEmail, setAdminEmail] = useState('');
     const [busy, setBusy] = useState(false);
@@ -27,8 +28,8 @@ function CreateForm({ onCreated }: { onCreated: (org: PlatformOrg, link: string,
         setBusy(true);
         setError(null);
         try {
-            const r = await platformApi.create({ nom: nom.trim(), admin_nom: adminNom.trim(), admin_email: adminEmail.trim() });
-            onCreated(r.organisation, r.lien, r.compte_existant);
+            const r = await platformApi.create({ nom: nom.trim(), admin_nom: adminNom.trim(), admin_email: adminEmail.trim(), envoyer_email: sendEmail });
+            onCreated(r.organisation, r.lien, r.compte_existant, sendEmail ? (r.email_envoye ? adminEmail.trim() : false) : undefined);
             setNom(''); setAdminNom(''); setAdminEmail('');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Création impossible');
@@ -51,6 +52,10 @@ function CreateForm({ onCreated }: { onCreated: (org: PlatformOrg, link: string,
                     <input type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} required className={`mt-1 ${inputCls}`} />
                 </label>
             </div>
+            <label className="mt-3 flex items-center gap-2 text-xs text-slate-600">
+                <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                Envoyer à l&apos;admin, par e-mail, son identifiant et le lien pour choisir son mot de passe
+            </label>
             {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
             <button type="submit" disabled={busy}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50">
@@ -73,7 +78,7 @@ function Console() {
     const [outside, setOutside] = useState<Usage | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busyId, setBusyId] = useState<string | null>(null);
-    const [reveal, setReveal] = useState<{ title: string; link: string; note?: string } | null>(null);
+    const [reveal, setReveal] = useState<{ title: string; link: string; note?: string; emailedTo?: string | false } | null>(null);
 
     const load = useCallback(async () => {
         try {
@@ -97,11 +102,11 @@ function Console() {
         finally { setBusyId(null); }
     };
 
-    const newLink = async (o: PlatformOrg, adminId: string, label: string) => {
+    const newLink = async (o: PlatformOrg, adminId: string, label: string, email: string | null) => {
         setBusyId(o.id);
         try {
-            const r = await platformApi.newAdminLink(o.id, adminId);
-            setReveal({ title: `Nouveau lien pour ${label}`, link: r.lien });
+            const r = await platformApi.newAdminLink(o.id, adminId, true);
+            setReveal({ title: `Nouveau lien pour ${label}`, link: r.lien, emailedTo: r.email_envoye ? (email || label) : false });
         } catch (e) { setError(e instanceof Error ? e.message : 'Lien impossible'); }
         finally { setBusyId(null); }
     };
@@ -119,10 +124,10 @@ function Console() {
                     </p>
                 </div>
 
-                <CreateForm onCreated={(org, link, existing) => {
+                <CreateForm onCreated={(org, link, existing, emailedTo) => {
                     setOrgs(prev => [org, ...(prev || [])]);
                     setReveal({
-                        title: `Espace « ${org.nom} » créé`, link,
+                        title: `Espace « ${org.nom} » créé`, link, emailedTo,
                         note: existing ? 'Ce compte existait déjà : le lien permet de choisir un nouveau mot de passe.' : undefined,
                     });
                 }} />
@@ -151,8 +156,8 @@ function Console() {
                                             {o.admins.map(a => (
                                                 <li key={a.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                                                     <span>Admin : {a.full_name || a.email}{a.full_name && a.email ? ` (${a.email})` : ''}</span>
-                                                    <button type="button" disabled={busyId === o.id} onClick={() => void newLink(o, a.id, a.full_name || a.email || 'l’admin')}
-                                                        className="text-blue-600 hover:underline disabled:opacity-50">Nouveau lien</button>
+                                                    <button type="button" disabled={busyId === o.id} onClick={() => void newLink(o, a.id, a.full_name || a.email || 'l’admin', a.email)}
+                                                        className="text-blue-600 hover:underline disabled:opacity-50">Renvoyer un lien par e-mail</button>
                                                 </li>
                                             ))}
                                         </ul>
@@ -170,7 +175,7 @@ function Console() {
                     <p className="text-xs text-slate-500">Hors organisation (invités, comptes libres) ce mois : <UsageCell u={outside} /></p>
                 )}
             </div>
-            {reveal && <LinkReveal title={reveal.title} link={reveal.link} note={reveal.note} onClose={() => setReveal(null)} />}
+            {reveal && <LinkReveal title={reveal.title} link={reveal.link} note={reveal.note} emailedTo={reveal.emailedTo} onClose={() => setReveal(null)} />}
         </main>
     );
 }
