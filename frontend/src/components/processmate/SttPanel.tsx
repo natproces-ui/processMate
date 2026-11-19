@@ -1030,9 +1030,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         <CircuitBar procedureId={activeInst.workflow_db_id}
                             onSave={async () => { await handleSave(activeInst.title, '', undefined); }} />
                     )}
-                    <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5">
+                    <div className="shrink-0 bg-white border-b border-neutral-200 px-4 pt-2.5">
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
                             {chatOpen && !procFullscreen && (
                                 <button type="button" onClick={() => toggleChat(false)} title="Masquer la conversation" aria-label="Masquer la conversation"
                                     className="hidden lg:inline-flex shrink-0 p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
@@ -1051,33 +1051,34 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 </button>
                             )}
                             {onBack && (
-                                <button type="button" onClick={onBack} title="Retour"
-                                    className="shrink-0 p-1.5 rounded-lg text-blue-600 hover:bg-blue-50">
+                                <button type="button" onClick={onBack} title="Retour" aria-label="Retour"
+                                    className="shrink-0 p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
                                     <ArrowLeft className="w-4 h-4" />
                                 </button>
                             )}
-                            <div className="min-w-0 flex-1">
-                                <h1 className="text-base font-bold text-slate-900 truncate" title={activeTitle || 'Nouvelle procédure'}>
+                            {/* le titre garde sa place : ce sont les actions qui passent à la ligne */}
+                            <div className="min-w-[12rem] flex-1">
+                                <h1 className="text-base font-semibold text-neutral-900 truncate" title={activeTitle || 'Nouvelle procédure'}>
                                     {activeTitle || 'Nouvelle procédure'}
                                 </h1>
-                                <p className="text-xs text-slate-500 truncate">
+                                <p className="text-xs text-neutral-500 truncate">
                                     {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? ` · ${activeInst.category}` : ''}
                                 </p>
                             </div>
-                            <div className="shrink-0 flex items-center gap-2">
+                            <div className="ml-auto flex flex-wrap items-center gap-2">
                                 {canSave && <button type="button" onClick={() => {
                                     const inst = instances.length > 0 ? activeInst : null;
                                     if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
                                     else setSaveModalOpen(true);
                                 }} disabled={saving || viewMode === 'outillage' || activeData.length === 0}
                                     title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white rounded-lg text-xs font-medium hover:bg-neutral-700 disabled:opacity-50 transition-colors">
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>}
                                 {canSave && access?.organisations_mode && activeInst && !activeInst.workflow_db_id && activeData.length > 0 && (
                                     <button type="button" disabled={proposing} onClick={() => void proposeToLibrary()}
                                         title="Le pilote l'ajoutera à une campagne ou au référentiel ; elle sera validée avant publication"
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-neutral-300 rounded-lg text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-50">
                                         <Send className="w-3.5 h-3.5" />{proposing ? 'Envoi…' : 'Proposer au référentiel'}
                                     </button>
                                 )}
@@ -1106,7 +1107,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 )}
                                 {VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id && (
                                     <button type="button" onClick={() => setVersionsOpen(true)} title="Historique des versions"
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50">
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-neutral-300 rounded-lg text-xs font-medium text-neutral-900 hover:bg-neutral-100">
                                         <History className="w-3.5 h-3.5" />Versions
                                     </button>
                                 )}
@@ -1124,7 +1125,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             <div className="mt-2 flex gap-1 items-center min-w-0 overflow-x-auto">
                                 {instances.map((inst, i) => (
                                     <button type="button" key={inst.process_id} onClick={() => setActiveTab(i)} title={inst.title}
-                                        className={`shrink-0 max-w-[260px] truncate px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === activeTab ? 'bg-slate-800 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                                        className={`shrink-0 max-w-[260px] truncate px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === activeTab ? 'bg-neutral-900 text-white' : 'bg-white border border-neutral-300 text-neutral-900 hover:bg-neutral-100'}`}>
                                         {inst.status === 'generating' && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse" />}
                                         {inst.status === 'error' && <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1.5" />}
                                         {inst.status === 'ready' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />}
@@ -1142,7 +1143,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     { id: 'fiche' as const, label: 'Fiche & export', icon: FileText },
                                 ]).filter(v => exportAllowed || v.id !== 'fiche').map(v => (
                                     <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)}
-                                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${view === v.id ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+                                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${view === v.id ? 'border-neutral-900 text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
                                         <v.icon className="w-3.5 h-3.5" />{v.label}
                                     </button>
                                 ))}
@@ -1172,16 +1173,16 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             )}
                                             <button type="button" onClick={togglePalette} aria-pressed={paletteOpen}
                                                 title={paletteOpen ? 'Masquer les outils de dessin' : 'Afficher les outils de dessin'}
-                                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${paletteOpen ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
+                                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${paletteOpen ? 'bg-neutral-100 text-neutral-900 border-neutral-900' : 'bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-100'}`}>
                                                 <Shapes className="w-4 h-4" />Outils
                                             </button>
-                                            <div className="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
-                                                <button type="button" title="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomOut className="w-4 h-4 text-slate-600" /></button>
-                                                <button type="button" title="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-slate-100 border-r border-slate-200"><ZoomIn className="w-4 h-4 text-slate-600" /></button>
-                                                <button type="button" title="Ajuster à la fenêtre" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-slate-100"><Scan className="w-4 h-4 text-slate-600" /></button>
+                                            <div className="flex items-center rounded-lg border border-neutral-300 bg-white overflow-hidden">
+                                                <button type="button" title="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomOut className="w-4 h-4 text-neutral-900" /></button>
+                                                <button type="button" title="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomIn className="w-4 h-4 text-neutral-900" /></button>
+                                                <button type="button" title="Ajuster à la fenêtre" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-neutral-100"><Scan className="w-4 h-4 text-neutral-900" /></button>
                                             </div>
-                                            <button type="button" title={editorFullscreen ? 'Quitter le plein écran' : 'Plein écran'} onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-slate-100">
-                                                {editorFullscreen ? <Minimize2 className="w-4 h-4 text-slate-500" /> : <Maximize2 className="w-4 h-4 text-slate-500" />}
+                                            <button type="button" title={editorFullscreen ? 'Quitter le plein écran' : 'Plein écran'} onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-neutral-100">
+                                                {editorFullscreen ? <Minimize2 className="w-4 h-4 text-neutral-900" /> : <Maximize2 className="w-4 h-4 text-neutral-900" />}
                                             </button>
                                         </>
                                     ) : undefined}
