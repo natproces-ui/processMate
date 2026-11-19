@@ -19,7 +19,7 @@ function stepRefs(text: string, keyBase: string, onStepClick?: (ids: string[]) =
         return (
             <button key={`${keyBase}-s${i}`} type="button" onClick={() => onStepClick(ids)}
                 title="Voir dans le tableau"
-                className="inline rounded bg-blue-50 px-0.5 font-medium text-blue-700 hover:bg-blue-100 underline-offset-2 hover:underline">
+                className="inline rounded bg-neutral-100 px-0.5 font-medium text-neutral-900 underline underline-offset-2 hover:bg-neutral-200">
                 {part}
             </button>
         );
@@ -30,8 +30,8 @@ function inline(text: string, keyBase: string, onStepClick?: (ids: string[]) => 
     const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*)/g);
     return parts.filter(Boolean).flatMap((part, i) => {
         const key = `${keyBase}-${i}`;
-        if (part.startsWith('**') && part.endsWith('**')) return [<strong key={key} className="font-semibold text-slate-900">{stepRefs(part.slice(2, -2), key, onStepClick)}</strong>];
-        if (part.startsWith('`') && part.endsWith('`')) return [<code key={key} className="rounded bg-slate-100 px-1 py-0.5 text-[0.85em] text-slate-800">{part.slice(1, -1)}</code>];
+        if (part.startsWith('**') && part.endsWith('**')) return [<strong key={key} className="font-semibold text-neutral-900">{stepRefs(part.slice(2, -2), key, onStepClick)}</strong>];
+        if (part.startsWith('`') && part.endsWith('`')) return [<code key={key} className="rounded bg-neutral-100 px-1 py-0.5 text-[0.85em] text-neutral-900">{part.slice(1, -1)}</code>];
         if (part.startsWith('*') && part.endsWith('*') && part.length > 2) return [<em key={key}>{part.slice(1, -1)}</em>];
         return stepRefs(part, key, onStepClick);
     });
@@ -54,7 +54,7 @@ export default function MiniMarkdown({ text, className = '', onStepClick }: { te
     const flushQuote = () => {
         if (quote.length) {
             const k = `q${blocks.length}`;
-            blocks.push(<blockquote key={k} className="border-l-2 border-slate-300 pl-3 text-slate-600 italic">{inline(quote.join(' '), k, onStepClick)}</blockquote>);
+            blocks.push(<blockquote key={k} className="border-l-2 border-neutral-300 pl-3 text-neutral-700 italic">{inline(quote.join(' '), k, onStepClick)}</blockquote>);
             quote = [];
         }
     };
@@ -63,7 +63,7 @@ export default function MiniMarkdown({ text, className = '', onStepClick }: { te
             const k = `l${blocks.length}`;
             const Tag = list.ordered ? 'ol' : 'ul';
             blocks.push(
-                <Tag key={k} className={`${list.ordered ? 'list-decimal' : 'list-disc'} pl-5 space-y-1.5 marker:text-slate-400`}>
+                <Tag key={k} className={`${list.ordered ? 'list-decimal' : 'list-disc'} pl-5 space-y-1.5 marker:text-neutral-900`}>
                     {list.items.map((it, i) => <li key={i} className="leading-relaxed pl-0.5">{inline(it, `${k}-${i}`, onStepClick)}</li>)}
                 </Tag>
             );
@@ -79,12 +79,12 @@ export default function MiniMarkdown({ text, className = '', onStepClick }: { te
         const numbered = line.match(/^\s*\d+[.)]\s+(.*)$/);
         const quoted = line.match(/^\s*>\s?(.*)$/);
         if (!line.trim()) { flushAll(); continue; }
-        if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) { flushAll(); blocks.push(<hr key={`hr${blocks.length}`} className="border-slate-200" />); continue; }
+        if (/^\s*(-{3,}|\*{3,})\s*$/.test(line)) { flushAll(); blocks.push(<hr key={`hr${blocks.length}`} className="border-neutral-200" />); continue; }
         if (heading) {
             flushAll();
             const k = `h${blocks.length}`;
             const size = heading[1].length === 1 ? 'text-base' : 'text-[15px]';
-            blocks.push(<p key={k} className={`font-semibold text-slate-900 mt-1 ${size}`}>{inline(heading[2], k, onStepClick)}</p>);
+            blocks.push(<p key={k} className={`font-semibold text-neutral-900 mt-1 ${size}`}>{inline(heading[2], k, onStepClick)}</p>);
         } else if (quoted) {
             flushPara(); flushList();
             quote.push(quoted[1]);

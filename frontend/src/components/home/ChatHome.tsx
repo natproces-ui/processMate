@@ -126,13 +126,13 @@ export default function ChatHome() {
                 </Link>
             )}>
             {guestWork && (
-                <div className="shrink-0 border-b border-blue-200 bg-blue-50 px-4 py-2.5 flex flex-wrap items-center gap-2 text-sm text-neutral-900">
+                <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 flex flex-wrap items-center gap-2 text-sm text-neutral-900">
                     <span>Vous avez commencé une conversation sans compte dans ce navigateur. La reprendre dans votre compte ?</span>
                     <button type="button" onClick={importGuest} disabled={importing}
                         className="rounded-lg bg-neutral-900 px-3 py-1 text-xs font-semibold text-white hover:bg-neutral-700 disabled:opacity-50">
                         {importing ? 'Reprise…' : 'Reprendre'}
                     </button>
-                    <button type="button" onClick={ignoreGuest} disabled={importing} className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-900 hover:bg-blue-100">Ignorer</button>
+                    <button type="button" onClick={ignoreGuest} disabled={importing} className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-900 hover:bg-neutral-200">Ignorer</button>
                     {importError && <span className="text-xs text-red-600">{importError}</span>}
                 </div>
             )}
