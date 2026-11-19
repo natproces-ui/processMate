@@ -158,3 +158,17 @@ class LegacyModeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReportModeInOrgModeTest(unittest.TestCase):
+    def test_member_routes_refused_cleanly_even_in_report_mode(self):
+        db = base()
+        with mock.patch.dict(os.environ, {"ORGANISATIONS_ENABLED": "true", "AUTH_MODE": "report"}), \
+                mock.patch("database.supabase_client.get_raw_supabase", return_value=db):
+            ac.forget_profile()
+            client = TestClient(main.app, raise_server_exceptions=False)
+            self.assertEqual(client.get("/api/orchestration/stats").status_code, 401)
+            with mock.patch.object(ac, "_verify", return_value=AuthUser(id="libre", email="l@x.com")):
+                self.assertEqual(client.get("/api/orchestration/stats", headers={"Authorization": "Bearer t"}).status_code, 403)
+            # les routes « compte » et invité restent en mode journal
+            self.assertNotEqual(client.post("/api/studio/generate", json={"session_id": "x", "procedure_ids": ["p"]}).status_code, 401)

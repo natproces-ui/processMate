@@ -404,7 +404,10 @@ async def middleware(request: Request, call_next):
         set_org(access.organisation_id)  # vu par la route et ses threads
 
     if denial:
-        if mode == "enforce":
+        # En mode organisations, une route de membre ne peut rien servir sans organisation
+        # (cloisonnement) : on refuse proprement, même en mode « report », plutôt qu'une 500.
+        cloisonnee = organisations_enabled() and rule_for(method, path).level in (MEMBER, PLATFORM)
+        if mode == "enforce" or cloisonnee:
             return JSONResponse(status_code=denial[0], content={"detail": denial[1]})
         logger.warning(f"[accès:report] {method} {path} serait refusé ({denial[0]}) — "
                        f"{'utilisateur ' + user.id[:8] if user else 'sans jeton'}")
