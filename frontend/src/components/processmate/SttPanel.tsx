@@ -805,6 +805,25 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         }
     }, [activeTab, instances, activeInst, processTitle, safeGenerateBpmn]);
 
+    // Procédure décrite en texte : les étapes arrivent une à une (aperçu), la réponse finale les remplace
+    const handleWorkflowPreview = useCallback((rows: Table1Row[]) => {
+        if (rows.length === 0) {
+            if (instances.length === 0) { setData([]); setBpmnXml(null); }
+            return;
+        }
+        setHasProcedure(true);
+        const title = (instances.length > 0 ? activeInst?.title : processTitle) || 'Procédure en cours de rédaction';
+        const xml = safeGenerateBpmn(rows, title);
+        if (instances.length > 0) {
+            setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: rows, bpmnXml: xml } : inst));
+            if (xml) editorRefs.current[activeTab]?.importXml(xml);
+        } else {
+            setData(rows);
+            setBpmnXml(xml);
+            if (xml) editorRef.current?.importXml(xml);
+        }
+    }, [instances.length, activeInst, activeTab, processTitle, safeGenerateBpmn]);
+
     // ── Lot 5 : points de restauration du chat ──
     const takeSnapshot = useCallback(() => ({
         processId: instances.length > 0 ? activeInst?.process_id : null,
@@ -965,6 +984,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onError={showError} onSuccess={showSuccess}
                         onProcedureStarted={handleProcedureStarted}
                         onProcedureRow={handleProcedureRow}
+                        onWorkflowPreview={handleWorkflowPreview}
                         onProcedureReady={handleProcedureReady}
                         onProcedureError={handleProcedureError}
                         onSelectProcedure={handleSelectProcedure}

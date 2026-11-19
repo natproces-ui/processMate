@@ -325,19 +325,20 @@ class ChatProcessor:
         parts = self._build_parts(files_to_send, prompt)
         timeout = 180 if mode != "text_only" else 90
 
-        async def _task(model_name: str):
-            model = self.model_manager.get_model(model_name)
-            response = await asyncio.wait_for(
-                asyncio.to_thread(model.generate_content, model=model_name, contents=parts),
-                timeout=timeout
-            )
-            return response
+        raw_text = await self._streamed_workflow(parts, timeout, "Chat generate (flux)")
+        if raw_text is None:
+            async def _task(model_name: str):
+                model = self.model_manager.get_model(model_name)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(model.generate_content, model=model_name, contents=parts),
+                    timeout=timeout
+                )
+                return response
 
-        result = await self.model_manager.execute_with_fallback(_task, task_name="Chat generate")
-        if not result["success"]:
-            raise ValueError(result["message"])
-
-        raw_text = result["result"].text
+            result = await self.model_manager.execute_with_fallback(_task, task_name="Chat generate")
+            if not result["success"]:
+                raise ValueError(result["message"])
+            raw_text = result["result"].text
         workflow_list, title, enrichments_raw = self.img_processor._parse_gemini_response(raw_text)
         validated = self.img_processor._validate_and_normalize_workflow(workflow_list)
         enrichments_dict = _normalize_enrichments(enrichments_raw)
@@ -519,19 +520,20 @@ pour générer ou enrichir le processus demandé.
 
 {get_extraction_prompt()}"""
 
-        async def _task(model_name: str):
-            model = self.model_manager.get_model(model_name)
-            response = await asyncio.wait_for(
-                asyncio.to_thread(model.generate_content, model=model_name, contents=prompt),
-                timeout=120
-            )
-            return response
+        raw_text = await self._streamed_workflow(prompt, 120, "Chat web_search (flux)")
+        if raw_text is None:
+            async def _task(model_name: str):
+                model = self.model_manager.get_model(model_name)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(model.generate_content, model=model_name, contents=prompt),
+                    timeout=120
+                )
+                return response
 
-        result = await self.model_manager.execute_with_fallback(_task, task_name="Chat web_search")
-        if not result["success"]:
-            raise ValueError(result["message"])
-
-        raw_text = result["result"].text
+            result = await self.model_manager.execute_with_fallback(_task, task_name="Chat web_search")
+            if not result["success"]:
+                raise ValueError(result["message"])
+            raw_text = result["result"].text
         workflow_list, title, enrichments_raw = self.img_processor._parse_gemini_response(raw_text)
         validated = self.img_processor._validate_and_normalize_workflow(workflow_list)
         enrichments_dict = _normalize_enrichments(enrichments_raw)
@@ -549,6 +551,39 @@ pour générer ou enrichir le processus demandé.
     # ─────────────────────────────────────────────────────────
     # HELPERS
     # ─────────────────────────────────────────────────────────
+
+    async def _streamed_workflow(self, contents: Any, timeout: float, task_name: str) -> Optional[str]:
+        """Procédure écrite en flux pendant un tour de chat : chaque étape complète part tout de
+        suite à l'écran (aperçu {"type": "workflow_preview", "row"}). Renvoie le texte complet,
+        relu ensuite comme d'habitude ; None hors d'un tour en direct ou si le flux échoue
+        (l'aperçu est alors effacé et l'appel classique prend le relais)."""
+        if not turn_progress.active():
+            return None
+        from manager.model_manager import generate_content_stream
+        from processor.workflow_stream import WorkflowRowStream
+
+        reader_rows = [0]
+
+        def run() -> str:
+            reader, chunks = WorkflowRowStream(), []
+            for text in generate_content_stream(contents, task_name=task_name):
+                chunks.append(text)
+                for row in reader.feed(text):
+                    normalized = self.img_processor._validate_and_normalize_workflow([row], quiet=True)
+                    if normalized:
+                        turn_progress.emit({"type": "workflow_preview", "row": normalized[0]})
+                        n = reader_rows[0] = reader_rows[0] + 1
+                        turn_progress.status("work", f"Rédaction de la procédure : {n} étape{'s' if n > 1 else ''}", "running")
+            return "".join(chunks)
+
+        try:
+            text = await asyncio.wait_for(asyncio.to_thread(run), timeout=timeout)
+            if text and text.strip():
+                return text
+        except Exception as e:
+            logger.warning(f"⚠️ {task_name} indisponible ({str(e)[:120]}) → réponse d'un bloc")
+        turn_progress.emit({"type": "workflow_preview_reset"})
+        return None
 
     def _build_generate_prompt(self, message: str, history: List[Dict[str, str]], mode: str) -> str:
         history_text = ""

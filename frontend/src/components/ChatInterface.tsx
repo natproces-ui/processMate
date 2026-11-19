@@ -13,6 +13,7 @@ import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-l
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
 import WorkTrace from '@/components/shared/WorkTrace';
+import ChangeSummary, { diffWorkflows, type StepChange } from '@/components/shared/ChangeSummary';
 import DemoFilesPicker from '@/components/processmate/DemoFilesPicker';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -59,6 +60,8 @@ interface ChatMessage {
     totalSteps?: number;
     title?: string;
     operationsCount?: number;
+    /** Modification : étapes ajoutées, modifiées, supprimées (carte « N étapes modifiées ») */
+    changes?: StepChange[];
     createdAt: Date;
     attachments?: SentAttachment[];
     steps?: TurnStep[];
@@ -129,6 +132,8 @@ interface ChatInterfaceProps {
     onProcedureStarted?: (key: string, title: string) => void;
     /** Étape reçue pendant la génération (aperçu, remplacé par la version finale). */
     onProcedureRow?: (key: string, row: Table1Row) => void;
+    /** Procédure décrite en texte : les étapes s'affichent pendant l'écriture ([] : aperçu effacé) */
+    onWorkflowPreview?: (rows: Table1Row[]) => void;
     onProcedureReady?: (proc: GeneratedProcedure) => void;
     onProcedureError?: (key: string, message: string) => void;
     onSelectProcedure?: (key: string) => void;
@@ -245,6 +250,7 @@ export default function ChatInterface({
     onSuccess,
     onProcedureStarted,
     onProcedureRow,
+    onWorkflowPreview,
     onProcedureReady,
     onProcedureError,
     onSelectProcedure,
@@ -387,7 +393,7 @@ export default function ChatInterface({
         if (m.role === 'user') return m.attachments?.length ? { attachments: m.attachments.map(({ name, type, size }) => ({ name, type, size })) } : {};
         return {
             intent: m.intent, steps: m.steps, totalSteps: m.totalSteps, title: m.title, operationsCount: m.operationsCount,
-            proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
+            changes: m.changes, proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
             generations: m.generations?.map(g => ({ id: g.key.slice(g.key.indexOf(':') + 1), title: g.title, status: g.status, steps: g.steps, error: g.error })),
             generated: m.generated,
             agentProposals: m.agentProposals,
@@ -403,7 +409,7 @@ export default function ChatInterface({
         return {
             ...base,
             intent: p.intent, steps: p.steps, totalSteps: p.totalSteps, title: p.title, operationsCount: p.operationsCount,
-            proposal: p.proposal ? { procedures: p.proposal.procedures || [], selected: p.proposal.selected || [], submitted: p.proposal.submitted ?? true } : undefined,
+            changes: p.changes, proposal: p.proposal ? { procedures: p.proposal.procedures || [], selected: p.proposal.selected || [], submitted: p.proposal.submitted ?? true } : undefined,
             generations: (p.generations || []).map((g: { id: string; title: string; status: TurnGeneration['status']; steps?: number; error?: string }) => ({
                 key: `${m.id}:${g.id}`, title: g.title, status: g.status === 'generating' ? 'stopped' : g.status, steps: g.steps, error: g.error,
             })),
@@ -571,7 +577,11 @@ export default function ChatInterface({
             return;
         }
         // Point de restauration : l'état d'avant, pris avant que la modification ne s'applique
-        if (currentWorkflow.length > 0 && onCheckpoint) {
+        const preview = previewRef.current?.msgId === msgId ? previewRef.current : null;
+        if (preview) preview.final = true;
+        if (preview && preview.rows.length > 0) {
+            if (preview.checkpoint !== undefined) updateMsg(msgId, m => ({ ...m, checkpoint: preview.checkpoint }));
+        } else if (currentWorkflow.length > 0 && onCheckpoint) {
             const snapshot = onCheckpoint();
             updateMsg(msgId, m => ({ ...m, checkpoint: snapshot }));
         }
@@ -590,7 +600,8 @@ export default function ChatInterface({
                 if (!revised.some(r => r.id === id) && op.row) id = revised.find(r => r.étape === op.row.étape)?.id;
                 if (id) described.set(id, { id_tache: id, descriptif: desc } as TaskEnrichment);
             });
-            updateMsg(msgId, m => ({ ...m, intent: 'patch', content: data.explanation || 'Modifications appliquées', operationsCount: data.operations_count || 0 }));
+            const changes = diffWorkflows(currentWorkflow, revised);
+            updateMsg(msgId, m => ({ ...m, intent: 'patch', content: data.explanation || 'Modifications appliquées', operationsCount: data.operations_count || 0, changes }));
             onWorkflowGenerated(revised, '', described, null);
             onSuccess(`✓ ${data.explanation}`);
             return;
@@ -604,10 +615,31 @@ export default function ChatInterface({
         onSuccess(`✓ ${totalSteps} étapes — "${data.title}"`);
     };
 
+    // Aperçu d'une procédure écrite en direct : point de retour pris avant la première ligne
+    const previewRef = useRef<{ msgId: string; rows: Table1Row[]; checkpoint?: unknown; final?: boolean } | null>(null);
+
     // ── Événements du flux ──
     const handleEvent = (msgId: string, ev: any) => {
         const key = (id: string) => `${msgId}:${id}`; // unique dans la conversation (p1 peut revenir à chaque tour)
         switch (ev.type) {
+            case 'workflow_preview': {
+                if (previewRef.current?.msgId !== msgId) {
+                    const checkpoint = currentWorkflow.length > 0 && onCheckpoint ? onCheckpoint() : undefined;
+                    previewRef.current = { msgId, rows: [], checkpoint };
+                }
+                const pv = previewRef.current;
+                if (pv && !pv.rows.some(r => r.id === ev.row?.id)) {
+                    pv.rows = [...pv.rows, ev.row];
+                    onWorkflowPreview?.(pv.rows);
+                }
+                break;
+            }
+            case 'workflow_preview_reset':
+                if (previewRef.current?.msgId === msgId) {
+                    previewRef.current.rows = [];
+                    onWorkflowPreview?.([]);
+                }
+                break;
             case 'conversation_title':
                 // vrai titre trouvé par le serveur : en-tête et barre latérale se mettent à jour
                 if (conversationIdRef.current && typeof window !== 'undefined') {
@@ -744,6 +776,13 @@ export default function ChatInterface({
             }
         } finally {
             abortRef.current = null;
+            const pv = previewRef.current;
+            if (pv?.msgId === msgId) {
+                if (!pv.final && pv.rows.length > 0) {
+                    if (pv.checkpoint !== undefined && onRestore) onRestore(pv.checkpoint); else onWorkflowPreview?.([]);
+                }
+                previewRef.current = null;
+            }
             updateMsg(msgId, m => ({ ...m, streaming: false, endedAt: Date.now() }));
             setLoading(false);
         }
@@ -991,7 +1030,11 @@ export default function ChatInterface({
                                         {msg.totalSteps !== undefined && msg.totalSteps > 0 && (
                                             <p className="text-xs text-emerald-600 font-medium">✓ {msg.totalSteps} étape{msg.totalSteps > 1 ? 's' : ''}</p>
                                         )}
-                                        {msg.operationsCount !== undefined && msg.intent === 'patch' && (
+                                        {msg.intent === 'patch' && msg.changes && msg.changes.length > 0 ? (
+                                            <ChangeSummary changes={msg.changes} undone={msg.restored} disabled={loading}
+                                                onShow={onFocusSteps}
+                                                onUndo={msg.checkpoint !== undefined && onRestore ? () => { onRestore(msg.checkpoint); updateMsg(msg.id, m => ({ ...m, restored: true })); onSuccess('Modifications annulées'); } : undefined} />
+                                        ) : msg.operationsCount !== undefined && msg.intent === 'patch' && (
                                             <p className="text-xs text-violet-600 font-medium">
                                                 ✓ {msg.operationsCount} opération{msg.operationsCount > 1 ? 's' : ''} appliquée{msg.operationsCount > 1 ? 's' : ''}
                                             </p>
@@ -1123,7 +1166,7 @@ export default function ChatInterface({
                                                 {msg.id === [...messages].reverse().find(m => m.role === 'assistant')?.id && (
                                                     <MsgAction label="Réessayer" onClick={() => retryFrom(msg.id)} disabled={loading}><RotateCcw className="w-3.5 h-3.5" /></MsgAction>
                                                 )}
-                                                {msg.checkpoint !== undefined && onRestore && (
+                                                {msg.checkpoint !== undefined && onRestore && !(msg.intent === 'patch' && msg.changes?.length) && (
                                                     msg.restored
                                                         ? <span className="self-center px-1.5 text-[11px] text-slate-400">État d&apos;avant restauré</span>
                                                         : <button type="button" disabled={loading}
