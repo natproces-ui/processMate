@@ -15,6 +15,17 @@ from typing import List, Dict, Any, Optional
 
 from manager.model_manager import GeminiModelManager
 from manager.model_routing import TaskKind, current_routing, routing_scope
+from manager import turn_progress
+
+# Étape de travail annoncée selon ce que l'assistant a compris (trace en direct)
+_WORK_LABELS = {
+    "generate": "Rédaction de la procédure",
+    "regen": "Réécriture de la procédure à partir des sources",
+    "patch": "Modification de la procédure",
+    "explain": "Rédaction de la réponse",
+    "transcribe": "Transcription fidèle des sources",
+    "web_search": "Recherche d'informations sur le web",
+}
 from processor.intent_detector import detect_intent, IntentResult
 from processor.img_processor import ImageProcessor
 from processor.explain_processor import ExplainProcessor
@@ -133,6 +144,12 @@ class ChatProcessor:
             )
 
         logger.info(f"🎯 Intent: {intent_result.intent} — {intent_result.summary}")
+        # Ce que l'assistant a compris, en français, puis ce qu'il fait
+        if intent_result.summary:
+            turn_progress.status("think", f"Compris : {intent_result.summary.rstrip('.')}", "done")
+        work = _WORK_LABELS.get(intent_result.intent)
+        if work:
+            turn_progress.status("work", work, "running")
 
         if intent_result.intent == "clarify":
             return {

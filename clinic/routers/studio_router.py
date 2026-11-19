@@ -532,13 +532,13 @@ async def studio_turn(
                 if not new_files and not sess.get("proposal"):
                     # Sans fichiers ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…)
                     yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "running"})
+                    # l'étape « think » est terminée par _delegate_to_chat (avec ce qui a été compris)
                     async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata):
                         yield ev
-                    yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "done"})
                     return
 
                 n = len(sess["files"])
-                label = f"Lecture de {n} fichier{'s' if n > 1 else ''}" if new_files else "Analyse de la demande"
+                label = _reading_label(new_files) if new_files else "Analyse de la demande"
                 yield _sse({"type": "status", "id": "plan", "label": label, "state": "running"})
                 with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(plan_files)), interactions_scope(ix):
                     plan = await asyncio.to_thread(plan_turn, message, plan_files, has_workflow, history_list, sess.get("proposal"))
@@ -577,17 +577,78 @@ async def studio_turn(
     return _streaming(_record(stream(), conv, sess, ix))
 
 
+def _file_volume(f: Dict[str, Any]) -> str:
+    try:
+        if f.get("type") == "pdf" and f.get("data"):
+            from manager.guest_limits import count_pdf_pages
+            n = count_pdf_pages(f["data"])
+            return f"{n} page{'s' if n > 1 else ''}" if n else ""
+        text = (f.get("office") or {}).get("text") or ""
+        if f.get("type") == "pptx":
+            n = text.count("## Diapositive")
+            return f"{n} diapositive{'s' if n > 1 else ''}" if n else ""
+        if f.get("type") == "docx" and text:
+            return f"{max(1, len(text) // 3000)} page{'s' if len(text) > 6000 else ''} environ"
+    except Exception:
+        pass
+    return ""
+
+
+def _reading_label(files: List[Dict[str, Any]]) -> str:
+    """« Lecture de deck.pptx (12 diapositives) » — ce qui est réellement lu."""
+    described = []
+    for f in files[:3]:
+        vol = _file_volume(f)
+        described.append(f"{f.get('filename', 'fichier')}{f' ({vol})' if vol else ''}")
+    more = f" et {len(files) - 3} autre{'s' if len(files) > 4 else ''}" if len(files) > 3 else ""
+    return f"Lecture de {', '.join(described)}{more}"
+
+
 async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw):
     """Modifications et conversation : logique existante du chat (patch, regen, explain…)."""
     from processor.chat_processor import ChatProcessor
     chat_files = [{"filename": f["filename"], "content": f["data"],
                    "content_type": "application/pdf" if f["type"] == "pdf" else "image/*", "type": f["type"]} for f in files]
-    with routing_scope(TaskKind.MODIFICATION_PROCEDURE, source_kinds_of(files) if files else ["texte"]):
-        result = await ChatProcessor().process_message(
+    from manager import turn_progress
+    queue: asyncio.Queue = asyncio.Queue()
+    with routing_scope(TaskKind.MODIFICATION_PROCEDURE, source_kinds_of(files) if files else ["texte"]), \
+            turn_progress.progress_scope(queue):
+        # La tâche hérite du contexte : ce qu'elle signale (étapes, texte) part tout de suite au chat
+        task = asyncio.create_task(ChatProcessor().process_message(
             message=message, files=chat_files, history=history, current_workflow=workflow,
             current_enrichments=_loads(enrichments_raw, None), current_procedure_metadata=_loads(metadata_raw, None),
-        )
+        ))
+    work_started = think_done = False
+    while not task.done() or not queue.empty():
+        try:
+            ev = await asyncio.wait_for(queue.get(), timeout=0.1)
+        except asyncio.TimeoutError:
+            continue
+        if ev.get("id") == "work" and ev.get("state") == "running":
+            work_started = True
+        if ev.get("id") == "think" and ev.get("state") == "done":
+            think_done = True
+        yield _sse(ev)
+    result = task.result()
+    if not think_done:  # aucun résumé d'intention : on termine l'étape avec son libellé d'origine
+        yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "done"})
+    if work_started:
+        yield _sse({"type": "status", "id": "work", "label": _work_done_label(result), "state": "done"})
     yield _sse({"type": "chat_result", "result": result})
+
+
+def _work_done_label(result: Dict[str, Any]) -> str:
+    """Libellé final de l'étape de travail, avec ce qui a été produit."""
+    intent = (result or {}).get("intent")
+    n = len((result or {}).get("workflow") or [])
+    if intent in ("generate", "regen", "transcribe") and n:
+        return f"Procédure rédigée : {n} étape{'s' if n > 1 else ''}"
+    if intent == "patch":
+        ops = (result or {}).get("operations_count") or 0
+        return f"Procédure modifiée : {ops} changement{'s' if ops > 1 else ''}" if ops else "Procédure modifiée"
+    if intent == "explain":
+        return "Réponse rédigée"
+    return "Terminé"
 
 
 class GenerateRequest(BaseModel):

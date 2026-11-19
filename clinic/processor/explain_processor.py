@@ -96,6 +96,28 @@ class ExplainProcessor:
     ) -> Dict:
         prompt = get_explain_prompt(message, workflow, history)
 
+        from manager import turn_progress
+        if turn_progress.active():
+            # Réponse écrite au fil de l'eau : le premier mot arrive en moins d'une seconde
+            from manager.model_manager import generate_content_stream
+
+            def run() -> str:
+                parts = []
+                for text in generate_content_stream(prompt, task_name="Chat explain"):
+                    parts.append(text)
+                    turn_progress.emit({"type": "text_delta", "text": text})
+                return "".join(parts)
+
+            try:
+                answer = (await asyncio.wait_for(asyncio.to_thread(run), timeout=90)).strip()
+                if answer:
+                    return {"success": True, "intent": "explain", "answer": answer, "workflow": workflow or [],
+                            "title": None, "enrichments": {}, "procedureMetadata": {}}
+            except Exception as e:  # repli : réponse d'un bloc
+                turn_progress.emit({"type": "text_reset"})
+                import logging
+                logging.getLogger(__name__).warning(f"Explication en flux indisponible : {str(e)[:120]}")
+
         async def _task(model_name: str):
             model = self.model_manager.get_model(model_name)
             response = await asyncio.wait_for(

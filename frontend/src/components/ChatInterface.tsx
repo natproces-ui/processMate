@@ -12,12 +12,13 @@ import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeCo
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
+import WorkTrace from '@/components/shared/WorkTrace';
 import DemoFilesPicker from '@/components/processmate/DemoFilesPicker';
 import { useAuth } from '@/context/AuthContext';
 import {
     ArrowUp, ArrowDown, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2
+    Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ interface AttachedFile {
 type FileKind = 'pdf' | 'image' | 'docx' | 'pptx';
 interface SentAttachment { name: string; type: FileKind; previewUrl?: string; size?: number }
 
-interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped' }
+interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped'; startedAt?: number; endedAt?: number }
 export interface TurnProcedure {
     id: string; title: string; description?: string;
     sources?: { file: string; pages?: string | null }[]; estimated_steps?: number;
@@ -611,10 +612,24 @@ export default function ChatInterface({
                 updateMsg(msgId, m => {
                     const steps = [...(m.steps || [])];
                     const i = steps.findIndex(s => s.id === ev.id);
-                    const step: TurnStep = { id: ev.id, label: ev.label, state: ev.state };
+                    const now = Date.now();
+                    const prev = i >= 0 ? steps[i] : undefined;
+                    // chaque étape garde son heure de début et de fin (chronomètre de la trace)
+                    const step: TurnStep = {
+                        id: ev.id, label: ev.label, state: ev.state,
+                        startedAt: prev?.startedAt ?? now,
+                        endedAt: ev.state === 'running' ? undefined : (prev?.endedAt ?? now),
+                    };
                     if (i >= 0) steps[i] = step; else steps.push(step);
                     return { ...m, steps };
                 });
+                break;
+            case 'text_delta':
+                // réponse écrite au fil de l'eau ; la réponse complète la remplacera à la fin
+                updateMsg(msgId, m => ({ ...m, content: (m.content || '') + (ev.text || '') }));
+                break;
+            case 'text_reset':
+                updateMsg(msgId, m => ({ ...m, content: '' }));
                 break;
             case 'message':
                 updateMsg(msgId, m => ({ ...m, content: m.content ? `${m.content}\n\n${ev.text}` : ev.text }));
@@ -959,26 +974,11 @@ export default function ChatInterface({
                                 {/* Réponse de l'assistant */}
                                 {msg.role === 'assistant' && (
                                     <div className="text-[15px] text-neutral-900 space-y-3">
-                                        {msg.steps && msg.steps.length > 0 && !msg.streaming && !openSteps.has(msg.id) ? (
-                                            <button type="button" onClick={() => setOpenSteps(s => new Set(s).add(msg.id))}
-                                                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
-                                                <ChevronRight className="w-3.5 h-3.5" />
-                                                {msg.steps.length} étape{msg.steps.length > 1 ? 's' : ''}
-                                                {msg.startedAt && msg.endedAt ? ` · ${Math.max(1, Math.round((msg.endedAt - msg.startedAt) / 1000))} s` : ''}
-                                            </button>
-                                        ) : msg.steps && msg.steps.length > 0 && (
-                                            <ul className="space-y-1" aria-label="Progression">
-                                                {msg.steps.map(s => (
-                                                    <li key={s.id} className="flex items-center gap-2 text-xs text-slate-500">
-                                                        {s.state === 'running'
-                                                            ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-                                                            : s.state === 'stopped'
-                                                                ? <CircleStop className="w-3.5 h-3.5 text-slate-400" />
-                                                                : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-                                                        <span>{s.label}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
+                                        {msg.steps && msg.steps.length > 0 && (
+                                            <WorkTrace steps={msg.steps} running={!!msg.streaming}
+                                                startedAt={msg.startedAt} endedAt={msg.endedAt}
+                                                open={openSteps.has(msg.id)}
+                                                onToggle={() => setOpenSteps(s => { const n = new Set(s); if (n.has(msg.id)) n.delete(msg.id); else n.add(msg.id); return n; })} />
                                         )}
                                         {msg.intent && msg.intent !== 'explain' && <IntentBadge intent={msg.intent} />}
                                         {msg.content && <MiniMarkdown text={msg.content} onStepClick={onFocusSteps} />}
