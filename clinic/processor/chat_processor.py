@@ -229,19 +229,20 @@ class ChatProcessor:
         parts = self._build_parts(files_to_send, prompt)
         timeout = 180 if files_to_send else 60
 
-        async def _task(model_name: str):
-            model = self.model_manager.get_model(model_name)
-            response = await asyncio.wait_for(
-                asyncio.to_thread(model.generate_content, model=model_name, contents=parts),
-                timeout=timeout
-            )
-            return response
+        raw_text = await self._streamed_workflow(parts, timeout, "Chat transcribe (flux)", "Transcription des sources")
+        if raw_text is None:
+            async def _task(model_name: str):
+                model = self.model_manager.get_model(model_name)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(model.generate_content, model=model_name, contents=parts),
+                    timeout=timeout
+                )
+                return response
 
-        result = await self.model_manager.execute_with_fallback(_task, task_name="Chat transcribe")
-        if not result["success"]:
-            raise ValueError(result["message"])
-
-        raw_text = result["result"].text
+            result = await self.model_manager.execute_with_fallback(_task, task_name="Chat transcribe")
+            if not result["success"]:
+                raise ValueError(result["message"])
+            raw_text = result["result"].text
         workflow_list, title, _ = self.img_processor._parse_gemini_response(raw_text)
         validated = self.img_processor._validate_and_normalize_workflow(workflow_list)
 
@@ -470,20 +471,21 @@ Ne laisse JAMAIS un champ vide dans ta réponse si une valeur existait déjà ci
         parts = self._build_parts(files_to_send, prompt)
         timeout = 180 if files_to_send else 90
 
-        async def _task(model_name: str):
-            model = self.model_manager.get_model(model_name)
-            response = await asyncio.wait_for(
-                asyncio.to_thread(model.generate_content, model=model_name, contents=parts),
-                timeout=timeout
-            )
-            return response
-
         logger.info("🤖 Passe 2 : Amélioration du workflow avec conventions appliquées...")
-        result = await self.model_manager.execute_with_fallback(_task, task_name="Chat regen")
-        if not result["success"]:
-            raise ValueError(result["message"])
+        raw_text = await self._streamed_workflow(parts, timeout, "Chat regen (flux)", "Réécriture de la procédure")
+        if raw_text is None:
+            async def _task(model_name: str):
+                model = self.model_manager.get_model(model_name)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(model.generate_content, model=model_name, contents=parts),
+                    timeout=timeout
+                )
+                return response
 
-        raw_text = result["result"].text
+            result = await self.model_manager.execute_with_fallback(_task, task_name="Chat regen")
+            if not result["success"]:
+                raise ValueError(result["message"])
+            raw_text = result["result"].text
         workflow_list, title, enrichments_raw = self.img_processor._parse_gemini_response(raw_text)
         validated = self.img_processor._validate_and_normalize_workflow(workflow_list)
         enrichments_dict = _normalize_enrichments(enrichments_raw)
@@ -552,7 +554,8 @@ pour générer ou enrichir le processus demandé.
     # HELPERS
     # ─────────────────────────────────────────────────────────
 
-    async def _streamed_workflow(self, contents: Any, timeout: float, task_name: str) -> Optional[str]:
+    async def _streamed_workflow(self, contents: Any, timeout: float, task_name: str,
+                                 label: str = "Rédaction de la procédure") -> Optional[str]:
         """Procédure écrite en flux pendant un tour de chat : chaque étape complète part tout de
         suite à l'écran (aperçu {"type": "workflow_preview", "row"}). Renvoie le texte complet,
         relu ensuite comme d'habitude ; None hors d'un tour en direct ou si le flux échoue
@@ -573,7 +576,7 @@ pour générer ou enrichir le processus demandé.
                     if normalized:
                         turn_progress.emit({"type": "workflow_preview", "row": normalized[0]})
                         n = reader_rows[0] = reader_rows[0] + 1
-                        turn_progress.status("work", f"Rédaction de la procédure : {n} étape{'s' if n > 1 else ''}", "running")
+                        turn_progress.status("work", f"{label} : {n} étape{'s' if n > 1 else ''}", "running")
             return "".join(chunks)
 
         try:
