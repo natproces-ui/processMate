@@ -99,6 +99,9 @@ const defaultData: Table1Row[] = [
     { id: '6', étape: 'Fin du processus', typeBpmn: 'EndEvent', département: 'Back Office', acteur: 'Gestionnaire', typeActeur: 'interne', condition: '', outputs: [], outil: '' },
 ];
 
+const NO_ROWS: Table1Row[] = [];
+const NO_ENRICHMENTS = new Map<string, TaskEnrichment>();
+
 export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage }: Props) {
     const autoSend = useMemo(() => (initialMessage?.trim() ? { id: 1, text: initialMessage } : undefined), [initialMessage]);
     const { invalidate } = useProceduresStore();
@@ -146,6 +149,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [chatWidth, setChatWidth] = useState(400);
     /** Panneau de la procédure affiché : c'est l'utilisateur qui le masque ou l'affiche */
     const [procOpen, setProcOpen] = useState(true);
+    /** Téléphone : une seule vue à la fois, choisie par l'utilisateur (jamais imposée) */
+    const [mobileView, setMobileView] = useState<'chat' | 'proc'>('chat');
     const procPanelRef = useRef<HTMLDivElement>(null);
     const [procFullscreen, setProcFullscreen] = useState(false);
     useEffect(() => {
@@ -385,6 +390,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     /** Chat en pleine largeur : rien à afficher à côté, ou procédure masquée par l'utilisateur */
     const chatFull = chatFirstEmpty || !procOpen;
     const activeData = instances.length > 0 && activeInst ? activeInst.data : data;
+    /** Ce que le chat voit comme « procédure en cours » : rien tant qu'aucune n'est affichée
+     *  (l'exemple de départ, caché en mode chat d'abord, ne doit pas être pris pour une procédure à modifier) */
+    const chatWorkflow = chatFirstEmpty ? NO_ROWS : activeData;
 
     /** Téléchargements de la procédure ouverte, réunis dans un seul menu */
     const downloadBlob = (content: string, type: string, ext: string) => {
@@ -808,7 +816,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     // Procédure décrite en texte : les étapes arrivent une à une (aperçu), la réponse finale les remplace
     const handleWorkflowPreview = useCallback((rows: Table1Row[]) => {
         if (rows.length === 0) {
-            if (instances.length === 0) { setData([]); setBpmnXml(null); }
+            // aperçu abandonné alors qu'aucune procédure n'était affichée : on revient à l'état vide
+            if (instances.length === 0) {
+                setData(defaultData); setBpmnXml(null);
+                if (chatFirst) setHasProcedure(false);
+            }
             return;
         }
         setHasProcedure(true);
@@ -822,7 +834,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             setBpmnXml(xml);
             if (xml) editorRef.current?.importXml(xml);
         }
-    }, [instances.length, activeInst, activeTab, processTitle, safeGenerateBpmn]);
+    }, [instances.length, activeInst, activeTab, processTitle, safeGenerateBpmn, chatFirst]);
 
     // ── Lot 5 : points de restauration du chat ──
     const takeSnapshot = useCallback(() => ({
@@ -952,13 +964,25 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             {/* ── Contenu principal ── */}
             <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
 
+                {!chatFull && (
+                    <div role="tablist" aria-label="Vue" className="lg:hidden shrink-0 flex gap-1 border-b border-neutral-200 bg-white p-1.5">
+                        {([['chat', 'Conversation'], ['proc', 'Procédure']] as const).map(([id, label]) => (
+                            <button key={id} type="button" role="tab" aria-selected={mobileView === id} onClick={() => setMobileView(id)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${mobileView === id ? 'bg-neutral-900 text-white' : 'text-neutral-900 hover:bg-neutral-100'}`}>
+                                {label}
+                                {id === 'chat' && mobileView !== 'chat' && chatActivity.busy && <span aria-label="Réponse en cours" className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />}
+                                {id === 'proc' && activeData.length > 0 && <span className={`rounded-full px-1.5 text-[11px] ${mobileView === id ? 'bg-white/20' : 'bg-neutral-100'}`}>{activeData.length}</span>}
+                            </button>
+                        ))}
+                    </div>
+                )}
                 <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
                 {/* Conversation : pleine hauteur, composeur en bas */}
                 {/* Toujours monté : masquer l'assistant ne doit pas effacer la conversation */}
                 <aside aria-label="Conversation" hidden={!chatOpen && !chatFull} style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
                     className={chatFull
                         ? 'relative flex-1 min-h-0 min-w-0 bg-white'
-                        : 'relative shrink-0 h-[55vh] lg:h-auto lg:w-[var(--chat-w)] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white'}>
+                        : `relative flex-1 lg:flex-none lg:shrink-0 lg:w-[var(--chat-w)] min-h-0 lg:border-r border-neutral-200 bg-white ${mobileView === 'proc' ? 'hidden lg:block' : ''}`}>
                     {!chatFirstEmpty && !procOpen && (
                         <button type="button" onClick={() => toggleProc(true)} title="Afficher la procédure"
                             className="absolute right-4 top-14 z-20 flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-100">
@@ -977,8 +1001,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onNewConversation={() => { setUploadOpen(false); setCodeSourceOpen(false); }}
                         onProcessingLevelChange={setProcessingLevel}
                         processingLevel={processingLevel}
-                        currentWorkflow={activeData}
-                        currentEnrichments={activeEnrichments}
+                        currentWorkflow={chatWorkflow}
+                        currentEnrichments={chatFirstEmpty ? NO_ENRICHMENTS : activeEnrichments}
                         currentProcedureMetadata={activeInitialMeta}
                         onWorkflowGenerated={handleWorkflowFromChat}
                         onError={showError} onSuccess={showSuccess}
@@ -1012,7 +1036,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         className={chatFull ? 'hidden' : 'hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-neutral-900/20'} />
                 </aside>
                 {/* Procédure : en-tête (onglets + vues + actions) puis la vue choisie en pleine hauteur */}
-                <div ref={procPanelRef} hidden={chatFull} className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
+                <div ref={procPanelRef} hidden={chatFull} className={`flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50 ${mobileView === 'chat' ? 'hidden lg:flex' : ''}`}>
                     {guestMode && (
                         <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex flex-wrap items-center gap-x-2">
                             <span>Mode invité : rien n&apos;est enregistré.</span>

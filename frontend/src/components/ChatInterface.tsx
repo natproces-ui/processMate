@@ -911,19 +911,19 @@ export default function ChatInterface({
                 </div>
             )}
             {/* Pas de bandeau « Assistant » (comme Claude / ChatGPT) : deux icônes discrètes */}
-            <div className={isSidebar ? 'absolute right-2 top-2 z-10 flex items-center gap-0.5' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
+            <div className={isSidebar ? 'shrink-0 flex h-10 items-center justify-end gap-0.5 bg-white px-2' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
                 {!isSidebar && (
                     <h3 className="text-sm font-semibold text-neutral-900 truncate">{messages.length > 0 ? 'Conversation' : 'Que souhaitez-vous formaliser ?'}</h3>
                 )}
                 <div className="flex items-center gap-0.5">
                     <button type="button" onClick={newSession} disabled={loading || !initialized}
-                        className="p-1.5 rounded-lg bg-white/80 text-neutral-900 hover:bg-neutral-100 disabled:opacity-40"
+                        className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-40"
                         title="Nouvelle conversation" aria-label="Nouvelle conversation">
                         <PenLine className="w-4 h-4" />
                     </button>
                     {isSidebar && onCollapse && (
                         <button type="button" onClick={onCollapse} title="Masquer la conversation" aria-label="Masquer la conversation"
-                            className="hidden lg:inline-flex p-1.5 rounded-lg bg-white/80 text-neutral-900 hover:bg-neutral-100">
+                            className="hidden lg:inline-flex p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
                             <PanelLeftClose className="w-4 h-4" />
                         </button>
                     )}
@@ -936,7 +936,7 @@ export default function ChatInterface({
             <div hidden={!isSidebar && collapsed} className={isSidebar ? 'flex-1 min-h-0 flex flex-col' : undefined}>
                 <div ref={messagesContainerRef} onScroll={onMessagesScroll} hidden={!isSidebar && messages.length === 0 && !loading}
                     className={isSidebar
-                        ? 'flex-1 min-h-0 overflow-y-auto px-4 pt-11 pb-5 space-y-5 bg-white'
+                        ? 'flex-1 min-h-0 overflow-y-auto px-4 pt-1 pb-5 space-y-5 bg-white'
                         : 'overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60'}>
                         {isSidebar && messages.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-6 text-neutral-600">
