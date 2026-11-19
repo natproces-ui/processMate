@@ -1014,16 +1014,17 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
                         <div className="flex items-center gap-3 min-w-0">
                             {chatOpen && !procFullscreen && (
-                                <button type="button" onClick={() => toggleChat(false)} title="Masquer l’assistant" aria-label="Masquer l’assistant"
+                                <button type="button" onClick={() => toggleChat(false)} title="Masquer la conversation" aria-label="Masquer la conversation"
                                     className="hidden lg:inline-flex shrink-0 p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
                                     <PanelLeftClose className="w-4 h-4" />
                                 </button>
                             )}
                             {!chatOpen && !procFullscreen && (
                                 <button type="button" onClick={() => toggleChat(true)}
-                                    title={chatActivity.busy ? 'Afficher l’assistant (réponse en cours)' : 'Afficher l’assistant'}
-                                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100">
-                                    <PanelLeftOpen className="w-3.5 h-3.5" /> Assistant
+                                    title={chatActivity.busy ? 'Afficher la conversation (réponse en cours)' : 'Afficher la conversation'}
+                                    aria-label="Afficher la conversation"
+                                    className="shrink-0 flex items-center gap-1.5 rounded-lg p-1.5 text-neutral-900 hover:bg-neutral-100">
+                                    <PanelLeftOpen className="w-4 h-4" />
                                     {chatActivity.busy
                                         ? <span aria-label="Réponse en cours" className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                                         : chatActivity.messages > 0 && <span className="min-w-[18px] rounded-full bg-slate-100 px-1.5 text-[10px] font-semibold text-slate-600">{chatActivity.messages}</span>}

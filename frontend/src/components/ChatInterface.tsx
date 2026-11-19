@@ -902,7 +902,7 @@ export default function ChatInterface({
     const isSidebar = variant === 'sidebar';
 
     return (
-        <section aria-label="Assistant ProcessMate" className={isSidebar ? 'relative h-full flex flex-col min-h-0 bg-white' : 'relative w-full max-w-4xl mx-auto'}
+        <section aria-label="Conversation" className={isSidebar ? 'relative h-full flex flex-col min-h-0 bg-white' : 'relative w-full max-w-4xl mx-auto'}
             onDragOver={e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragging(true); } }}
             onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
             onDrop={e => { e.preventDefault(); setDragging(false); addFiles(Array.from(e.dataTransfer.files || [])); }}>
@@ -913,20 +913,20 @@ export default function ChatInterface({
                     <p className="text-xs text-blue-500 mt-0.5">PDF, Word, PowerPoint ou images, jusqu&apos;à {MAX_ATTACHMENTS}</p>
                 </div>
             )}
-            <div className={isSidebar ? 'shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-200' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
-                <div className="min-w-0">
-                    <h3 className="text-sm font-semibold text-slate-800 truncate">{isSidebar || messages.length > 0 ? 'Assistant' : 'Que souhaitez-vous formaliser ?'}</h3>
-                    {currentWorkflow.length > 0 && <p className="text-xs text-slate-400 mt-0.5">Procédure ouverte : {currentWorkflow.length} étapes</p>}
-                </div>
-                <div className="flex items-center gap-1">
+            {/* Pas de bandeau « Assistant » (comme Claude / ChatGPT) : deux icônes discrètes */}
+            <div className={isSidebar ? 'absolute right-2 top-2 z-10 flex items-center gap-0.5' : 'flex flex-wrap items-center justify-between gap-2 mb-2 px-1'}>
+                {!isSidebar && (
+                    <h3 className="text-sm font-semibold text-neutral-900 truncate">{messages.length > 0 ? 'Conversation' : 'Que souhaitez-vous formaliser ?'}</h3>
+                )}
+                <div className="flex items-center gap-0.5">
                     <button type="button" onClick={newSession} disabled={loading || !initialized}
-                        className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
-                        title="Démarrer une nouvelle conversation">
-                        <PenLine className="w-3.5 h-3.5" /> Nouvelle conversation
+                        className="p-1.5 rounded-lg bg-white/80 text-neutral-900 hover:bg-neutral-100 disabled:opacity-40"
+                        title="Nouvelle conversation" aria-label="Nouvelle conversation">
+                        <PenLine className="w-4 h-4" />
                     </button>
                     {isSidebar && onCollapse && (
-                        <button type="button" onClick={onCollapse} title="Masquer l’assistant" aria-label="Masquer l’assistant"
-                            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                        <button type="button" onClick={onCollapse} title="Masquer la conversation" aria-label="Masquer la conversation"
+                            className="hidden lg:inline-flex p-1.5 rounded-lg bg-white/80 text-neutral-900 hover:bg-neutral-100">
                             <PanelLeftClose className="w-4 h-4" />
                         </button>
                     )}
@@ -939,7 +939,7 @@ export default function ChatInterface({
             <div hidden={!isSidebar && collapsed} className={isSidebar ? 'flex-1 min-h-0 flex flex-col' : undefined}>
                 <div ref={messagesContainerRef} onScroll={onMessagesScroll} hidden={!isSidebar && messages.length === 0 && !loading}
                     className={isSidebar
-                        ? 'flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-5 bg-gradient-to-b from-slate-50/80 to-white'
+                        ? 'flex-1 min-h-0 overflow-y-auto px-4 pt-11 pb-5 space-y-5 bg-white'
                         : 'overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60'}>
                         {isSidebar && messages.length === 0 && (
                             <div className="h-full flex flex-col items-center justify-center text-center px-6 text-neutral-600">
