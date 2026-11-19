@@ -336,6 +336,8 @@ BEGIN
     EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS organisation_id UUID REFERENCES organisations(id)', t);
     EXECUTE format('UPDATE public.%I SET organisation_id = %L WHERE organisation_id IS NULL', t, default_org);
     EXECUTE format('ALTER TABLE public.%I ALTER COLUMN organisation_id SET NOT NULL', t);
+    -- Défaut = organisation reprise : le code qui ne renseigne pas encore la colonne continue de marcher
+    EXECUTE format('ALTER TABLE public.%I ALTER COLUMN organisation_id SET DEFAULT %L', t, default_org);
     EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON public.%I (organisation_id)', t || '_organisation_idx', t);
   END LOOP;
 END $$;
@@ -559,12 +561,12 @@ ALTER TABLE procedure_bian ENABLE ROW LEVEL SECURITY;
 -- Paramètre d'organisation (défaut 3 jours) :
 -- UPDATE organisations SET parametres = parametres || '{"relance_jours": 5}' WHERE id = '<organisation>';
 
--- ════════════════ Super-admin processMate : ouedayma@gmail.com ════════════════
+-- ════════════════ Super-admin processMate : ouedraogoaymar07@gmail.com ════════════════
 -- Si le compte existe déjà : il devient super-admin et sort de l'organisation (un super-admin
 -- n'est membre d'aucune organisation). S'il n'existe pas encore, ces lignes ne font rien :
 -- le compte sera créé par lien (voir docs/organisations-mise-en-service.md), puis relancer ce bloc.
 INSERT INTO platform_admins (user_id)
-  SELECT id FROM auth.users WHERE lower(email) = 'ouedayma@gmail.com'
+  SELECT id FROM auth.users WHERE lower(email) = 'ouedraogoaymar07@gmail.com'
   ON CONFLICT DO NOTHING;
 DELETE FROM organisation_members WHERE user_id IN (SELECT user_id FROM platform_admins);
 
@@ -574,3 +576,9 @@ UNION ALL SELECT 'membres actifs', count(*)::text FROM organisation_members WHER
 UNION ALL SELECT 'admins actifs', count(*)::text FROM organisation_members WHERE role = 'admin' AND statut = 'active'
 UNION ALL SELECT 'super-admins', count(*)::text FROM platform_admins
 UNION ALL SELECT 'procédures sans organisation', count(*)::text FROM workflows WHERE organisation_id IS NULL;
+
+-- ════════════════ Admin de processmate-org : ouedayma@gmail.com ════════════════
+INSERT INTO organisation_members (organisation_id, user_id, role, statut)
+  SELECT '00000000-0000-4000-8000-000000000001', id, 'admin', 'active'
+  FROM auth.users WHERE lower(email) = 'ouedayma@gmail.com'
+  ON CONFLICT (user_id) DO UPDATE SET organisation_id = EXCLUDED.organisation_id, role = 'admin', statut = 'active';

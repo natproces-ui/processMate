@@ -30,6 +30,8 @@ BEGIN
     EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS organisation_id UUID REFERENCES organisations(id)', t);
     EXECUTE format('UPDATE public.%I SET organisation_id = %L WHERE organisation_id IS NULL', t, default_org);
     EXECUTE format('ALTER TABLE public.%I ALTER COLUMN organisation_id SET NOT NULL', t);
+    -- Défaut = organisation reprise : le code qui ne renseigne pas encore la colonne continue de marcher
+    EXECUTE format('ALTER TABLE public.%I ALTER COLUMN organisation_id SET DEFAULT %L', t, default_org);
     EXECUTE format('CREATE INDEX IF NOT EXISTS %I ON public.%I (organisation_id)', t || '_organisation_idx', t);
   END LOOP;
 END $$;
