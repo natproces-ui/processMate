@@ -29,7 +29,7 @@ SUMMARIZE_AFTER = 20        # au-delà, les plus anciens sont résumés
 
 
 def enabled() -> bool:
-    return os.getenv("CONVERSATIONS_ENABLED", "false").lower() == "true"
+    return os.getenv("CONVERSATIONS_ENABLED", "true").lower() == "true"  # activé par défaut ; =false pour couper
 
 
 def _db():

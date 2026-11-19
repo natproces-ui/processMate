@@ -8,7 +8,8 @@
 import { API_CONFIG } from '@/lib/api-config';
 import { getAuthHeaders } from '@/lib/authHeaders';
 
-export const CONVERSATIONS_ENABLED = process.env.NEXT_PUBLIC_CONVERSATIONS_ENABLED === 'true';
+// Activé par défaut ; NEXT_PUBLIC_CONVERSATIONS_ENABLED=false pour couper en urgence
+export const CONVERSATIONS_ENABLED = process.env.NEXT_PUBLIC_CONVERSATIONS_ENABLED !== 'false';
 
 export interface ConversationSummary {
     id: string;

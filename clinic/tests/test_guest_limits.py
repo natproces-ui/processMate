@@ -27,9 +27,13 @@ class GuestLimitsTest(unittest.TestCase):
     def tearDown(self):
         self.p1.stop(); self.p2.stop()
 
-    def test_disabled_by_default(self):
+    def test_enabled_by_default(self):
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("GUEST_LIMITS_ENABLED", None)
+            self.assertTrue(gl.load_limits().enabled)
+
+    def test_can_be_switched_off(self):
+        with mock.patch.dict(os.environ, {"GUEST_LIMITS_ENABLED": "false"}):
             self.assertFalse(gl.load_limits().enabled)
             gl.consume(("dev:abcdefgh",), "turns")  # aucune exception, rien compté
         self.assertEqual(gl._memory, {})

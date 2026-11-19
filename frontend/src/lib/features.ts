@@ -3,7 +3,8 @@
  * sans eux, l'application se comporte exactement comme avant.
  */
 /** Le chat devient la page d'accueil ; la page commerciale passe sur /decouvrir. */
-export const CHAT_HOME = process.env.NEXT_PUBLIC_CHAT_HOME === 'true';
+// Le chat est la page d'accueil ; NEXT_PUBLIC_CHAT_HOME=false pour revenir à la page commerciale
+export const CHAT_HOME = process.env.NEXT_PUBLIC_CHAT_HOME !== 'false';
 /** Export (BPMN, fiche) autorisé sans compte. Décision produit en attente. */
 export const GUEST_EXPORT_ENABLED = process.env.NEXT_PUBLIC_GUEST_EXPORT_ENABLED === 'true';
 

@@ -45,7 +45,7 @@ class GuestLimits:
 
 def load_limits() -> GuestLimits:
     return GuestLimits(
-        enabled=os.getenv("GUEST_LIMITS_ENABLED", "false").lower() == "true",
+        enabled=os.getenv("GUEST_LIMITS_ENABLED", "true").lower() == "true",  # protège les coûts IA ; =false pour couper
         max_files=_env_int("GUEST_MAX_FILES", 1),
         max_file_mb=_env_int("GUEST_MAX_FILE_MB", 5),
         max_pages=_env_int("GUEST_MAX_PAGES", 15),
