@@ -904,10 +904,10 @@ export default function ChatInterface({
             onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
             onDrop={e => { e.preventDefault(); setDragging(false); addFiles(Array.from(e.dataTransfer.files || [])); }}>
             {dragging && (
-                <div className="absolute inset-2 z-30 rounded-2xl border-2 border-dashed border-blue-400 bg-blue-50/90 flex flex-col items-center justify-center text-blue-700 pointer-events-none">
+                <div className="absolute inset-2 z-30 rounded-2xl border-2 border-dashed border-neutral-900 bg-white/90 flex flex-col items-center justify-center text-neutral-900 pointer-events-none">
                     <Paperclip className="w-6 h-6 mb-2" />
                     <p className="text-sm font-semibold">Déposez vos fichiers</p>
-                    <p className="text-xs text-blue-500 mt-0.5">PDF, Word, PowerPoint ou images, jusqu&apos;à {MAX_ATTACHMENTS}</p>
+                    <p className="text-xs text-neutral-600 mt-0.5">PDF, Word, PowerPoint ou images, jusqu&apos;à {MAX_ATTACHMENTS}</p>
                 </div>
             )}
             {/* Pas de bandeau « Assistant » (comme Claude / ChatGPT) : deux icônes discrètes */}
@@ -928,7 +928,7 @@ export default function ChatInterface({
                         </button>
                     )}
                     {!isSidebar && <button type="button" aria-label={collapsed ? 'Ouvrir l’assistant' : 'Réduire l’assistant'} aria-expanded={!collapsed}
-                        onClick={() => setCollapsed(c => !c)} className="p-1.5 rounded-lg hover:bg-white text-slate-400">
+                        onClick={() => setCollapsed(c => !c)} className="p-1.5 rounded-lg hover:bg-white text-neutral-500">
                         {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                     </button>}
                 </div>
@@ -957,7 +957,7 @@ export default function ChatInterface({
                                             </div>
                                         )}
                                         {msg.content && (
-                                            <div className="max-w-[85%] bg-slate-900 text-white rounded-2xl rounded-br-md px-3.5 py-2.5 text-[15px] shadow-sm">
+                                            <div className="max-w-[85%] bg-neutral-900 text-white rounded-2xl rounded-br-md px-3.5 py-2.5 text-[15px] shadow-sm">
                                                 <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                                             </div>
                                         )}
@@ -990,18 +990,18 @@ export default function ChatInterface({
 
                                         {/* Proposition : tout coché, l'utilisateur décoche */}
                                         {msg.proposal && (
-                                            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                                            <div className="rounded-2xl border border-neutral-300 bg-white overflow-hidden shadow-sm">
                                                 <ul>
                                                     {msg.proposal.procedures.map(p => {
                                                         const checked = msg.proposal!.selected.includes(p.id);
                                                         return (
-                                                            <li key={p.id} className="border-b border-slate-100 last:border-b-0">
-                                                                <label className={`flex items-start gap-2.5 px-3 py-2.5 ${msg.proposal!.submitted ? 'opacity-70' : 'cursor-pointer hover:bg-slate-50'}`}>
-                                                                    <input type="checkbox" className="mt-0.5 accent-slate-900" checked={checked}
+                                                            <li key={p.id} className="border-b border-neutral-200 last:border-b-0">
+                                                                <label className={`flex items-start gap-2.5 px-3 py-2.5 ${msg.proposal!.submitted ? 'opacity-70' : 'cursor-pointer hover:bg-neutral-50'}`}>
+                                                                    <input type="checkbox" className="mt-0.5 accent-neutral-900" checked={checked}
                                                                         disabled={msg.proposal!.submitted} onChange={() => toggleProposalItem(msg.id, p.id)} />
                                                                     <span className="min-w-0">
-                                                                        <span className="block text-sm text-slate-800 font-medium">{p.title}</span>
-                                                                        <span className="block text-[11px] text-slate-400 truncate">
+                                                                        <span className="block text-sm text-neutral-900 font-medium">{p.title}</span>
+                                                                        <span className="block text-[11px] text-neutral-500 truncate">
                                                                             {(p.sources || []).map(s => s.pages ? `${s.file} · p. ${s.pages}` : s.file).join(' — ')}
                                                                             {p.estimated_steps ? ` · ~${p.estimated_steps} étapes` : ''}
                                                                         </span>
@@ -1012,18 +1012,18 @@ export default function ChatInterface({
                                                     })}
                                                 </ul>
                                                 {!msg.proposal.submitted && (
-                                                    <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 bg-slate-50 border-t border-slate-100">
+                                                    <div className="flex flex-wrap items-center gap-2 px-3 py-2.5 bg-neutral-50 border-t border-neutral-200">
                                                         <button type="button" disabled={loading || msg.proposal.selected.length === 0}
                                                             onClick={() => submitProposal(msg.id, false)}
-                                                            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-40">
+                                                            className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-40">
                                                             Générer {msg.proposal.selected.length > 1 ? `les ${msg.proposal.selected.length}` : 'la sélection'}
                                                         </button>
                                                         <button type="button" disabled={loading || msg.proposal.selected.length < 2}
                                                             onClick={() => submitProposal(msg.id, true)}
-                                                            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-40">
+                                                            className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40">
                                                             Fusionner en une seule
                                                         </button>
-                                                        <span className="text-[11px] text-slate-400">ou répondez par écrit (« prends la 2 et la 4 »)</span>
+                                                        <span className="text-[11px] text-neutral-500">ou répondez par écrit (« prends la 2 et la 4 »)</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -1035,24 +1035,24 @@ export default function ChatInterface({
                                                 {msg.generations.map(g => (
                                                     <li key={g.key}>
                                                         <button type="button" disabled={g.status !== 'ready'} onClick={() => onSelectProcedure?.(g.key)}
-                                                            className={`group relative w-full overflow-hidden flex items-center gap-3 rounded-2xl border bg-white px-3.5 py-3 text-left shadow-sm transition-all ${g.status === 'ready' ? 'border-slate-200 hover:-translate-y-0.5 hover:shadow-md hover:border-blue-300' : g.status === 'error' ? 'border-red-200' : 'border-slate-200'}`}>
+                                                            className={`group relative w-full overflow-hidden flex items-center gap-3 rounded-2xl border bg-white px-3.5 py-3 text-left shadow-sm transition-all ${g.status === 'ready' ? 'border-neutral-300 hover:-translate-y-0.5 hover:shadow-md hover:border-neutral-900' : g.status === 'error' ? 'border-red-200' : 'border-neutral-300'}`}>
                                                             {g.status === 'generating' && <span aria-hidden className="pm-shimmer absolute inset-0" />}
-                                                            <span className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${g.status === 'ready' ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' : g.status === 'error' ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-400'}`}>
-                                                                {g.status === 'generating' ? <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                                            <span className={`relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${g.status === 'ready' ? 'bg-neutral-900 text-white' : g.status === 'error' ? 'bg-red-50 text-red-500' : 'bg-neutral-100 text-neutral-500'}`}>
+                                                                {g.status === 'generating' ? <Loader2 className="w-4 h-4 animate-spin text-neutral-900" />
                                                                     : g.status === 'error' ? <AlertCircle className="w-4 h-4" />
                                                                     : g.status === 'stopped' ? <CircleStop className="w-4 h-4" />
                                                                     : <Workflow className="w-4 h-4" />}
                                                             </span>
                                                             <span className="relative min-w-0 flex-1">
-                                                                <span className="block text-[15px] font-medium text-slate-800 truncate">{g.title}</span>
-                                                                <span className="flex items-center gap-1 text-xs text-slate-500">
+                                                                <span className="block text-[15px] font-medium text-neutral-900 truncate">{g.title}</span>
+                                                                <span className="flex items-center gap-1 text-xs text-neutral-700">
                                                                     {g.status === 'generating' && <span className="truncate">{`${g.phase || 'Génération en cours'}…`}{g.rows ? ` · ${g.rows} étape${g.rows > 1 ? 's' : ''}` : ''}</span>}
                                                                     {g.status === 'ready' && <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{`${g.steps} étape${(g.steps || 0) > 1 ? 's' : ''}`}</>}
                                                                     {g.status === 'error' && (g.error || 'Échec de la génération')}
                                                                     {g.status === 'stopped' && 'Arrêtée'}
                                                                 </span>
                                                             </span>
-                                                            {g.status === 'ready' && <span className="relative text-xs font-medium text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">Ouvrir</span>}
+                                                            {g.status === 'ready' && <span className="relative text-xs font-medium text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity">Ouvrir</span>}
                                                         </button>
                                                     </li>
                                                 ))}
@@ -1070,12 +1070,12 @@ export default function ChatInterface({
                                                 {msg.suggestions.map((sug, i) => (
                                                     <button key={sug} type="button" disabled={loading} onClick={() => sendMessage(sug, { files: [], attachments: [] })}
                                                         style={{ animationDelay: `${i * 60}ms` }}
-                                                        className="pm-rise group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md disabled:opacity-40 disabled:hover:translate-y-0">
-                                                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                                        className="pm-rise group flex items-center gap-3 rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-neutral-900 hover:shadow-md disabled:opacity-40 disabled:hover:translate-y-0">
+                                                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-900 group-hover:bg-neutral-900 group-hover:text-white transition-colors">
                                                             <Sparkles className="w-4 h-4" />
                                                         </span>
-                                                        <span className="flex-1 text-[14px] leading-snug text-slate-700 group-hover:text-slate-900">{sug}</span>
-                                                        <ArrowUpRight className="w-4 h-4 shrink-0 text-slate-300 group-hover:text-blue-500" />
+                                                        <span className="flex-1 text-[14px] leading-snug text-neutral-900 group-hover:text-neutral-900">{sug}</span>
+                                                        <ArrowUpRight className="w-4 h-4 shrink-0 text-neutral-400 group-hover:text-neutral-900" />
                                                     </button>
                                                 ))}
                                             </div>
@@ -1084,21 +1084,21 @@ export default function ChatInterface({
                                         {msg.agentProposals && msg.agentProposals.length > 0 && (
                                             <div className="space-y-2" aria-label="Propositions de l'assistant">
                                                 {msg.agentProposals.map(a => (
-                                                    <div key={a.proposal_id} className="rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm">
-                                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                                    <div key={a.proposal_id} className="rounded-xl border border-neutral-300 bg-white px-3.5 py-2.5 shadow-sm">
+                                                        <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
                                                             {a.kind === 'modification' ? `Modification proposée · ${a.operations?.length || 0} opération${(a.operations?.length || 0) > 1 ? 's' : ''}`
                                                                 : a.kind === 'point_ouvert' ? 'Point à confirmer proposé' : 'Réponse à un point ouvert'}
                                                         </p>
-                                                        <p className="mt-0.5 text-sm text-slate-700">{a.explanation}</p>
+                                                        <p className="mt-0.5 text-sm text-neutral-900">{a.explanation}</p>
                                                         {a.decision === 'accepted' ? <p className="mt-1.5 text-xs text-emerald-600">Acceptée</p>
-                                                            : a.decision === 'refused' ? <p className="mt-1.5 text-xs text-slate-400">Refusée</p>
-                                                            : a.decision === 'historique' ? <p className="mt-1.5 text-xs text-slate-400">Proposition d&apos;un échange précédent</p>
+                                                            : a.decision === 'refused' ? <p className="mt-1.5 text-xs text-neutral-500">Refusée</p>
+                                                            : a.decision === 'historique' ? <p className="mt-1.5 text-xs text-neutral-500">Proposition d&apos;un échange précédent</p>
                                                             : (
                                                                 <div className="mt-2 flex gap-2">
                                                                     <button type="button" onClick={() => acceptProposal(msg.id, a)} disabled={loading || (a.kind === 'modification' && currentWorkflow.length === 0)}
-                                                                        className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-40">Accepter</button>
+                                                                        className="rounded-lg bg-neutral-900 px-3 py-1 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-40">Accepter</button>
                                                                     <button type="button" onClick={() => decide(msg.id, a.proposal_id, 'refused')} disabled={loading}
-                                                                        className="rounded-lg border border-slate-300 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-40">Refuser</button>
+                                                                        className="rounded-lg border border-neutral-300 px-3 py-1 text-xs text-neutral-900 hover:bg-neutral-50 disabled:opacity-40">Refuser</button>
                                                                 </div>
                                                             )}
                                                     </div>
@@ -1106,7 +1106,7 @@ export default function ChatInterface({
                                             </div>
                                         )}
                                         {msg.streaming && (!msg.steps || msg.steps.length === 0) && !msg.content && (
-                                            <div className="flex items-center gap-2 text-xs text-slate-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Réflexion…</div>
+                                            <div className="flex items-center gap-2 text-xs text-neutral-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Réflexion…</div>
                                         )}
                                         {!msg.streaming && (msg.content || (msg.generations && msg.generations.length > 0)) && (
                                             <div className="flex gap-0.5 -ml-1.5">
@@ -1116,10 +1116,10 @@ export default function ChatInterface({
                                                 )}
                                                 {msg.checkpoint !== undefined && onRestore && !(msg.intent === 'patch' && msg.changes?.length) && (
                                                     msg.restored
-                                                        ? <span className="self-center px-1.5 text-[11px] text-slate-400">État d&apos;avant restauré</span>
+                                                        ? <span className="self-center px-1.5 text-[11px] text-neutral-500">État d&apos;avant restauré</span>
                                                         : <button type="button" disabled={loading}
                                                             onClick={() => { onRestore(msg.checkpoint); updateMsg(msg.id, m => ({ ...m, restored: true })); onSuccess('État d’avant restauré'); }}
-                                                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40">
+                                                            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-40">
                                                             <Undo2 className="w-3.5 h-3.5" /> Restaurer l&apos;état d&apos;avant
                                                         </button>
                                                 )}
@@ -1150,19 +1150,19 @@ export default function ChatInterface({
                         )}
                 </div>
                 <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-neutral-900/70 bg-white shadow-sm focus-within:border-neutral-900"}>
-                    {inputContext && <div hidden={!inputContextVisible} className="border-b border-slate-100 p-3 bg-slate-50/50 rounded-t-2xl">{inputContext}</div>}
+                    {inputContext && <div hidden={!inputContextVisible} className="border-b border-neutral-200 p-3 bg-neutral-50/50 rounded-t-2xl">{inputContext}</div>}
                     <div className="px-3 py-2">
                     {/* ── Sources enregistrées de la conversation (elles s'ajoutent d'un message à l'autre) ── */}
                     {persistent && conversationId && sources.length > 0 && (
                         <div className="pb-2 pt-1" aria-label="Sources de la conversation">
-                            <p className="text-[11px] font-medium text-slate-400 mb-1">Sources de la conversation</p>
+                            <p className="text-[11px] font-medium text-neutral-500 mb-1">Sources de la conversation</p>
                             <div className="flex gap-1.5 flex-wrap">
                                 {sources.map(src => (
-                                    <span key={src.id} className="inline-flex items-center gap-1 max-w-[220px] rounded-lg border border-slate-200 bg-slate-50 pl-2 pr-1 py-0.5 text-[11px] text-slate-600">
+                                    <span key={src.id} className="inline-flex items-center gap-1 max-w-[220px] rounded-lg border border-neutral-300 bg-neutral-50 pl-2 pr-1 py-0.5 text-[11px] text-neutral-900">
                                         <span className="truncate" title={src.filename}>{src.filename}</span>
                                         <button type="button" aria-label={`Retirer la source ${src.filename}`} title="Retirer cette source"
                                             onClick={() => removeSource(src.id)} disabled={loading}
-                                            className="p-0.5 rounded text-slate-400 hover:text-red-600 hover:bg-white disabled:opacity-40">
+                                            className="p-0.5 rounded text-neutral-500 hover:text-red-600 hover:bg-white disabled:opacity-40">
                                             <X className="w-3 h-3" />
                                         </button>
                                     </span>
@@ -1215,11 +1215,11 @@ export default function ChatInterface({
                                     <button type="button" aria-label="Ajouter un contenu" title="Ajouter un contenu"
                                         aria-haspopup="menu" aria-expanded={addMenuOpen}
                                         onClick={() => setAddMenuOpen(o => !o)}
-                                        className={`p-2 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${addMenuOpen ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-900 hover:bg-neutral-100'}`}>
+                                        className={`p-2 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 ${addMenuOpen ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-900 hover:bg-neutral-100'}`}>
                                         <Plus className={`w-4 h-4 transition-transform ${addMenuOpen ? 'rotate-45' : ''}`} />
                                     </button>
                                     {addMenuOpen && (
-                                        <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-slate-200 rounded-xl shadow-lg">
+                                        <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-neutral-300 rounded-xl shadow-lg">
                                             <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre des fichiers (PDF, Word, PowerPoint, images)" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
                                             {isAdmin && <ComposerMenuAction icon={<FolderOpen className="w-4 h-4" />} label="Fichiers de démo" onClick={() => { setAddMenuOpen(false); setDemoFilesOpen(true); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />}
                                             {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={() => { setAddMenuOpen(false); onOpenCode(); }} />}
@@ -1228,7 +1228,7 @@ export default function ChatInterface({
                                 </div>
                             ) : (
                                 <button type="button" onClick={() => fileInputRef.current?.click()} disabled={attachedFiles.length >= MAX_ATTACHMENTS}
-                                    className="p-2 rounded-lg text-slate-500 hover:text-blue-600 disabled:opacity-40 shrink-0" title="Joindre un fichier">
+                                    className="p-2 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-40 shrink-0" title="Joindre un fichier">
                                     <Paperclip className="w-4 h-4" />
                                 </button>
                             )}
@@ -1254,12 +1254,12 @@ export default function ChatInterface({
                                     {recording ? <Square className="w-4 h-4" /> : processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
                                     {recording ? 'Arrêter le vocal' : processing ? 'Traitement vocal…' : 'Vocal'}
                                 </button>}
-                                {recording && onCancelRecording && <button type="button" onClick={onCancelRecording} className="text-xs text-slate-500 hover:text-red-600">Annuler le vocal</button>}
+                                {recording && onCancelRecording && <button type="button" onClick={onCancelRecording} className="text-xs text-neutral-700 hover:text-red-600">Annuler le vocal</button>}
 
                             </div>
                             <div className="ml-auto flex items-center gap-2">
                                 {guestMode && (
-                                    <span className="hidden sm:inline text-[11px] text-slate-400" title="Créez un compte pour conserver votre travail et lever ces limites">
+                                    <span className="hidden sm:inline text-[11px] text-neutral-500" title="Créez un compte pour conserver votre travail et lever ces limites">
                                         Invité · {GUEST_LIMITS.maxFiles} fichier, {GUEST_LIMITS.maxFileMb} Mo, {GUEST_LIMITS.maxPages} pages max · rien n&apos;est enregistré
                                     </span>
                                 )}
@@ -1272,7 +1272,7 @@ export default function ChatInterface({
                                 disabled={!loading && (!initialized || (!input.trim() && attachedFiles.length === 0))}
                                 className={`
                                     w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors
-                                    focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
+                                    focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400
                                     ${!loading && (!input.trim() && attachedFiles.length === 0)
                                         ? 'bg-neutral-300 text-white cursor-not-allowed'
                                         : 'bg-neutral-900 text-white hover:bg-neutral-700'
