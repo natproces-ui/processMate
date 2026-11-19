@@ -139,3 +139,55 @@ export function SearchDialog({ onOpen, onClose }: { onOpen: (id: string) => void
         </Modal>
     );
 }
+
+/** En-tête du chat : « Projet / Titre ▾ » avec les actions de la conversation (comme Claude). */
+export function ConversationHeader({ conv, projectName, onChanged }: {
+    conv: ConversationSummary; projectName?: string | null; onChanged: (conv: ConversationSummary | null) => void;
+}) {
+    const [renaming, setRenaming] = useState(false);
+    const [title, setTitle] = useState(conv.title);
+    const [moving, setMoving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const update = async (body: Parameters<typeof conversationsApi.update>[1], optimistic: Partial<ConversationSummary>) => {
+        onChanged({ ...conv, ...optimistic });
+        try { onChanged(await conversationsApi.update(conv.id, body)); } catch { onChanged(conv); }
+    };
+    const items: MenuItem[] = [
+        { label: 'Renommer', icon: <Pencil />, onSelect: () => { setTitle(conv.title); setRenaming(true); } },
+        conv.pinned_at
+            ? { label: 'Désépingler', icon: <PinOff />, onSelect: () => void update({ pinned: false }, { pinned_at: null }) }
+            : { label: 'Épingler', icon: <Pin />, onSelect: () => void update({ pinned: true }, { pinned_at: new Date().toISOString() }) },
+        { label: conv.project_id ? 'Changer de projet' : 'Ajouter à un projet', icon: <FolderInput />, onSelect: () => setMoving(true) },
+        { label: 'Supprimer', icon: <Trash2 />, danger: true, separatorBefore: true, onSelect: () => setDeleting(true) },
+    ];
+    return (
+        <div className="flex min-w-0 items-center gap-1 text-sm text-neutral-900">
+            {projectName && conv.project_id && (
+                <>
+                    <a href={`/projet/?id=${conv.project_id}`} className="max-w-[180px] truncate rounded-md px-1.5 py-1 hover:bg-neutral-100">{projectName}</a>
+                    <span className="text-neutral-400">/</span>
+                </>
+            )}
+            {renaming ? (
+                <InlineRename value={conv.title} className="max-w-[320px]" onCancel={() => setRenaming(false)}
+                    onSave={t => { setRenaming(false); setTitle(t); void update({ title: t }, { title: t }); }} />
+            ) : (
+                <span className="flex min-w-0 items-center">
+                    <button type="button" onClick={() => setRenaming(true)} title="Renommer"
+                        className="max-w-[360px] truncate rounded-md px-1.5 py-1 font-medium hover:bg-neutral-100">{title || conv.title}</button>
+                    <RowMenu label="Actions sur la conversation" items={items} align="left" />
+                </span>
+            )}
+            {moving && (
+                <MoveToProjectDialog current={conv.project_id} onClose={() => setMoving(false)}
+                    onPick={projectId => { setMoving(false); void update({ project_id: projectId }, { project_id: projectId }); }} />
+            )}
+            {deleting && (
+                <ConfirmDialog title="Supprimer la conversation"
+                    message={`« ${conv.title} » et ses messages seront supprimés définitivement.`}
+                    onClose={() => setDeleting(false)}
+                    onConfirm={async () => { await conversationsApi.remove(conv.id); onChanged(null); }} />
+            )}
+        </div>
+    );
+}

@@ -29,12 +29,14 @@ import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
     PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes, History,
+    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { conversationsApi } from '@/lib/conversationsApi';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
 import CircuitBar from '@/components/shared/CircuitBar';
+import { RowMenu } from '@/components/home/ui';
 import { circuitApi } from '@/lib/circuitApi';
 import { useAuth } from '@/context/AuthContext';
 import VersionHistoryModal from '@/components/shared/VersionHistoryModal';
@@ -142,29 +144,51 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         if (id) conversationsApi.update(id, { link_procedure_id: procedureId }).catch(() => { /* lien facultatif */ });
     };
     const [chatWidth, setChatWidth] = useState(400);
+    /** Panneau de la procédure affiché : c'est l'utilisateur qui le masque ou l'affiche */
+    const [procOpen, setProcOpen] = useState(true);
+    const procPanelRef = useRef<HTMLDivElement>(null);
+    const [procFullscreen, setProcFullscreen] = useState(false);
+    useEffect(() => {
+        const onFs = () => setProcFullscreen(document.fullscreenElement === procPanelRef.current && !!procPanelRef.current);
+        document.addEventListener('fullscreenchange', onFs);
+        return () => document.removeEventListener('fullscreenchange', onFs);
+    }, []);
+    const toggleProcFullscreen = () => {
+        if (document.fullscreenElement) void document.exitFullscreen();
+        else void procPanelRef.current?.requestFullscreen?.();
+    };
     const LAYOUT_KEY = 'processmate-studio-layout';
     useEffect(() => {
         try {
             const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
             if (typeof saved.chatOpen === 'boolean') setChatOpen(saved.chatOpen);
             if (typeof saved.paletteOpen === 'boolean') setPaletteOpen(saved.paletteOpen);
-            if (typeof saved.chatWidth === 'number') setChatWidth(Math.min(720, Math.max(320, saved.chatWidth)));
+            if (typeof saved.chatWidth === 'number') setChatWidth(Math.min(960, Math.max(320, saved.chatWidth)));
+            if (typeof saved.procOpen === 'boolean') setProcOpen(saved.procOpen);
         } catch { /* préférence facultative */ }
     }, []);
     // Enregistré au moment de l'action (un effet réécrirait les valeurs par défaut au montage)
-    const saveLayout = (patch: { chatOpen?: boolean; chatWidth?: number; paletteOpen?: boolean }) => {
+    const saveLayout = (patch: { chatOpen?: boolean; chatWidth?: number; paletteOpen?: boolean; procOpen?: boolean }) => {
         try {
             const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
             localStorage.setItem(LAYOUT_KEY, JSON.stringify({ ...saved, ...patch }));
         } catch { /* facultatif */ }
     };
-    const toggleChat = (open: boolean) => { setChatOpen(open); saveLayout({ chatOpen: open }); };
+    const toggleChat = (open: boolean) => {
+        setChatOpen(open);
+        // jamais les deux panneaux masqués : masquer le chat réaffiche la procédure
+        if (!open) { setProcOpen(true); saveLayout({ chatOpen: false, procOpen: true }); } else saveLayout({ chatOpen: true });
+    };
+    const toggleProc = (open: boolean) => {
+        setProcOpen(open);
+        if (!open) { setChatOpen(true); saveLayout({ procOpen: false, chatOpen: true }); } else saveLayout({ procOpen: true });
+    };
     const togglePalette = () => { setPaletteOpen(o => { saveLayout({ paletteOpen: !o }); return !o; }); };
     const startChatResize = (e: React.MouseEvent) => {
         e.preventDefault();
         const startX = e.clientX, startW = chatWidth;
         let width = startW;
-        const onMove = (ev: MouseEvent) => { width = Math.min(720, Math.max(320, startW + ev.clientX - startX)); setChatWidth(width); };
+        const onMove = (ev: MouseEvent) => { width = Math.min(960, Math.max(320, startW + ev.clientX - startX)); setChatWidth(width); };
         const onUp = () => {
             saveLayout({ chatWidth: width });
             document.removeEventListener('mousemove', onMove);
@@ -358,7 +382,34 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
 
     const activeInst = instances[activeTab];
     const chatFirstEmpty = chatFirst && !hasProcedure && instances.length === 0;
+    /** Chat en pleine largeur : rien à afficher à côté, ou procédure masquée par l'utilisateur */
+    const chatFull = chatFirstEmpty || !procOpen;
     const activeData = instances.length > 0 && activeInst ? activeInst.data : data;
+
+    /** Téléchargements de la procédure ouverte, réunis dans un seul menu */
+    const downloadBlob = (content: string, type: string, ext: string) => {
+        const name = (activeTitle || 'procedure').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 80) || 'procedure';
+        const url = URL.createObjectURL(new Blob([content], { type }));
+        const a = document.createElement('a');
+        a.href = url; a.download = `${name}.${ext}`; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+    const downloadDiagram = async (kind: 'bpmn' | 'svg') => {
+        const ed = activeEditor();
+        const content = kind === 'bpmn' ? await ed?.saveXml() : await ed?.saveSvg();
+        if (!content) { showError('Ouvrez la vue BPMN pour télécharger le logigramme.'); setView('bpmn'); return; }
+        downloadBlob(content, kind === 'bpmn' ? 'application/xml' : 'image/svg+xml', kind);
+    };
+    const downloadTable = () => {
+        const cols: [string, (r: Table1Row) => string][] = [
+            ['N°', r => r.id], ['Étape', r => r.étape], ['Type', r => r.typeBpmn], ['Département', r => r.département || ''],
+            ['Acteur', r => r.acteur || ''], ['Outil', r => r.outil || ''], ['Condition', r => r.condition || ''],
+            ['Suite', r => (r.outputs || []).map(o => o.label ? `${o.targetId} (${o.label})` : o.targetId).join(', ')],
+        ];
+        const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const csv = [cols.map(c => esc(c[0])).join(';'), ...activeData.map(r => cols.map(c => esc(c[1](r))).join(';'))].join('\r\n');
+        downloadBlob('\ufeff' + csv, 'text/csv;charset=utf-8', 'csv'); // BOM : accents corrects dans Excel
+    };
 
     /** Membre : proposer la procédure au pilote (triage, puis validation) au lieu de l'écrire au référentiel */
     const proposeToLibrary = async () => {
@@ -885,11 +936,17 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
                 {/* Conversation : pleine hauteur, composeur en bas */}
                 {/* Toujours monté : masquer l'assistant ne doit pas effacer la conversation */}
-                <aside aria-label="Conversation" hidden={!chatOpen && !chatFirstEmpty} style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
-                    className={chatFirstEmpty
+                <aside aria-label="Conversation" hidden={!chatOpen && !chatFull} style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
+                    className={chatFull
                         ? 'relative flex-1 min-h-0 min-w-0 bg-white'
                         : 'relative shrink-0 h-[55vh] lg:h-auto lg:w-[var(--chat-w)] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white'}>
-                    <div className={chatFirstEmpty ? 'h-full mx-auto w-full max-w-3xl' : 'h-full'}>
+                    {!chatFirstEmpty && !procOpen && (
+                        <button type="button" onClick={() => toggleProc(true)} title="Afficher la procédure"
+                            className="absolute right-4 top-14 z-20 flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-100">
+                            <PanelRightOpen className="w-4 h-4" /> Procédure
+                        </button>
+                    )}
+                    <div className={chatFull ? 'h-full mx-auto w-full max-w-3xl' : 'h-full'}>
                     <ChatInterface
                         inputContextVisible={codeSourceOpen}
                         inputContext={inputContext}
@@ -932,10 +989,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     </div>
                     <div role="separator" aria-orientation="vertical" aria-label="Redimensionner l’assistant" title="Glisser pour redimensionner"
                         onMouseDown={startChatResize}
-                        className={chatFirstEmpty ? 'hidden' : 'hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-blue-400/30'} />
+                        className={chatFull ? 'hidden' : 'hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-neutral-900/20'} />
                 </aside>
                 {/* Procédure : en-tête (onglets + vues + actions) puis la vue choisie en pleine hauteur */}
-                <div hidden={chatFirstEmpty} className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
+                <div ref={procPanelRef} hidden={chatFull} className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50">
                     {guestMode && (
                         <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex flex-wrap items-center gap-x-2">
                             <span>Mode invité : rien n&apos;est enregistré.</span>
@@ -956,10 +1013,16 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     <div className="shrink-0 bg-white border-b border-slate-200 px-4 pt-2.5">
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
                         <div className="flex items-center gap-3 min-w-0">
-                            {!chatOpen && (
+                            {chatOpen && !procFullscreen && (
+                                <button type="button" onClick={() => toggleChat(false)} title="Masquer l’assistant" aria-label="Masquer l’assistant"
+                                    className="hidden lg:inline-flex shrink-0 p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
+                                    <PanelLeftClose className="w-4 h-4" />
+                                </button>
+                            )}
+                            {!chatOpen && !procFullscreen && (
                                 <button type="button" onClick={() => toggleChat(true)}
                                     title={chatActivity.busy ? 'Afficher l’assistant (réponse en cours)' : 'Afficher l’assistant'}
-                                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                                    className="shrink-0 flex items-center gap-1.5 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100">
                                     <PanelLeftOpen className="w-3.5 h-3.5" /> Assistant
                                     {chatActivity.busy
                                         ? <span aria-label="Réponse en cours" className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
@@ -995,6 +1058,29 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         title="Le pilote l'ajoutera à une campagne ou au référentiel ; elle sera validée avant publication"
                                         className="flex items-center gap-1.5 px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50">
                                         <Send className="w-3.5 h-3.5" />{proposing ? 'Envoi…' : 'Proposer au référentiel'}
+                                    </button>
+                                )}
+                                {exportAllowed && activeData.length > 0 && (
+                                    <RowMenu label="Télécharger la procédure" align="right"
+                                        triggerClassName="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100"
+                                        trigger={<><Download className="w-3.5 h-3.5" /> Télécharger <ChevronDown className="w-3.5 h-3.5" /></>}
+                                        items={[
+                                            { label: 'Logigramme BPMN (.bpmn)', icon: <Workflow />, onSelect: () => void downloadDiagram('bpmn') },
+                                            { label: 'Image du logigramme (.svg)', icon: <Workflow />, onSelect: () => void downloadDiagram('svg') },
+                                            { label: 'Tableau (.csv, Excel)', icon: <Table2 />, onSelect: downloadTable },
+                                            { label: 'Fiche Word (.docx)…', icon: <FileText />, onSelect: () => setView('fiche'), separatorBefore: true },
+                                        ]} />
+                                )}
+                                <button type="button" onClick={toggleProcFullscreen}
+                                    title={procFullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran (tableau, logigramme, fiche)'}
+                                    aria-label={procFullscreen ? 'Quitter le plein écran' : 'Afficher la procédure en plein écran'}
+                                    className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
+                                    {procFullscreen ? <Shrink className="w-4 h-4" /> : <Expand className="w-4 h-4" />}
+                                </button>
+                                {!procFullscreen && (
+                                    <button type="button" onClick={() => toggleProc(false)} title="Masquer la procédure (le chat prend toute la largeur)"
+                                        aria-label="Masquer la procédure" className="hidden lg:inline-flex p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
+                                        <PanelRightClose className="w-4 h-4" />
                                     </button>
                                 )}
                                 {VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id && (

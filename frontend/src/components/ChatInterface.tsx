@@ -15,7 +15,7 @@ import MiniMarkdown from '@/components/shared/MiniMarkdown';
 import DemoFilesPicker from '@/components/processmate/DemoFilesPicker';
 import { useAuth } from '@/context/AuthContext';
 import {
-    ArrowUp, Paperclip, X, FileText, Image as ImageIcon,
+    ArrowUp, ArrowDown, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
     Sparkles, Wand2, RefreshCw, Globe, HelpCircle, BookOpen, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ChevronRight, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2
 } from 'lucide-react';
@@ -328,10 +328,29 @@ export default function ChatInterface({
         };
     }, [addMenuOpen]);
 
+    // Défilement : on suit la réponse seulement si l'utilisateur est en bas (ou vient d'envoyer) ;
+    // s'il remonte pour relire, on ne le ramène pas de force — un bouton « ↓ » apparaît.
+    const atBottomRef = useRef(true);
+    const [showScrollDown, setShowScrollDown] = useState(false);
+    const onMessagesScroll = () => {
+        const el = messagesContainerRef.current;
+        if (!el) return;
+        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        atBottomRef.current = atBottom;
+        setShowScrollDown(!atBottom);
+    };
+    const scrollToBottom = (smooth = true) => {
+        const el = messagesContainerRef.current;
+        el?.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+        atBottomRef.current = true;
+        setShowScrollDown(false);
+    };
     useEffect(() => {
         if (messages.length === 0 && !loading) return;
-        const container = messagesContainerRef.current;
-        container?.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        const last = messages[messages.length - 1];
+        if (last?.role === 'user') atBottomRef.current = true; // on vient d'envoyer
+        if (atBottomRef.current) scrollToBottom();
+        else setShowScrollDown(true);
     }, [messages, loading]);
 
     useEffect(() => {
@@ -903,7 +922,7 @@ export default function ChatInterface({
                 </div>
             </div>
             <div hidden={!isSidebar && collapsed} className={isSidebar ? 'flex-1 min-h-0 flex flex-col' : undefined}>
-                <div ref={messagesContainerRef} hidden={!isSidebar && messages.length === 0 && !loading}
+                <div ref={messagesContainerRef} onScroll={onMessagesScroll} hidden={!isSidebar && messages.length === 0 && !loading}
                     className={isSidebar
                         ? 'flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-5 bg-gradient-to-b from-slate-50/80 to-white'
                         : 'overflow-y-auto max-h-[40vh] h-64 px-3 py-3 space-y-3 mb-2 rounded-xl bg-white/60'}>
@@ -939,7 +958,7 @@ export default function ChatInterface({
 
                                 {/* Réponse de l'assistant */}
                                 {msg.role === 'assistant' && (
-                                    <div className="text-[15px] text-slate-700 space-y-3">
+                                    <div className="text-[15px] text-neutral-900 space-y-3">
                                         {msg.steps && msg.steps.length > 0 && !msg.streaming && !openSteps.has(msg.id) ? (
                                             <button type="button" onClick={() => setOpenSteps(s => new Set(s).add(msg.id))}
                                                 className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
@@ -1119,11 +1138,19 @@ export default function ChatInterface({
                                             <HelpCircle className="w-3.5 h-3.5 text-amber-500" />
                                             <span className="text-xs font-medium text-amber-700">Précision nécessaire</span>
                                         </div>
-                                        <p className="text-slate-700 leading-relaxed">{msg.content}</p>
+                                        <p className="text-neutral-900 leading-relaxed">{msg.content}</p>
                                     </div>
                                 )}
                             </div>
                         ))}
+                        {showScrollDown && messages.length > 0 && (
+                            <div className="sticky bottom-1 flex justify-center pointer-events-none">
+                                <button type="button" onClick={() => scrollToBottom()} aria-label="Revenir en bas de la conversation"
+                                    className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-900 shadow-md hover:bg-neutral-100">
+                                    <ArrowDown className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
                 </div>
                 <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-neutral-900/70 bg-white shadow-sm focus-within:border-neutral-900"}>
                     {inputContext && <div hidden={!inputContextVisible} className="border-b border-slate-100 p-3 bg-slate-50/50 rounded-t-2xl">{inputContext}</div>}

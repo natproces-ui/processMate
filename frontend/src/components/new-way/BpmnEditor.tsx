@@ -844,6 +844,39 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Le panneau change de largeur (glissement, chat masqué, plein écran) : le diagramme se
+    // recadre à la nouvelle largeur en gardant sa position verticale (sinon il restait minuscule)
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return;
+        let lastWidth = el.clientWidth;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const ro = new ResizeObserver(() => {
+            const w = el.clientWidth;
+            if (Math.abs(w - lastWidth) < 24) return;
+            lastWidth = w;
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                const canvas = modelerRef.current?.get?.('canvas');
+                if (!canvas) return;
+                try {
+                    const vb = canvas.viewbox();
+                    const inner = vb.inner;
+                    if (!inner?.width) return;
+                    const palette = el.querySelector('.djs-palette')?.getBoundingClientRect();
+                    const box = el.getBoundingClientRect();
+                    const left = (palette ? Math.max(0, palette.right - box.left) : 0) + 20;
+                    const zoom = Math.min(0.9, (box.width - left - 20) / inner.width);
+                    if (!(zoom > 0)) return;
+                    canvas.zoom(zoom);
+                    canvas.viewbox({ x: inner.x - left / zoom, y: vb.y, width: box.width / zoom, height: box.height / zoom });
+                } catch { /* diagramme en cours de chargement */ }
+            }, 150);
+        });
+        ro.observe(el);
+        return () => { ro.disconnect(); clearTimeout(timer); };
+    }, []);
+
     useImperativeHandle(ref, () => ({
         saveXml: async () => {
             if (!modelerRef.current) return null;

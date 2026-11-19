@@ -26,8 +26,10 @@ export interface MenuItem {
 }
 
 /** Bouton « ⋯ » et son menu. Se ferme au clic extérieur, avec Échap, ou après un choix. */
-export function RowMenu({ items, label, className = '', align = 'right' }: {
+export function RowMenu({ items, label, className = '', align = 'right', trigger, triggerClassName }: {
     items: MenuItem[]; label: string; className?: string; align?: 'right' | 'left';
+    /** contenu du bouton (par défaut « ⋯ ») */
+    trigger?: React.ReactNode; triggerClassName?: string;
 }) {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -43,8 +45,8 @@ export function RowMenu({ items, label, className = '', align = 'right' }: {
         <div ref={ref} className={`relative ${className}`}>
             <button type="button" aria-label={label} aria-haspopup="menu" aria-expanded={open}
                 onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(o => !o); }}
-                className="p-1 rounded-md text-neutral-900 hover:bg-neutral-200">
-                <MoreHorizontal className="w-4 h-4" />
+                className={triggerClassName ?? 'p-1 rounded-md text-neutral-900 hover:bg-neutral-200'}>
+                {trigger ?? <MoreHorizontal className="w-4 h-4" />}
             </button>
             {open && (
                 <div role="menu" className={`absolute top-full mt-1 z-50 min-w-[210px] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg ${align === 'right' ? 'right-0' : 'left-0'}`}>

@@ -16,11 +16,15 @@ import { projectsApi, type Project } from '@/lib/projectsApi';
 import { inboxApi } from '@/lib/inboxApi';
 import OnboardingCard from '@/components/home/OnboardingCard';
 import InvitationBanner from '@/components/home/InvitationBanner';
-import { ConversationRow, SearchDialog } from '@/components/home/ConversationItems';
+import { ConversationHeader, ConversationRow, SearchDialog } from '@/components/home/ConversationItems';
 import {
     Zap, SquarePen, FolderKanban, FileText, CheckSquare, Megaphone, BarChart3, PenTool, Search,
     BookOpen, Newspaper, Compass, Menu, X, LogOut, Users, Clock, Building2, ChevronDown, FolderOpen,
+    PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
+
+const SIDEBAR_KEY = 'processmate-sidebar';
+const MIN_W = 220, MAX_W = 420, DEFAULT_W = 288;
 
 export interface AppShellProps {
     children: React.ReactNode;
@@ -50,6 +54,44 @@ export default function AppShell({
     const [recentsOpen, setRecentsOpen] = useState(true);
     const [searchOpen, setSearchOpen] = useState(false);
     const [todo, setTodo] = useState<{ ouvertes: number; en_retard: number } | null>(null);
+    // Barre latérale : l'utilisateur la replie (colonne d'icônes) ou l'élargit ; rien n'est automatique
+    const [collapsed, setCollapsed] = useState(false);
+    const [width, setWidth] = useState(DEFAULT_W);
+    useEffect(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem(SIDEBAR_KEY) || '{}');
+            if (typeof saved.collapsed === 'boolean') setCollapsed(saved.collapsed);
+            if (typeof saved.width === 'number') setWidth(Math.min(MAX_W, Math.max(MIN_W, saved.width)));
+        } catch { /* préférence facultative */ }
+    }, []);
+    const saveSidebar = (patch: { collapsed?: boolean; width?: number }) => {
+        try { localStorage.setItem(SIDEBAR_KEY, JSON.stringify({ collapsed, width, ...patch })); } catch { /* facultatif */ }
+    };
+    const toggleCollapsed = useCallback(() => {
+        setCollapsed(c => { saveSidebar({ collapsed: !c }); return !c; });
+    }, [width]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); toggleCollapsed(); }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [toggleCollapsed]);
+    const startResize = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX, startW = width;
+        let w = startW;
+        const onMove = (ev: MouseEvent) => { w = Math.min(MAX_W, Math.max(MIN_W, startW + ev.clientX - startX)); setWidth(w); };
+        const onUp = () => {
+            saveSidebar({ width: w });
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = ''; document.body.style.userSelect = '';
+        };
+        document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    };
 
     useEffect(() => {
         if (!member || !access?.organisations_mode) return;
@@ -102,18 +144,21 @@ export default function AppShell({
     };
 
     const pinnedConvs = useMemo(() => recents.filter(c => c.pinned_at), [recents]);
+    const activeConv = activeConversationId ? recents.find(c => c.id === activeConversationId) : undefined;
     const otherConvs = useMemo(() => recents.filter(c => !c.pinned_at), [recents]);
     const pinnedProjects = useMemo(() => projects.filter(p => p.pinned_at), [projects]);
     const sectionLabel = 'px-2 pb-1 text-xs font-medium text-neutral-500';
 
     const nav = (
-        <nav aria-label="Navigation" className="h-full flex flex-col bg-neutral-50 border-r border-neutral-200 w-72 text-neutral-900">
+        <nav aria-label="Navigation" style={{ width }} className="h-full flex flex-col bg-neutral-50 border-r border-neutral-200 text-neutral-900 max-w-[85vw]">
             <div className="h-14 shrink-0 flex items-center justify-between px-3">
                 <Link href="/" className="flex items-center gap-2 text-[17px] font-semibold text-neutral-900">
                     <span className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center"><Zap className="w-4 h-4 text-white" /></span>
                     ProcessMate
                 </Link>
                 <button type="button" onClick={() => setNavOpen(false)} aria-label="Fermer le menu" className="md:hidden p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-200"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={toggleCollapsed} aria-label="Replier la barre latérale" title="Replier (Ctrl B)"
+                    className="hidden md:inline-flex p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-200"><PanelLeftClose className="w-4 h-4" /></button>
             </div>
             <div className="px-2 space-y-0.5">
                 <NavButton onClick={newConv} icon={<SquarePen />} label="Nouvelle conversation" />
@@ -191,9 +236,32 @@ export default function AppShell({
         </nav>
     );
 
+    const rail = (
+        <nav aria-label="Navigation" className="h-full w-14 flex flex-col items-center gap-1 bg-neutral-50 border-r border-neutral-200 py-3 text-neutral-900">
+            <button type="button" onClick={toggleCollapsed} aria-label="Déplier la barre latérale" title="Déplier (Ctrl B)"
+                className="mb-2 p-2 rounded-lg hover:bg-neutral-200"><PanelLeftOpen className="w-5 h-5" /></button>
+            <RailButton label="Nouvelle conversation" onClick={newConv}><SquarePen /></RailButton>
+            {persistent && <RailButton label="Rechercher (Ctrl K)" onClick={() => setSearchOpen(true)}><Search /></RailButton>}
+            {persistent && <RailLink label="Projets" href="/projets"><FolderKanban /></RailLink>}
+            {user && member && <>
+                <div className="my-2 h-px w-8 bg-neutral-200" />
+                <RailLink label="Référentiel" href="/orchestration?tab=procedures"><FileText /></RailLink>
+                <RailLink label="À faire" href="/orchestration?tab=taches"><CheckSquare /></RailLink>
+                <RailLink label="Campagnes" href="/orchestration?tab=campagnes"><Megaphone /></RailLink>
+            </>}
+        </nav>
+    );
+
     return (
         <div className="h-screen flex bg-white overflow-hidden">
-            <div className="hidden md:block shrink-0">{nav}</div>
+            <div className="hidden md:block shrink-0 relative">
+                {collapsed ? rail : nav}
+                {!collapsed && (
+                    <div role="separator" aria-orientation="vertical" aria-label="Redimensionner la barre latérale" title="Glisser pour redimensionner"
+                        onMouseDown={startResize} onDoubleClick={() => { setWidth(DEFAULT_W); saveSidebar({ width: DEFAULT_W }); }}
+                        className="absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-neutral-900/20" />
+                )}
+            </div>
             {navOpen && (
                 <div className="md:hidden fixed inset-0 z-50 flex">
                     <div className="shrink-0 shadow-xl">{nav}</div>
@@ -206,7 +274,11 @@ export default function AppShell({
                         <button type="button" onClick={() => setNavOpen(true)} aria-label="Ouvrir le menu" className="md:hidden p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
                             <Menu className="w-5 h-5" />
                         </button>
-                        {headerLeft}
+                        {headerLeft ?? (activeConv && (
+                            <ConversationHeader key={activeConv.id} conv={activeConv}
+                                projectName={projects.find(p => p.id === activeConv.project_id)?.name}
+                                onChanged={onChanged(activeConv.id)} />
+                        ))}
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                         {user ? (
@@ -252,5 +324,19 @@ function NavLink({ href, icon, label, badge, active }: { href: string; icon: Rea
                 </span>
             )}
         </Link>
+    );
+}
+
+function RailButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+    return (
+        <button type="button" onClick={onClick} aria-label={label} title={label}
+            className="p-2 rounded-lg text-neutral-900 hover:bg-neutral-200 [&_svg]:w-5 [&_svg]:h-5">{children}</button>
+    );
+}
+
+function RailLink({ label, href, children }: { label: string; href: string; children: React.ReactNode }) {
+    return (
+        <Link href={href} aria-label={label} title={label}
+            className="p-2 rounded-lg text-neutral-900 hover:bg-neutral-200 [&_svg]:w-5 [&_svg]:h-5">{children}</Link>
     );
 }
