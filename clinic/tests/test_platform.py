@@ -154,3 +154,24 @@ class AccessEmailTest(PlatformTest):
         with mock.patch("email_sender.send_access_email", return_value=False):
             r = self.client.post("/api/plateforme/organisations/org-a/lien", json={"admin_id": "adminA"}, headers=self.as_("super"))
         self.assertEqual((r.status_code, r.json()["email_envoye"]), (200, False))
+
+
+class MonthBoundsTest(unittest.TestCase):
+    def test_no_invalid_dates(self):
+        calls = []
+
+        class Q:
+            def __getattr__(self, name):
+                def f(*a, **k):
+                    calls.append((name, a))
+                    return self
+                return f
+
+            def execute(self):
+                return type("R", (), {"data": []})()
+
+        with mock.patch("database.supabase_client.get_supabase", return_value=type("D", (), {"table": lambda s, t: Q()})()):
+            usage_meter.month_totals("2026-11")
+            usage_meter.month_totals("2026-12")
+        bounds = [a[1] for n, a in calls if n in ("gte", "lt")]
+        self.assertEqual(bounds, ["2026-11-01", "2026-12-01", "2026-12-01", "2027-01-01"])

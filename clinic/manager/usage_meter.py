@@ -69,8 +69,10 @@ def month_totals(month_prefix: str) -> Dict[str, Dict[str, int]]:
     """{organisation_id: {appels, jetons_entree, jetons_sortie}} pour un mois « AAAA-MM »."""
     from database.supabase_client import get_supabase
     out: Dict[str, Dict[str, int]] = {}
+    year, month = (int(x) for x in month_prefix.split("-"))
+    next_month = f"{year + month // 12:04d}-{month % 12 + 1:02d}-01"  # pas de « 2026-11-31 » : date invalide en SQL
     rows = (get_supabase().table("ai_usage").select("organisation_id,jour,appels,jetons_entree,jetons_sortie")
-            .gte("jour", f"{month_prefix}-01").lte("jour", f"{month_prefix}-31").execute().data or [])
+            .gte("jour", f"{month_prefix}-01").lt("jour", next_month).execute().data or [])
     for r in rows:
         t = out.setdefault(r["organisation_id"], {"appels": 0, "jetons_entree": 0, "jetons_sortie": 0})
         for k in t:
