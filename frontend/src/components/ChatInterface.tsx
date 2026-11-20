@@ -670,7 +670,12 @@ export default function ChatInterface({
                         startedAt: prev?.startedAt ?? now,
                         endedAt: ev.state === 'running' ? undefined : (prev?.endedAt ?? now),
                     };
-                    if (i >= 0) steps[i] = step; else steps.push(step);
+                    if (i >= 0 && step.state !== 'running' && step.kind !== 'thought' && prev?.state === 'running'
+                        && steps.slice(i + 1).some(x => x.kind === 'thought')) {
+                        // action terminée après des pensées : elle passe à la suite, comme le résultat chez Claude
+                        steps.splice(i, 1);
+                        steps.push(step);
+                    } else if (i >= 0) steps[i] = step; else steps.push(step);
                     return { ...m, steps };
                 });
                 break;

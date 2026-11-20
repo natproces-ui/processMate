@@ -35,7 +35,12 @@ class TurnRecorder:
             step = {"id": ev.get("id"), "label": ev.get("label"), "state": ev.get("state")}
             if ev.get("kind"):
                 step["kind"] = ev["kind"]  # pensée du modèle : affichée comme du texte à la réouverture
-            self.steps[ev.get("id", "")] = step
+            sid = ev.get("id", "")
+            old = self.steps.get(sid)
+            if old and old.get("state") == "running" and step.get("state") != "running" and not step.get("kind"):
+                # action terminée après des pensées : elle passe à la suite (même ordre qu'à l'écran)
+                self.steps.pop(sid)
+            self.steps[sid] = step
         elif t == "message":
             if ev.get("text"):
                 self.texts.append(ev["text"])

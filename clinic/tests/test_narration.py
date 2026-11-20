@@ -82,5 +82,17 @@ class ElisionTest(unittest.TestCase):
             self.assertEqual(turn_progress._french_line("I am finalizing the JSON"), "")
 
 
+class RecordedOrderTest(unittest.TestCase):
+    def test_finished_action_comes_after_thoughts(self):
+        from manager.turn_recorder import TurnRecorder
+        r = TurnRecorder()
+        r.feed({"type": "status", "id": "work", "label": "Réécriture de la procédure", "state": "running"})
+        r.feed({"type": "status", "id": "pensee1", "label": "Je revois les acteurs.", "state": "done", "kind": "thought"})
+        r.feed({"type": "status", "id": "work", "label": "Procédure rédigée · 14 étapes", "state": "done"})
+        r.feed({"type": "done"})
+        self.assertEqual([s["label"] for s in r.finish()["payload"]["steps"]],
+                         ["Je revois les acteurs.", "Procédure rédigée · 14 étapes"])
+
+
 if __name__ == "__main__":
     unittest.main()

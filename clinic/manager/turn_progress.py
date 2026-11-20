@@ -53,8 +53,11 @@ _ids = itertools.count(1)
 NARRATION_PROMPT = """Voici un résumé (souvent en anglais) de ce que fait un assistant qui travaille sur une procédure
 bancaire ou sur des documents. Réécris-le en UNE phrase courte en français (18 mots au plus), à la première personne,
 au présent, concrète : cite les étapes, acteurs, documents ou éléments précis. Pas de guillemets, pas de markdown,
-pas de préambule. S'il ne dit rien de concret (« je commence l'analyse », « je finalise le JSON », format de sortie),
-réponds exactement : -
+pas de préambule. Parle comme à un utilisateur métier : jamais de termes techniques ni de noms de champs ou de format
+(JSON, procedureMetadata, enrichissements, metadata, champ, id, typeBpmn, outputs, schéma, opérations…) ; traduis-les
+en mots métier (« les informations de la fiche », « les rôles ») ou laisse-les de côté.
+S'il ne dit rien de concret pour l'utilisateur (« je commence l'analyse », « je finalise le JSON », format de sortie,
+champs à remplir), réponds exactement : -
 
 Résumé :
 """
