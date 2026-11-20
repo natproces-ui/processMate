@@ -645,7 +645,8 @@ Message utilisateur : {message}
                     img = Image.open(io.BytesIO(raw))
                     if max(img.size) > 1024:
                         img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
-                    parts.append(img)
+                    from processor.office_extract import to_sendable
+                    parts.append(to_sendable(img))
             except Exception as e:
                 logger.error(f"❌ Erreur fichier {f.get('filename')}: {e}")
         return parts

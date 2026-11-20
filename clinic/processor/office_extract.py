@@ -157,6 +157,16 @@ def extract_office(data: bytes, kind: str) -> Dict[str, Any]:
     return res
 
 
+def to_sendable(img):
+    """Image dans un mode que le client Gemini sait convertir en PNG. Les images CMJN (impression),
+    16 bits ou à palette faisaient échouer tout le tour (« cannot write mode CMYK as PNG »)."""
+    if img.mode in ("RGB", "RGBA", "L", "LA"):
+        return img
+    if img.mode == "P" and "transparency" in img.info:
+        return img.convert("RGBA")
+    return img.convert("RGB")
+
+
 def office_parts(f: Dict[str, Any]) -> list:
     """Parts Gemini d'un fichier Office déjà extrait (f['office'])."""
     office = f.get("office") or {}
@@ -171,7 +181,7 @@ def office_parts(f: Dict[str, Any]) -> list:
                 img.load()
                 if max(img.size) > 1024:
                     img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
-                parts.append(img)
+                parts.append(to_sendable(img))
             except Exception:
                 continue
     return parts

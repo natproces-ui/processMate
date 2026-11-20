@@ -71,6 +71,9 @@ class ImageProcessor:
             # Optimisation de l'image
             # ============================================
             image = Image.open(io.BytesIO(image_data))
+            # CMJN, palette, transparence : RGB (le JPEG ci-dessous et l'envoi au modèle l'exigent)
+            if image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
             
             max_size = 1024
             if max(image.size) > max_size:
@@ -220,6 +223,9 @@ class ImageProcessor:
         """
         try:
             image = Image.open(io.BytesIO(image_data))
+            # CMJN, palette, transparence : RGB (le JPEG ci-dessous et l'envoi au modèle l'exigent)
+            if image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
             
             max_size = 1024
             if max(image.size) > max_size:

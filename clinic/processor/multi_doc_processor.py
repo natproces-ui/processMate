@@ -828,7 +828,8 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
                 img = Image.open(io.BytesIO(raw))
                 if max(img.size) > 1024:
                     img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
-                return [img]
+                from processor.office_extract import to_sendable
+                return [to_sendable(img)]
         except Exception as e:
             logger.error(f"❌ Erreur fichier {f.get('filename')}: {e}")
         return []
