@@ -54,6 +54,7 @@ class NarrationTest(unittest.TestCase):
             queue: asyncio.Queue = asyncio.Queue()
             with mock.patch.object(turn_progress, "_french_line",
                                    side_effect=lambda s: "" if fake_line(s) == "-" else fake_line(s)), \
+                    mock.patch.object(turn_progress, "MIN_INTERVAL", 0), \
                     turn_progress.progress_scope(queue) as sink:
                 turn_progress.thought("regroupe les acteurs slow")
                 turn_progress.thought("finalise le json")
@@ -92,6 +93,33 @@ class RecordedOrderTest(unittest.TestCase):
         r.feed({"type": "done"})
         self.assertEqual([s["label"] for s in r.finish()["payload"]["steps"]],
                          ["Je revois les acteurs.", "Procédure rédigée · 14 étapes"])
+
+
+class ThrottleTest(unittest.TestCase):
+    """Un suivi, pas un roman : 5 lignes au plus, espacées, sans doublon."""
+
+    def run_thoughts(self, summaries, interval):
+        async def go():
+            queue: asyncio.Queue = asyncio.Queue()
+            with mock.patch.object(turn_progress, "_french_line", side_effect=lambda s: s.split("**")[2].strip()), \
+                    mock.patch.object(turn_progress, "MIN_INTERVAL", interval), \
+                    turn_progress.progress_scope(queue) as sink:
+                for summ in summaries:
+                    turn_progress.thought(summ)
+                while turn_progress.pending(sink):
+                    await asyncio.sleep(0.02)
+            await asyncio.sleep(0.05)
+            return [queue.get_nowait()["label"] for _ in range(queue.qsize())]
+        return asyncio.run(go())
+
+    def test_at_most_five_and_no_duplicates(self):
+        summaries = [f"**Titre {i % 7}** Ligne {i}." for i in range(14)]
+        lines = self.run_thoughts(summaries, 0)
+        self.assertEqual(lines, ["Ligne 0.", "Ligne 1.", "Ligne 2.", "Ligne 3.", "Ligne 4."])
+
+    def test_spaced_out(self):
+        lines = self.run_thoughts([f"**T{i}** Ligne {i}." for i in range(6)], 60)
+        self.assertEqual(lines, ["Ligne 0."])  # les suivantes arrivent trop tôt
 
 
 if __name__ == "__main__":

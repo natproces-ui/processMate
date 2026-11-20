@@ -14,6 +14,7 @@ appelle emit(). Fonctionne aussi depuis les threads (asyncio.to_thread copie le 
 import asyncio
 import itertools
 import re
+import time
 import logging
 import weakref
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -50,17 +51,23 @@ _pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="narration")
 _last: "weakref.WeakKeyDictionary[Callable, Future]" = weakref.WeakKeyDictionary()
 _ids = itertools.count(1)
 
-NARRATION_PROMPT = """Voici un résumé (souvent en anglais) de ce que fait un assistant qui travaille sur une procédure
-bancaire ou sur des documents. Réécris-le en UNE phrase courte en français (18 mots au plus), à la première personne,
-au présent, concrète : cite les étapes, acteurs, documents ou éléments précis. Pas de guillemets, pas de markdown,
-pas de préambule. Parle comme à un utilisateur métier : jamais de termes techniques ni de noms de champs ou de format
-(JSON, procedureMetadata, enrichissements, metadata, champ, id, typeBpmn, outputs, schéma, opérations…) ; traduis-les
-en mots métier (« les informations de la fiche », « les rôles ») ou laisse-les de côté.
-S'il ne dit rien de concret pour l'utilisateur (« je commence l'analyse », « je finalise le JSON », format de sortie,
-champs à remplir), réponds exactement : -
+NARRATION_PROMPT = """Voici un résumé (souvent en anglais, avec un titre en gras) de ce que fait un assistant qui
+travaille sur une procédure bancaire ou sur des documents. Écris une ligne de suivi en français, comme celles de Claude :
+une forme nominale de 9 mots au plus, qui dit concrètement ce qui se fait (étape, acteur, document précis),
+terminée par un point. Exemples : « Regroupement des acteurs de la même entité. »,
+« Fusion des étapes de création du contrat. », « Repérage des outils de l'étape Organiser. »
+Pas de guillemets, pas de markdown, pas de préambule, aucun terme technique (JSON, procedureMetadata, enrichissements,
+metadata, champ, id, typeBpmn, outputs, opérations…).
+S'il ne dit rien de concret pour l'utilisateur (début d'analyse, mise en forme du résultat, format de sortie),
+réponds exactement : -
 
 Résumé :
 """
+
+# Un suivi, pas un compte rendu : quelques lignes courtes par réponse, comme chez Claude
+MAX_THOUGHTS = 5          # lignes par réponse
+MIN_INTERVAL = 8.0        # secondes entre deux lignes affichées
+_state: "weakref.WeakKeyDictionary[Callable, Dict[str, Any]]" = weakref.WeakKeyDictionary()
 
 
 def _french_line(summary: str) -> str:
@@ -68,18 +75,32 @@ def _french_line(summary: str) -> str:
     r = generate_content(NARRATION_PROMPT + summary[:1500], None, "Narration",
                          models=[GeminiModel.LITE, GeminiModel.FLASH])
     line = (r.text or "").strip().strip('"«» ').splitlines()[0] if (r.text or "").strip() else ""
-    if line in ("-", "–", "—"):
+    if line in ("-", "–", "—", "-."):
         return ""
     # élisions parfois perdues par le modèle rapide (« J analyse », « d une ») : on les rétablit
     line = re.sub(r"\b([JjDdLlNnSsCcMmTt]|[Qq]u) (?=[aeiouyhéèêëàâîïôûAEIOUYHÉÈÊÀÂÎÔÛ])", r"\1'", line)
-    return line[:200]
+    return line[:120]
+
+
+def _title(summary: str) -> str:
+    m = re.search(r"\*\*(.+?)\*\*", summary or "")
+    return re.sub(r"\W+", " ", (m.group(1) if m else summary[:60]).lower()).strip()
 
 
 def thought(summary: str) -> None:
-    """Un résumé de réflexion reçu du modèle : traduit à part (sans ralentir le travail), affiché dans l'ordre."""
+    """Un résumé de réflexion reçu du modèle : réécrit à part (sans ralentir le travail), affiché dans l'ordre.
+    Au plus MAX_THOUGHTS lignes par réponse, espacées d'au moins MIN_INTERVAL secondes, sans doublon."""
     sink = _sink.get()
     if sink is None or not (summary or "").strip():
         return
+    st = _state.setdefault(sink, {"shown": 0, "last": 0.0, "titles": set()})
+    now = time.monotonic()
+    title = _title(summary)
+    if st["shown"] >= MAX_THOUGHTS or title in st["titles"] or (st["last"] and now - st["last"] < MIN_INTERVAL):
+        return
+    st["titles"].add(title)
+    st["shown"] += 1  # compté dès l'envoi (rendu si rien n'est affiché)
+    st["last"] = now  # réservé dès maintenant : les pensées suivantes attendent l'intervalle
     prev = _last.get(sink)
     step_id = f"pensee{next(_ids)}"
 
@@ -94,11 +115,14 @@ def thought(summary: str) -> None:
                 prev.result(timeout=30)  # garder l'ordre des pensées
             except Exception:
                 pass
-        if line:
-            try:
-                sink({"type": "status", "id": step_id, "label": line, "state": "done", "kind": "thought"})
-            except Exception:
-                pass
+        if not line:
+            st["last"] = 0.0  # rien d'affiché : la pensée suivante peut prendre la place
+            st["shown"] -= 1
+            return
+        try:
+            sink({"type": "status", "id": step_id, "label": line, "state": "done", "kind": "thought"})
+        except Exception:
+            pass
 
     try:
         _last[sink] = _pool.submit(work)
