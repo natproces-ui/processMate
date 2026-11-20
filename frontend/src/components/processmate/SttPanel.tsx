@@ -32,7 +32,7 @@ import {
     PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
-import { conversationsApi } from '@/lib/conversationsApi';
+import { CONVERSATIONS_ENABLED, conversationsApi, type StoredProcedure } from '@/lib/conversationsApi';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
 import CircuitBar from '@/components/shared/CircuitBar';
@@ -891,6 +891,45 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         }
     }, [instances, activeInst, activeTab, processTitle, safeGenerateBpmn, chatFirst, hasRealProcedure, appendInstance]);
 
+    // ── Procédures gardées avec la conversation : rouvertes telles que laissées ──
+    /** Conversation à laquelle appartiennent les procédures affichées (rien n'est enregistré ailleurs) */
+    const [proceduresOwner, setProceduresOwner] = useState<string | null>(null);
+    const singleKeyRef = useRef<string>(crypto.randomUUID());
+    const restoreProcedures = useCallback((procs: StoredProcedure[], active: string | null) => {
+        const list: ProcessInstance[] = procs.map(p => ({
+            process_id: p.key, title: p.title || 'Procédure', data: (p.workflow || []) as Table1Row[],
+            enrichments: new Map(Object.entries(p.enrichments || {})) as Map<string, TaskEnrichment>,
+            bpmnXml: p.bpmnXml || safeGenerateBpmn((p.workflow || []) as Table1Row[], p.title || 'Procédure'),
+            metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: p.procedureMetadata || { nom: p.title },
+            status: 'ready', workflow_db_id: p.workflow_db_id || undefined,
+        }));
+        draftKeyRef.current = null;
+        setInstances(list);
+        const idx = list.findIndex(i => i.process_id === active);
+        setActiveTab(idx >= 0 ? idx : list.length - 1);
+        setHasProcedure(true); setPhase('editing'); setUploadOpen(false);
+        setProceduresOwner(conversationIdRef.current);
+    }, [safeGenerateBpmn]);
+    // Enregistrement (silencieux, 1,5 s après la dernière modification)
+    useEffect(() => {
+        if (guestMode || workflowId || !CONVERSATIONS_ENABLED) return;
+        const id = conversationIdRef.current;
+        if (!id || id !== proceduresOwner) return;
+        const toStored = (key: string, title: string, rows: Table1Row[], enr: Map<string, TaskEnrichment>, meta: Record<string, unknown> | null | undefined, xml: string | null, dbId?: string): StoredProcedure => ({
+            key, title, workflow: rows, enrichments: Object.fromEntries(enr), procedureMetadata: meta ?? null, bpmnXml: xml, workflow_db_id: dbId ?? null,
+        });
+        const list = instances.length > 0
+            ? instances.filter(i => i.status === 'ready' && i.data.length > 0)
+                .map(i => toStored(i.process_id, i.title, i.data, i.enrichments, i.initialMeta, i.bpmnXml, i.workflow_db_id))
+            : hasProcedure && data.length > 0
+                ? [toStored(singleKeyRef.current, processTitle, data, enrichments, initialMeta, bpmnXml)]
+                : [];
+        if (list.length === 0) return;
+        const active = instances.length > 0 ? instances[activeTab]?.process_id ?? null : singleKeyRef.current;
+        const t = setTimeout(() => { conversationsApi.saveProcedures(id, list, active).catch(() => { /* gardé à l'écran ; nouvel essai à la prochaine modification */ }); }, 1500);
+        return () => clearTimeout(t);
+    }, [guestMode, workflowId, proceduresOwner, instances, activeTab, hasProcedure, data, processTitle, enrichments, initialMeta, bpmnXml]);
+
     // ── Lot 5 : points de restauration du chat ──
     const takeSnapshot = useCallback(() => ({
         processId: instances.length > 0 ? activeInst?.process_id : null,
@@ -1081,7 +1120,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         procedureId={workflowId}
                         restoreGenerated={!workflowId}
                         syncUrl
-                        onConversationChange={id => { conversationIdRef.current = id; }}
+                        onConversationChange={id => {
+                            // conversation créée par le premier message : les procédures affichées sont les siennes
+                            if (id && !conversationIdRef.current) setProceduresOwner(id);
+                            conversationIdRef.current = id;
+                        }}
+                        onRestoreProcedures={restoreProcedures}
                         projectId={projectId}
                         guestPersistence={guestMode}
                         onCheckpoint={takeSnapshot}

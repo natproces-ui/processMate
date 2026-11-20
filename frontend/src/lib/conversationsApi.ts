@@ -30,6 +30,17 @@ export interface StoredMessage {
     created_at: string;
 }
 
+/** Procédure de la conversation telle que l'utilisateur l'a laissée (rouverte avec elle) */
+export interface StoredProcedure {
+    key: string;
+    title: string;
+    workflow: unknown[];
+    enrichments?: Record<string, unknown>;
+    procedureMetadata?: Record<string, unknown> | null;
+    bpmnXml?: string | null;
+    workflow_db_id?: string | null;
+}
+
 export interface ConversationSource {
     id: string;
     filename: string;
@@ -67,7 +78,10 @@ export const conversationsApi = {
     create: (body: { title?: string; procedure_ids?: string[]; project_id?: string | null } = {}) =>
         call<{ conversation: ConversationSummary }>('', { method: 'POST', body: JSON.stringify(body) }).then(r => r.conversation),
     get: (id: string) =>
-        call<{ conversation: ConversationSummary; messages: StoredMessage[]; sources: ConversationSource[] }>(`/${id}`),
+        call<{ conversation: ConversationSummary; messages: StoredMessage[]; sources: ConversationSource[];
+            procedures?: StoredProcedure[]; active_procedure?: string | null }>(`/${id}`),
+    saveProcedures: (id: string, procedures: StoredProcedure[], active: string | null) =>
+        call<{ success: boolean }>(`/${id}/procedures`, { method: 'PUT', body: JSON.stringify({ procedures, active }) }),
     latestForProcedure: (procedureId: string) =>
         call<{ conversation: ConversationSummary | null }>(`/latest?procedure_id=${encodeURIComponent(procedureId)}`).then(r => r.conversation),
     update: (id: string, body: { title?: string; archived?: boolean; link_procedure_id?: string; project_id?: string | null; pinned?: boolean }) =>

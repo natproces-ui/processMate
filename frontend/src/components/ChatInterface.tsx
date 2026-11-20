@@ -8,7 +8,7 @@ import { API_CONFIG } from '@/lib/api-config';
 import { getAuthHeaders } from '@/lib/authHeaders';
 import { GUEST_LIMITS } from '@/lib/features';
 import { guestStore, GUEST_CONVERSATION_KEY } from '@/lib/guestStore';
-import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam, type ConversationSource, type StoredMessage } from '@/lib/conversationsApi';
+import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam, type ConversationSource, type StoredMessage, type StoredProcedure } from '@/lib/conversationsApi';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
 import MiniMarkdown from '@/components/shared/MiniMarkdown';
@@ -155,6 +155,8 @@ interface ChatInterfaceProps {
     procedureId?: string;
     /** Conversation courante (null = pas encore enregistrée) */
     onConversationChange?: (conversationId: string | null) => void;
+    /** Conversation rouverte avec ses procédures enregistrées : le panneau les reprend telles quelles */
+    onRestoreProcedures?: (procedures: StoredProcedure[], active: string | null) => void;
     /** Rouvrir les onglets des procédures générées en rechargeant une conversation */
     restoreGenerated?: boolean;
     /** Refléter la conversation dans l'URL (?c=) — un seul chat par page doit le faire */
@@ -218,6 +220,7 @@ export default function ChatInterface({
     onActivity,
     procedureId,
     onConversationChange,
+    onRestoreProcedures,
     restoreGenerated = true,
     syncUrl = false,
     projectId,
@@ -379,7 +382,7 @@ export default function ChatInterface({
     };
 
     /** Affiche des messages enregistrés et rouvre les onglets de leurs procédures générées */
-    const showStored = (stored: StoredMessage[], keepGenerated: boolean) => {
+    const showStored = (stored: StoredMessage[], keepGenerated: boolean, skipGenerated = false) => {
         const msgs = stored.map(toChatMessage);
         // La dernière proposition reste modifiable si rien n'a suivi
         const last = msgs[msgs.length - 1];
@@ -388,7 +391,7 @@ export default function ChatInterface({
         }
         if (keepGenerated) stored.forEach((m, i) => { if (m.payload?.generated) msgs[i].generated = m.payload.generated; });
         setMessages(msgs);
-        if (restoreGenerated) {
+        if (restoreGenerated && !skipGenerated) {
             for (const m of stored) {
                 for (const g of (m.payload?.generated || []) as StoredGenerated[]) {
                     const key = `${m.id}:${g.id}`;
@@ -402,9 +405,14 @@ export default function ChatInterface({
     const openConversation = async (id: string) => {
         try {
             const data = await conversationsApi.get(id);
-            showStored(data.messages, false);
+            // procédures enregistrées avec la conversation (dernier état, modifications comprises) ;
+            // sinon, anciennes conversations : celles produites au fil des messages
+            const saved = restoreGenerated && onRestoreProcedures && data.procedures?.length ? data.procedures : null;
+            showStored(data.messages, false, !!saved);
             setSources(data.sources);
             setConversation(id);
+            // après setConversation : les procédures reprises appartiennent à cette conversation
+            if (saved) onRestoreProcedures!(saved, data.active_procedure ?? null);
         } catch (err: unknown) {
             if (syncUrl) writeConversationParam(null);
             onError(`Conversation introuvable : ${err instanceof Error ? err.message : ''}`.trim());

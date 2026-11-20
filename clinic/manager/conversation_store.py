@@ -109,6 +109,40 @@ def update(conversation_id: str, owner_id: str, **fields) -> Optional[Dict[str, 
     return rows[0] if rows else None
 
 
+def merge_state(conversation_id: str, owner_id: str, **fields) -> Optional[Dict[str, Any]]:
+    """Met à jour certaines clés de l'état sans effacer les autres (proposition du tour,
+    procédures de la conversation enregistrées par le navigateur…)."""
+    conv = get_owned(conversation_id, owner_id)
+    if not conv:
+        return None
+    return update(conversation_id, owner_id, state={**(conv.get("state") or {}), **fields})
+
+
+# Procédures de la conversation telles que l'utilisateur les a laissées (modifications du chat,
+# retouches à la main, annulations comprises) : rouvertes avec la conversation.
+PROCEDURE_KEYS = ("key", "title", "workflow", "enrichments", "procedureMetadata", "bpmnXml", "workflow_db_id")
+MAX_PROCEDURES = 30
+MAX_PROCEDURES_BYTES = 4_000_000
+
+
+def save_procedures(conversation_id: str, owner_id: str, procedures: List[Dict[str, Any]],
+                    active: Optional[str]) -> bool:
+    """Enregistre les procédures de la conversation (sans la faire remonter dans les récents)."""
+    conv = get_owned(conversation_id, owner_id)
+    if not conv:
+        return False
+    clean = [{k: p.get(k) for k in PROCEDURE_KEYS if k in p} for p in procedures[:MAX_PROCEDURES] if p.get("key")]
+    state = {**(conv.get("state") or {}), "procedures": clean, "active_procedure": active}
+    (_db().table("conversations").update({"state": state})
+     .eq("id", conversation_id).eq("owner_id", owner_id).execute())
+    return True
+
+
+def procedures_of(conv: Dict[str, Any]) -> Dict[str, Any]:
+    state = conv.get("state") or {}
+    return {"procedures": state.get("procedures") or [], "active_procedure": state.get("active_procedure")}
+
+
 def link_procedure(conversation_id: str, owner_id: str, procedure_id: str) -> Optional[Dict[str, Any]]:
     conv = get_owned(conversation_id, owner_id)
     if not conv or not procedure_id:

@@ -123,3 +123,56 @@ class RecorderTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ProceduresStateTest(unittest.TestCase):
+    """Procédures gardées dans l'état de la conversation, sans écraser le reste."""
+
+    def setUp(self):
+        self.conv = {"id": "c1", "owner_id": "u1", "state": {"proposal": {"procedures": []}, "references": ["r"]}}
+        self.written = []
+
+        def fake_update(cid, owner, **fields):
+            self.conv = {**self.conv, **fields}
+            return self.conv
+
+        class Q:
+            def __init__(q, data=None): q.data = data
+            def update(q, data): self.written.append(data); self.conv = {**self.conv, **data}; return q
+            def eq(q, *_): return q
+            def execute(q): return q
+            def table(q, _): return q
+
+        self.patches = [
+            mock.patch.object(store, "get_owned", side_effect=lambda cid, owner: self.conv if owner == "u1" else None),
+            mock.patch.object(store, "update", side_effect=fake_update),
+            mock.patch.object(store, "_db", return_value=Q()),
+        ]
+        for p in self.patches:
+            p.start()
+
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+    def test_save_keeps_proposal_and_drops_unknown_keys(self):
+        ok = store.save_procedures("c1", "u1", [
+            {"key": "a", "title": "Épargne", "workflow": [{"id": "1"}], "secret": "x"},
+            {"title": "sans clé"},
+        ], "a")
+        self.assertTrue(ok)
+        state = self.conv["state"]
+        self.assertEqual(state["references"], ["r"])
+        self.assertEqual(state["active_procedure"], "a")
+        self.assertEqual(state["procedures"], [{"key": "a", "title": "Épargne", "workflow": [{"id": "1"}]}])
+        # sauvegarde silencieuse : la conversation ne remonte pas dans les récents
+        self.assertNotIn("updated_at", self.written[-1])
+
+    def test_turn_merge_keeps_procedures(self):
+        store.save_procedures("c1", "u1", [{"key": "a", "title": "T"}], "a")
+        store.merge_state("c1", "u1", proposal=None, references=[])
+        self.assertEqual(self.conv["state"]["procedures"], [{"key": "a", "title": "T"}])
+        self.assertEqual(store.procedures_of(self.conv)["active_procedure"], "a")
+
+    def test_other_owner_refused(self):
+        self.assertFalse(store.save_procedures("c1", "u2", [{"key": "a"}], None))

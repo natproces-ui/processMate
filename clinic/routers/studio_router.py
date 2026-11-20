@@ -443,8 +443,9 @@ def _record(gen, conv: Optional[Dict[str, Any]], sess: Dict[str, Any], ix: Optio
                 ids = (ix or {}).get("ids") or []
                 store.add_message(conv["id"], msg["role"], msg["content"], msg["payload"],
                                   interaction_id=ids[-1] if ids else None)
-                state = {"proposal": sess.get("proposal"), "references": sess.get("references")}
-                store.update(conv["id"], conv["owner_id"], state=state)
+                # fusion : les procédures enregistrées par le navigateur restent dans l'état
+                store.merge_state(conv["id"], conv["owner_id"],
+                                  proposal=sess.get("proposal"), references=sess.get("references"))
             except Exception as e:
                 logger.error(f"❌ Réponse non enregistrée dans la conversation {conv['id']} : {e}")
 

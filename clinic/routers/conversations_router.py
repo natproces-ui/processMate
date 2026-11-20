@@ -7,6 +7,7 @@ conversation). Désactivé tant que CONVERSATIONS_ENABLED n'est pas à true (404
 """
 
 import asyncio
+import json
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -36,6 +37,11 @@ class UpdateBody(BaseModel):
     link_procedure_id: Optional[str] = None
     project_id: Optional[str] = None
     pinned: Optional[bool] = None
+
+
+class ProceduresBody(BaseModel):
+    procedures: List[dict] = Field(default_factory=list, max_length=store.MAX_PROCEDURES)
+    active: Optional[str] = Field(default=None, max_length=200)
 
 
 def _public(conv: dict) -> dict:
@@ -123,7 +129,18 @@ async def get_conversation(conversation_id: str, user: AuthUser = Depends(requir
         "conversation": _public(conv),
         "messages": [{k: m.get(k) for k in ("id", "role", "content", "payload", "created_at")} for m in msgs],
         "sources": [_public_source(s) for s in srcs],
+        **store.procedures_of(conv),
     }
+
+
+@router.put("/{conversation_id}/procedures", dependencies=[Depends(_enabled)])
+async def save_procedures(conversation_id: str, body: ProceduresBody, user: AuthUser = Depends(require_user)):
+    """Procédures de la conversation telles qu'affichées (rouvertes avec elle)."""
+    if len(json.dumps(body.procedures, ensure_ascii=False)) > store.MAX_PROCEDURES_BYTES:
+        raise HTTPException(413, "Procédures trop volumineuses pour être gardées avec la conversation")
+    if not await asyncio.to_thread(store.save_procedures, conversation_id, user.id, body.procedures, body.active):
+        raise HTTPException(404, "Conversation introuvable")
+    return {"success": True}
 
 
 @router.patch("/{conversation_id}", dependencies=[Depends(_enabled)])
