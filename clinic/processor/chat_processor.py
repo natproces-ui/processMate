@@ -595,7 +595,10 @@ pour générer ou enrichir le processus demandé.
                     if normalized:
                         turn_progress.emit({"type": "workflow_preview", "row": normalized[0], "new": not replace})
                         n = reader_rows[0] = reader_rows[0] + 1
-                        turn_progress.status("work", f"{label} : {n} étape{'s' if n > 1 else ''}", "running")
+                        # l'étape réellement en cours d'écriture, pas seulement un compteur
+                        name = str(normalized[0].get("étape") or "").strip()
+                        name = name[:70] + "…" if len(name) > 70 else name
+                        turn_progress.status("work", f"{label} · étape {n}" + (f" : {name}" if name else ""), "running")
             return "".join(chunks)
 
         try:

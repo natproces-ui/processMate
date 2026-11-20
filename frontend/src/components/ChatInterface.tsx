@@ -266,6 +266,17 @@ export default function ChatInterface({
     const [conversationId, setConversationIdState] = useState<string | null>(null);
     const conversationIdRef = useRef<string | null>(null);
     const [sources, setSources] = useState<ConversationSource[]>([]);
+    const [sourcesOpen, setSourcesOpen] = useState(false);
+    const sourcesRef = useRef<HTMLDivElement>(null);
+    // la liste des sources se ferme au clic ailleurs ou avec Échap
+    useEffect(() => {
+        if (!sourcesOpen) return;
+        const onDown = (e: MouseEvent) => { if (!sourcesRef.current?.contains(e.target as Node)) setSourcesOpen(false); };
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSourcesOpen(false); };
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+    }, [sourcesOpen]);
     const loadedConversationRef = useRef(false);
     const isAdmin = profile?.global_role === 'admin';
     const [dragging, setDragging] = useState(false);
@@ -1210,24 +1221,6 @@ export default function ChatInterface({
                 <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-neutral-900/70 bg-white shadow-sm focus-within:border-neutral-900"}>
                     {inputContext && <div hidden={!inputContextVisible} className="border-b border-neutral-200 p-3 bg-neutral-50/50 rounded-t-2xl">{inputContext}</div>}
                     <div className="px-3 py-2">
-                    {/* ── Sources enregistrées de la conversation (elles s'ajoutent d'un message à l'autre) ── */}
-                    {persistent && conversationId && sources.length > 0 && (
-                        <div className="pb-2 pt-1" aria-label="Sources de la conversation">
-                            <p className="text-[11px] font-medium text-neutral-500 mb-1">Sources de la conversation</p>
-                            <div className="flex gap-1.5 flex-wrap">
-                                {sources.map(src => (
-                                    <span key={src.id} className="inline-flex items-center gap-1 max-w-[220px] rounded-lg border border-neutral-300 bg-neutral-50 pl-2 pr-1 py-0.5 text-[11px] text-neutral-900">
-                                        <span className="truncate" title={src.filename}>{src.filename}</span>
-                                        <button type="button" aria-label={`Retirer la source ${src.filename}`} title="Retirer cette source"
-                                            onClick={() => removeSource(src.id)} disabled={loading}
-                                            className="p-0.5 rounded text-neutral-500 hover:text-red-600 hover:bg-white disabled:opacity-40">
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                     {/* ── Fichiers attachés ─────────────────── */}
                     {attachedFiles.length > 0 && (
                         <div className="pb-2 pt-1 flex gap-2 flex-wrap">
@@ -1313,6 +1306,37 @@ export default function ChatInterface({
                                     {recording ? 'Arrêter le vocal' : processing ? 'Traitement vocal…' : 'Vocal'}
                                 </button>}
                                 {recording && onCancelRecording && <button type="button" onClick={onCancelRecording} className="text-xs text-neutral-700 hover:text-red-600">Annuler le vocal</button>}
+                                {/* Sources de la conversation : déjà lues, gardées d'un message à l'autre. Un bouton
+                                    discret (pas des pièces jointes en attente d'envoi), la liste s'ouvre au clic */}
+                                {persistent && conversationId && sources.length > 0 && (
+                                    <div ref={sourcesRef} className="relative">
+                                        <button type="button" onClick={() => setSourcesOpen(o => !o)} aria-expanded={sourcesOpen}
+                                            title="Fichiers déjà joints à cette conversation"
+                                            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100">
+                                            <Paperclip className="w-4 h-4" />
+                                            {sources.length} source{sources.length > 1 ? 's' : ''}
+                                        </button>
+                                        {sourcesOpen && (
+                                            <div role="dialog" aria-label="Sources de la conversation"
+                                                className="absolute bottom-full left-0 z-40 mb-2 w-72 max-w-[80vw] rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
+                                                <p className="px-1 pb-1.5 text-[11px] text-neutral-500">Déjà lues par l&apos;assistant ; gardées pour toute la conversation.</p>
+                                                <ul className="max-h-60 overflow-y-auto">
+                                                    {sources.map(src => (
+                                                        <li key={src.id} className="flex items-center gap-2 rounded-lg px-1.5 py-1.5 text-sm text-neutral-900 hover:bg-neutral-50">
+                                                            <FileText className="w-4 h-4 shrink-0" />
+                                                            <span className="min-w-0 flex-1 truncate" title={src.filename}>{src.filename}</span>
+                                                            <button type="button" aria-label={`Retirer la source ${src.filename}`} title="Retirer cette source"
+                                                                onClick={() => removeSource(src.id)} disabled={loading}
+                                                                className="p-1 rounded text-neutral-500 hover:text-red-600 hover:bg-white disabled:opacity-40">
+                                                                <X className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
 
                             </div>
                             <div className="ml-auto flex items-center gap-2">

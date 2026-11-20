@@ -535,8 +535,10 @@ async def studio_turn(
                                                   False, None, message, sess.get("references")):
                             yield ev
                     return
-                if not new_files and not sess.get("proposal"):
-                    # Sans fichiers ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…)
+                if not sess["files"] and not sess.get("proposal"):
+                    # Ni sources ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…).
+                    # Avec des sources déjà jointes (ex. relance après une erreur), on passe par leur analyse :
+                    # sinon le chat rédigeait une procédure sans avoir lu le fichier.
                     yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "running"})
                     # l'étape « think » est terminée par _delegate_to_chat (avec ce qui a été compris)
                     async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
@@ -545,10 +547,12 @@ async def studio_turn(
                     return
 
                 n = len(sess["files"])
-                label = _reading_label(new_files) if new_files else "Analyse de la demande"
+                # sources jointes plus tôt, pas encore analysées (ex. relance après une erreur)
+                to_plan = plan_files or ([] if sess.get("proposal") else sess["files"])
+                label = _reading_label(to_plan) if to_plan else "Analyse de la demande"
                 yield _sse({"type": "status", "id": "plan", "label": label, "state": "running"})
-                with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(plan_files)), interactions_scope(ix):
-                    plan = await asyncio.to_thread(plan_turn, message, plan_files, has_workflow, history_list, sess.get("proposal"))
+                with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(to_plan)), interactions_scope(ix):
+                    plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"))
                 found = len(plan.procedures)
                 done_label = (f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
                               if plan.action in ("generate", "propose", "merge") else label)
@@ -558,7 +562,7 @@ async def studio_turn(
 
                 if plan.procedures:
                     sess["proposal"] = plan.procedures
-                if new_files:
+                if to_plan:
                     sess["references"] = plan.references
                 if plan.action == "propose":
                     yield _sse({"type": "proposal", "procedures": plan.procedures, "selected": [p["id"] for p in plan.procedures]})

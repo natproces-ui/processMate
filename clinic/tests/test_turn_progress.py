@@ -97,7 +97,7 @@ class StreamedWorkflowTest(unittest.TestCase):
         rows = [e["row"]["étape"] for e in events if e["type"] == "workflow_preview"]
         self.assertEqual(rows, ["Début", "Vérifier les pièces", "Fin"])
         labels = [e["label"] for e in events if e["type"] == "status"]
-        self.assertEqual(labels[-1], "Rédaction de la procédure : 3 étapes")
+        self.assertEqual(labels[-1], "Rédaction de la procédure · étape 3 : Fin")
 
     def test_failure_resets_preview(self):
         text, events = self.run_stream(fail=True)

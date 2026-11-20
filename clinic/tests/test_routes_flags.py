@@ -75,6 +75,29 @@ class FlagsAndAuthTest(unittest.TestCase):
         self.assertIn("que souhaitez-vous formaliser", r.text)
         self.assertIn('"type": "done"', r.text)
 
+    def test_sources_already_joined_are_analysed_on_retry(self):
+        """Relance après une erreur : le fichier est déjà dans les sources, il doit être lu
+        (avant : le chat rédigeait une procédure sans l'avoir lu)."""
+        from routers import studio_router
+        from processor.studio_planner import StudioPlan
+        seen = []
+
+        def fake_plan(message, files, has_workflow, history, proposal):
+            seen.append([f["filename"] for f in files])
+            if len(seen) == 1:
+                raise RuntimeError("cannot write mode CMYK as PNG")
+            return StudioPlan(action="propose", reply="3 procédures trouvées.",
+                              procedures=[{"id": f"p{i}", "title": f"Procédure {i}"} for i in range(1, 4)])
+
+        env = {"GUEST_LIMITS_ENABLED": "false", "STUDIO_AGENT_ENABLED": "false"}
+        with mock.patch.dict(os.environ, env), mock.patch.object(studio_router, "plan_turn", fake_plan),                 mock.patch.object(studio_router, "_delegate_to_chat", side_effect=AssertionError("chat sans les sources")):
+            r1 = self.client.post("/api/studio/turn", data={"session_id": "retry-sources", "message": "extrais"},
+                                  files={"files": ("deck.pdf", b"%PDF-1.4 /Type /Page", "application/pdf")})
+            r2 = self.client.post("/api/studio/turn", data={"session_id": "retry-sources", "message": "extrais"})
+        self.assertIn('"type": "error"', r1.text)
+        self.assertEqual(seen, [["deck.pdf"], ["deck.pdf"]])
+        self.assertIn('"type": "proposal"', r2.text)
+
 
 if __name__ == "__main__":
     unittest.main()
