@@ -14,9 +14,14 @@ def proc(pid, title, file="manuel.pdf", pages="1-3"):
 
 
 class GuardrailTests(unittest.TestCase):
-    def test_single_procedure_is_generated_directly(self):
-        plan = apply_guardrails({"action": "propose", "procedures": [proc("p1", "A")]}, FILES, False)
+    def test_single_procedure_generated_when_asked(self):
+        plan = apply_guardrails({"action": "generate", "procedures": [proc("p1", "A")]}, FILES, False)
         self.assertEqual((plan.action, plan.targets), ("generate", ["p1"]))
+
+    def test_single_procedure_proposed_when_file_only_presented(self):
+        # « voici notre support » : on propose, rien n'est généré d'office
+        plan = apply_guardrails({"action": "propose", "procedures": [proc("p1", "A")]}, FILES, False)
+        self.assertEqual(plan.action, "propose")
 
     def test_several_without_target_are_proposed(self):
         plan = apply_guardrails({"action": "generate", "procedures": [proc("p1", "A"), proc("p2", "B")]}, FILES, False)
@@ -26,7 +31,7 @@ class GuardrailTests(unittest.TestCase):
         data = {"action": "propose", "procedures": [proc("p1", "A"), proc("p2", "Fantôme", file="inexistant.pdf")]}
         plan = apply_guardrails(data, FILES, False)
         self.assertEqual([p["title"] for p in plan.procedures], ["A"])
-        self.assertEqual(plan.action, "generate")  # il n'en reste qu'une
+        self.assertEqual(plan.action, "propose")  # il n'en reste qu'une : l'utilisateur confirme
 
     def test_too_many_targets_require_confirmation(self):
         procs = [proc(f"p{i}", f"P{i}") for i in range(1, MAX_AUTO_GENERATE + 3)]

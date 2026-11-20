@@ -547,9 +547,10 @@ async def studio_turn(
                     return
 
                 n = len(sess["files"])
-                # sources jointes plus tôt, pas encore analysées (ex. relance après une erreur)
-                to_plan = plan_files or ([] if sess.get("proposal") else sess["files"])
-                label = _reading_label(to_plan) if to_plan else "Analyse de la demande"
+                # Toutes les sources de la conversation, à chaque message : une question sur leur contenu, une
+                # relance ou une nouvelle extraction en ont besoin, même après une première proposition
+                to_plan = plan_files or sess["files"]
+                label = _reading_label(new_files) if new_files else "Analyse de la demande"
                 yield _sse({"type": "status", "id": "plan", "label": label, "state": "running"})
                 with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(to_plan)), interactions_scope(ix):
                     plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"))

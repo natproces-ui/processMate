@@ -125,9 +125,8 @@ def apply_guardrails(
         action = "answer"
         reply = reply or "Je n'ai pas trouvé de procédure exploitable dans ces fichiers. Pouvez-vous préciser ce que vous attendez ?"
         adjustments.append("aucune procédure repérée")
-    if action == "propose" and len(procedures) == 1:
-        action, targets = "generate", ids
-        adjustments.append("une seule procédure : génération directe")
+    # Une seule procédure proposée : le modèle ne la génère pas d'office quand le message ne fait que
+    # présenter le fichier (« voici notre support ») ; l'utilisateur confirme d'un clic.
     if action == "merge" and not targets:
         targets = ids
     if action == "generate" and not targets:

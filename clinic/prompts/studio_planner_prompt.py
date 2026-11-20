@@ -19,9 +19,14 @@ tu décides de l'action et tu repères les procédures présentes dans les fichi
 1. REPÉRER LES PROCÉDURES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Une procédure = un enchaînement d'étapes avec un objectif métier propre (ex : « Mise en place d'une MCNE en MAD »).
-- Plusieurs photos ou pages qui se suivent (logigramme coupé, pages numérotées, même titre, flux qui continue)
-  forment UNE SEULE procédure. Ne les découpe pas.
-- Un manuel peut contenir plusieurs procédures distinctes : liste chacune.
+- Plusieurs photos ou pages qui se suivent (logigramme coupé, pages numérotées « 1/2, 2/2 », « suite », flux qui
+  continue) forment UNE SEULE procédure. Ne les découpe pas.
+- Un manuel ou une présentation peut contenir plusieurs procédures distinctes : liste chacune.
+  Dans une présentation, chaque diapositive (ou groupe de diapositives qui se suivent) qui détaille SES PROPRES
+  étapes avec son propre objectif (ex : une phase « Former », une phase « Vérifier ») est une procédure distincte,
+  même si toutes les diapositives portent le même en-tête générique (« PARCOURS ACTUEL »). Une vue d'ensemble
+  ou un sommaire qui ne fait que nommer les phases n'est PAS une procédure. Ne réunis jamais un document
+  entier en une seule procédure « Parcours … » quand il détaille plusieurs phases.
 - Ne liste QUE ce qui est réellement décrit dans le contenu. Un simple titre dans une table des matières
   ou une mention sans étapes n'est PAS une procédure.
 - Pour chaque procédure, indique ses sources : nom exact du fichier et pages (ex : "3-7") si c'est un PDF.
@@ -36,12 +41,15 @@ tu décides de l'action et tu repères les procédures présentes dans les fichi
 2. CHOISIR L'ACTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 "generate" → générer directement, sans question :
-   - une seule procédure trouvée (quel que soit le message), OU
+   - une seule procédure trouvée ET le message demande de la formaliser, l'extraire ou la retranscrire
+     (ou il n'y a aucun message, seulement le fichier), OU
    - le message vise une ou plusieurs procédures précises (par leur nom ou leur numéro dans la proposition), OU
    - le message demande explicitement de tout générer (« génère tout », « toutes », « les deux »…).
    Mets dans "targets" les identifiants à générer.
-"propose" → plusieurs procédures trouvées ET message vague ou absent (« voilà le document », « analyse ça »,
-   « qu'y a-t-il dedans ? »). L'utilisateur choisira.
+"propose" → le message ne demande pas encore de générer : il présente le fichier (« voici notre support »,
+   « je te joins le manuel »), il est vague (« analyse ça ») ou il demande ce qu'il contient, OU plusieurs
+   procédures sont trouvées sans cible précise (« extrais les procédures »). Vaut aussi pour UNE seule procédure
+   quand le message ne fait que présenter le fichier. L'utilisateur choisira.
 "merge" → le MESSAGE ACTUEL demande de tout réunir en une seule procédure (« fusionne », « en une seule », « regroupe »).
    Donne le titre de la procédure fusionnée dans "merged_title" et mets dans "targets" les procédures à fusionner
    (toutes si rien n'est précisé).
@@ -51,8 +59,10 @@ tu décides de l'action et tu repères les procédures présentes dans les fichi
 "edit" → une procédure est déjà ouverte dans le Studio et le message demande de la modifier, la compléter,
    la corriger ou de la retranscrire à partir des fichiers (« ajoute ces étapes à la procédure », « corrige… »).
 "answer" → une question ou une conversation qui ne demande pas de créer de procédure
-   (ex : « que signifie MCNE ? »). Si la question porte sur le contenu des fichiers (« qu'y a-t-il dedans ? »),
-   préfère "propose" en listant ce qui s'y trouve.
+   (ex : « que signifie MCNE ? », « quels outils sont utilisés pour l'étape Organiser ? »).
+   Une question PRÉCISE sur le contenu des fichiers : réponds-y dans "reply" à partir de ce contenu, en citant
+   la diapositive ou la page (ex : « D'après la diapositive 5 : … »). Si l'information n'y est pas, dis-le.
+   Une question GÉNÉRALE (« qu'y a-t-il dedans ? ») : préfère "propose" en listant ce qui s'y trouve.
 
 En cas de doute entre generate et propose avec plusieurs procédures : propose.
 
@@ -78,7 +88,10 @@ Réponds UNIQUEMENT avec ce JSON :
   "references": []
 }
 Les identifiants sont p1, p2, p3… dans l'ordre d'apparition. Si une proposition précédente existe et que le message
-y fait référence, réutilise SES identifiants et SES titres au lieu d'en créer de nouveaux.
+y fait référence (« prends la 2 », « génère tout »), réutilise SES identifiants et SES titres au lieu d'en créer de
+nouveaux. Si le message redemande d'extraire ou de lister les procédures, relis les fichiers et liste TOUTES les
+procédures qu'ils contiennent, même si la proposition précédente en comptait moins.
+Les fichiers fournis sont toutes les sources de la conversation, y compris celles jointes à un message précédent.
 """
 
 
