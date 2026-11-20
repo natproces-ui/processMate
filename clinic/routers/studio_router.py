@@ -466,6 +466,8 @@ async def studio_turn(
     current_workflow: Optional[str] = Form(None),
     current_enrichments: Optional[str] = Form(None),
     current_procedure_metadata: Optional[str] = Form(None),
+    conversation_procedures: Optional[str] = Form(None),
+    active_procedure: Optional[str] = Form(None),
     files: List[UploadFile] = File(default=[]),
     user: Optional[AuthUser] = Depends(get_optional_user),
 ):
@@ -537,7 +539,8 @@ async def studio_turn(
                     # Sans fichiers ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…)
                     yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "running"})
                     # l'étape « think » est terminée par _delegate_to_chat (avec ce qui a été compris)
-                    async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata):
+                    async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
+                                                      _loads(conversation_procedures, None), active_procedure):
                         yield ev
                     return
 
@@ -567,7 +570,8 @@ async def studio_turn(
                                               sess.get("references")):
                         yield ev
                 elif plan.action == "edit":
-                    async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata):
+                    async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
+                                                  _loads(conversation_procedures, None), active_procedure):
                         yield ev
                 # answer : la réponse a déjà été envoyée
             except GuestLimitError as e:
@@ -624,7 +628,8 @@ def _reading_label(files: List[Dict[str, Any]]) -> str:
     return f"Lecture de {', '.join(described)}{more}"
 
 
-async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw):
+async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw,
+                            procedures=None, active_procedure=None):
     """Modifications et conversation : logique existante du chat (patch, regen, explain…)."""
     from processor.chat_processor import ChatProcessor
     chat_files = [{"filename": f["filename"], "content": f["data"],
@@ -637,6 +642,7 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
         task = asyncio.create_task(ChatProcessor().process_message(
             message=message, files=chat_files, history=history, current_workflow=workflow,
             current_enrichments=_loads(enrichments_raw, None), current_procedure_metadata=_loads(metadata_raw, None),
+            procedures=procedures if isinstance(procedures, list) else None, active_procedure=active_procedure,
         ))
     work_started = think_done = False
     while not task.done() or not queue.empty():

@@ -168,7 +168,8 @@ FORMAT DE SORTIE JSON STRICT
   "clarify_question": "Question à poser si intent=clarify, sinon null",
   "reference_files": ["nom_fichier_ref.pdf"],
   "source_files": ["nom_fichier_source.pdf"],
-  "summary": "Résumé en 1 phrase de ce que tu vas faire"
+  "summary": "Résumé en 1 phrase de ce que tu vas faire",
+  "target_procedure": null
 }
 
 ⚠️ transcribe_mode est OBLIGATOIRE si intent = "transcribe", sinon null.
@@ -177,25 +178,56 @@ JSON PUR sans markdown.
 """
 
 
+PROCEDURES_SECTION = """━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROCÉDURES DE LA CONVERSATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+La conversation contient plusieurs procédures. Celle marquée [affichée] est à l'écran.
+{lines}
+
+Indique dans "target_procedure" le NUMÉRO de la procédure dont parle le message
+(intents patch, explain, regen) :
+- le message la nomme ou la désigne (titre, sujet, acteur ou étape qui n'existe que dans elle) ;
+- ou la discussion récente porte sur elle et le message en est la suite (l'utilisateur a changé
+  de procédure plus haut dans la conversation) ;
+- sinon : la procédure [affichée].
+Ne change de procédure que si c'est clair à la lecture de la conversation.
+Si le message demande une modification qui peut concerner plusieurs de ces procédures sans
+qu'on puisse trancher → intent "clarify", en demandant laquelle (cite leurs titres).
+Pour une NOUVELLE procédure (generate, web_search, transcribe) : "target_procedure": null.
+
+"""
+
+
 def get_intent_prompt(
     message: str,
     has_workflow: bool,
     filenames: list,
-    history: list = None
+    history: list = None,
+    procedures: list = None,
 ) -> str:
     files_str = ", ".join(filenames) if filenames else "aucun"
 
     history_str = ""
     if history:
-        last = history[-4:]
+        # Plusieurs procédures : un peu plus d'historique pour voir où la discussion a changé de sujet
+        last = history[-8:] if procedures and len(procedures) >= 2 else history[-4:]
         history_str = "\nHistorique récent de la conversation :\n"
         for h in last:
             role = "Utilisateur" if h["role"] == "user" else "Assistant"
-            history_str += f"[{role}] : {h['content']}\n"
+            content = str(h.get("content") or "")
+            history_str += f"[{role}] : {content[:600] + '…' if len(content) > 600 else content}\n"
         history_str += "\n"
 
+    procedures_str = ""
+    if procedures and len(procedures) >= 2:
+        lines = "\n".join(
+            f"{p['n']}. {p['title']} ({p['steps']} étapes){' [affichée]' if p.get('displayed') else ''}"
+            for p in procedures)
+        procedures_str = PROCEDURES_SECTION.format(lines=lines)
+
     return f"""{INTENT_SYSTEM_PROMPT}
-{history_str}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{history_str}{procedures_str}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTEXTE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

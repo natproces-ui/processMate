@@ -62,6 +62,9 @@ class TurnRecorder:
             self.payload["suggestions"] = ev.get("items") or []
         elif t == "chat_result":
             self._chat_result(ev.get("result") or {})
+        elif t == "target_procedure":
+            # le message visait une autre procédure de la conversation : son nom reste sur la carte
+            self.payload["targetTitle"] = ev.get("title")
         elif t == "error":
             self.error = ev.get("message")
 

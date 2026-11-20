@@ -123,11 +123,17 @@ class ChatProcessor:
         current_workflow: Optional[List[Dict]] = None,
         current_enrichments: Optional[Dict] = None,
         current_procedure_metadata: Optional[Dict] = None,
+        procedures: Optional[List[Dict]] = None,
+        active_procedure: Optional[str] = None,
     ) -> Dict[str, Any]:
 
         files = _normalize_files(files)
         filenames = [f.get("filename", "") for f in files]
-        has_workflow = bool(current_workflow and len(current_workflow) > 0)
+        # Plusieurs procédures dans la conversation : le classifieur dit de laquelle on parle
+        procs = [p for p in (procedures or []) if isinstance(p, dict) and p.get("key") and p.get("workflow")]
+        if len(procs) < 2:
+            procs = []
+        has_workflow = bool(current_workflow and len(current_workflow) > 0) or bool(procs)
 
         logger.info(f"💬 Chat — has_workflow={has_workflow}, files={filenames}")
 
@@ -140,8 +146,21 @@ class ChatProcessor:
                 message=message,
                 has_workflow=has_workflow,
                 filenames=filenames,
-                history=history  # ← historique passé au classifier
+                history=history,  # ← historique passé au classifier
+                procedures=[{"n": i + 1, "title": p.get("title") or "Procédure", "steps": len(p["workflow"]),
+                             "displayed": p["key"] == active_procedure} for i, p in enumerate(procs)] or None,
             )
+
+        # Le message parle d'une autre procédure que celle affichée : on travaille sur elle,
+        # et le navigateur l'affiche avant de la modifier
+        if procs and intent_result.target_procedure and intent_result.intent in ("patch", "explain", "regen"):
+            target = procs[intent_result.target_procedure - 1]
+            if target["key"] != active_procedure:
+                current_workflow = target["workflow"]
+                current_enrichments = target.get("enrichments") or {}
+                current_procedure_metadata = target.get("procedureMetadata") or {}
+                turn_progress.emit({"type": "target_procedure", "key": target["key"], "title": target.get("title")})
+                logger.info(f"🎯 Procédure visée : {target.get('title')}")
 
         logger.info(f"🎯 Intent: {intent_result.intent} — {intent_result.summary}")
         # Ce que l'assistant a compris, en français, puis ce qu'il fait

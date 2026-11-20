@@ -52,8 +52,10 @@ export function changeTitle(changes: StepChange[]): string {
     return `${n} étape${n > 1 ? 's' : ''} modifiée${n > 1 ? 's' : ''}`;
 }
 
-export default function ChangeSummary({ changes, onShow, onUndo, undone, disabled }: {
+export default function ChangeSummary({ changes, onShow, onUndo, undone, disabled, procedure }: {
     changes: StepChange[];
+    /** Procédure modifiée, quand la conversation en contient plusieurs et que ce n'était pas l'affichée */
+    procedure?: string;
     onShow?: (ids: string[]) => void;
     onUndo?: () => void;
     undone?: boolean;
@@ -78,7 +80,7 @@ export default function ChangeSummary({ changes, onShow, onUndo, undone, disable
                     <PenLine className="w-4 h-4 shrink-0" />
                     <span>{undone ? 'Modifications annulées' : changeTitle(changes)}</span>
                 </button>
-                <span className="text-xs text-neutral-500">{parts}</span>
+                <span className="text-xs text-neutral-500">{procedure && <span className="font-medium text-neutral-900">{procedure} · </span>}{parts}</span>
                 <span className="ml-auto flex items-center gap-1">
                     {onShow && visibleIds.length > 0 && !undone && (
                         <button type="button" onClick={() => onShow(visibleIds)}

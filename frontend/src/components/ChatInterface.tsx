@@ -62,6 +62,8 @@ interface ChatMessage {
     operationsCount?: number;
     /** Modification : étapes ajoutées, modifiées, supprimées (carte « N étapes modifiées ») */
     changes?: StepChange[];
+    /** Procédure de la conversation visée par le message, quand ce n'était pas celle affichée */
+    targetTitle?: string;
     createdAt: Date;
     attachments?: SentAttachment[];
     steps?: TurnStep[];
@@ -125,8 +127,9 @@ interface ChatInterfaceProps {
         title: string,
         enrichments: Map<string, TaskEnrichment>,
         procedureMetadata?: any,
-        /** isNew : une autre procédure (création, transcription), à ajouter sans écraser celle affichée */
-        options?: { isNew?: boolean }
+        /** isNew : une autre procédure (création, transcription), à ajouter sans écraser celle affichée ;
+         *  procedureKey : la procédure de la conversation que le message visait (si ce n'est pas l'affichée) */
+        options?: { isNew?: boolean; procedureKey?: string }
     ) => void;
     onError: (msg: string) => void;
     onSuccess: (msg: string) => void;
@@ -135,7 +138,12 @@ interface ChatInterfaceProps {
     /** Étape reçue pendant la génération (aperçu, remplacé par la version finale). */
     onProcedureRow?: (key: string, row: Table1Row) => void;
     /** Procédure décrite en texte : les étapes s'affichent pendant l'écriture ([] : aperçu effacé) */
-    onWorkflowPreview?: (rows: Table1Row[], options?: { isNew?: boolean }) => void;
+    onWorkflowPreview?: (rows: Table1Row[], options?: { isNew?: boolean; procedureKey?: string }) => void;
+    /** Procédures de la conversation (au moins deux) : le serveur comprend de laquelle parle le message */
+    conversationProcedures?: StoredProcedure[];
+    activeProcedureKey?: string | null;
+    /** Le message parle d'une autre procédure : l'afficher avant de la modifier */
+    onTargetProcedure?: (key: string) => void;
     onProcedureReady?: (proc: GeneratedProcedure) => void;
     onProcedureError?: (key: string, message: string) => void;
     onSelectProcedure?: (key: string) => void;
@@ -166,7 +174,7 @@ interface ChatInterfaceProps {
     /** Invité : garder la conversation dans le navigateur et appliquer les limites avant envoi */
     guestPersistence?: boolean;
     /** Lot 5 : instantané de la procédure pris juste avant une modification par le chat */
-    onCheckpoint?: () => unknown;
+    onCheckpoint?: (procedureKey?: string) => unknown;
     /** Lot 5 : revenir à un instantané (bouton « Restaurer l'état d'avant ») */
     onRestore?: (snapshot: unknown) => void;
     /** Lot 5 : points ouverts relevés pour une procédure générée */
@@ -226,6 +234,9 @@ export default function ChatInterface({
     projectId,
     guestPersistence = false,
     onCheckpoint,
+    conversationProcedures,
+    activeProcedureKey,
+    onTargetProcedure,
     onRestore,
     onOpenPoints,
     onAgentOpenPoint,
@@ -356,7 +367,7 @@ export default function ChatInterface({
         if (m.role === 'user') return m.attachments?.length ? { attachments: m.attachments.map(({ name, type, size }) => ({ name, type, size })) } : {};
         return {
             intent: m.intent, steps: m.steps, totalSteps: m.totalSteps, title: m.title, operationsCount: m.operationsCount,
-            changes: m.changes, proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
+            changes: m.changes, targetTitle: m.targetTitle, proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
             generations: m.generations?.map(g => ({ id: g.key.slice(g.key.indexOf(':') + 1), title: g.title, status: g.status, steps: g.steps, error: g.error })),
             generated: m.generated,
             agentProposals: m.agentProposals,
@@ -372,7 +383,7 @@ export default function ChatInterface({
         return {
             ...base,
             intent: p.intent, steps: p.steps, totalSteps: p.totalSteps, title: p.title, operationsCount: p.operationsCount,
-            changes: p.changes, proposal: p.proposal ? { procedures: p.proposal.procedures || [], selected: p.proposal.selected || [], submitted: p.proposal.submitted ?? true } : undefined,
+            changes: p.changes, targetTitle: p.targetTitle, proposal: p.proposal ? { procedures: p.proposal.procedures || [], selected: p.proposal.selected || [], submitted: p.proposal.submitted ?? true } : undefined,
             generations: (p.generations || []).map((g: { id: string; title: string; status: TurnGeneration['status']; steps?: number; error?: string }) => ({
                 key: `${m.id}:${g.id}`, title: g.title, status: g.status === 'generating' ? 'stopped' : g.status, steps: g.steps, error: g.error,
             })),
@@ -544,18 +555,21 @@ export default function ChatInterface({
             updateMsg(msgId, m => ({ ...m, intent: 'explain', content: data.answer || '' }));
             return;
         }
+        // Procédure visée par le message (autre que celle affichée au moment de l'envoi)
+        const target = targetRef.current?.msgId === msgId ? targetRef.current : null;
+        const baseWorkflow = target?.workflow ?? currentWorkflow;
         // Point de restauration : l'état d'avant, pris avant que la modification ne s'applique
         const preview = previewRef.current?.msgId === msgId ? previewRef.current : null;
         if (preview) preview.final = true;
         if (preview && preview.rows.length > 0) {
             if (preview.checkpoint !== undefined) updateMsg(msgId, m => ({ ...m, checkpoint: preview.checkpoint }));
-        } else if (currentWorkflow.length > 0 && onCheckpoint && !isNewProcedure(intent)) {
-            const snapshot = onCheckpoint();
+        } else if (baseWorkflow.length > 0 && onCheckpoint && !isNewProcedure(intent)) {
+            const snapshot = onCheckpoint(target?.key);
             updateMsg(msgId, m => ({ ...m, checkpoint: snapshot }));
         }
         if (intent === 'patch') {
             const operations = data.operations || [];
-            const applied = applyOperations(currentWorkflow, operations);
+            const applied = applyOperations(baseWorkflow, operations);
             // Le patch porte les descriptions dans un champ `description` (revision_prompt) :
             // on les range dans les enrichments, et on ne les laisse pas dans la ligne.
             const revised = applied.map(({ description: _d, ...row }: any) => row as Table1Row);
@@ -568,9 +582,9 @@ export default function ChatInterface({
                 if (!revised.some(r => r.id === id) && op.row) id = revised.find(r => r.étape === op.row.étape)?.id;
                 if (id) described.set(id, { id_tache: id, descriptif: desc } as TaskEnrichment);
             });
-            const changes = diffWorkflows(currentWorkflow, revised);
+            const changes = diffWorkflows(baseWorkflow, revised);
             updateMsg(msgId, m => ({ ...m, intent: 'patch', content: data.explanation || 'Modifications appliquées', operationsCount: data.operations_count || 0, changes }));
-            onWorkflowGenerated(revised, '', described, null);
+            onWorkflowGenerated(revised, '', described, null, { procedureKey: target?.key });
             return;
         }
         // generate / regen / web_search / transcribe
@@ -578,11 +592,14 @@ export default function ChatInterface({
         updateMsg(msgId, m => ({ ...m, intent, totalSteps, title: data.title, content: buildAssistantMessage(intent, data.title, totalSteps) }));
         const enrichMap = new Map<string, TaskEnrichment>();
         if (data.enrichments) Object.entries(data.enrichments).forEach(([id, enr]: [string, any]) => enrichMap.set(id, enr));
-        onWorkflowGenerated(data.workflow, data.title, enrichMap, data.procedureMetadata || null, { isNew: isNewProcedure(intent) });
+        onWorkflowGenerated(data.workflow, data.title, enrichMap, data.procedureMetadata || null,
+            { isNew: isNewProcedure(intent), procedureKey: isNewProcedure(intent) ? undefined : target?.key });
     };
 
     // Aperçu d'une procédure écrite en direct : point de retour pris avant la première ligne
     const previewRef = useRef<{ msgId: string; rows: Table1Row[]; checkpoint?: unknown; final?: boolean; isNew?: boolean } | null>(null);
+    /** Procédure de la conversation visée par le message en cours (événement target_procedure) */
+    const targetRef = useRef<{ msgId: string; key: string; workflow: Table1Row[] } | null>(null);
 
     // ── Événements du flux ──
     const handleEvent = (msgId: string, ev: any) => {
@@ -592,13 +609,24 @@ export default function ChatInterface({
                 if (previewRef.current?.msgId !== msgId) {
                     // nouvelle procédure : celle affichée n'est pas touchée, rien à restaurer
                     const isNew = ev.new === true;
-                    const checkpoint = !isNew && currentWorkflow.length > 0 && onCheckpoint ? onCheckpoint() : undefined;
+                    const tgt = targetRef.current?.msgId === msgId ? targetRef.current : null;
+                    const checkpoint = !isNew && (tgt?.workflow ?? currentWorkflow).length > 0 && onCheckpoint ? onCheckpoint(tgt?.key) : undefined;
                     previewRef.current = { msgId, rows: [], checkpoint, isNew };
                 }
                 const pv = previewRef.current;
                 if (pv && !pv.rows.some(r => r.id === ev.row?.id)) {
                     pv.rows = [...pv.rows, ev.row];
-                    onWorkflowPreview?.(pv.rows, { isNew: pv.isNew });
+                    onWorkflowPreview?.(pv.rows, { isNew: pv.isNew, procedureKey: pv.isNew ? undefined : (targetRef.current?.msgId === msgId ? targetRef.current.key : undefined) });
+                }
+                break;
+            }
+            case 'target_procedure': {
+                // le chat a compris que le message parle d'une autre procédure de la conversation
+                const proc = conversationProcedures?.find(p => p.key === ev.key);
+                if (proc) {
+                    targetRef.current = { msgId, key: proc.key, workflow: (proc.workflow || []) as Table1Row[] };
+                    updateMsg(msgId, m => ({ ...m, targetTitle: proc.title }));
+                    onTargetProcedure?.(proc.key);
                 }
                 break;
             }
@@ -800,6 +828,10 @@ export default function ChatInterface({
             form.append('current_enrichments', JSON.stringify(enrichObj));
         }
         if (currentProcedureMetadata) form.append('current_procedure_metadata', JSON.stringify(currentProcedureMetadata));
+        if (conversationProcedures && conversationProcedures.length >= 2) {
+            form.append('conversation_procedures', JSON.stringify(conversationProcedures));
+            if (activeProcedureKey) form.append('active_procedure', activeProcedureKey);
+        }
         for (const f of files) form.append('files', f);
         if (files.length > 0 && !override) onFilesSent?.(files);
         if (!override) setAttachedFiles([]);
@@ -999,7 +1031,7 @@ export default function ChatInterface({
                                                 onOpen={onOpenProcedure ? () => onOpenProcedure(msg.title!) : undefined} />
                                             : <MiniMarkdown text={msg.content} onStepClick={onFocusSteps} />)}
                                         {msg.intent === 'patch' && msg.changes && msg.changes.length > 0 ? (
-                                            <ChangeSummary changes={msg.changes} undone={msg.restored} disabled={loading}
+                                            <ChangeSummary changes={msg.changes} undone={msg.restored} disabled={loading} procedure={msg.targetTitle}
                                                 onShow={onFocusSteps}
                                                 onUndo={msg.checkpoint !== undefined && onRestore ? () => { onRestore(msg.checkpoint); updateMsg(msg.id, m => ({ ...m, restored: true })); } : undefined} />
                                         ) : msg.operationsCount !== undefined && msg.intent === 'patch' && (

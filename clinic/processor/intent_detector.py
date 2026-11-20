@@ -26,13 +26,15 @@ class IntentResult:
     source_files: list                   # fichiers sources (données réelles)
     summary: str                         # résumé de l'action prévue
     transcribe_mode: str = "combined"    # image_only | text_only | combined (si intent=transcribe)
+    target_procedure: Optional[int] = None  # numéro (1…n) de la procédure concernée, si plusieurs
 
 
 async def detect_intent(
     message: str,
     has_workflow: bool,
     filenames: list,
-    history: Optional[List[Dict]] = None
+    history: Optional[List[Dict]] = None,
+    procedures: Optional[List[Dict]] = None,
 ) -> IntentResult:
     """
     Détecte l'intention du message utilisateur via Gemini Flash Lite.
@@ -41,7 +43,7 @@ async def detect_intent(
     api_key = os.getenv("GOOGLE_API_KEY")
     model_manager = GeminiModelManager(api_key)
 
-    prompt = get_intent_prompt(message, has_workflow, filenames, history)
+    prompt = get_intent_prompt(message, has_workflow, filenames, history, procedures)
 
     async def _task(model_name: str):
         model = model_manager.get_model(model_name)
@@ -97,12 +99,22 @@ async def detect_intent(
             reference_files=data.get("reference_files", []),
             source_files=data.get("source_files", filenames),
             summary=data.get("summary", ""),
-            transcribe_mode=transcribe_mode
+            transcribe_mode=transcribe_mode,
+            target_procedure=_target(data.get("target_procedure"), len(procedures or [])),
         )
 
     except Exception as e:
         logger.error(f"❌ Intent parsing failed: {e}")
         return _fallback(has_workflow, filenames)
+
+
+def _target(value, count: int) -> Optional[int]:
+    """Numéro de procédure renvoyé par le modèle, s'il est valable (1…count)."""
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return None
+    return n if 1 <= n <= count else None
 
 
 def _fallback(has_workflow: bool, filenames: list) -> IntentResult:

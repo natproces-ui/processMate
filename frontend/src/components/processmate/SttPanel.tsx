@@ -783,6 +783,23 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     // ── Plusieurs procédures dans une conversation : une nouvelle s'ajoute, sans écraser l'autre ──
     /** Procédure en cours de rédaction (aperçu d'une nouvelle procédure) */
     const draftKeyRef = useRef<string | null>(null);
+    /** Dernière liste des procédures (les réponses du chat arrivent après l'envoi : pas de valeur figée) */
+    const instancesRef = useRef(instances);
+    instancesRef.current = instances;
+    /** Indice de la procédure visée par le message (sinon celle affichée) */
+    const targetIndex = (procedureKey?: string) => {
+        const idx = procedureKey ? instancesRef.current.findIndex(i => i.process_id === procedureKey) : -1;
+        return idx >= 0 ? idx : activeTab;
+    };
+    /** Procédures envoyées au chat pour qu'il comprenne de laquelle on parle (au moins deux) */
+    const conversationProcedures = useMemo<StoredProcedure[] | undefined>(() => {
+        const ready = instances.filter(i => i.status === 'ready' && i.data.length > 0);
+        if (ready.length < 2) return undefined;
+        return ready.map(i => ({
+            key: i.process_id, title: i.title, workflow: i.data,
+            enrichments: Object.fromEntries(i.enrichments), procedureMetadata: i.initialMeta ?? null,
+        }));
+    }, [instances]);
     /** Une vraie procédure est affichée (pas l'exemple ni l'état vide) */
     const hasRealProcedure = instances.length > 0
         ? instances.some(i => i.data.length > 0 && i.status !== 'generating')
@@ -800,7 +817,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const handleWorkflowFromChat = useCallback((
         workflow: Table1Row[], title: string,
         newEnrichments: Map<string, TaskEnrichment>, procedureMetadata?: any,
-        options?: { isNew?: boolean },
+        options?: { isNew?: boolean; procedureKey?: string },
     ) => {
         const draftKey = draftKeyRef.current;
         draftKeyRef.current = null;
@@ -818,21 +835,25 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         }
         setHasProcedure(true);
         if (instances.length > 0) {
-            const newTitle = title || activeInst?.title || '';
+            // la procédure visée par le message (que le chat a affichée), sinon celle affichée
+            const idx = targetIndex(options?.procedureKey);
+            const tInst = instancesRef.current[idx] ?? activeInst;
+            const newTitle = title || tInst?.title || '';
             // Libellés seulement : le diagramme existant est modifié sur place (positions conservées)
-            const diff = activeInst ? diffWorkflows(activeInst.data, workflow) : null;
-            const patched = BPMN_PRESERVE_LAYOUT && diff && activeInst?.bpmnXml && isLabelOnly(diff) && (!title || title === activeInst.title)
-                ? applyLabelChanges(activeInst.bpmnXml, diff) : null;
+            const diff = tInst ? diffWorkflows(tInst.data, workflow) : null;
+            const patched = BPMN_PRESERVE_LAYOUT && diff && tInst?.bpmnXml && isLabelOnly(diff) && (!title || title === tInst.title)
+                ? applyLabelChanges(tInst.bpmnXml, diff) : null;
             const xml = patched ?? safeGenerateBpmn(workflow, newTitle);
-            if (BPMN_PRESERVE_LAYOUT && !patched && diff && !isEmptyDiff(diff) && activeInst?.bpmnXml) {
+            if (BPMN_PRESERVE_LAYOUT && !patched && diff && !isEmptyDiff(diff) && tInst?.bpmnXml) {
                 showSuccess('Diagramme recalculé : sa mise en page manuelle a été réinitialisée.');
             }
-            setInstances(prev => prev.map((inst, i) => i === activeTab ? {
+            setInstances(prev => prev.map((inst, i) => i === idx ? {
                 ...inst, data: workflow, title: title || inst.title,
                 enrichments: mergeEnrichments(inst.enrichments, newEnrichments), bpmnXml: xml,
                 initialMeta: mergeProcedureMetadata(inst.initialMeta, procedureMetadata),
             } : inst));
-            if (xml) editorRefs.current[activeTab]?.importXml(xml);
+            setActiveTab(idx);
+            if (xml) editorRefs.current[idx]?.importXml(xml);
         } else {
             setData(workflow);
             const newTitle = title || processTitle;
@@ -846,7 +867,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     }, [activeTab, instances, activeInst, processTitle, safeGenerateBpmn, hasRealProcedure, appendInstance]);
 
     // Procédure décrite en texte : les étapes arrivent une à une (aperçu), la réponse finale les remplace
-    const handleWorkflowPreview = useCallback((rows: Table1Row[], options?: { isNew?: boolean }) => {
+    const handleWorkflowPreview = useCallback((rows: Table1Row[], options?: { isNew?: boolean; procedureKey?: string }) => {
         const draftKey = draftKeyRef.current;
         if (rows.length === 0 && draftKey) {
             // nouvelle procédure abandonnée : on la retire, l'autre reste telle quelle
@@ -879,11 +900,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             return;
         }
         setHasProcedure(true);
-        const title = (instances.length > 0 ? activeInst?.title : processTitle) || 'Procédure en cours de rédaction';
+        const idx = targetIndex(options?.procedureKey);
+        const title = (instances.length > 0 ? instancesRef.current[idx]?.title : processTitle) || 'Procédure en cours de rédaction';
         const xml = safeGenerateBpmn(rows, title);
         if (instances.length > 0) {
-            setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, data: rows, bpmnXml: xml } : inst));
-            if (xml) editorRefs.current[activeTab]?.importXml(xml);
+            setInstances(prev => prev.map((inst, i) => i === idx ? { ...inst, data: rows, bpmnXml: xml } : inst));
+            if (xml) editorRefs.current[idx]?.importXml(xml);
         } else {
             setData(rows);
             setBpmnXml(xml);
@@ -931,10 +953,18 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     }, [guestMode, workflowId, proceduresOwner, instances, activeTab, hasProcedure, data, processTitle, enrichments, initialMeta, bpmnXml]);
 
     // ── Lot 5 : points de restauration du chat ──
-    const takeSnapshot = useCallback(() => ({
-        processId: instances.length > 0 ? activeInst?.process_id : null,
-        data: activeData, enrichments: new Map(activeEnrichments), initialMeta: activeInitialMeta, bpmnXml: activeBpmnXml,
-    }), [instances, activeInst, activeData, activeEnrichments, activeInitialMeta, activeBpmnXml]);
+    const takeSnapshot = useCallback((procedureKey?: string) => {
+        // procédure visée par le message : son état d'avant, même si elle n'était pas affichée
+        const target = procedureKey ? instancesRef.current.find(i => i.process_id === procedureKey) : undefined;
+        if (target) return {
+            processId: target.process_id as string | null | undefined,
+            data: target.data, enrichments: new Map(target.enrichments), initialMeta: target.initialMeta, bpmnXml: target.bpmnXml,
+        };
+        return {
+            processId: instances.length > 0 ? activeInst?.process_id : null,
+            data: activeData, enrichments: new Map(activeEnrichments), initialMeta: activeInitialMeta, bpmnXml: activeBpmnXml,
+        };
+    }, [instances, activeInst, activeData, activeEnrichments, activeInitialMeta, activeBpmnXml]);
 
     const restoreSnapshot = useCallback((raw: unknown) => {
         const snap = raw as ReturnType<typeof takeSnapshot>;
@@ -1126,6 +1156,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             conversationIdRef.current = id;
                         }}
                         onRestoreProcedures={restoreProcedures}
+                        conversationProcedures={conversationProcedures}
+                        activeProcedureKey={instances.length > 0 ? activeInst?.process_id ?? null : null}
+                        onTargetProcedure={key => {
+                            const idx = instancesRef.current.findIndex(i => i.process_id === key);
+                            if (idx >= 0) setActiveTab(idx);
+                        }}
                         projectId={projectId}
                         guestPersistence={guestMode}
                         onCheckpoint={takeSnapshot}
