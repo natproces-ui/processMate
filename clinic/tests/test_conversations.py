@@ -176,3 +176,12 @@ class ProceduresStateTest(unittest.TestCase):
 
     def test_other_owner_refused(self):
         self.assertFalse(store.save_procedures("c1", "u2", [{"key": "a"}], None))
+
+
+class StreamedTextTest(unittest.TestCase):
+    def test_streamed_answer_is_recorded_once(self):
+        r = TurnRecorder()
+        r.feed({"type": "text_delta", "text": "D'après la diapositive 5, "})
+        r.feed({"type": "text_delta", "text": "les outils sont **Excel** et **ServiceNow**."})
+        r.feed({"type": "done"})
+        self.assertEqual(r.finish()["content"], "D'après la diapositive 5, les outils sont **Excel** et **ServiceNow**.")

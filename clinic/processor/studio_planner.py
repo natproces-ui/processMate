@@ -22,9 +22,10 @@ from prompts.studio_planner_prompt import build_planner_prompt
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = {"generate", "propose", "merge", "edit", "answer"}
+ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "answer"}
 # Au-delà, on ne génère pas sans que l'utilisateur ait validé la sélection
-MAX_AUTO_GENERATE = 5
+# Plafond technique (coût, durée) au-delà duquel on confirme ; en deçà, on fait ce qui est demandé
+MAX_AUTO_GENERATE = 20
 
 
 @dataclass
@@ -130,15 +131,11 @@ def apply_guardrails(
     if action == "merge" and not targets:
         targets = ids
     if action == "generate" and not targets:
-        if len(procedures) == 1:
-            targets = ids
-        else:
-            action = "propose"
-            adjustments.append("plusieurs procédures sans cible : proposition")
+        targets = ids  # demande de formalisation sans cible précise : toutes les procédures trouvées
     if action == "generate" and len(targets) > MAX_AUTO_GENERATE:
         action = "propose"
         adjustments.append(f"{len(targets)} procédures : confirmation demandée")
-        reply = f"{len(targets)} procédures sont concernées. Elles sont toutes sélectionnées : confirmez pour lancer la génération."
+        reply = f"J'ai trouvé {len(targets)} procédures : c'est beaucoup d'un coup. Je les formalise toutes, ou seulement certaines ?"
 
     if adjustments:
         logger.info(f"🧭 Aiguillage corrigé : {adjustments}")

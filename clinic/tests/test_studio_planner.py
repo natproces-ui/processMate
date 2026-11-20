@@ -23,9 +23,19 @@ class GuardrailTests(unittest.TestCase):
         plan = apply_guardrails({"action": "propose", "procedures": [proc("p1", "A")]}, FILES, False)
         self.assertEqual(plan.action, "propose")
 
-    def test_several_without_target_are_proposed(self):
+    def test_formalize_without_target_generates_all(self):
+        # « extrais les procédures » : on fait ce qui est demandé, toutes, sans confirmation
         plan = apply_guardrails({"action": "generate", "procedures": [proc("p1", "A"), proc("p2", "B")]}, FILES, False)
-        self.assertEqual(plan.action, "propose")
+        self.assertEqual((plan.action, plan.targets), ("generate", ["p1", "p2"]))
+
+    def test_six_procedures_generated_without_confirmation(self):
+        procs = [proc(f"p{i}", f"P{i}") for i in range(1, 7)]
+        plan = apply_guardrails({"action": "generate", "procedures": procs, "targets": [p["id"] for p in procs]}, FILES, False)
+        self.assertEqual((plan.action, len(plan.targets)), ("generate", 6))
+
+    def test_analyze_is_kept(self):
+        plan = apply_guardrails({"action": "analyze", "procedures": []}, FILES, False)
+        self.assertEqual(plan.action, "analyze")
 
     def test_procedure_without_real_source_is_dropped(self):
         data = {"action": "propose", "procedures": [proc("p1", "A"), proc("p2", "Fantôme", file="inexistant.pdf")]}

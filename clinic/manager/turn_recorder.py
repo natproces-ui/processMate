@@ -27,6 +27,7 @@ class TurnRecorder:
         self.payload: Dict[str, Any] = {}
         self.generated: List[Dict[str, Any]] = []
         self.error: Optional[str] = None
+        self._streaming: Optional[int] = None
 
     def feed(self, ev: Dict[str, Any]) -> None:
         t = ev.get("type")
@@ -35,6 +36,15 @@ class TurnRecorder:
         elif t == "message":
             if ev.get("text"):
                 self.texts.append(ev["text"])
+        elif t == "text_delta":
+            # réponse écrite au fil de l'eau (analyse des sources) : un seul texte, complété morceau par morceau
+            if self._streaming is None:
+                self._streaming = len(self.texts)
+                self.texts.append("")
+            self.texts[self._streaming] += ev.get("text") or ""
+        elif t == "text_reset":
+            if self._streaming is not None:
+                self.texts[self._streaming] = ""
         elif t == "proposal":
             self.payload["proposal"] = {"procedures": ev.get("procedures") or [], "selected": ev.get("selected") or []}
         elif t == "procedure_started":

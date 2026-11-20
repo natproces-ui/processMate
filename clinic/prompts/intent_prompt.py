@@ -78,6 +78,10 @@ INTENTS DISPONIBLES
 
 "generate"
 → L'utilisateur veut créer un nouveau processus from scratch
+→ ⚠️ Il faut de quoi le rédiger : une description du processus (dans le message ou plus haut), un fichier joint,
+  ou au moins un sujet précis (« génère un processus de virement SWIFT »). Si l'utilisateur ANNONCE un document
+  à venir (« je vais t'envoyer notre support », « je te joins le manuel ensuite ») ou parle de formaliser
+  sans dire quoi → "explain" (accuse réception, dis que tu attends le document). N'invente jamais un processus.
 → Exemples :
   - "Génère un processus de virement SWIFT"
   - "Crée-moi une procédure KYC"

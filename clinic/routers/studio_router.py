@@ -304,6 +304,50 @@ async def _stream_remarks(request: Request, procedures: List[Dict[str, Any]], me
     yield _sse({"type": "status", "id": "remarks", "label": "Relecture de la procédure", "state": "done"})
 
 
+ANALYSIS_PROMPT = """Tu es l'assistant de ProcessMate, un outil de formalisation de procédures bancaires.
+Réponds à la demande de l'utilisateur à partir des fichiers fournis, comme le ferait Claude : en français, directement,
+avec de vraies phrases ; une courte liste seulement si tu énumères plusieurs éléments du même type ; **gras** pour
+l'essentiel. Cite la diapositive ou la page d'où vient chaque information (« diapositive 5 », « p. 12 »).
+Réponds exactement à ce qui est demandé (si la question porte sur une étape, ne mélange pas les autres).
+N'invente rien : si l'information n'est pas dans les fichiers, dis-le. Si c'est utile, termine par une phrase qui
+propose la suite logique (par exemple formaliser une procédure dont tu viens de parler)."""
+
+
+async def _stream_analysis(request: Request, files: List[Dict[str, Any]], message: str,
+                           history: List[Dict[str, str]]):
+    """Analyse ou question sur le contenu des sources : réponse rédigée en flux (modèle d'extraction)."""
+    from manager.model_manager import generate_content_stream
+    from processor.studio_planner import file_to_parts
+    yield _sse({"type": "status", "id": "analyse", "label": "Lecture des sources", "state": "running"})
+    parts: list = [ANALYSIS_PROMPT]
+    if history:
+        parts.append("Conversation précédente :\n" + "\n".join(
+            f"[{'Utilisateur' if h.get('role') == 'user' else 'Assistant'}] {str(h.get('content') or '')[:800]}"
+            for h in history[-6:]))
+    for f in files:
+        parts.append(f"--- Fichier : {f['filename']} ---")
+        parts.extend(file_to_parts(f))
+    parts.append(f"Demande de l'utilisateur : {message}")
+    end, wrote = object(), False
+    try:
+        with routing_scope(TaskKind.EXTRACTION, source_kinds_of(files)):
+            stream = generate_content_stream(parts, task_name="Analyse des sources")
+        while True:
+            chunk = await asyncio.to_thread(next, stream, end)
+            if chunk is end:
+                break
+            if chunk:
+                wrote = True
+                yield _sse({"type": "text_delta", "text": chunk})
+            if await request.is_disconnected():
+                return
+    except Exception as e:
+        logger.warning(f"⚠️ Analyse des sources indisponible : {e}")
+        if not wrote:
+            yield _sse({"type": "message", "text": "Je n'ai pas pu lire les sources pour répondre. Pouvez-vous réessayer ?"})
+    yield _sse({"type": "status", "id": "analyse", "label": "Sources lues", "state": "done"})
+
+
 def _guest(request: Request, user: Optional[AuthUser]):
     """Clés de comptage d'un invité, ou None (utilisateur connecté, ou limites désactivées)."""
     if user is not None or not load_limits().enabled:
@@ -558,7 +602,7 @@ async def studio_turn(
                 done_label = (f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
                               if plan.action in ("generate", "propose", "merge") else label)
                 yield _sse({"type": "status", "id": "plan", "label": done_label, "state": "done"})
-                if plan.reply:
+                if plan.reply and plan.action != "analyze":
                     yield _sse({"type": "message", "text": plan.reply})
 
                 if plan.procedures:
@@ -574,6 +618,14 @@ async def studio_turn(
                                               plan.action == "merge", plan.merged_title, message,
                                               sess.get("references")):
                         yield ev
+                elif plan.action == "analyze":
+                    if to_plan:
+                        async for ev in _stream_analysis(request, to_plan, message, history_list):
+                            yield ev
+                    else:  # rien à lire : le chat répond (procédure ouverte, conversation)
+                        async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
+                                                          _loads(conversation_procedures, None), active_procedure, request):
+                            yield ev
                 elif plan.action == "edit":
                     async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
                                                   _loads(conversation_procedures, None), active_procedure, request):
