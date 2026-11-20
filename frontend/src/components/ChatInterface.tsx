@@ -1044,6 +1044,14 @@ export default function ChatInterface({
                                                 open={openSteps.has(msg.id)}
                                                 onToggle={() => setOpenSteps(s => { const n = new Set(s); if (n.has(msg.id)) n.delete(msg.id); else n.add(msg.id); return n; })} />
                                         )}
+                                        {/* Réponse attendue, sans étape à montrer (« bonjour », question simple) : trois points */}
+                                        {msg.streaming && !msg.steps?.length && !msg.content && !msg.generations?.length && (
+                                            <span role="status" aria-label="Réponse en cours" className="inline-flex items-center gap-1 py-2">
+                                                {[0, 150, 300].map(d => (
+                                                    <span key={d} className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                                                ))}
+                                            </span>
+                                        )}
                                         {msg.content && (isProcedureNotice(msg)
                                             /* procédure créée : une carte qui l'ouvre, plutôt qu'une phrase qui répète le suivi */
                                             ? <ProcedureCard title={msg.title!} steps={msg.totalSteps ?? 0} intent={msg.intent!}

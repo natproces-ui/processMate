@@ -35,14 +35,27 @@ export default function WorkTrace({ steps, running, startedAt, endedAt, open, on
     const total = startedAt ? (running ? now : (endedAt ?? now)) - startedAt : 0;
 
     if (!running) {
+        // Titre replié : ce qui a été fait (« Procédure modifiée · 10 changements, procédure relue »),
+        // sinon la dernière pensée, sinon la durée — jamais un libellé fixe
+        const actions = steps.filter(st => st.kind !== 'thought' && st.state !== 'running' && st.label).map(st => st.label);
+        const lastThought = [...steps].reverse().find(st => st.kind === 'thought');
+        const duration = startedAt && endedAt ? fmt(endedAt - startedAt) : null;
+        const title = actions.length
+            ? actions.slice(0, 3).map((l, i) => (i === 0 ? l : l.charAt(0).toLowerCase() + l.slice(1))).join(', ')
+            : lastThought?.label || (duration ? `A réfléchi pendant ${duration}` : `${steps.length} étape${steps.length > 1 ? 's' : ''}`);
         return (
             <div>
-                <button type="button" onClick={onToggle} aria-expanded={open}
-                    className="flex items-center gap-1 text-sm text-neutral-600 hover:text-neutral-900">
-                    <ChevronRight className={`w-4 h-4 transition-transform ${open ? 'rotate-90' : ''}`} />
-                    {startedAt && endedAt ? `A travaillé pendant ${fmt(endedAt - startedAt)}` : `${steps.length} étape${steps.length > 1 ? 's' : ''}`}
+                <button type="button" onClick={onToggle} aria-expanded={open} title={title}
+                    className="flex max-w-full items-center gap-1 text-sm text-neutral-600 hover:text-neutral-900">
+                    <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
+                    <span className="truncate">{title}</span>
                 </button>
-                {open && <StepList steps={steps} now={now} className="mt-2" />}
+                {open && (
+                    <div className="mt-2 rounded-xl border border-neutral-200 px-3.5 py-2.5">
+                        {duration && <p className="mb-2 text-xs text-neutral-500">A travaillé pendant {duration}</p>}
+                        <StepList steps={steps} now={now} />
+                    </div>
+                )}
             </div>
         );
     }

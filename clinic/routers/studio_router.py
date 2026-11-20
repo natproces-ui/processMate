@@ -301,7 +301,7 @@ async def _stream_remarks(request: Request, procedures: List[Dict[str, Any]], me
             yield _sse({"type": "suggestions", "items": items})
     except Exception as e:
         logger.warning(f"⚠️ Remarques Studio indisponibles : {e}")
-    yield _sse({"type": "status", "id": "remarks", "label": "Relecture de la procédure", "state": "done"})
+    yield _sse({"type": "status", "id": "remarks", "label": "Procédure relue", "state": "done"})
 
 
 ANALYSIS_PROMPT = """Tu es l'assistant de ProcessMate, un outil de formalisation de procédures bancaires.
@@ -318,7 +318,8 @@ async def _stream_analysis(request: Request, files: List[Dict[str, Any]], messag
     """Analyse ou question sur le contenu des sources : réponse rédigée en flux (modèle d'extraction)."""
     from manager.model_manager import generate_content_stream
     from processor.studio_planner import file_to_parts
-    yield _sse({"type": "status", "id": "analyse", "label": "Lecture des sources", "state": "running"})
+    names = ", ".join(f["filename"] for f in files[:3]) + ("…" if len(files) > 3 else "")
+    yield _sse({"type": "status", "id": "analyse", "label": f"Je relis {names}", "state": "running"})
     parts: list = [ANALYSIS_PROMPT]
     if history:
         parts.append("Conversation précédente :\n" + "\n".join(
@@ -349,7 +350,7 @@ async def _stream_analysis(request: Request, files: List[Dict[str, Any]], messag
         logger.warning(f"⚠️ Analyse des sources indisponible : {e}")
         if not wrote:
             yield _sse({"type": "message", "text": "Je n'ai pas pu lire les sources pour répondre. Pouvez-vous réessayer ?"})
-    yield _sse({"type": "status", "id": "analyse", "label": "Sources lues", "state": "done"})
+    yield _sse({"type": "status", "id": "analyse", "label": f"Relu {names}", "state": "done"})
 
 
 def _guest(request: Request, user: Optional[AuthUser]):
@@ -587,7 +588,6 @@ async def studio_turn(
                     # Ni sources ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…).
                     # Avec des sources déjà jointes (ex. relance après une erreur), on passe par leur analyse :
                     # sinon le chat rédigeait une procédure sans avoir lu le fichier.
-                    yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "running"})
                     # l'étape « think » est terminée par _delegate_to_chat (avec ce qui a été compris)
                     async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
                                                       _loads(conversation_procedures, None), active_procedure, request):
@@ -599,18 +599,19 @@ async def studio_turn(
                 # relance ou une nouvelle extraction en ont besoin, même après une première proposition
                 to_plan = plan_files or sess["files"]
                 label = _reading_label(new_files) if new_files else "Analyse de la demande"
-                yield _sse({"type": "status", "id": "think", "label": label, "state": "running"})
+                if new_files:  # une vraie action : lire les fichiers joints
+                    yield _sse({"type": "status", "id": "think", "label": label, "state": "running"})
+                read_label = label.replace("Lecture de ", "Lu ", 1) if new_files else None
                 with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(to_plan)), interactions_scope(ix):
                     plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"))
                 found = len(plan.procedures)
                 if plan.action in ("generate", "propose", "merge"):
+                    found_label = f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
                     yield _sse({"type": "status", "id": "think", "state": "done",
-                                "label": f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"})
-                elif plan.action == "analyze":
-                    yield _sse({"type": "status", "id": "think", "label": "Je lis les sources pour répondre", "state": "done"})
-                elif plan.action == "answer":
-                    yield _sse({"type": "status", "id": "think", "label": label, "state": "done"})
-                # edit : le chat termine la ligne avec ce qu'il a compris
+                                "label": f"{read_label} : {found_label.lower()}" if read_label else found_label})
+                elif read_label and plan.action != "edit":
+                    yield _sse({"type": "status", "id": "think", "label": read_label, "state": "done"})
+                # edit : le chat remplace la ligne par ce qu'il va faire
                 if plan.reply and plan.action != "analyze":
                     yield _sse({"type": "message", "text": plan.reply})
 
@@ -727,8 +728,6 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
             think_done = True
         yield _sse(ev)
     result = task.result()
-    if not think_done:  # aucun résumé d'intention : on termine l'étape avec son libellé d'origine
-        yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "done"})
     if work_started:
         yield _sse({"type": "status", "id": "work", "label": _work_done_label(result), "state": "done"})
     yield _sse({"type": "chat_result", "result": result})
@@ -748,12 +747,10 @@ def _work_done_label(result: Dict[str, Any]) -> str:
     intent = (result or {}).get("intent")
     n = len((result or {}).get("workflow") or [])
     if intent in ("generate", "regen", "transcribe") and n:
-        return f"Procédure rédigée : {n} étape{'s' if n > 1 else ''}"
+        return f"Procédure rédigée · {n} étape{'s' if n > 1 else ''}"
     if intent == "patch":
         ops = (result or {}).get("operations_count") or 0
-        return f"Procédure modifiée : {ops} changement{'s' if ops > 1 else ''}" if ops else "Procédure modifiée"
-    if intent == "explain":
-        return "Réponse rédigée"
+        return f"Procédure modifiée · {ops} changement{'s' if ops > 1 else ''}" if ops else "Procédure modifiée"
     return "Terminé"
 
 

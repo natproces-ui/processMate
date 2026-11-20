@@ -172,7 +172,7 @@ FORMAT DE SORTIE JSON STRICT
   "clarify_question": "Question à poser si intent=clarify, sinon null",
   "reference_files": ["nom_fichier_ref.pdf"],
   "source_files": ["nom_fichier_source.pdf"],
-  "summary": "Résumé en 1 phrase de ce que tu vas faire",
+  "summary": "Une phrase courte, à la première personne, qui dit ce que tu vas faire (ex : « Je regroupe les acteurs de la même entité et j'allège les étapes. »)",
   "target_procedure": null
 }
 

@@ -22,7 +22,6 @@ _WORK_LABELS = {
     "generate": "Rédaction de la procédure",
     "regen": "Réécriture de la procédure à partir des sources",
     "patch": "Modification de la procédure",
-    "explain": "Rédaction de la réponse",
     "transcribe": "Transcription fidèle des sources",
     "web_search": "Recherche d'informations sur le web",
 }
@@ -163,11 +162,14 @@ class ChatProcessor:
                 logger.info(f"🎯 Procédure visée : {target.get('title')}")
 
         logger.info(f"🎯 Intent: {intent_result.intent} — {intent_result.summary}")
-        # Ce que l'assistant a compris, en français, puis ce qu'il fait
-        if intent_result.summary:
-            turn_progress.status("think", f"Compris : {intent_result.summary.rstrip('.')}", "done")
+        # Un vrai travail : ce que l'assistant va faire, en une phrase écrite par le modèle (comme
+        # « Je cherche les chiffres récents… » chez Claude), puis l'étape en cours. Une simple
+        # conversation ou une explication : pas de suivi, la réponse arrive directement.
         work = _WORK_LABELS.get(intent_result.intent)
         if work:
+            if intent_result.summary:
+                turn_progress.emit({"type": "status", "id": "think", "label": intent_result.summary.strip()[:200],
+                                    "state": "done", "kind": "thought"})
             turn_progress.status("work", work, "running")
 
         if intent_result.intent == "clarify":
