@@ -124,7 +124,9 @@ interface ChatInterfaceProps {
         workflow: Table1Row[],
         title: string,
         enrichments: Map<string, TaskEnrichment>,
-        procedureMetadata?: any
+        procedureMetadata?: any,
+        /** isNew : une autre procédure (création, transcription), à ajouter sans écraser celle affichée */
+        options?: { isNew?: boolean }
     ) => void;
     onError: (msg: string) => void;
     onSuccess: (msg: string) => void;
@@ -133,7 +135,7 @@ interface ChatInterfaceProps {
     /** Étape reçue pendant la génération (aperçu, remplacé par la version finale). */
     onProcedureRow?: (key: string, row: Table1Row) => void;
     /** Procédure décrite en texte : les étapes s'affichent pendant l'écriture ([] : aperçu effacé) */
-    onWorkflowPreview?: (rows: Table1Row[]) => void;
+    onWorkflowPreview?: (rows: Table1Row[], options?: { isNew?: boolean }) => void;
     onProcedureReady?: (proc: GeneratedProcedure) => void;
     onProcedureError?: (key: string, message: string) => void;
     onSelectProcedure?: (key: string) => void;
@@ -145,6 +147,8 @@ interface ChatInterfaceProps {
     onFilesSent?: (files: File[]) => void;
     /** Clic sur « étape N » dans une réponse : surligner ces étapes dans le tableau */
     onFocusSteps?: (ids: string[]) => void;
+    /** Carte d'une procédure créée : l'afficher dans le panneau (par son titre) */
+    onOpenProcedure?: (title: string) => void;
     /** Activité (nombre de messages, réponse en cours) : indicateur quand l'assistant est masqué */
     onActivity?: (activity: { messages: number; busy: boolean }) => void;
     /** Conversations enregistrées : procédure enregistrée liée (rouvre sa dernière conversation) */
@@ -210,6 +214,7 @@ export default function ChatInterface({
     onCollapse,
     onFilesSent,
     onFocusSteps,
+    onOpenProcedure,
     onActivity,
     procedureId,
     onConversationChange,
@@ -536,7 +541,7 @@ export default function ChatInterface({
         if (preview) preview.final = true;
         if (preview && preview.rows.length > 0) {
             if (preview.checkpoint !== undefined) updateMsg(msgId, m => ({ ...m, checkpoint: preview.checkpoint }));
-        } else if (currentWorkflow.length > 0 && onCheckpoint) {
+        } else if (currentWorkflow.length > 0 && onCheckpoint && !isNewProcedure(intent)) {
             const snapshot = onCheckpoint();
             updateMsg(msgId, m => ({ ...m, checkpoint: snapshot }));
         }
@@ -565,11 +570,11 @@ export default function ChatInterface({
         updateMsg(msgId, m => ({ ...m, intent, totalSteps, title: data.title, content: buildAssistantMessage(intent, data.title, totalSteps) }));
         const enrichMap = new Map<string, TaskEnrichment>();
         if (data.enrichments) Object.entries(data.enrichments).forEach(([id, enr]: [string, any]) => enrichMap.set(id, enr));
-        onWorkflowGenerated(data.workflow, data.title, enrichMap, data.procedureMetadata || null);
+        onWorkflowGenerated(data.workflow, data.title, enrichMap, data.procedureMetadata || null, { isNew: isNewProcedure(intent) });
     };
 
     // Aperçu d'une procédure écrite en direct : point de retour pris avant la première ligne
-    const previewRef = useRef<{ msgId: string; rows: Table1Row[]; checkpoint?: unknown; final?: boolean } | null>(null);
+    const previewRef = useRef<{ msgId: string; rows: Table1Row[]; checkpoint?: unknown; final?: boolean; isNew?: boolean } | null>(null);
 
     // ── Événements du flux ──
     const handleEvent = (msgId: string, ev: any) => {
@@ -577,20 +582,22 @@ export default function ChatInterface({
         switch (ev.type) {
             case 'workflow_preview': {
                 if (previewRef.current?.msgId !== msgId) {
-                    const checkpoint = currentWorkflow.length > 0 && onCheckpoint ? onCheckpoint() : undefined;
-                    previewRef.current = { msgId, rows: [], checkpoint };
+                    // nouvelle procédure : celle affichée n'est pas touchée, rien à restaurer
+                    const isNew = ev.new === true;
+                    const checkpoint = !isNew && currentWorkflow.length > 0 && onCheckpoint ? onCheckpoint() : undefined;
+                    previewRef.current = { msgId, rows: [], checkpoint, isNew };
                 }
                 const pv = previewRef.current;
                 if (pv && !pv.rows.some(r => r.id === ev.row?.id)) {
                     pv.rows = [...pv.rows, ev.row];
-                    onWorkflowPreview?.(pv.rows);
+                    onWorkflowPreview?.(pv.rows, { isNew: pv.isNew });
                 }
                 break;
             }
             case 'workflow_preview_reset':
                 if (previewRef.current?.msgId === msgId) {
                     previewRef.current.rows = [];
-                    onWorkflowPreview?.([]);
+                    onWorkflowPreview?.([], { isNew: previewRef.current.isNew });
                 }
                 break;
             case 'conversation_title':
@@ -978,7 +985,11 @@ export default function ChatInterface({
                                                 open={openSteps.has(msg.id)}
                                                 onToggle={() => setOpenSteps(s => { const n = new Set(s); if (n.has(msg.id)) n.delete(msg.id); else n.add(msg.id); return n; })} />
                                         )}
-                                        {msg.content && <MiniMarkdown text={msg.content} onStepClick={onFocusSteps} />}
+                                        {msg.content && (isProcedureNotice(msg)
+                                            /* procédure créée : une carte qui l'ouvre, plutôt qu'une phrase qui répète le suivi */
+                                            ? <ProcedureCard title={msg.title!} steps={msg.totalSteps ?? 0} intent={msg.intent!}
+                                                onOpen={onOpenProcedure ? () => onOpenProcedure(msg.title!) : undefined} />
+                                            : <MiniMarkdown text={msg.content} onStepClick={onFocusSteps} />)}
                                         {msg.intent === 'patch' && msg.changes && msg.changes.length > 0 ? (
                                             <ChangeSummary changes={msg.changes} undone={msg.restored} disabled={loading}
                                                 onShow={onFocusSteps}
@@ -1298,6 +1309,38 @@ export default function ChatInterface({
 // ─────────────────────────────────────────────────────────────
 // HELPERS LOCAUX
 // ─────────────────────────────────────────────────────────────
+
+/** Création, recherche réglementaire, transcription : une autre procédure (la réécriture remplace) */
+const isNewProcedure = (intent: Intent) => intent === 'generate' || intent === 'web_search' || intent === 'transcribe';
+
+const PROCEDURE_VERB: Partial<Record<Intent, string>> = {
+    generate: 'Créée', regen: 'Réécrite', web_search: 'Constituée depuis la réglementation', transcribe: 'Transcrite',
+};
+
+/** Message automatique « Processus … généré — N étapes » (aussi les anciens, rechargés) */
+function isProcedureNotice(m: { intent?: Intent; title?: string; totalSteps?: number; content: string; streaming?: boolean }): boolean {
+    return !m.streaming && !!m.intent && !!PROCEDURE_VERB[m.intent] && !!m.title
+        && m.content === buildAssistantMessage(m.intent, m.title, m.totalSteps ?? 0);
+}
+
+function ProcedureCard({ title, steps, intent, onOpen }: { title: string; steps: number; intent: Intent; onOpen?: () => void }) {
+    const body = (
+        <>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white">
+                <Workflow className="h-4 w-4 text-neutral-900" />
+            </span>
+            <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-neutral-900">{title}</span>
+                <span className="block text-xs text-neutral-600">{PROCEDURE_VERB[intent]} · {steps} étape{steps > 1 ? 's' : ''}</span>
+            </span>
+            {onOpen && <span className="shrink-0 text-xs font-medium text-neutral-900">Ouvrir</span>}
+        </>
+    );
+    const cls = 'flex w-full max-w-md items-center gap-3 rounded-xl border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-left';
+    return onOpen
+        ? <button type="button" onClick={onOpen} title="Afficher cette procédure" className={`${cls} hover:bg-neutral-100`}>{body}</button>
+        : <div className={cls}>{body}</div>;
+}
 
 function buildAssistantMessage(intent: Intent, title: string, totalSteps: number): string {
     switch (intent) {

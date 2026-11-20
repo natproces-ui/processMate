@@ -27,7 +27,7 @@ import SaveToBiblioModal from '@/components/SaveToBiblioModal';
 import { LiveBpmn, LiveHeader, LiveTable } from './LiveProcedurePreview';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
-    Maximize2, X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
+    X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
     PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes, History,
     PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink,
 } from 'lucide-react';
@@ -780,10 +780,42 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // ── Plusieurs procédures dans une conversation : une nouvelle s'ajoute, sans écraser l'autre ──
+    /** Procédure en cours de rédaction (aperçu d'une nouvelle procédure) */
+    const draftKeyRef = useRef<string | null>(null);
+    /** Une vraie procédure est affichée (pas l'exemple ni l'état vide) */
+    const hasRealProcedure = instances.length > 0
+        ? instances.some(i => i.data.length > 0 && i.status !== 'generating')
+        : hasProcedure && data.length > 0;
+    /** Ajoute une procédure et l'affiche ; celle affichée seule devient la première de la liste */
+    const appendInstance = useCallback((inst: ProcessInstance) => {
+        const base: ProcessInstance[] = instances.length > 0 ? instances : [{
+            process_id: crypto.randomUUID(), title: processTitle || 'Procédure', data, enrichments, bpmnXml,
+            metadata: processMetadata, initialMeta: initialMeta ?? { nom: processTitle }, status: 'ready',
+        }];
+        setInstances([...base, inst]);
+        setActiveTab(base.length);
+    }, [instances, processTitle, data, enrichments, bpmnXml, processMetadata, initialMeta]);
+
     const handleWorkflowFromChat = useCallback((
         workflow: Table1Row[], title: string,
         newEnrichments: Map<string, TaskEnrichment>, procedureMetadata?: any,
+        options?: { isNew?: boolean },
     ) => {
+        const draftKey = draftKeyRef.current;
+        draftKeyRef.current = null;
+        if (draftKey || (options?.isNew && hasRealProcedure)) {
+            const name = title || 'Nouvelle procédure';
+            const inst: ProcessInstance = {
+                process_id: draftKey ?? crypto.randomUUID(), title: name, data: workflow, enrichments: newEnrichments,
+                bpmnXml: safeGenerateBpmn(workflow, name), metadata: { ...DEFAULT_PROCESS_METADATA },
+                initialMeta: procedureMetadata && Object.keys(procedureMetadata).length > 0 ? procedureMetadata : { nom: name },
+                status: 'ready',
+            };
+            if (draftKey) setInstances(prev => prev.map(i => i.process_id === draftKey ? inst : i));
+            else appendInstance(inst);
+            return;
+        }
         setHasProcedure(true);
         if (instances.length > 0) {
             const newTitle = title || activeInst?.title || '';
@@ -811,10 +843,33 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             if (newEnrichments?.size > 0) setEnrichments(prev => mergeEnrichments(prev, newEnrichments));
             if (procedureMetadata) setInitialMeta((prev: any) => mergeProcedureMetadata(prev, procedureMetadata));
         }
-    }, [activeTab, instances, activeInst, processTitle, safeGenerateBpmn]);
+    }, [activeTab, instances, activeInst, processTitle, safeGenerateBpmn, hasRealProcedure, appendInstance]);
 
     // Procédure décrite en texte : les étapes arrivent une à une (aperçu), la réponse finale les remplace
-    const handleWorkflowPreview = useCallback((rows: Table1Row[]) => {
+    const handleWorkflowPreview = useCallback((rows: Table1Row[], options?: { isNew?: boolean }) => {
+        const draftKey = draftKeyRef.current;
+        if (rows.length === 0 && draftKey) {
+            // nouvelle procédure abandonnée : on la retire, l'autre reste telle quelle
+            draftKeyRef.current = null;
+            const idx = instances.findIndex(i => i.process_id === draftKey);
+            setInstances(prev => prev.filter(i => i.process_id !== draftKey));
+            if (idx >= 0) setActiveTab(t => Math.max(0, t >= idx ? t - 1 : t));
+            return;
+        }
+        if (rows.length > 0 && (draftKey || (options?.isNew && hasRealProcedure))) {
+            if (draftKey) {
+                setInstances(prev => prev.map(i => i.process_id === draftKey ? { ...i, data: rows } : i));
+            } else {
+                const key = crypto.randomUUID();
+                draftKeyRef.current = key;
+                const name = 'Procédure en cours de rédaction';
+                appendInstance({
+                    process_id: key, title: name, data: rows, enrichments: new Map(), bpmnXml: null,
+                    metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: { nom: name }, status: 'generating',
+                });
+            }
+            return;
+        }
         if (rows.length === 0) {
             // aperçu abandonné alors qu'aucune procédure n'était affichée : on revient à l'état vide
             if (instances.length === 0) {
@@ -834,7 +889,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             setBpmnXml(xml);
             if (xml) editorRef.current?.importXml(xml);
         }
-    }, [instances.length, activeInst, activeTab, processTitle, safeGenerateBpmn, chatFirst]);
+    }, [instances, activeInst, activeTab, processTitle, safeGenerateBpmn, chatFirst, hasRealProcedure, appendInstance]);
 
     // ── Lot 5 : points de restauration du chat ──
     const takeSnapshot = useCallback(() => ({
@@ -1015,6 +1070,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         variant="sidebar"
                         onFilesSent={files => setSourceFiles(prev => [...prev, ...files].slice(-20))}
                         onFocusSteps={handleFocusSteps}
+                        onOpenProcedure={title => {
+                            const idx = instances.findIndex(i => i.title === title);
+                            if (idx >= 0) setActiveTab(idx);
+                            if (!procOpen) toggleProc(true);
+                            setMobileView('proc');
+                        }}
                         onCollapse={() => toggleChat(false)}
                         onActivity={setChatActivity}
                         procedureId={workflowId}
@@ -1082,11 +1143,26 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             )}
                             {/* le titre garde sa place : ce sont les actions qui passent à la ligne */}
                             <div className="min-w-[12rem] flex-1">
-                                <h1 className="text-base font-semibold text-neutral-900 truncate" title={activeTitle || 'Nouvelle procédure'}>
-                                    {activeTitle || 'Nouvelle procédure'}
-                                </h1>
+                                {instances.length > 1 ? (
+                                    /* plusieurs procédures dans la conversation : on en change depuis le titre */
+                                    <RowMenu label="Changer de procédure" align="left" className="min-w-0 max-w-full"
+                                        triggerClassName="-mx-1.5 flex max-w-full items-center gap-1 rounded-lg px-1.5 text-neutral-900 hover:bg-neutral-100"
+                                        trigger={<>
+                                            <span className="text-base font-semibold truncate" title={activeTitle || 'Nouvelle procédure'}>{activeTitle || 'Nouvelle procédure'}</span>
+                                            <ChevronDown className="w-4 h-4 shrink-0" />
+                                        </>}
+                                        items={instances.map((inst, i) => ({
+                                            label: `${inst.title}${i === activeTab ? '  ✓' : ''}`,
+                                            icon: <span className={`inline-block !w-2 !h-2 rounded-full ${inst.status === 'generating' ? 'bg-amber-400 animate-pulse' : inst.status === 'error' ? 'bg-red-500' : 'bg-neutral-900'}`} />,
+                                            onSelect: () => setActiveTab(i),
+                                        }))} />
+                                ) : (
+                                    <h1 className="text-base font-semibold text-neutral-900 truncate" title={activeTitle || 'Nouvelle procédure'}>
+                                        {activeTitle || 'Nouvelle procédure'}
+                                    </h1>
+                                )}
                                 <p className="text-xs text-neutral-500 truncate">
-                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? ` · ${activeInst.category}` : ''}
+                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? ` · ${activeInst.category}` : ''}{instances.length > 1 ? ` · ${instances.length} procédures dans la conversation` : ''}
                                 </p>
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -1099,17 +1175,17 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white rounded-lg text-xs font-medium hover:bg-neutral-700 disabled:opacity-50 transition-colors">
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>}
-                                {canSave && access?.organisations_mode && activeInst && !activeInst.workflow_db_id && activeData.length > 0 && (
-                                    <button type="button" disabled={proposing} onClick={() => void proposeToLibrary()}
-                                        title="Le pilote l'ajoutera à une campagne ou au référentiel ; elle sera validée avant publication"
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-neutral-300 rounded-lg text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-50">
-                                        <Send className="w-3.5 h-3.5" />{proposing ? 'Envoi…' : 'Proposer au référentiel'}
+                                {activeInst?.workflow_db_id && currentActorId && (
+                                    <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+                                        {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                                        Soumettre
                                     </button>
                                 )}
                                 {exportAllowed && activeData.length > 0 && (
                                     <RowMenu label="Télécharger la procédure" align="right"
-                                        triggerClassName="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100"
-                                        trigger={<><Download className="w-3.5 h-3.5" /> Télécharger <ChevronDown className="w-3.5 h-3.5" /></>}
+                                        triggerClassName="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100"
+                                        trigger={<Download className="w-4 h-4" />}
                                         items={[
                                             { label: 'Logigramme BPMN (.bpmn)', icon: <Workflow />, onSelect: () => void downloadDiagram('bpmn') },
                                             { label: 'Image du logigramme (.svg)', icon: <Workflow />, onSelect: () => void downloadDiagram('svg') },
@@ -1117,6 +1193,15 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             { label: 'Fiche Word (.docx)…', icon: <FileText />, onSelect: () => setView('fiche'), separatorBefore: true },
                                         ]} />
                                 )}
+                                {(() => {
+                                    const more = [
+                                        ...(canSave && access?.organisations_mode && activeInst && !activeInst.workflow_db_id && activeData.length > 0
+                                            ? [{ label: proposing ? 'Envoi…' : 'Proposer au référentiel', icon: <Send />, onSelect: () => { if (!proposing) void proposeToLibrary(); } }] : []),
+                                        ...(VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id
+                                            ? [{ label: 'Historique des versions', icon: <History />, onSelect: () => setVersionsOpen(true) }] : []),
+                                    ];
+                                    return more.length > 0 && <RowMenu label="Autres actions" align="right" triggerClassName="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100" items={more} />;
+                                })()}
                                 <button type="button" onClick={toggleProcFullscreen}
                                     title={procFullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran (tableau, logigramme, fiche)'}
                                     aria-label={procFullscreen ? 'Quitter le plein écran' : 'Afficher la procédure en plein écran'}
@@ -1129,35 +1214,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         <PanelRightClose className="w-4 h-4" />
                                     </button>
                                 )}
-                                {VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id && (
-                                    <button type="button" onClick={() => setVersionsOpen(true)} title="Historique des versions"
-                                        className="flex items-center gap-1.5 px-2.5 py-1.5 border border-neutral-300 rounded-lg text-xs font-medium text-neutral-900 hover:bg-neutral-100">
-                                        <History className="w-3.5 h-3.5" />Versions
-                                    </button>
-                                )}
-                                {activeInst?.workflow_db_id && currentActorId && (
-                                    <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                                        {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                                        Soumettre
-                                    </button>
-                                )}
                             </div>
                         </div>
-                        {/* Onglets : seulement quand plusieurs procédures sont ouvertes */}
-                        {instances.length > 1 && (
-                            <div className="mt-2 flex gap-1 items-center min-w-0 overflow-x-auto">
-                                {instances.map((inst, i) => (
-                                    <button type="button" key={inst.process_id} onClick={() => setActiveTab(i)} title={inst.title}
-                                        className={`shrink-0 max-w-[260px] truncate px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${i === activeTab ? 'bg-neutral-900 text-white' : 'bg-white border border-neutral-300 text-neutral-900 hover:bg-neutral-100'}`}>
-                                        {inst.status === 'generating' && <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1.5 animate-pulse" />}
-                                        {inst.status === 'error' && <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1.5" />}
-                                        {inst.status === 'ready' && <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1.5" />}
-                                        {inst.title}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                         {/* Vues et actions */}
                         <div className="mt-1.5 flex flex-wrap items-end justify-between gap-2">
                             <div role="tablist" aria-label="Vue de la procédure" className="flex gap-1">
@@ -1199,14 +1257,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                                 title={paletteOpen ? 'Masquer les outils de dessin' : 'Afficher les outils de dessin'}
                                                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${paletteOpen ? 'bg-neutral-100 text-neutral-900 border-neutral-900' : 'bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-100'}`}>
                                                 <Shapes className="w-4 h-4" />Outils
-                                            </button>
-                                            <div className="flex items-center rounded-lg border border-neutral-300 bg-white overflow-hidden">
-                                                <button type="button" title="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomOut className="w-4 h-4 text-neutral-900" /></button>
-                                                <button type="button" title="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomIn className="w-4 h-4 text-neutral-900" /></button>
-                                                <button type="button" title="Ajuster à la fenêtre" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-neutral-100"><Scan className="w-4 h-4 text-neutral-900" /></button>
-                                            </div>
-                                            <button type="button" title={editorFullscreen ? 'Quitter le plein écran' : 'Plein écran'} onClick={() => setEditorFullscreen(f => !f)} className="p-1.5 rounded-lg hover:bg-neutral-100">
-                                                {editorFullscreen ? <Minimize2 className="w-4 h-4 text-neutral-900" /> : <Maximize2 className="w-4 h-4 text-neutral-900" />}
                                             </button>
                                         </>
                                     ) : undefined}
@@ -1324,6 +1374,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             <Minimize2 className="w-4 h-4 text-slate-600" />
                                         </button>
                                     )}
+                                    <div className="absolute bottom-3 right-3 z-10 flex items-center rounded-lg border border-neutral-300 bg-white shadow-sm overflow-hidden">
+                                        <button type="button" title="Dézoomer" aria-label="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomOut className="w-4 h-4 text-neutral-900" /></button>
+                                        <button type="button" title="Zoomer" aria-label="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomIn className="w-4 h-4 text-neutral-900" /></button>
+                                        <button type="button" title="Ajuster à la largeur" aria-label="Ajuster à la largeur" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-neutral-100"><Scan className="w-4 h-4 text-neutral-900" /></button>
+                                    </div>
                                     <div className="flex flex-1 min-h-0">
                                         <div className="flex-1 min-w-0">
                                             {instances.length > 0

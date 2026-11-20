@@ -809,18 +809,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                 // diagramme haut, mis en entier dans le cadre, devenait illisible) ; on descend à
                 // la molette, et le zoom reste disponible
                 canvas.zoom('fit-viewport');
-                setTimeout(() => {
-                    const vb = canvas.viewbox();
-                    const inner = vb.inner;
-                    if (!inner?.width) return;
-                    // La palette d'outils recouvre le bord gauche du canevas : on commence après elle
-                    const palette = containerRef.current?.querySelector('.djs-palette')?.getBoundingClientRect();
-                    const box = containerRef.current?.getBoundingClientRect();
-                    const left = (palette && box ? Math.max(0, palette.right - box.left) : 0) + 20;
-                    const zoom = Math.min(0.9, (vb.outer.width - left - 20) / inner.width);
-                    canvas.zoom(zoom);
-                    canvas.viewbox({ x: inner.x - left / zoom, y: inner.y - 20 / zoom, width: vb.outer.width / zoom, height: vb.outer.height / zoom });
-                }, 50);
+                setTimeout(() => fitWidth(false), 50);
                 setLoading(false);
                 onReady?.();
 
@@ -856,26 +845,34 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
             if (Math.abs(w - lastWidth) < 24) return;
             lastWidth = w;
             clearTimeout(timer);
-            timer = setTimeout(() => {
-                const canvas = modelerRef.current?.get?.('canvas');
-                if (!canvas) return;
-                try {
-                    const vb = canvas.viewbox();
-                    const inner = vb.inner;
-                    if (!inner?.width) return;
-                    const palette = el.querySelector('.djs-palette')?.getBoundingClientRect();
-                    const box = el.getBoundingClientRect();
-                    const left = (palette ? Math.max(0, palette.right - box.left) : 0) + 20;
-                    const zoom = Math.min(0.9, (box.width - left - 20) / inner.width);
-                    if (!(zoom > 0)) return;
-                    canvas.zoom(zoom);
-                    canvas.viewbox({ x: inner.x - left / zoom, y: vb.y, width: box.width / zoom, height: box.height / zoom });
-                } catch { /* diagramme en cours de chargement */ }
-            }, 150);
+            timer = setTimeout(() => fitWidth(true), 150);
         });
         ro.observe(el);
         return () => { ro.disconnect(); clearTimeout(timer); };
     }, []);
+
+    /** Diagramme à la largeur du cadre (couloirs et début visibles), depuis le haut ou en
+     *  gardant la position verticale. Sans effet tant que le cadre est caché (largeur nulle) :
+     *  le ResizeObserver recadre quand il apparaît. */
+    function fitWidth(keepY: boolean) {
+        const canvas = modelerRef.current?.get?.('canvas');
+        const el = containerRef.current;
+        if (!canvas || !el) return;
+        try {
+            const box = el.getBoundingClientRect();
+            if (box.width < 40 || box.height < 40) return;
+            const vb = canvas.viewbox();
+            const inner = vb.inner;
+            if (!inner?.width) return;
+            // La palette d'outils recouvre le bord gauche du canevas : on commence après elle
+            const palette = el.querySelector('.djs-palette')?.getBoundingClientRect();
+            const left = (palette && palette.width > 0 ? Math.max(0, palette.right - box.left) : 0) + 20;
+            const zoom = Math.min(0.9, (box.width - left - 20) / inner.width);
+            if (!(zoom > 0)) return;
+            canvas.zoom(zoom);
+            canvas.viewbox({ x: inner.x - left / zoom, y: keepY ? vb.y : inner.y - 20 / zoom, width: box.width / zoom, height: box.height / zoom });
+        } catch { /* diagramme en cours de chargement */ }
+    }
 
     useImperativeHandle(ref, () => ({
         saveXml: async () => {
@@ -896,6 +893,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
             if (!modelerRef.current) return;
             await modelerRef.current.importXML(xml);
             modelerRef.current.get('canvas').zoom('fit-viewport');
+            fitWidth(false);
         },
         zoomIn: () => {
             const c = modelerRef.current?.get('canvas');
@@ -905,7 +903,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
             const c = modelerRef.current?.get('canvas');
             if (c) c.zoom(Math.max(0.2, c.zoom() - 0.15));
         },
-        zoomFit: () => modelerRef.current?.get('canvas')?.zoom('fit-viewport'),
+        zoomFit: () => fitWidth(false),
         undo: () => modelerRef.current?.get('commandStack')?.undo(),
         redo: () => modelerRef.current?.get('commandStack')?.redo(),
     }));

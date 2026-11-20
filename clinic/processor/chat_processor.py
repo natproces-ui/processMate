@@ -472,7 +472,7 @@ Ne laisse JAMAIS un champ vide dans ta réponse si une valeur existait déjà ci
         timeout = 180 if files_to_send else 90
 
         logger.info("🤖 Passe 2 : Amélioration du workflow avec conventions appliquées...")
-        raw_text = await self._streamed_workflow(parts, timeout, "Chat regen (flux)", "Réécriture de la procédure")
+        raw_text = await self._streamed_workflow(parts, timeout, "Chat regen (flux)", "Réécriture de la procédure", replace=True)
         if raw_text is None:
             async def _task(model_name: str):
                 model = self.model_manager.get_model(model_name)
@@ -555,7 +555,7 @@ pour générer ou enrichir le processus demandé.
     # ─────────────────────────────────────────────────────────
 
     async def _streamed_workflow(self, contents: Any, timeout: float, task_name: str,
-                                 label: str = "Rédaction de la procédure") -> Optional[str]:
+                                 label: str = "Rédaction de la procédure", replace: bool = False) -> Optional[str]:
         """Procédure écrite en flux pendant un tour de chat : chaque étape complète part tout de
         suite à l'écran (aperçu {"type": "workflow_preview", "row"}). Renvoie le texte complet,
         relu ensuite comme d'habitude ; None hors d'un tour en direct ou si le flux échoue
@@ -574,7 +574,7 @@ pour générer ou enrichir le processus demandé.
                 for row in reader.feed(text):
                     normalized = self.img_processor._validate_and_normalize_workflow([row], quiet=True)
                     if normalized:
-                        turn_progress.emit({"type": "workflow_preview", "row": normalized[0]})
+                        turn_progress.emit({"type": "workflow_preview", "row": normalized[0], "new": not replace})
                         n = reader_rows[0] = reader_rows[0] + 1
                         turn_progress.status("work", f"{label} : {n} étape{'s' if n > 1 else ''}", "running")
             return "".join(chunks)
