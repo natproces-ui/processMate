@@ -1319,8 +1319,11 @@ const PROCEDURE_VERB: Partial<Record<Intent, string>> = {
 
 /** Message automatique « Processus … généré — N étapes » (aussi les anciens, rechargés) */
 function isProcedureNotice(m: { intent?: Intent; title?: string; totalSteps?: number; content: string; streaming?: boolean }): boolean {
-    return !m.streaming && !!m.intent && !!PROCEDURE_VERB[m.intent] && !!m.title
-        && m.content === buildAssistantMessage(m.intent, m.title, m.totalSteps ?? 0);
+    if (m.streaming || !m.intent || !PROCEDURE_VERB[m.intent] || !m.title) return false;
+    const local = buildAssistantMessage(m.intent, m.title, m.totalSteps ?? 0);
+    // le serveur enregistre la même phrase avec des guillemets « » (turn_recorder._chat_summary)
+    const stored = local.replace(`"${m.title}"`, `« ${m.title} »`);
+    return m.content.trim() === local || m.content.trim() === stored;
 }
 
 function ProcedureCard({ title, steps, intent, onOpen }: { title: string; steps: number; intent: Intent; onOpen?: () => void }) {
