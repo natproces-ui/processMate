@@ -716,7 +716,8 @@ export default function ChatInterface({
                 applyChatResult(ev.result, msgId);
                 break;
             case 'error':
-                updateMsg(msgId, m => ({ ...m, content: ev.limit ? ev.message : (m.content || 'Une erreur est survenue.') }));
+                // la raison dans le chat (pas seulement dans une notification qui disparaît)
+                updateMsg(msgId, m => ({ ...m, content: ev.limit ? ev.message : (m.content || (ev.message ? `Une erreur est survenue : ${ev.message}` : 'Une erreur est survenue.')) }));
                 onError(ev.message || 'Erreur lors du traitement');
                 break;
         }
