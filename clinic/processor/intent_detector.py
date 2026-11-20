@@ -11,9 +11,7 @@ import logging
 from typing import Optional, List, Dict
 from dataclasses import dataclass
 
-from manager.model_manager import GeminiModelManager
 from prompts.intent_prompt import get_intent_prompt
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -38,29 +36,21 @@ async def detect_intent(
 ) -> IntentResult:
     """
     Détecte l'intention du message utilisateur via Gemini Flash Lite.
-    Utilise GeminiModelManager avec fallback automatique.
+    Modèle rapide, flash en secours (voir plus bas).
     """
-    api_key = os.getenv("GOOGLE_API_KEY")
-    model_manager = GeminiModelManager(api_key)
-
     prompt = get_intent_prompt(message, has_workflow, filenames, history, procedures)
 
-    async def _task(model_name: str):
-        model = model_manager.get_model(model_name)
+    # Classer une phrase : modèle rapide (mesuré : aussi juste que flash, 0,8 s au lieu de 4 à 16 s
+    # avec flash et sa réflexion complète). Flash seulement en secours si le rapide est en erreur.
+    from manager.model_manager import GeminiModel, generate_content
+    try:
         response = await asyncio.wait_for(
-            asyncio.to_thread(
-                model.generate_content,
-                model=model_name,
-                contents=prompt
-            ),
-            timeout=15
-        )
-        return response
-
-    result = await model_manager.execute_with_fallback(
-        _task,
-        task_name="Intent detection"
-    )
+            asyncio.to_thread(generate_content, prompt, None, "Intent detection",
+                              [GeminiModel.LITE, GeminiModel.FLASH]),
+            timeout=20)
+        result = {"success": True, "result": response}
+    except Exception as e:
+        result = {"success": False, "message": str(e)[:200]}
 
     if not result["success"]:
         logger.warning(f"⚠️ Intent detection failed: {result['message']} — fallback generate/clarify")

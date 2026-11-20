@@ -328,19 +328,23 @@ async def _stream_analysis(request: Request, files: List[Dict[str, Any]], messag
         parts.append(f"--- Fichier : {f['filename']} ---")
         parts.extend(file_to_parts(f))
     parts.append(f"Demande de l'utilisateur : {message}")
+    from manager import turn_progress
     end, wrote = object(), False
+    queue: asyncio.Queue = asyncio.Queue()
     try:
-        with routing_scope(TaskKind.EXTRACTION, source_kinds_of(files)):
+        with routing_scope(TaskKind.EXTRACTION, source_kinds_of(files)), turn_progress.progress_scope(queue):
             stream = generate_content_stream(parts, task_name="Analyse des sources")
-        while True:
-            chunk = await asyncio.to_thread(next, stream, end)
-            if chunk is end:
-                break
-            if chunk:
-                wrote = True
-                yield _sse({"type": "text_delta", "text": chunk})
-            if await request.is_disconnected():
-                return
+            while True:
+                chunk = await asyncio.to_thread(next, stream, end)
+                while not queue.empty():
+                    yield _sse(queue.get_nowait())
+                if chunk is end:
+                    break
+                if chunk:
+                    wrote = True
+                    yield _sse({"type": "text_delta", "text": chunk})
+                if await request.is_disconnected():
+                    return
     except Exception as e:
         logger.warning(f"⚠️ Analyse des sources indisponible : {e}")
         if not wrote:
@@ -595,13 +599,18 @@ async def studio_turn(
                 # relance ou une nouvelle extraction en ont besoin, même après une première proposition
                 to_plan = plan_files or sess["files"]
                 label = _reading_label(new_files) if new_files else "Analyse de la demande"
-                yield _sse({"type": "status", "id": "plan", "label": label, "state": "running"})
+                yield _sse({"type": "status", "id": "think", "label": label, "state": "running"})
                 with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(to_plan)), interactions_scope(ix):
                     plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"))
                 found = len(plan.procedures)
-                done_label = (f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
-                              if plan.action in ("generate", "propose", "merge") else label)
-                yield _sse({"type": "status", "id": "plan", "label": done_label, "state": "done"})
+                if plan.action in ("generate", "propose", "merge"):
+                    yield _sse({"type": "status", "id": "think", "state": "done",
+                                "label": f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"})
+                elif plan.action == "analyze":
+                    yield _sse({"type": "status", "id": "think", "label": "Je lis les sources pour répondre", "state": "done"})
+                elif plan.action == "answer":
+                    yield _sse({"type": "status", "id": "think", "label": label, "state": "done"})
+                # edit : le chat termine la ligne avec ce qu'il a compris
                 if plan.reply and plan.action != "analyze":
                     yield _sse({"type": "message", "text": plan.reply})
 
@@ -694,7 +703,7 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
     from manager import turn_progress
     queue: asyncio.Queue = asyncio.Queue()
     with routing_scope(TaskKind.MODIFICATION_PROCEDURE, source_kinds_of(files) if files else ["texte"]), \
-            turn_progress.progress_scope(queue):
+            turn_progress.progress_scope(queue) as sink:
         # La tâche hérite du contexte : ce qu'elle signale (étapes, texte) part tout de suite au chat
         task = asyncio.create_task(ChatProcessor().process_message(
             message=message, files=chat_files, history=history, current_workflow=workflow,
@@ -702,7 +711,12 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
             procedures=procedures if isinstance(procedures, list) else None, active_procedure=active_procedure,
         ))
     work_started = think_done = False
-    while not task.done() or not queue.empty():
+    grace = None  # dernières pensées en cours de traduction : on les attend au plus 4 s
+    while not task.done() or not queue.empty() or turn_progress.pending(sink):
+        if task.done() and queue.empty():
+            grace = grace or time.time() + 4
+            if time.time() > grace:
+                break
         try:
             ev = await asyncio.wait_for(queue.get(), timeout=0.1)
         except asyncio.TimeoutError:

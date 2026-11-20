@@ -12,6 +12,11 @@ appelle emit(). Fonctionne aussi depuis les threads (asyncio.to_thread copie le 
 """
 
 import asyncio
+import itertools
+import re
+import logging
+import weakref
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Callable, Dict, Iterator, Optional
@@ -36,6 +41,75 @@ def status(step_id: str, label: str, state: str = "running") -> None:
     emit({"type": "status", "id": step_id, "label": label[:200], "state": state})
 
 
+# ── Ce que l'assistant pense, en quelques mots (comme Claude ou ChatGPT) ──
+# Le modèle fournit des résumés de sa réflexion (en anglais) pendant qu'il travaille ; chacun est
+# réécrit en une phrase française à la première personne et ajouté au suivi, dans l'ordre.
+
+logger = logging.getLogger(__name__)
+_pool = ThreadPoolExecutor(max_workers=6, thread_name_prefix="narration")
+_last: "weakref.WeakKeyDictionary[Callable, Future]" = weakref.WeakKeyDictionary()
+_ids = itertools.count(1)
+
+NARRATION_PROMPT = """Voici un résumé (souvent en anglais) de ce que fait un assistant qui travaille sur une procédure
+bancaire ou sur des documents. Réécris-le en UNE phrase courte en français (18 mots au plus), à la première personne,
+au présent, concrète : cite les étapes, acteurs, documents ou éléments précis. Pas de guillemets, pas de markdown,
+pas de préambule. S'il ne dit rien de concret (« je commence l'analyse », « je finalise le JSON », format de sortie),
+réponds exactement : -
+
+Résumé :
+"""
+
+
+def _french_line(summary: str) -> str:
+    from manager.model_manager import GeminiModel, generate_content
+    r = generate_content(NARRATION_PROMPT + summary[:1500], None, "Narration",
+                         models=[GeminiModel.LITE, GeminiModel.FLASH])
+    line = (r.text or "").strip().strip('"«» ').splitlines()[0] if (r.text or "").strip() else ""
+    if line in ("-", "–", "—"):
+        return ""
+    # élisions parfois perdues par le modèle rapide (« J analyse », « d une ») : on les rétablit
+    line = re.sub(r"\b([JjDdLlNnSsCcMmTt]|[Qq]u) (?=[aeiouyhéèêëàâîïôûAEIOUYHÉÈÊÀÂÎÔÛ])", r"\1'", line)
+    return line[:200]
+
+
+def thought(summary: str) -> None:
+    """Un résumé de réflexion reçu du modèle : traduit à part (sans ralentir le travail), affiché dans l'ordre."""
+    sink = _sink.get()
+    if sink is None or not (summary or "").strip():
+        return
+    prev = _last.get(sink)
+    step_id = f"pensee{next(_ids)}"
+
+    def work() -> None:
+        try:
+            line = _french_line(summary)
+        except Exception as e:
+            logger.debug(f"narration indisponible : {e}")
+            line = ""
+        if prev is not None:
+            try:
+                prev.result(timeout=30)  # garder l'ordre des pensées
+            except Exception:
+                pass
+        if line:
+            try:
+                sink({"type": "status", "id": step_id, "label": line, "state": "done", "kind": "thought"})
+            except Exception:
+                pass
+
+    try:
+        _last[sink] = _pool.submit(work)
+    except Exception:
+        pass
+
+
+def thoughts_pending() -> bool:
+    """Des pensées sont encore en cours de traduction pour ce tour."""
+    sink = _sink.get()
+    fut = _last.get(sink) if sink is not None else None
+    return fut is not None and not fut.done()
+
+
 @contextmanager
 def progress_scope(queue: "asyncio.Queue[Dict[str, Any]]") -> Iterator[None]:
     """Les événements émis dans ce bloc (et ses threads) vont dans la file, côté boucle."""
@@ -46,6 +120,12 @@ def progress_scope(queue: "asyncio.Queue[Dict[str, Any]]") -> Iterator[None]:
 
     token = _sink.set(sink)
     try:
-        yield
+        yield sink
     finally:
         _sink.reset(token)
+
+
+def pending(sink: Optional[Callable[[Dict[str, Any]], None]]) -> bool:
+    """Des pensées de ce tour sont encore en cours de traduction."""
+    fut = _last.get(sink) if sink is not None else None
+    return fut is not None and not fut.done()

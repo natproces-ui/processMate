@@ -32,7 +32,10 @@ class TurnRecorder:
     def feed(self, ev: Dict[str, Any]) -> None:
         t = ev.get("type")
         if t == "status":
-            self.steps[ev.get("id", "")] = {"id": ev.get("id"), "label": ev.get("label"), "state": ev.get("state")}
+            step = {"id": ev.get("id"), "label": ev.get("label"), "state": ev.get("state")}
+            if ev.get("kind"):
+                step["kind"] = ev["kind"]  # pensée du modèle : affichée comme du texte à la réouverture
+            self.steps[ev.get("id", "")] = step
         elif t == "message":
             if ev.get("text"):
                 self.texts.append(ev["text"])

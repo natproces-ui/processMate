@@ -294,19 +294,32 @@ class ChatProcessor:
         ]
         prompt = get_revision_prompt(workflow_for_prompt, message)
 
-        async def _task(model_name: str):
-            model = self.model_manager.get_model(model_name)
-            response = await asyncio.wait_for(
-                asyncio.to_thread(model.generate_content, model=model_name, contents=prompt),
-                timeout=60
-            )
-            return response
+        text = None
+        if turn_progress.active():
+            # En direct : en flux, pour que le suivi montre ce que l'assistant fait (résumés de réflexion)
+            try:
+                from manager.model_manager import generate_content_stream
+                text = await asyncio.wait_for(
+                    asyncio.to_thread(lambda: "".join(generate_content_stream(prompt, task_name="Chat patch (flux)"))),
+                    timeout=90)
+            except Exception as e:
+                logger.warning(f"⚠️ Patch en flux indisponible ({str(e)[:120]}) : appel classique")
+                text = None
+        if text is None:
+            async def _task(model_name: str):
+                model = self.model_manager.get_model(model_name)
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(model.generate_content, model=model_name, contents=prompt),
+                    timeout=60
+                )
+                return response
 
-        result = await self.model_manager.execute_with_fallback(_task, task_name="Chat patch")
-        if not result["success"]:
-            raise ValueError(result["message"])
+            result = await self.model_manager.execute_with_fallback(_task, task_name="Chat patch")
+            if not result["success"]:
+                raise ValueError(result["message"])
+            text = result["result"].text
 
-        text = result["result"].text.strip()
+        text = text.strip()
         json_match = re.search(r'\{[\s\S]*\}', text)
         if json_match:
             text = json_match.group(0)

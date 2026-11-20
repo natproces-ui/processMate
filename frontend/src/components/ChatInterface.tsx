@@ -39,7 +39,7 @@ interface AttachedFile {
 type FileKind = 'pdf' | 'image' | 'docx' | 'pptx';
 interface SentAttachment { name: string; type: FileKind; previewUrl?: string; size?: number }
 
-interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped'; startedAt?: number; endedAt?: number }
+interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped'; startedAt?: number; endedAt?: number; kind?: 'thought' }
 export interface TurnProcedure {
     id: string; title: string; description?: string;
     sources?: { file: string; pages?: string | null }[]; estimated_steps?: number;
@@ -665,6 +665,8 @@ export default function ChatInterface({
                     // chaque étape garde son heure de début et de fin (chronomètre de la trace)
                     const step: TurnStep = {
                         id: ev.id, label: ev.label, state: ev.state,
+                        // pensée du modèle (texte) ou étape du travail
+                        kind: ev.kind === 'thought' ? 'thought' : prev?.kind,
                         startedAt: prev?.startedAt ?? now,
                         endedAt: ev.state === 'running' ? undefined : (prev?.endedAt ?? now),
                     };

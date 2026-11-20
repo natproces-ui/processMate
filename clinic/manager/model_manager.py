@@ -118,6 +118,38 @@ def transcribe_audio(audio_bytes: bytes, mime_type: str, language_codes: List[st
     return (response.text or "").strip()
 
 
+def _with_thoughts(config: Any) -> Any:
+    """Config avec résumés de réflexion si un tour est affiché en direct (suivi « ce que je fais »),
+    sinon None. Ne touche pas à un réglage de réflexion explicite."""
+    from google.genai import types as gtypes
+    from manager import turn_progress
+    if not turn_progress.active():
+        return None
+    try:
+        base = config if isinstance(config, gtypes.GenerateContentConfig) else (
+            gtypes.GenerateContentConfig(**config) if isinstance(config, dict) else gtypes.GenerateContentConfig())
+        tc = base.thinking_config
+        if tc is not None and (tc.include_thoughts is not None or tc.thinking_budget == 0):
+            return None
+        new_tc = (tc.model_copy(update={"include_thoughts": True}) if tc is not None
+                  else gtypes.ThinkingConfig(include_thoughts=True))
+        return base.model_copy(update={"thinking_config": new_tc})
+    except Exception:
+        return None
+
+
+def _chunk_parts(chunk: Any):
+    """(texte, est_une_pensée) pour chaque morceau d'une réponse en flux."""
+    try:
+        parts = chunk.candidates[0].content.parts or []
+    except Exception:
+        parts = None
+    if parts is None:
+        text = getattr(chunk, "text", None)
+        return [(text, False)] if text else []
+    return [(p.text, bool(getattr(p, "thought", False))) for p in parts if getattr(p, "text", None)]
+
+
 def generate_content_stream(contents: Any, config: Any = None, task_name: str = "Gemini",
                             models: Optional[List[GeminiModel]] = None):
     """Comme generate_content, mais renvoie le texte morceau par morceau (générateur synchrone).
@@ -126,18 +158,30 @@ def generate_content_stream(contents: Any, config: Any = None, task_name: str = 
     mélange jamais deux réponses partielles.
     """
     models = models or get_models_for_request()
+    narrate_cfg = _with_thoughts(config)
     for i, model in enumerate(models):
         started = False
+        cfg = narrate_cfg if narrate_cfg is not None else config
         try:
             t0 = time.monotonic()
-            for chunk in _client().models.generate_content_stream(model=model.value, contents=contents, config=config):
-                text = getattr(chunk, "text", None)
-                if text:
-                    started = True
-                    yield text
+            chunk = None
+            for chunk in _client().models.generate_content_stream(model=model.value, contents=contents, config=cfg):
+                for text, is_thought in _chunk_parts(chunk):
+                    if is_thought:
+                        from manager import turn_progress
+                        turn_progress.thought(text)
+                    elif text:
+                        started = True
+                        yield text
             _log_call(task_name, model, t0, chunk if started else None, fallback=i > 0)
             return
         except Exception as e:
+            if not started and narrate_cfg is not None:
+                # résumés de réflexion refusés par ce modèle : même appel, sans eux
+                logger.info(f"ℹ️ {task_name} : résumés de réflexion indisponibles sur {model.value} ({str(e)[:80]})")
+                narrate_cfg = None
+                yield from generate_content_stream(contents, config, task_name, models[i:])
+                return
             if not started and i + 1 < len(models) and _is_retryable(e):
                 logger.warning(f"⚠️ {task_name} : échec sur {model.value} ({str(e)[:120]}) → {models[i + 1].value}")
                 continue
