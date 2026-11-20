@@ -105,3 +105,42 @@ class RecorderTargetTest(unittest.TestCase):
         r.feed({"type": "chat_result", "result": {"intent": "patch", "explanation": "Fait.", "operations_count": 1}})
         r.feed({"type": "done"})
         self.assertEqual(r.finish()["payload"]["targetTitle"], "Compte épargne")
+
+
+class ChatRemarksTest(unittest.TestCase):
+    """Procédure créée depuis le chat : une réponse rédigée suit la carte (relecture)."""
+
+    def run_delegate(self, result):
+        from routers import studio_router
+
+        class Req:
+            async def is_disconnected(self):
+                return False
+
+        async def fake_process(self, **kwargs):
+            return result
+
+        async def fake_remarks(request, procedures, message):
+            yield studio_router._sse({"type": "remarks_delta", "text": f"Relu : {procedures[0]['title']}"})
+
+        async def go():
+            out = []
+            with mock.patch("processor.chat_processor.ChatProcessor.__init__", lambda self: None), \
+                    mock.patch("processor.chat_processor.ChatProcessor.process_message", fake_process), \
+                    mock.patch.object(studio_router, "_stream_remarks", fake_remarks):
+                async for chunk in studio_router._delegate_to_chat("formalise", [], [], None, None, None, request=Req()):
+                    out.append(chunk)
+            return "".join(out)
+
+        return asyncio.run(go())
+
+    def test_generate_is_followed_by_remarks(self):
+        text = self.run_delegate({"success": True, "intent": "generate", "title": "Compte épargne",
+                                  "workflow": [{"id": "1"}]})
+        self.assertIn("chat_result", text)
+        self.assertIn("Relu : Compte", text)
+        self.assertLess(text.index("chat_result"), text.index("remarks_delta"))
+
+    def test_patch_has_no_remarks(self):
+        text = self.run_delegate({"success": True, "intent": "patch", "operations": [], "operations_count": 0})
+        self.assertNotIn("remarks_delta", text)

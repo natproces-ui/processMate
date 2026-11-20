@@ -144,6 +144,8 @@ interface ChatInterfaceProps {
     activeProcedureKey?: string | null;
     /** Le message parle d'une autre procédure : l'afficher avant de la modifier */
     onTargetProcedure?: (key: string) => void;
+    /** Bouton « Nouvelle conversation » (stylo) : inutile quand la barre latérale en a déjà un */
+    showNewConversation?: boolean;
     onProcedureReady?: (proc: GeneratedProcedure) => void;
     onProcedureError?: (key: string, message: string) => void;
     onSelectProcedure?: (key: string) => void;
@@ -237,6 +239,7 @@ export default function ChatInterface({
     conversationProcedures,
     activeProcedureKey,
     onTargetProcedure,
+    showNewConversation = true,
     onRestore,
     onOpenPoints,
     onAgentOpenPoint,
@@ -964,11 +967,13 @@ export default function ChatInterface({
                     <h3 className="text-sm font-semibold text-neutral-900 truncate">{messages.length > 0 ? 'Conversation' : 'Que souhaitez-vous formaliser ?'}</h3>
                 )}
                 <div className="flex items-center gap-0.5">
-                    <button type="button" onClick={newSession} disabled={loading || !initialized}
-                        className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-40"
-                        title="Nouvelle conversation" aria-label="Nouvelle conversation">
-                        <PenLine className="w-4 h-4" />
-                    </button>
+                    {showNewConversation && (
+                        <button type="button" onClick={newSession} disabled={loading || !initialized}
+                            className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-40"
+                            title="Nouvelle conversation" aria-label="Nouvelle conversation">
+                            <PenLine className="w-4 h-4" />
+                        </button>
+                    )}
                     {isSidebar && onCollapse && (
                         <button type="button" onClick={onCollapse} title="Masquer la conversation" aria-label="Masquer la conversation"
                             className="hidden lg:inline-flex p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">

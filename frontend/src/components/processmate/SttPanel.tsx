@@ -1156,6 +1156,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             conversationIdRef.current = id;
                         }}
                         onRestoreProcedures={restoreProcedures}
+                        /* page d'accueil : « Nouvelle conversation » est déjà dans la barre latérale */
+                        showNewConversation={!chatFirst}
                         conversationProcedures={conversationProcedures}
                         activeProcedureKey={instances.length > 0 ? activeInst?.process_id ?? null : null}
                         onTargetProcedure={key => {

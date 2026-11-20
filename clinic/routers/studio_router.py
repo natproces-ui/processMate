@@ -540,7 +540,7 @@ async def studio_turn(
                     yield _sse({"type": "status", "id": "think", "label": "Analyse de la demande", "state": "running"})
                     # l'étape « think » est terminée par _delegate_to_chat (avec ce qui a été compris)
                     async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
-                                                      _loads(conversation_procedures, None), active_procedure):
+                                                      _loads(conversation_procedures, None), active_procedure, request):
                         yield ev
                     return
 
@@ -571,7 +571,7 @@ async def studio_turn(
                         yield ev
                 elif plan.action == "edit":
                     async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
-                                                  _loads(conversation_procedures, None), active_procedure):
+                                                  _loads(conversation_procedures, None), active_procedure, request):
                         yield ev
                 # answer : la réponse a déjà été envoyée
             except GuestLimitError as e:
@@ -629,7 +629,7 @@ def _reading_label(files: List[Dict[str, Any]]) -> str:
 
 
 async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw,
-                            procedures=None, active_procedure=None):
+                            procedures=None, active_procedure=None, request: Optional[Request] = None):
     """Modifications et conversation : logique existante du chat (patch, regen, explain…)."""
     from processor.chat_processor import ChatProcessor
     chat_files = [{"filename": f["filename"], "content": f["data"],
@@ -661,6 +661,15 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
     if work_started:
         yield _sse({"type": "status", "id": "work", "label": _work_done_label(result), "state": "done"})
     yield _sse({"type": "chat_result", "result": result})
+    # Procédure créée ou réécrite depuis le chat : une vraie réponse, comme après une génération
+    # depuis des fichiers (relecture : ce qui tient, ce qui manque, puis des suggestions)
+    if (request is not None and result.get("success") and result.get("workflow")
+            and result.get("intent") in ("generate", "regen", "web_search", "transcribe")
+            and not await request.is_disconnected()):
+        proc = {"title": result.get("title") or "Procédure", "workflow": result["workflow"],
+                "procedureMetadata": result.get("procedureMetadata") or {}}
+        async for ev in _stream_remarks(request, [proc], message):
+            yield ev
 
 
 def _work_done_label(result: Dict[str, Any]) -> str:
