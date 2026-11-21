@@ -414,10 +414,10 @@ async def update_procedure_status(campaign_id: str, procedure_id: str, body: Cam
 
 # ─── Emplacements (prompt 5) ──────────────────────────────────
 # Procédures attendues d'une campagne : voir manager/campaign_items.py.
-# Actif avec CAMPAIGN_SLOTS_ENABLED=true (sinon 404, ancien comportement intact).
+# Actif par défaut ; CAMPAIGN_SLOTS_ENABLED=false le coupe (404, ancien comportement).
 
 def slots_enabled() -> bool:
-    return os.getenv("CAMPAIGN_SLOTS_ENABLED", "false").strip().lower() == "true"
+    return os.getenv("CAMPAIGN_SLOTS_ENABLED", "true").strip().lower() != "false"
 
 
 def _slots() -> None:

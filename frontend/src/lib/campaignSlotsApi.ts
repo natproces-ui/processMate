@@ -1,10 +1,10 @@
 /**
  * Emplacements de campagne (« procédures attendues ») — clinic/manager/campaign_items.py.
- * Actif avec NEXT_PUBLIC_CAMPAIGN_SLOTS_ENABLED (et CAMPAIGN_SLOTS_ENABLED côté backend).
+ * Actif par défaut ; NEXT_PUBLIC_CAMPAIGN_SLOTS_ENABLED=false le coupe (et CAMPAIGN_SLOTS_ENABLED=false côté backend).
  */
 import { API_CONFIG } from '@/lib/api-config';
 
-export const CAMPAIGN_SLOTS_ENABLED = process.env.NEXT_PUBLIC_CAMPAIGN_SLOTS_ENABLED === 'true';
+export const CAMPAIGN_SLOTS_ENABLED = process.env.NEXT_PUBLIC_CAMPAIGN_SLOTS_ENABLED !== 'false';
 
 export type SlotStatus = 'pending' | 'in_progress' | 'submitted' | 'in_review' | 'formalized' | 'validated' | 'skipped';
 export type SlotOrigin = 'referentiel' | 'document' | 'bian' | 'analyse' | 'proposition' | 'saisie';

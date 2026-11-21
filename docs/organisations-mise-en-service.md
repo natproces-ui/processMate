@@ -29,8 +29,8 @@ commentaire dans le fichier ; il ne doit être membre d'aucune organisation.
 |---|---|---|
 | `ORGANISATIONS_ENABLED=true` | backend | Appartenance lue dans `organisation_members`, cloisonnement de toutes les données, console `/plateforme` |
 | `AUTH_MODE=enforce` | backend | Refus réels (sinon simple journalisation) |
-| `CAMPAIGN_SLOTS_ENABLED=true` | backend | Emplacements, nouveau lancement, annulation des tâches à la clôture |
-| `NEXT_PUBLIC_CAMPAIGN_SLOTS_ENABLED=true` | frontend | Écran des emplacements dans le détail d'une campagne |
+| `CAMPAIGN_SLOTS_ENABLED=false` | backend | Coupe les emplacements (actifs par défaut) : nouveau lancement, annulation des tâches à la clôture, campagne guidée |
+| `NEXT_PUBLIC_CAMPAIGN_SLOTS_ENABLED=false` | frontend | Coupe l’écran des emplacements (actif par défaut) |
 | `CRON_TOKEN=<secret>` | backend | Relances par tâche planifiée : `POST /api/taches/relances`, en-tête `X-Cron-Token` |
 
 Ordre conseillé :
