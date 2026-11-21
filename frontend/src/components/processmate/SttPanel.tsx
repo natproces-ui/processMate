@@ -74,6 +74,8 @@ interface ProcessInstance {
     enrichments: Map<string, TaskEnrichment>; bpmnXml: string | null;
     metadata: ProcessMetadata; initialMeta: any;
     status: 'generating' | 'ready' | 'error'; workflow_db_id?: string;
+    /** remplacée ou retirée par le chat : hors de la liste, gardée et rétablissable */
+    archived?: boolean;
 }
 
 interface Props {
@@ -728,6 +730,20 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         }
     }, [handleSave, activeInst, enrichments, activeData]);
 
+    /** Le chat a remplacé ou retiré des procédures (archived = true), ou l'utilisateur les rétablit (false) */
+    const archiveProcedures = useCallback((keys: string[], archived: boolean) => {
+        setInstances(prev => {
+            const next = prev.map(i => (keys.includes(i.process_id) ? { ...i, archived } : i));
+            setActiveTab(tab => {
+                if (next[tab] && !next[tab].archived) return tab;
+                const last = next.map(i => !i.archived).lastIndexOf(true);
+                return last >= 0 ? last : tab;
+            });
+            return next;
+        });
+    }, []);
+    const activeCount = instances.filter(i => !i.archived).length;
+
     const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
     const handleSubmitConfirm = useCallback(async (recipientId: string, message: string) => {
@@ -821,8 +837,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     };
     /** Procédures envoyées au chat pour qu'il comprenne de laquelle on parle (au moins deux) */
     const conversationProcedures = useMemo<StoredProcedure[] | undefined>(() => {
-        const ready = instances.filter(i => i.status === 'ready' && i.data.length > 0);
-        if (ready.length < 2) return undefined;
+        // toutes les procédures actives (une seule suffit : on peut demander de la découper)
+        const ready = instances.filter(i => i.status === 'ready' && i.data.length > 0 && !i.archived);
+        if (ready.length < 1) return undefined;
         return ready.map(i => ({
             key: i.process_id, title: i.title, workflow: i.data,
             enrichments: Object.fromEntries(i.enrichments), procedureMetadata: i.initialMeta ?? null,
@@ -835,7 +852,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     /** Ajoute une procédure et l'affiche ; celle affichée seule devient la première de la liste */
     const appendInstance = useCallback((inst: ProcessInstance) => {
         const base: ProcessInstance[] = instances.length > 0 ? instances : [{
-            process_id: crypto.randomUUID(), title: processTitle || 'Procédure', data, enrichments, bpmnXml,
+            process_id: singleKeyRef.current, title: processTitle || 'Procédure', data, enrichments, bpmnXml,
             metadata: processMetadata, initialMeta: initialMeta ?? { nom: processTitle }, status: 'ready',
         }];
         setInstances([...base, inst]);
@@ -951,12 +968,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             enrichments: new Map(Object.entries(p.enrichments || {})) as Map<string, TaskEnrichment>,
             bpmnXml: p.bpmnXml || safeGenerateBpmn((p.workflow || []) as Table1Row[], p.title || 'Procédure'),
             metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: p.procedureMetadata || { nom: p.title },
-            status: 'ready', workflow_db_id: p.workflow_db_id || undefined,
+            status: 'ready', workflow_db_id: p.workflow_db_id || undefined, archived: !!p.archived,
         }));
         draftKeyRef.current = null;
         setInstances(list);
-        const idx = list.findIndex(i => i.process_id === active);
-        setActiveTab(idx >= 0 ? idx : list.length - 1);
+        const idx = list.findIndex(i => i.process_id === active && !i.archived);
+        const lastActive = list.map(i => !i.archived).lastIndexOf(true);
+        setActiveTab(idx >= 0 ? idx : Math.max(0, lastActive));
         setHasProcedure(true); setPhase('editing'); setUploadOpen(false);
         setProceduresOwner(conversationIdRef.current);
     }, [safeGenerateBpmn]);
@@ -965,12 +983,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         if (guestMode || workflowId || !CONVERSATIONS_ENABLED) return;
         const id = conversationIdRef.current;
         if (!id || id !== proceduresOwner) return;
-        const toStored = (key: string, title: string, rows: Table1Row[], enr: Map<string, TaskEnrichment>, meta: Record<string, unknown> | null | undefined, xml: string | null, dbId?: string): StoredProcedure => ({
+        const toStored = (key: string, title: string, rows: Table1Row[], enr: Map<string, TaskEnrichment>, meta: Record<string, unknown> | null | undefined, xml: string | null, dbId?: string, archived?: boolean): StoredProcedure => ({
             key, title, workflow: rows, enrichments: Object.fromEntries(enr), procedureMetadata: meta ?? null, bpmnXml: xml, workflow_db_id: dbId ?? null,
+            ...(archived ? { archived: true } : {}),
         });
         const list = instances.length > 0
             ? instances.filter(i => i.status === 'ready' && i.data.length > 0)
-                .map(i => toStored(i.process_id, i.title, i.data, i.enrichments, i.initialMeta, i.bpmnXml, i.workflow_db_id))
+                .map(i => toStored(i.process_id, i.title, i.data, i.enrichments, i.initialMeta, i.bpmnXml, i.workflow_db_id, i.archived))
             : hasProcedure && data.length > 0
                 ? [toStored(singleKeyRef.current, processTitle, data, enrichments, initialMeta, bpmnXml)]
                 : [];
@@ -1184,6 +1203,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             conversationIdRef.current = id;
                         }}
                         onRestoreProcedures={restoreProcedures}
+                        onArchiveProcedures={archiveProcedures}
                         /* page d'accueil : « Nouvelle conversation » est déjà dans la barre latérale */
                         showNewConversation={!chatFirst}
                         conversationProcedures={conversationProcedures}
@@ -1253,7 +1273,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             )}
                             {/* le titre garde sa place : ce sont les actions qui passent à la ligne */}
                             <div className="min-w-[12rem] flex-1">
-                                {instances.length > 1 ? (
+                                {activeCount > 1 ? (
                                     /* plusieurs procédures dans la conversation : on en change depuis le titre */
                                     <RowMenu label="Changer de procédure" align="left" className="min-w-0 max-w-full"
                                         triggerClassName="-mx-1.5 flex max-w-full items-center gap-1 rounded-lg px-1.5 text-neutral-900 hover:bg-neutral-100"
@@ -1261,7 +1281,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             <span className="text-base font-semibold truncate" title={activeTitle || 'Nouvelle procédure'}>{activeTitle || 'Nouvelle procédure'}</span>
                                             <ChevronDown className="w-4 h-4 shrink-0" />
                                         </>}
-                                        items={instances.map((inst, i) => ({
+                                        items={instances.map((inst, i) => ({ inst, i })).filter(({ inst }) => !inst.archived).map(({ inst, i }) => ({
                                             label: `${inst.title}${i === activeTab ? '  ✓' : ''}`,
                                             icon: <span className={`inline-block !w-2 !h-2 rounded-full ${inst.status === 'generating' ? 'bg-amber-400 animate-pulse' : inst.status === 'error' ? 'bg-red-500' : 'bg-neutral-900'}`} />,
                                             onSelect: () => setActiveTab(i),
@@ -1272,7 +1292,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     </h1>
                                 )}
                                 <p className="text-xs text-neutral-500 truncate">
-                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? ` · ${activeInst.category}` : ''}{instances.length > 1 ? ` · ${instances.length} procédures dans la conversation` : ''}
+                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? ` · ${activeInst.category}` : ''}{activeCount > 1 ? ` · ${activeCount} procédures dans la conversation` : ''}
                                 </p>
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2">

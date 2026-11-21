@@ -53,6 +53,9 @@ class TurnRecorder:
         elif t == "text_reset":
             if self._streaming is not None:
                 self.texts[self._streaming] = ""
+        elif t == "procedures_archived":
+            self.payload.setdefault("archived", []).append(
+                {"keys": ev.get("keys") or [], "titles": ev.get("titles") or [], "by": ev.get("by") or []})
         elif t == "referential_proposal":
             self.payload["referentiel"] = ev.get("proposal") or {}
         elif t == "proposal":

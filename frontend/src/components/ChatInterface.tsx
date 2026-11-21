@@ -96,6 +96,8 @@ interface ChatMessage {
     agentProposals?: AgentProposal[];
     /** « Partir de mes sources » : proposition de référentiel (structure, procédures, remarques) */
     referentiel?: ReferentialProposal;
+    /** procédures de la conversation remplacées (by : par lesquelles) ou retirées par ce tour */
+    archived?: { keys: string[]; titles: string[]; by: string[]; restored?: boolean }[];
 }
 
 interface AgentProposal {
@@ -179,6 +181,8 @@ interface ChatInterfaceProps {
     onConversationChange?: (conversationId: string | null) => void;
     /** Conversation rouverte avec ses procédures enregistrées : le panneau les reprend telles quelles */
     onRestoreProcedures?: (procedures: StoredProcedure[], active: string | null) => void;
+    /** procédures de la conversation remplacées ou retirées par le chat (true), ou rétablies (false) */
+    onArchiveProcedures?: (keys: string[], archived: boolean) => void;
     /** Rouvrir les onglets des procédures générées en rechargeant une conversation */
     restoreGenerated?: boolean;
     /** Refléter la conversation dans l'URL (?c=) — un seul chat par page doit le faire */
@@ -250,6 +254,7 @@ export default function ChatInterface({
     guestPersistence = false,
     onCheckpoint,
     conversationProcedures,
+    onArchiveProcedures,
     activeProcedureKey,
     onTargetProcedure,
     showNewConversation = true,
@@ -403,7 +408,7 @@ export default function ChatInterface({
         return {
             intent: m.intent, steps: m.steps, totalSteps: m.totalSteps, title: m.title, operationsCount: m.operationsCount,
             changes: m.changes, targetTitle: m.targetTitle, proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
-            referentiel: m.referentiel,
+            referentiel: m.referentiel, archived: m.archived,
             generations: m.generations?.map(g => ({ id: g.key.slice(g.key.indexOf(':') + 1), title: g.title, status: g.status, steps: g.steps, error: g.error })),
             generated: m.generated,
             agentProposals: m.agentProposals,
@@ -425,6 +430,7 @@ export default function ChatInterface({
             })),
             remarks: p.remarks, suggestions: p.suggestions,
             referentiel: p.referentiel?.arbre ? p.referentiel : undefined,
+            archived: Array.isArray(p.archived) ? p.archived : undefined,
             agentProposals: (p.agentProposals || []).map((a: AgentProposal) => ({ ...a, decision: a.decision || 'historique' })),
         };
     };
@@ -715,6 +721,10 @@ export default function ChatInterface({
             case 'proposal':
                 updateMsg(msgId, m => ({ ...m, proposal: { procedures: ev.procedures, selected: ev.selected } }));
                 break;
+            case 'procedures_archived':
+                onArchiveProcedures?.(ev.keys || [], true);
+                updateMsg(msgId, m => ({ ...m, archived: [...(m.archived || []), { keys: ev.keys || [], titles: ev.titles || [], by: ev.by || [] }] }));
+                break;
             case 'referential_proposal':
                 updateMsg(msgId, m => ({ ...m, referentiel: ev.proposal }));
                 break;
@@ -876,7 +886,7 @@ export default function ChatInterface({
             form.append('current_enrichments', JSON.stringify(enrichObj));
         }
         if (currentProcedureMetadata) form.append('current_procedure_metadata', JSON.stringify(currentProcedureMetadata));
-        if (conversationProcedures && conversationProcedures.length >= 2) {
+        if (conversationProcedures && conversationProcedures.length >= 1) {
             form.append('conversation_procedures', JSON.stringify(conversationProcedures));
             if (activeProcedureKey) form.append('active_procedure', activeProcedureKey);
         }
@@ -1140,6 +1150,23 @@ export default function ChatInterface({
                                         )}
 
                                         {msg.referentiel && <ReferentialCard proposal={msg.referentiel} />}
+
+                                        {/* Procédures remplacées ou retirées : rien n'est détruit, on peut les rétablir */}
+                                        {msg.archived?.map((a, ai) => (
+                                            <p key={ai} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-neutral-600">
+                                                <span>
+                                                    {a.by.length ? 'Remplacée' : 'Retirée'}{a.titles.length > 1 ? 's' : ''} : {a.titles.map(t => `« ${t} »`).join(', ')}
+                                                    {a.by.length > 0 && <> par {a.by.map(t => `« ${t} »`).join(', ')}</>}
+                                                    {a.restored && (a.titles.length > 1 ? ' — rétablies' : ' — rétablie')}
+                                                </span>
+                                                {!a.restored && onArchiveProcedures && (
+                                                    <button type="button" onClick={() => {
+                                                        onArchiveProcedures(a.keys, false);
+                                                        updateMsg(msg.id, m => ({ ...m, archived: m.archived?.map((x, xi) => xi === ai ? { ...x, restored: true } : x) }));
+                                                    }} className="rounded-lg px-2 py-0.5 text-sm font-medium text-neutral-900 underline hover:bg-neutral-100">Rétablir</button>
+                                                )}
+                                            </p>
+                                        ))}
 
                                         {/* Générations : chaque procédure arrive dès qu'elle est prête */}
                                         {msg.generations && msg.generations.length > 0 && (

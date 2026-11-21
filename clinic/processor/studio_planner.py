@@ -22,7 +22,7 @@ from prompts.studio_planner_prompt import build_planner_prompt
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "answer"}
+ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer"}
 # Au-delà, on ne génère pas sans que l'utilisateur ait validé la sélection
 # Plafond technique (coût, durée) au-delà duquel on confirme ; en deçà, on fait ce qui est demandé
 MAX_AUTO_GENERATE = 20
@@ -37,11 +37,14 @@ class StudioPlan:
     merged_title: Optional[str] = None
     references: List[str] = field(default_factory=list)  # fichiers modèles (style, format), pas des sources
     adjustments: List[str] = field(default_factory=list)  # corrections appliquées par les garde-fous
+    # Procédures DE LA CONVERSATION (numéros 1…n) que ce tour remplace (découpage, fusion, refonte) ou retire
+    replaces: List[int] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "action": self.action, "reply": self.reply, "procedures": self.procedures,
             "targets": self.targets, "merged_title": self.merged_title, "references": self.references, "adjustments": self.adjustments,
+            "replaces": self.replaces,
         }
 
 
@@ -84,8 +87,11 @@ def apply_guardrails(
     filenames: List[str],
     has_workflow: bool,
     previous_proposal: Optional[List[Dict[str, Any]]] = None,
+    conversation_count: int = 0,
+    conversation_titles: Optional[List[str]] = None,
 ) -> StudioPlan:
     adjustments: List[str] = []
+    conversation_count = max(conversation_count, len(conversation_titles or []))
     action = data.get("action") if data.get("action") in ACTIONS else "answer"
     reply = (data.get("reply") or "").strip()
 
@@ -138,6 +144,30 @@ def apply_guardrails(
         adjustments.append(f"{len(targets)} procédures : confirmation demandée")
         reply = f"J'ai trouvé {len(targets)} procédures : c'est beaucoup d'un coup. Je les formalise toutes, ou seulement certaines ?"
 
+    # Procédures de la conversation remplacées ou retirées : numéros valables seulement
+    replaces: List[int] = []
+    for n in data.get("remplace") or []:
+        try:
+            n = int(n)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= n <= conversation_count and n not in replaces:
+            replaces.append(n)
+    if action == "remove" and not replaces:
+        action = "answer"
+        reply = reply or "Je ne vois pas quelle procédure retirer. Laquelle ?"
+        adjustments.append("retrait sans procédure désignée")
+    if action not in ("generate", "merge", "remove"):
+        replaces = []
+    # Jamais régénérer une procédure déjà dans la conversation qui n'est pas remplacée (« il en manque une »,
+    # découpage) : seules les nouvelles partent en génération
+    kept = {_norm(t) for i, t in enumerate(conversation_titles or [], 1) if i not in replaces}
+    if action == "generate" and kept:
+        fresh = [t for t in targets if _norm(next((p["title"] for p in procedures if p["id"] == t), "")) not in kept]
+        if fresh and len(fresh) < len(targets):
+            adjustments.append(f"{len(targets) - len(fresh)} procédure(s) déjà dans la conversation non régénérée(s)")
+            targets = fresh
+
     if adjustments:
         logger.info(f"🧭 Aiguillage corrigé : {adjustments}")
     return StudioPlan(
@@ -145,6 +175,7 @@ def apply_guardrails(
         merged_title=(data.get("merged_title") or None) if action == "merge" else None,
         references=references,
         adjustments=adjustments,
+        replaces=replaces,
     )
 
 
@@ -155,24 +186,59 @@ def plan_turn(
     history: Optional[List[Dict[str, str]]] = None,
     previous_proposal: Optional[List[Dict[str, Any]]] = None,
     referential_pending: bool = False,
+    conversation_procedures: Optional[List[Dict[str, Any]]] = None,
 ) -> StudioPlan:
     """Appel synchrone (à lancer dans asyncio.to_thread)."""
     filenames = [f["filename"] for f in files]
-    parts: list = [build_planner_prompt(message, filenames, has_workflow, history, previous_proposal, referential_pending)]
+    parts: list = [build_planner_prompt(message, filenames, has_workflow, history, previous_proposal, referential_pending,
+                                        conversation_procedures)]
     for f in files:
         parts.append(f"--- Fichier : {f['filename']} ---")
         parts.extend(file_to_parts(f))
-    response = generate_content(
-        parts,
-        config=types.GenerateContentConfig(temperature=0.1, response_mime_type="application/json"),
-        task_name="Aiguillage Studio",
-        # Toujours rapide : la qualité se joue à la génération. Avec le routage activé,
-        # la table de model_routing (profil « routage ») décide, toujours sans PRO en Rapide/Normale.
-        models=None if MODEL_ROUTING_ENABLED else [GeminiModel.LITE, GeminiModel.FLASH],
-    )
-    try:
-        data = _parse_json(response.text)
-    except Exception as e:
-        logger.warning(f"⚠️ Réponse d'aiguillage illisible ({e}) : {(response.text or '')[:200]}")
-        data = {"action": "answer", "reply": ""}
-    return apply_guardrails(data, filenames, has_workflow, previous_proposal)
+    def ask(prompt_parts: list, models) -> Dict[str, Any]:
+        response = generate_content(
+            prompt_parts,
+            config=types.GenerateContentConfig(temperature=0.1, response_mime_type="application/json"),
+            task_name="Aiguillage Studio",
+            models=models,
+        )
+        try:
+            return _parse_json(response.text)
+        except Exception as e:
+            logger.warning(f"⚠️ Réponse d'aiguillage illisible ({e}) : {(response.text or '')[:200]}")
+            return {"action": "answer", "reply": ""}
+
+    # Toujours rapide : la qualité se joue à la génération. Avec le routage activé,
+    # la table de model_routing (profil « routage ») décide, toujours sans PRO en Rapide/Normale.
+    data = ask(parts, None if MODEL_ROUTING_ENABLED else [GeminiModel.LITE, GeminiModel.FLASH])
+    # Un nombre demandé (« les 6 processus ») qui n'est pas atteint : une relecture avec le modèle plus fort
+    wanted = asked_count(message)
+    found = len(data.get("procedures") or [])
+    if wanted and files and data.get("action") in ("generate", "propose") and found < wanted:
+        hint = (f"\n\nATTENTION : l'utilisateur attend {wanted} procédures et tu en as listé {found}. Relis les fichiers : "
+                "cherche les processus décrits séparément (variantes, circuits distincts, diapositives propres). "
+                f"S'il y en a vraiment {found}, garde {found} et explique-le dans \"reply\".")
+        retry = ask([parts[0] + hint] + parts[1:], [GeminiModel.FLASH, GeminiModel.LITE])
+        if len(retry.get("procedures") or []) > found:
+            data = retry
+    plan = apply_guardrails(data, filenames, has_workflow, previous_proposal, len(conversation_procedures or []),
+                            [p.get("titre") or "" for p in conversation_procedures or []])
+    if wanted and plan.action in ("generate", "propose") and 0 < len(plan.procedures) < wanted and str(wanted) not in plan.reply:
+        n = len(plan.procedures)
+        plan.reply = (plan.reply + f" Vous en attendiez {wanted} : les fichiers en décrivent {n} distinctes. "
+                      "Dites-moi laquelle découper si besoin.").strip()
+    return plan
+
+
+_COUNT = re.compile(r"\b(\d{1,2}|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+(?:proc[ée]dures?|process(?:us)?|logigrammes?)\b", re.I)
+_WORDS = {"deux": 2, "trois": 3, "quatre": 4, "cinq": 5, "six": 6, "sept": 7, "huit": 8, "neuf": 9, "dix": 10}
+
+
+def asked_count(message: str) -> Optional[int]:
+    """« les 6 process », « six procédures » : le nombre demandé, s'il y en a un."""
+    m = _COUNT.search(message or "")
+    if not m:
+        return None
+    raw = m.group(1).lower()
+    n = int(raw) if raw.isdigit() else _WORDS.get(raw)
+    return n if n and 1 < n <= 40 else None

@@ -33,6 +33,8 @@ export interface StoredMessage {
 /** Procédure de la conversation telle que l'utilisateur l'a laissée (rouverte avec elle) */
 export interface StoredProcedure {
     key: string;
+    /** remplacée ou retirée par le chat : gardée dans la conversation, rétablissable */
+    archived?: boolean;
     title: string;
     workflow: unknown[];
     enrichments?: Record<string, unknown>;

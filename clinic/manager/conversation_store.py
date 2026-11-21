@@ -120,7 +120,7 @@ def merge_state(conversation_id: str, owner_id: str, **fields) -> Optional[Dict[
 
 # Procédures de la conversation telles que l'utilisateur les a laissées (modifications du chat,
 # retouches à la main, annulations comprises) : rouvertes avec la conversation.
-PROCEDURE_KEYS = ("key", "title", "workflow", "enrichments", "procedureMetadata", "bpmnXml", "workflow_db_id")
+PROCEDURE_KEYS = ("key", "title", "workflow", "enrichments", "procedureMetadata", "bpmnXml", "workflow_db_id", "archived")
 MAX_PROCEDURES = 30
 MAX_PROCEDURES_BYTES = 4_000_000
 

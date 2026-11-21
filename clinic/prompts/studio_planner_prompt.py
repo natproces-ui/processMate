@@ -58,8 +58,9 @@ des documents et à répondre à des questions.
    Donne le titre dans "merged_title" et les procédures à fusionner dans "targets" (toutes si rien n'est précisé).
    ⚠️ Une fusion demandée dans un message PRÉCÉDENT ne s'applique jamais aux demandes suivantes.
    ⚠️ « Génère tout », « toutes », « les deux » = "generate" (une procédure distincte par cible), JAMAIS "merge".
-"edit" → une procédure est déjà ouverte et le message demande de la modifier, la compléter ou la corriger
-   à partir des fichiers (« ajoute ces étapes à la procédure », « corrige… »).
+"edit" → une procédure est déjà ouverte et le message demande de modifier SON CONTENU, la compléter ou la corriger
+   à partir des fichiers (« ajoute ces étapes à la procédure », « corrige… »). JAMAIS pour créer une nouvelle
+   procédure, en découper une, en réunir ou en retirer (voir plus bas).
 "analyze" → l'utilisateur demande une analyse ou pose une question sur le CONTENU des fichiers (« analyse ce
    document », « quels outils sont utilisés pour l'étape Organiser ? », « quels sont les risques ? »,
    « résume-moi le parcours », « qu'est-ce qui change entre les deux versions ? »). Laisse "reply" vide :
@@ -71,11 +72,31 @@ des documents et à répondre à des questions.
    « range ces procédures par thème »). Aussi quand une proposition de référentiel est en cours et que le message
    la corrige ou la commente (« fusionne ces deux catégories », « ajoute le crédit-bail », « enlève Marchés »).
    Laisse "procedures" vide et "reply" vide : la proposition sera rédigée à part.
+"remove" → l'utilisateur veut retirer une ou plusieurs procédures DE LA CONVERSATION (« enlève la 3 », « on n'a pas
+   besoin de Valoriser »). Mets leurs numéros dans "remplace". Rien n'est détruit : elles sont archivées.
 "answer" → une conversation qui n'a besoin ni des fichiers ni d'une génération (« merci », « que signifie MCNE ? »).
    "reply" contient la réponse.
 
 Une réponse écrite à une proposition (« oui », « vas-y », « seulement la 2 », « pas la dernière ») vaut une
 sélection : réutilise les identifiants de la proposition précédente.
+
+PROCÉDURES DÉJÀ PRODUITES DANS LA CONVERSATION (« procedures_de_la_conversation », numérotées 1…n) : tu raisonnes sur
+tout cet ensemble, comme un assistant qui a déjà rendu plusieurs documents. Une opération qui touche l'ENSEMBLE
+(découper, réunir, ajouter, retirer) n'est jamais un "edit".
+- Découper : « la procédure 1 devrait être deux », « Alternance et Plan sont deux process à part » → "generate" :
+  relis les fichiers, liste dans "procedures" les NOUVELLES procédures seulement (une par processus distinct), mets-les
+  dans "targets", et mets le numéro de celle qu'elles remplacent dans "remplace" (ex. [1]). Ne remets PAS dans
+  "procedures" ni dans "targets" celles qui ne changent pas.
+- Refaire autrement une procédure de la conversation (autre découpage, autre périmètre) → "generate" avec "remplace".
+- Réunir des procédures de la conversation → "merge" (la nouvelle procédure dans "procedures"/"targets") et leurs
+  numéros dans "remplace".
+- Il en manque une (« il manque la procédure X », « ajoute aussi la procédure Y ») → "generate" de la SEULE
+  procédure manquante, "remplace" vide : les autres ne bougent pas.
+- Retirer (« enlève la 3 », « on n'a pas besoin de Valoriser ») → "remove" avec son numéro dans "remplace" (ex. [5]).
+- Corriger le CONTENU d'une procédure (une étape, un acteur, un outil) → "edit" ; "remplace" vide.
+Un nombre demandé par l'utilisateur (« les 6 processus ») est une consigne : relis les fichiers pour trouver ce
+nombre de procédures distinctes (pense aux variantes décrites séparément, ex. un circuit « Alternance » et un circuit
+« Plan ») ; s'ils en décrivent vraiment moins, dis-le dans "reply" au lieu de fusionner en silence.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 3. RÉPONDRE
@@ -86,14 +107,15 @@ Pas de jargon d'interface (« cochez », « sélectionnées »), pas de formule 
 
 Réponds UNIQUEMENT avec ce JSON :
 {
-  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "answer",
+  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "answer",
   "reply": "texte",
   "procedures": [
     {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12}
   ],
   "targets": ["p1"],
   "merged_title": null,
-  "references": []
+  "references": [],
+  "remplace": []          // numéros des procédures DE LA CONVERSATION remplacées (generate, merge) ou retirées (remove)
 }
 Les identifiants sont p1, p2, p3… dans l'ordre d'apparition. Si une proposition précédente existe et que le message
 y fait référence (« prends la 2 », « génère tout »), réutilise SES identifiants et SES titres au lieu d'en créer de
@@ -110,6 +132,7 @@ def build_planner_prompt(
     history: Optional[List[Dict[str, str]]] = None,
     previous_proposal: Optional[List[Dict[str, Any]]] = None,
     referential_pending: bool = False,
+    conversation_procedures: Optional[List[Dict[str, Any]]] = None,
 ) -> str:
     ctx = {
         "message": message or "(aucun message, seulement des fichiers)",
@@ -118,5 +141,6 @@ def build_planner_prompt(
         "historique_recent": (history or [])[-6:],
         "proposition_precedente": previous_proposal or None,
         "proposition_de_referentiel_en_cours": referential_pending,
+        "procedures_de_la_conversation": conversation_procedures or None,
     }
     return PLANNER_PROMPT + "\n\nCONTEXTE :\n" + json.dumps(ctx, ensure_ascii=False, indent=2)

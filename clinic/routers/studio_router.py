@@ -148,9 +148,15 @@ def _scope_instructions(proc: Dict[str, Any]) -> str:
             "Le document peut contenir d'autres procédures : ignore-les.")
 
 
+def _archived_event(replaced: List[Dict[str, Any]], by: Optional[List[str]] = None) -> str:
+    """Procédures de la conversation archivées (remplacées ou retirées) : rien n'est détruit, on peut les rétablir."""
+    return _sse({"type": "procedures_archived", "keys": [p["key"] for p in replaced],
+                 "titles": [p.get("title") or "Procédure" for p in replaced], "by": by or []})
+
+
 async def _generate(request: Request, files: List[Dict[str, Any]], procedures: List[Dict[str, Any]],
                     targets: List[str], merge: bool, merged_title: Optional[str], message: str,
-                    references: Optional[List[str]] = None):
+                    references: Optional[List[str]] = None, replaced: Optional[List[Dict[str, Any]]] = None):
     chosen = [p for p in procedures if p["id"] in targets]
     if not chosen:
         yield _sse({"type": "error", "message": "Aucune procédure sélectionnée."})
@@ -234,6 +240,9 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
         if pending:
             logger.warning(f"⏹️ {len(pending)} génération(s) annulée(s) (arrêt ou déconnexion du client)")
 
+    if ready and not stopped and replaced:
+        # les nouvelles procédures sont là : celles qu'elles remplacent passent aux archives de la conversation
+        yield _archived_event(replaced, [p["title"] for p in ready])
     if ready and not stopped:
         async for ev in _stream_remarks(request, ready, message):
             yield ev
@@ -562,6 +571,10 @@ async def studio_turn(
         _consume_or_raise(guest, "turns")
     history_list = _loads(history, [])
     workflow = _loads(current_workflow, None)
+    # Procédures déjà produites dans la conversation : l'aiguillage raisonne sur tout l'ensemble
+    conv_procs = [p for p in (_loads(conversation_procedures, None) or []) if isinstance(p, dict) and p.get("key")]
+    conv_summary = [{"n": i + 1, "titre": p.get("title") or "Procédure", "etapes": len(p.get("workflow") or [])}
+                    for i, p in enumerate(conv_procs)]
     has_workflow = bool(workflow)
     conv = await _owned_conversation(session_id, user)
     plan_files = new_files
@@ -635,7 +648,8 @@ async def studio_turn(
                 read_label = label.replace("Lecture de ", "Lu ", 1) if new_files else None
                 with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(to_plan)), interactions_scope(ix):
                     plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"),
-                                                   bool(sess.get("referentiel")))
+                                                   bool(sess.get("referentiel")), conv_summary)
+                replaced = [conv_procs[n - 1] for n in plan.replaces]
                 found = len(plan.procedures)
                 if plan.action in ("generate", "propose", "merge"):
                     found_label = f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
@@ -658,8 +672,10 @@ async def studio_turn(
                         consume(guest, "generations")  # GuestLimitError → message d'erreur ci-dessous
                     async for ev in _generate(request, sess["files"], plan.procedures, plan.targets,
                                               plan.action == "merge", plan.merged_title, message,
-                                              sess.get("references")):
+                                              sess.get("references"), replaced):
                         yield ev
+                elif plan.action == "remove":
+                    yield _archived_event(replaced)
                 elif plan.action == "analyze":
                     if to_plan:
                         async for ev in _stream_analysis(request, to_plan, message, history_list):
