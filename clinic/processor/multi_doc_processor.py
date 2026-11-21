@@ -24,6 +24,7 @@ from prompts.discovery_prompt import get_discovery_prompt, get_chat_correction_p
 from models.discovery_models import ProcessCard, DiscoveryResult, SourceReference, SourceType, ProcessCategory
 from manager.model_manager import GeminiModelManager
 from processor.img_processor import ImageProcessor
+from processor.office_extract import EXTRACTED_TYPES
 import os
 
 logger = logging.getLogger(__name__)
@@ -100,7 +101,7 @@ def chain_dead_end_branches(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def _split_files_by_type(files: List[Dict[str, Any]]):
     images = [f for f in files if f["type"] == "image"]
-    pdfs   = [f for f in files if f["type"] in ("pdf", "docx", "pptx")]  # Office = document, comme un PDF
+    pdfs   = [f for f in files if f["type"] in ("pdf",) + EXTRACTED_TYPES]  # Office, Excel, texte = document, comme un PDF
     return images, pdfs
 
 
@@ -122,7 +123,7 @@ async def _classify_pdfs(pdf_files: List[Dict[str, Any]]) -> List[Dict[str, Any]
     classifier = PDFClassifier()
     results = []
     for f in pdf_files:
-        if f["type"] in ("docx", "pptx"):  # déjà extrait : classement sans appel IA
+        if f["type"] in EXTRACTED_TYPES:  # déjà extrait : classement sans appel IA
             has_diagram = bool((f.get("office") or {}).get("has_diagram"))
             results.append({**f, "classification": {"type": "contains_diagram" if has_diagram else "text_only", "confidence": 80}})
             continue
@@ -812,7 +813,7 @@ Extrais TOUTES les étapes, acteurs, outils et connexions depuis ces fichiers co
     # ─────────────────────────────────────────────────────
 
     def _file_to_parts(self, f: Dict[str, Any]) -> list:
-        if f.get("type") in ("docx", "pptx"):
+        if f.get("type") in EXTRACTED_TYPES:
             from processor.office_extract import office_parts
             return office_parts(f)
         raw = f.get("data") or f.get("content")

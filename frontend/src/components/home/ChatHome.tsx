@@ -31,6 +31,8 @@ export default function ChatHome() {
     const [procedureId, setProcedureId] = useState<string | undefined>();
     /** Premier message tapé depuis la page d'un projet (?message=), envoyé tout seul */
     const [initialMessage, setInitialMessage] = useState<string | undefined>();
+    /** Texte prérempli, non envoyé (?brouillon=) : « Partir de mes sources » depuis l'accueil de l'organisation */
+    const [initialDraft, setInitialDraft] = useState<string | undefined>();
     const [refreshKey, setRefreshKey] = useState(0);
     const [guestWork, setGuestWork] = useState<GuestConversation | null>(null);
     const [importing, setImporting] = useState(false);
@@ -43,6 +45,12 @@ export default function ChatHome() {
         if (p) setProjectId(p);
         const proc = params.get('procedure');
         if (proc) setProcedureId(proc);
+        const draft = params.get('brouillon');
+        if (draft) {
+            setInitialDraft(draft);
+            params.delete('brouillon');
+            window.history.replaceState(null, '', `${window.location.pathname}${params.toString() ? `?${params}` : ''}`);
+        }
         const msg = params.get('message');
         if (msg) {
             setInitialMessage(msg);
@@ -140,7 +148,7 @@ export default function ChatHome() {
                 <SttPanel key={panelKey} chatFirst guestMode={!user} projectId={projectId}
                     workflowId={member ? procedureId : undefined}
                     librarySave={member && !access?.read_only}
-                    initialMessage={initialMessage} />
+                    initialMessage={initialMessage} initialDraft={initialDraft} />
             </div>
         </AppShell>
     );

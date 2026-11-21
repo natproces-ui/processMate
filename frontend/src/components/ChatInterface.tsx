@@ -1,5 +1,7 @@
 'use client';
 
+import ReferentialCard from '@/components/shared/ReferentialCard';
+import type { ReferentialProposal } from '@/lib/referentialApi';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
@@ -36,7 +38,15 @@ interface AttachedFile {
 }
 
 // ── Conversation en flux (/api/studio) ─────────────────────────
-type FileKind = 'pdf' | 'image' | 'docx' | 'pptx';
+type FileKind = 'pdf' | 'image' | 'docx' | 'pptx' | 'xlsx' | 'texte';
+/** Extension → type : Office, Excel, et fichiers lus comme du texte (CSV, notes, code) — comme clinic/processor/office_extract.py */
+const TEXT_EXTS = ['csv', 'tsv', 'txt', 'md', 'json', 'xml', 'yaml', 'yml', 'html', 'htm', 'bpmn', 'dot', 'sql', 'cbl', 'cob', 'cpy', 'jcl',
+    'pli', 'pl1', 'rpg', 'rpgle', 'abap', 'java', 'py', 'js', 'ts', 'cs', 'vb', 'bas', 'pls', 'pks', 'pkb', 'sh', 'bat', 'ps1', 'ini', 'properties'];
+const EXT_KIND: Record<string, FileKind> = {
+    pdf: 'pdf', docx: 'docx', pptx: 'pptx', xlsx: 'xlsx', xlsm: 'xlsx',
+    ...Object.fromEntries(TEXT_EXTS.map(e => [e, 'texte' as FileKind])),
+};
+const ACCEPT_ATTR = ['.pdf', '.docx', '.pptx', '.xlsx', '.xlsm', ...TEXT_EXTS.map(e => `.${e}`), 'image/png', 'image/jpeg', 'image/webp'].join(',');
 interface SentAttachment { name: string; type: FileKind; previewUrl?: string; size?: number }
 
 interface TurnStep { id: string; label: string; state: 'running' | 'done' | 'stopped'; startedAt?: number; endedAt?: number; kind?: 'thought' }
@@ -84,6 +94,8 @@ interface ChatMessage {
     restored?: boolean;
     /** Lot 6 : propositions de l'agent, à accepter ou refuser */
     agentProposals?: AgentProposal[];
+    /** « Partir de mes sources » : proposition de référentiel (structure, procédures, remarques) */
+    referentiel?: ReferentialProposal;
 }
 
 interface AgentProposal {
@@ -196,6 +208,7 @@ const MAX_ATTACHMENTS = 10; // même limite que /api/studio/turn
 const ACCEPTED_TYPES: Record<string, FileKind> = {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
     'application/pdf': 'pdf',
     'image/png': 'image',
     'image/jpeg': 'image',
@@ -382,6 +395,7 @@ export default function ChatInterface({
         return {
             intent: m.intent, steps: m.steps, totalSteps: m.totalSteps, title: m.title, operationsCount: m.operationsCount,
             changes: m.changes, targetTitle: m.targetTitle, proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
+            referentiel: m.referentiel,
             generations: m.generations?.map(g => ({ id: g.key.slice(g.key.indexOf(':') + 1), title: g.title, status: g.status, steps: g.steps, error: g.error })),
             generated: m.generated,
             agentProposals: m.agentProposals,
@@ -402,6 +416,7 @@ export default function ChatInterface({
                 key: `${m.id}:${g.id}`, title: g.title, status: g.status === 'generating' ? 'stopped' : g.status, steps: g.steps, error: g.error,
             })),
             remarks: p.remarks, suggestions: p.suggestions,
+            referentiel: p.referentiel?.arbre ? p.referentiel : undefined,
             agentProposals: (p.agentProposals || []).map((a: AgentProposal) => ({ ...a, decision: a.decision || 'historique' })),
         };
     };
@@ -515,8 +530,8 @@ export default function ChatInterface({
 
         for (const file of toAdd) {
             const ext = file.name.toLowerCase().split('.').pop() || '';
-            const type = ACCEPTED_TYPES[file.type] || ({ pdf: 'pdf', docx: 'docx', pptx: 'pptx' } as Record<string, FileKind>)[ext];
-            if (!type && (ext === 'doc' || ext === 'ppt')) { onError(`Ancien format Office : ${file.name}. Enregistrez-le en .docx ou .pptx.`); continue; }
+            const type = ACCEPTED_TYPES[file.type] || EXT_KIND[ext];
+            if (!type && (ext === 'doc' || ext === 'ppt' || ext === 'xls')) { onError(`Ancien format Office : ${file.name}. Enregistrez-le en .docx, .pptx ou .xlsx.`); continue; }
             if (!type) { onError(`Format non supporté : ${file.name}`); continue; }
             if (file.size > 20 * 1024 * 1024) { onError(`Fichier trop lourd : ${file.name}`); continue; }
 
@@ -691,6 +706,9 @@ export default function ChatInterface({
                 break;
             case 'proposal':
                 updateMsg(msgId, m => ({ ...m, proposal: { procedures: ev.procedures, selected: ev.selected } }));
+                break;
+            case 'referential_proposal':
+                updateMsg(msgId, m => ({ ...m, referentiel: ev.proposal }));
                 break;
             case 'procedure_started':
                 updateMsg(msgId, m => ({ ...m, generations: [...(m.generations || []), { key: key(ev.id), title: ev.title, status: 'generating' }] }));
@@ -926,7 +944,7 @@ export default function ChatInterface({
     const editMessage = (m: ChatMessage) => {
         setInput(m.content);
         setAttachedFiles((m.files || []).map((file, i) => ({
-            id: crypto.randomUUID(), file, type: ACCEPTED_TYPES[file.type] || ({ docx: 'docx', pptx: 'pptx' } as Record<string, FileKind>)[file.name.toLowerCase().split('.').pop() || ''] || 'pdf', previewUrl: m.attachments?.[i]?.previewUrl,
+            id: crypto.randomUUID(), file, type: ACCEPTED_TYPES[file.type] || EXT_KIND[file.name.toLowerCase().split('.').pop() || ''] || 'pdf', previewUrl: m.attachments?.[i]?.previewUrl,
         })));
         requestAnimationFrame(() => textareaRef.current?.focus());
     };
@@ -1112,6 +1130,8 @@ export default function ChatInterface({
                                                 )}
                                             </div>
                                         )}
+
+                                        {msg.referentiel && <ReferentialCard proposal={msg.referentiel} />}
 
                                         {/* Générations : chaque procédure arrive dès qu'elle est prête */}
                                         {msg.generations && msg.generations.length > 0 && (
@@ -1303,7 +1323,7 @@ export default function ChatInterface({
                                 ref={fileInputRef}
                                 type="file"
                                 multiple
-                                accept=".pdf,.docx,.pptx,image/png,image/jpeg,image/webp"
+                                accept={ACCEPT_ATTR}
                                 onChange={e => {
                                     if (e.target.files) addFiles(Array.from(e.target.files));
                                     e.target.value = '';
@@ -1464,6 +1484,8 @@ const KIND_STYLE: Record<FileKind, { label: string; tile: string; icon: string }
     docx: { label: 'Word', tile: 'bg-blue-50', icon: 'text-blue-600' },
     pptx: { label: 'PowerPoint', tile: 'bg-orange-50', icon: 'text-orange-500' },
     image: { label: 'Image', tile: 'bg-blue-50', icon: 'text-blue-500' },
+    xlsx: { label: 'Excel', tile: 'bg-emerald-50', icon: 'text-emerald-600' },
+    texte: { label: 'Texte', tile: 'bg-neutral-100', icon: 'text-neutral-700' },
 };
 
 function FileChip({ name, type, previewUrl, size, onRemove }: { name: string; type: FileKind; previewUrl?: string; size?: number; onRemove?: () => void }) {

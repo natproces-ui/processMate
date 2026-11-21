@@ -908,3 +908,73 @@ def load_default_referential():
     """Charge le référentiel par défaut (structure BIAN), sans jamais le dupliquer."""
     r = seed_bian()
     return {**r, "etat": referential_state()}
+
+
+class ApplyReferential(BaseModel):
+    arbre: List[Dict[str, Any]]
+
+
+def _norm_name(text: Optional[str]) -> str:
+    import re
+    import unicodedata
+    text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def apply_referential(tree: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Applique une proposition de référentiel : les branches de même nom au même endroit sont
+    réutilisées, les procédures déjà présentes (même nom) ne sont pas recréées, rien n'est supprimé."""
+    from processor.referential_builder import clean_tree
+    from routers.orchestration_router import create_procedure_shell
+    tree = clean_tree(tree)
+    db = get_supabase()
+    nodes = db.table("process_taxonomy").select("id,parent_id,name,level,order_index").execute().data or []
+    index = {(n.get("parent_id"), _norm_name(n["name"])): n["id"] for n in nodes}
+    order = {}
+    for n in nodes:
+        order[n.get("parent_id")] = max(order.get(n.get("parent_id"), -1), n.get("order_index") or 0)
+    existing_procs = set()
+    for w in db.table("workflows").select("title,procedure_metadata_json").execute().data or []:
+        existing_procs.add(_norm_name((w.get("procedure_metadata_json") or {}).get("nom") or w.get("title")))
+    created = {"themes": 0, "categories": 0, "sous_categories": 0, "procedures": 0}
+    reused, skipped = 0, []
+    levels = ("theme", "category", "subcategory")
+    keys = ("themes", "categories", "sous_categories")
+    now = _now()
+
+    def walk(items, parent_id, depth):
+        nonlocal reused
+        for item in items:
+            key = (parent_id, _norm_name(item["nom"]))
+            node_id = index.get(key)
+            if node_id:
+                reused += 1
+            else:
+                node_id = str(uuid.uuid4())
+                order[parent_id] = order.get(parent_id, -1) + 1
+                db.table("process_taxonomy").insert({
+                    "id": node_id, "name": item["nom"], "level": levels[depth], "description": "",
+                    "parent_id": parent_id, "order_index": order[parent_id], "created_at": now, "updated_at": now,
+                }).execute()
+                index[key] = node_id
+                created[keys[depth]] += 1
+            for p in item.get("procedures") or []:
+                n = _norm_name(p["nom"])
+                if n in existing_procs:
+                    skipped.append(p["nom"])
+                    continue
+                create_procedure_shell(p["nom"], None, node_id, created_from="referentiel")
+                existing_procs.add(n)
+                created["procedures"] += 1
+            walk(item.get("enfants") or [], node_id, depth + 1)
+
+    walk(tree, None, 0)
+    return {"crees": created, "branches_reprises": reused, "procedures_deja_presentes": skipped,
+            "etat": referential_state()}
+
+
+@router.post("/referentiel/appliquer")
+def post_apply_referential(body: ApplyReferential):
+    if not body.arbre:
+        raise HTTPException(400, "La proposition est vide.")
+    return apply_referential(body.arbre)

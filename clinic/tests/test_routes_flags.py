@@ -82,7 +82,7 @@ class FlagsAndAuthTest(unittest.TestCase):
         from processor.studio_planner import StudioPlan
         seen = []
 
-        def fake_plan(message, files, has_workflow, history, proposal):
+        def fake_plan(message, files, has_workflow, history, proposal, referential_pending=False):
             seen.append([f["filename"] for f in files])
             if len(seen) == 1:
                 raise RuntimeError("cannot write mode CMYK as PNG")

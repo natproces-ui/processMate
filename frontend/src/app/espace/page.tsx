@@ -28,6 +28,9 @@ export default function EspacePage() {
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
+/** Premier message proposé dans le chat : l'admin joint ses sources et l'adapte avant d'envoyer */
+const SOURCES_DRAFT = 'Construis le référentiel de nos processus à partir de ces documents (cartographie, manuels, code…) : '
+    + 'thèmes, catégories, sous-catégories et noms des procédures, avec tes remarques.';
 
 function Espace() {
     const { access } = useAuth();
@@ -79,7 +82,9 @@ function Espace() {
                         {state?.origine === 'defaut' && (
                             <p className="mt-2 text-sm text-neutral-600">
                                 C’est le référentiel par défaut, organisé comme le paysage BIAN. Gardez-le et adaptez-le à votre
-                                banque (renommez, supprimez les branches inutiles, ajoutez les vôtres), ou partez de rien.
+                                banque (renommez, supprimez les branches inutiles, ajoutez les vôtres), partez de vos propres
+                                sources (cartographie, manuels, présentations, code) que l’assistant analyse pour vous proposer une
+                                structure, ou partez de rien.
                             </p>
                         )}
                         {state?.origine === 'vide' && manager && (
@@ -98,6 +103,9 @@ function Espace() {
                                     <button type="button" onClick={() => void loadDefault()} disabled={busy} className={btnGhost}>
                                         {busy && <Loader2 className="w-4 h-4 animate-spin" />} Charger le référentiel par défaut
                                     </button>
+                                )}
+                                {manager && (
+                                    <Link href={`/?brouillon=${encodeURIComponent(SOURCES_DRAFT)}`} className={btnGhost}>Partir de mes sources</Link>
                                 )}
                                 {manager && state.peut_vider && (
                                     <button type="button" onClick={() => setConfirmEmpty(true)} className={btnGhost}>Partir de rien</button>

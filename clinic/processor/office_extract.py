@@ -20,6 +20,16 @@ MAX_TEXT_CHARS = 150_000
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+# Fichiers lus comme du texte : tableaux exportés, notes, et code (COBOL, SQL, Java…) — une
+# cartographie ou un existant applicatif arrive souvent sous ces formes
+TEXT_EXTENSIONS = (".csv", ".tsv", ".txt", ".md", ".json", ".xml", ".yaml", ".yml", ".html", ".htm", ".bpmn", ".dot",
+                   ".sql", ".cbl", ".cob", ".cpy", ".jcl", ".pli", ".pl1", ".rpg", ".rpgle", ".abap", ".java", ".py",
+                   ".js", ".ts", ".cs", ".vb", ".bas", ".pls", ".pks", ".pkb", ".sh", ".bat", ".ps1", ".ini", ".properties")
+# Types extraits à la réception (contenu dans f["office"]), envoyés au modèle comme texte (+ images)
+EXTRACTED_TYPES = ("docx", "pptx", "xlsx", "texte")
+MAX_SHEET_ROWS = 2000
+LABELS = {"docx": "document Word", "pptx": "présentation PowerPoint", "xlsx": "classeur Excel", "texte": "fichier texte"}
 
 
 def office_type(filename: str, content_type: str = "") -> str | None:
@@ -28,6 +38,10 @@ def office_type(filename: str, content_type: str = "") -> str | None:
         return "docx"
     if name.endswith(".pptx") or ctype == PPTX_MIME:
         return "pptx"
+    if name.endswith((".xlsx", ".xlsm")) or ctype == XLSX_MIME:
+        return "xlsx"
+    if name.endswith(TEXT_EXTENSIONS) or ctype.startswith("text/"):
+        return "texte"
     return None
 
 
@@ -146,10 +160,38 @@ def _extract_pptx(data: bytes) -> Dict[str, Any]:
     return {"text": "\n".join(out), "images": images[:MAX_IMAGES], "connections": total_links}
 
 
+def _extract_xlsx(data: bytes) -> Dict[str, Any]:
+    """Chaque feuille en tableau Markdown (valeurs calculées, lignes vides ignorées)."""
+    from openpyxl import load_workbook
+    wb = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    out = []
+    for ws in wb.worksheets:
+        rows = []
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i >= MAX_SHEET_ROWS:
+                rows.append([f"… (feuille tronquée à {MAX_SHEET_ROWS} lignes)"])
+                break
+            rows.append(["" if v is None else str(v) for v in row])
+        table = _md_table(rows)
+        if table:
+            out.append(f"## Feuille « {ws.title} »\n{table}")
+    wb.close()
+    return {"text": "\n\n".join(out), "images": [], "connections": 0}
+
+
+def _extract_text(data: bytes) -> Dict[str, Any]:
+    for enc in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            return {"text": data.decode(enc), "images": [], "connections": 0}
+        except UnicodeDecodeError:
+            continue
+    return {"text": data.decode("utf-8", "replace"), "images": [], "connections": 0}
+
+
 def extract_office(data: bytes, kind: str) -> Dict[str, Any]:
     """{text, images, connections, has_diagram} ; lève ValueError si le fichier est illisible."""
     try:
-        res = _extract_docx(data) if kind == "docx" else _extract_pptx(data)
+        res = {"docx": _extract_docx, "pptx": _extract_pptx, "xlsx": _extract_xlsx, "texte": _extract_text}[kind](data)
     except Exception as e:
         raise ValueError(f"Fichier {kind.upper()} illisible : {e}")
     res["text"] = res["text"][:MAX_TEXT_CHARS]
@@ -170,7 +212,7 @@ def to_sendable(img):
 def office_parts(f: Dict[str, Any]) -> list:
     """Parts Gemini d'un fichier Office déjà extrait (f['office'])."""
     office = f.get("office") or {}
-    label = "présentation PowerPoint" if f.get("type") == "pptx" else "document Word"
+    label = LABELS.get(f.get("type"), "document")
     parts: list = [f"=== Contenu extrait du {label} « {f.get('filename')} » ===\n{office.get('text') or '(aucun texte)'}"]
     if office.get("images"):
         from PIL import Image

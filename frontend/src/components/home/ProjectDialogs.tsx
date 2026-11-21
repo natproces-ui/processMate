@@ -66,7 +66,7 @@ export function NewProjectDialog({ onClose, onCreated }: { onClose: () => void; 
                     <button type="button" onClick={() => fileRef.current?.click()} className={`mt-1.5 ${btnGhost} px-3 py-1.5`}>
                         <Plus className="w-4 h-4" /> Ajouter du contexte
                     </button>
-                    <input ref={fileRef} type="file" multiple hidden accept=".pdf,.docx,.pptx,image/png,image/jpeg,image/webp"
+                    <input ref={fileRef} type="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.xlsm,.csv,.txt,.md,image/png,image/jpeg,image/webp"
                         onChange={e => { setFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ''; }} />
                 </div>
                 {error && <p role="alert" className="text-sm text-red-600">{error}</p>}

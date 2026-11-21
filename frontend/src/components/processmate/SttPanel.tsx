@@ -88,6 +88,8 @@ interface Props {
     librarySave?: boolean;
     /** Premier message envoyé tout seul (nouvelle conversation lancée depuis un projet) */
     initialMessage?: string;
+    /** Texte prérempli dans le champ, NON envoyé (l'utilisateur joint ses fichiers d'abord) */
+    initialDraft?: string;
 }
 
 const defaultData: Table1Row[] = [
@@ -105,7 +107,7 @@ const NO_ENRICHMENTS = new Map<string, TaskEnrichment>();
 const PROTECTED_META = new Set(['nom', 'ref', 'title', 'category', 'status', 'lifecycle_stages', 'raci', 'remarks',
     'validation', 'circuit', 'created_from', 'cible', 'has_unsaved_changes', 'last_modified_at']);
 
-export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage }: Props) {
+export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage, initialDraft }: Props) {
     const autoSend = useMemo(() => (initialMessage?.trim() ? { id: 1, text: initialMessage } : undefined), [initialMessage]);
     const { invalidate } = useProceduresStore();
     const [processingLevel, setProcessingLevel] = useProcessingLevel();
@@ -1143,7 +1145,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onOpenCode={() => setCodeSourceOpen(true)}
                         recording={recording} processing={processing}
                         onToggleRecording={toggleRecording} onCancelRecording={cancelRecording}
-                        insertText={dictation}
+                        insertText={dictation ?? (initialDraft?.trim() ? { id: -1, text: initialDraft } : undefined)}
                         autoSendText={autoSend}
                         onNewConversation={() => { setUploadOpen(false); setCodeSourceOpen(false); }}
                         onProcessingLevelChange={setProcessingLevel}

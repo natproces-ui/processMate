@@ -22,7 +22,7 @@ from prompts.studio_planner_prompt import build_planner_prompt
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "answer"}
+ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "answer"}
 # Au-delà, on ne génère pas sans que l'utilisateur ait validé la sélection
 # Plafond technique (coût, durée) au-delà duquel on confirme ; en deçà, on fait ce qui est demandé
 MAX_AUTO_GENERATE = 20
@@ -47,7 +47,8 @@ class StudioPlan:
 
 def file_to_parts(f: Dict[str, Any]) -> list:
     """Même envoi que la découverte : PDF tel quel, image réduite à 1024 px, Office extrait."""
-    if f.get("type") in ("docx", "pptx"):
+    from processor.office_extract import EXTRACTED_TYPES
+    if f.get("type") in EXTRACTED_TYPES:
         from processor.office_extract import office_parts
         return office_parts(f)
     raw = f.get("data")
@@ -153,10 +154,11 @@ def plan_turn(
     has_workflow: bool,
     history: Optional[List[Dict[str, str]]] = None,
     previous_proposal: Optional[List[Dict[str, Any]]] = None,
+    referential_pending: bool = False,
 ) -> StudioPlan:
     """Appel synchrone (à lancer dans asyncio.to_thread)."""
     filenames = [f["filename"] for f in files]
-    parts: list = [build_planner_prompt(message, filenames, has_workflow, history, previous_proposal)]
+    parts: list = [build_planner_prompt(message, filenames, has_workflow, history, previous_proposal, referential_pending)]
     for f in files:
         parts.append(f"--- Fichier : {f['filename']} ---")
         parts.extend(file_to_parts(f))

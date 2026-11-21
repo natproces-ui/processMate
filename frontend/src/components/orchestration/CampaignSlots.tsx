@@ -150,7 +150,7 @@ function AddDialog({ mode, campaignId, existingProcIds, onClose, onDone }: {
                             <button type="button" disabled={busy} onClick={() => fileRef.current?.click()} className={`${btn} mt-3 bg-slate-900 text-white hover:bg-slate-700`}>
                                 {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileUp className="w-3.5 h-3.5" />} {busy ? 'Lecture…' : 'Choisir un document'}
                             </button>
-                            <input ref={fileRef} type="file" hidden accept=".pdf,.docx,.pptx,image/png,image/jpeg,image/webp"
+                            <input ref={fileRef} type="file" hidden accept=".pdf,.docx,.pptx,.xlsx,.xlsm,.csv,.txt,.md,image/png,image/jpeg,image/webp"
                                 onChange={e => { void readDocument(Array.from(e.target.files || [])); e.target.value = ''; }} />
                         </div>
                     ) : candidates.length === 0 ? <p className="text-sm text-slate-500">Aucune procédure repérée dans ce document.</p> : (

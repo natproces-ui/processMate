@@ -64,6 +64,13 @@ des documents et à répondre à des questions.
    document », « quels outils sont utilisés pour l'étape Organiser ? », « quels sont les risques ? »,
    « résume-moi le parcours », « qu'est-ce qui change entre les deux versions ? »). Laisse "reply" vide :
    une réponse complète sera rédigée à partir des fichiers.
+"structure" → l'utilisateur veut construire, organiser ou revoir le RÉFÉRENTIEL de son organisation : la
+   cartographie de ses processus (thèmes, catégories, sous-catégories et liste des procédures), pas la
+   formalisation des procédures une à une (« construis notre référentiel à partir de ces documents »,
+   « propose une organisation de nos processus », « voici notre cartographie, fais-en le référentiel »,
+   « range ces procédures par thème »). Aussi quand une proposition de référentiel est en cours et que le message
+   la corrige ou la commente (« fusionne ces deux catégories », « ajoute le crédit-bail », « enlève Marchés »).
+   Laisse "procedures" vide et "reply" vide : la proposition sera rédigée à part.
 "answer" → une conversation qui n'a besoin ni des fichiers ni d'une génération (« merci », « que signifie MCNE ? »).
    "reply" contient la réponse.
 
@@ -79,7 +86,7 @@ Pas de jargon d'interface (« cochez », « sélectionnées »), pas de formule 
 
 Réponds UNIQUEMENT avec ce JSON :
 {
-  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "answer",
+  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "answer",
   "reply": "texte",
   "procedures": [
     {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12}
@@ -102,6 +109,7 @@ def build_planner_prompt(
     has_workflow: bool,
     history: Optional[List[Dict[str, str]]] = None,
     previous_proposal: Optional[List[Dict[str, Any]]] = None,
+    referential_pending: bool = False,
 ) -> str:
     ctx = {
         "message": message or "(aucun message, seulement des fichiers)",
@@ -109,5 +117,6 @@ def build_planner_prompt(
         "procedure_ouverte_dans_le_studio": has_workflow,
         "historique_recent": (history or [])[-6:],
         "proposition_precedente": previous_proposal or None,
+        "proposition_de_referentiel_en_cours": referential_pending,
     }
     return PLANNER_PROMPT + "\n\nCONTEXTE :\n" + json.dumps(ctx, ensure_ascii=False, indent=2)

@@ -46,7 +46,7 @@ from manager.processing_level import ProcessingLevel, get_processing_level, proc
 from models.discovery_models import ProcessCard, SourceReference, SourceType
 from processor import studio_agent
 from processor.studio_planner import plan_turn
-from processor.office_extract import extract_office, office_type
+from processor.office_extract import EXTRACTED_TYPES, extract_office, office_type
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/studio", tags=["Studio"])
@@ -106,14 +106,14 @@ async def _read_files(files: List[UploadFile]) -> List[Dict[str, Any]]:
         elif name.lower().endswith((".doc", ".ppt")):
             raise HTTPException(400, f"Ancien format Office non pris en charge : {name}. Enregistrez-le en .docx ou .pptx.")
         else:
-            raise HTTPException(400, f"Format non pris en charge : {name} (PDF, image, Word .docx ou PowerPoint .pptx)")
+            raise HTTPException(400, f"Format non pris en charge : {name} (PDF, image, Word .docx, PowerPoint .pptx, Excel .xlsx, CSV, texte ou code)")
         data = await f.read()
         if not data:
             raise HTTPException(400, f"Fichier vide : {name}")
         if len(data) > MAX_FILE_SIZE:
             raise HTTPException(400, f"Fichier trop volumineux : {name} (max 20 Mo)")
         entry = {"file_id": str(uuid.uuid4()), "filename": name, "data": data, "type": ftype, "size": len(data)}
-        if ftype in ("docx", "pptx"):
+        if ftype in EXTRACTED_TYPES:
             try:
                 entry["office"] = await asyncio.to_thread(extract_office, data, ftype)
             except ValueError as e:
@@ -353,6 +353,36 @@ async def _stream_analysis(request: Request, files: List[Dict[str, Any]], messag
     yield _sse({"type": "status", "id": "analyse", "label": f"Relu {names}", "state": "done"})
 
 
+async def _stream_structure(sess: Dict[str, Any], files: List[Dict[str, Any]], message: str,
+                            history: List[Dict[str, str]]):
+    """« Partir de mes sources » : proposition de référentiel (structure, procédures, remarques).
+    Elle reste dans l'état de la conversation : le message suivant peut l'affiner."""
+    from processor import referential_builder
+    yield _sse({"type": "status", "id": "referentiel", "label": "Je construis la structure du référentiel", "state": "running"})
+    try:
+        with routing_scope(TaskKind.EXTRACTION, source_kinds_of(files)):
+            prop = await asyncio.to_thread(referential_builder.build, message, files, history, sess.get("referentiel"))
+    except Exception as e:
+        logger.warning(f"⚠️ Proposition de référentiel indisponible : {e}")
+        yield _sse({"type": "message", "text": "Je n'ai pas pu construire la proposition de référentiel. Pouvez-vous réessayer ?"})
+        yield _sse({"type": "status", "id": "referentiel", "label": "Proposition interrompue", "state": "done"})
+        return
+    if not prop["arbre"]:
+        yield _sse({"type": "message", "text": prop["reply"] or "Je n'ai pas trouvé de quoi structurer un référentiel dans ces sources. "
+                    "Pouvez-vous préciser ce que vous attendez, ou joindre votre cartographie ?"})
+        yield _sse({"type": "status", "id": "referentiel", "label": "Rien à structurer", "state": "done"})
+        return
+    proposal = {k: prop[k] for k in ("titre", "arbre", "remarques", "stats")}
+    sess["referentiel"] = proposal
+    if prop["reply"]:
+        yield _sse({"type": "message", "text": prop["reply"]})
+    yield _sse({"type": "referential_proposal", "proposal": proposal})
+    st = prop["stats"]
+    yield _sse({"type": "status", "id": "referentiel", "state": "done",
+                "label": f"Référentiel proposé · {st['themes']} thème{'s' if st['themes'] > 1 else ''}, "
+                         f"{st['procedures']} procédure{'s' if st['procedures'] > 1 else ''}"})
+
+
 def _guest(request: Request, user: Optional[AuthUser]):
     """Clés de comptage d'un invité, ou None (utilisateur connecté, ou limites désactivées)."""
     if user is not None or not load_limits().enabled:
@@ -395,7 +425,7 @@ def _entry_from_source(src: Dict[str, Any], data: bytes) -> Dict[str, Any]:
     """Même forme qu'une entrée de _read_files, à partir d'une source enregistrée."""
     entry = {"file_id": src["id"], "filename": src["filename"], "data": data, "type": src["type"],
              "size": src.get("size") or len(data), "sha256": src.get("sha256")}
-    if src["type"] in ("docx", "pptx"):
+    if src["type"] in EXTRACTED_TYPES:
         try:
             entry["office"] = extract_office(data, src["type"])
         except Exception as e:
@@ -429,7 +459,7 @@ async def _conversation_session(conv: Dict[str, Any]) -> Dict[str, Any]:
         files = project_files + files
     state = conv.get("state") or {}
     sess = {"files": files, "proposal": state.get("proposal"), "references": state.get("references"),
-            "persisted": True}
+            "referentiel": state.get("referentiel"), "persisted": True}
     _sessions[conv["id"]] = sess
     return sess
 
@@ -494,7 +524,8 @@ def _record(gen, conv: Optional[Dict[str, Any]], sess: Dict[str, Any], ix: Optio
                                   interaction_id=ids[-1] if ids else None)
                 # fusion : les procédures enregistrées par le navigateur restent dans l'état
                 store.merge_state(conv["id"], conv["owner_id"],
-                                  proposal=sess.get("proposal"), references=sess.get("references"))
+                                  proposal=sess.get("proposal"), references=sess.get("references"),
+                                  referentiel=sess.get("referentiel"))
             except Exception as e:
                 logger.error(f"❌ Réponse non enregistrée dans la conversation {conv['id']} : {e}")
 
@@ -584,7 +615,7 @@ async def studio_turn(
                                                   False, None, message, sess.get("references")):
                             yield ev
                     return
-                if not sess["files"] and not sess.get("proposal"):
+                if not sess["files"] and not sess.get("proposal") and not sess.get("referentiel"):
                     # Ni sources ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…).
                     # Avec des sources déjà jointes (ex. relance après une erreur), on passe par leur analyse :
                     # sinon le chat rédigeait une procédure sans avoir lu le fichier.
@@ -603,7 +634,8 @@ async def studio_turn(
                     yield _sse({"type": "status", "id": "think", "label": label, "state": "running"})
                 read_label = label.replace("Lecture de ", "Lu ", 1) if new_files else None
                 with routing_scope(TaskKind.AIGUILLAGE, source_kinds_of(to_plan)), interactions_scope(ix):
-                    plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"))
+                    plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"),
+                                                   bool(sess.get("referentiel")))
                 found = len(plan.procedures)
                 if plan.action in ("generate", "propose", "merge"):
                     found_label = f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"
@@ -636,6 +668,9 @@ async def studio_turn(
                         async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
                                                           _loads(conversation_procedures, None), active_procedure, request):
                             yield ev
+                elif plan.action == "structure":
+                    async for ev in _stream_structure(sess, to_plan, message, history_list):
+                        yield ev
                 elif plan.action == "edit":
                     async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
                                                   _loads(conversation_procedures, None), active_procedure, request):
