@@ -95,74 +95,6 @@ function LifecycleBar({ stages }: { stages: Array<{ title: string; status: strin
   );
 }
 
-// ─── Modale création campagne ─────────────────────────────────
-
-function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCreated: (c: Campaign) => void }) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    setSaving(true); setError(null);
-    try {
-      const res = await campaignsApi.create({ title: title.trim(), description: description.trim() || undefined, start_date: startDate || undefined, end_date: endDate || undefined });
-      onCreated(res.campaign);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Erreur'); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">Nouvelle campagne de formalisation</h3>
-          <button type="button" title="Fermer" onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-400"><X className="w-4 h-4" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Titre *</label>
-            <input title="Titre" value={title} onChange={e => setTitle(e.target.value)}
-              placeholder="ex: Refonte des procédures crédit Q1, Correction format SFD…"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" autoFocus />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
-            <textarea title="Description" value={description} onChange={e => setDescription(e.target.value)} rows={3}
-              placeholder="Objectif, périmètre, contexte de la campagne…"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Début</label>
-              <input title="Date de début" type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Échéance</label>
-              <input title="Date de fin" type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 pt-1">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Annuler</button>
-            <button type="submit" disabled={saving || !title.trim()}
-              className="px-4 py-2 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50 flex items-center gap-2">
-              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              Créer
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ─── Modale ajout procédures — navigation taxonomique ─────────
 
 function TaxonomyTreeNode({
@@ -870,7 +802,6 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<CampaignStatus | 'all'>('all');
 
@@ -1038,10 +969,6 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
         </div>
       </div>
 
-      {showCreate && (
-        <CreateCampaignModal onClose={() => setShowCreate(false)}
-          onCreated={c => { setShowCreate(false); setCampaigns(prev => [c, ...prev]); setActiveCampaign(c); }} />
-      )}
     </div>
   );
 }

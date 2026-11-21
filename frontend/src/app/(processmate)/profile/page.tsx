@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
+import AppShell from '@/components/home/AppShell';
 import { useAuth } from '@/context/AuthContext';
 import EmailPreference from '@/components/shared/EmailPreference';
 
@@ -26,7 +26,6 @@ function isKnownOption(value: string | null, list: string[]) {
 }
 
 export default function ProfilePage() {
-  const router = useRouter();
   const { profile, user, updateProfile } = useAuth();
 
   const [fullName, setFullName]       = useState('');
@@ -88,21 +87,8 @@ export default function ProfilePage() {
     .split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-
-      {/* Header minimal */}
-      <header className="shrink-0 h-14 bg-white border-b border-gray-200 flex items-center px-6 gap-3">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <span className="text-sm font-semibold text-gray-700">Mon profil</span>
-      </header>
-
-      <div className="flex-1 overflow-y-auto">
+    <AppShell activeNav="profil" headerLeft={<h1 className="truncate px-1 text-base font-semibold text-neutral-900">Mon profil</h1>}>
+      <div className="flex-1 min-h-0 overflow-y-auto bg-white">
       <div className="max-w-2xl mx-auto px-6 py-10">
 
         <h1 className="text-2xl font-bold text-gray-900 mb-8">Mon profil</h1>
@@ -261,6 +247,6 @@ export default function ProfilePage() {
         <div className="mt-6"><EmailPreference /></div>
       </div>
       </div>
-    </div>
+    </AppShell>
   );
 }

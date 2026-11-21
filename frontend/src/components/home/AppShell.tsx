@@ -315,7 +315,7 @@ export default function AppShell({
                         {user ? (
                             <>
                                 {member && profile?.id && <NotificationBell actorId={profile.id} />}
-                                <span className="hidden sm:inline text-sm text-neutral-900 truncate max-w-[220px]">{user.email}</span>
+                                <Link href="/profile" title="Mon profil" className="hidden sm:inline text-sm text-neutral-900 truncate max-w-[220px] rounded-lg px-1.5 py-1 hover:bg-neutral-100">{user.email}</Link>
                                 <button type="button" onClick={() => signOut()} title="Se déconnecter" aria-label="Se déconnecter"
                                     className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100"><LogOut className="w-4 h-4" /></button>
                             </>
