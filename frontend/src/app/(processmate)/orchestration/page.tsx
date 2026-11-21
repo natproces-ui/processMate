@@ -1,14 +1,14 @@
 'use client';
 
 // app/(processmate)/orchestration/page.tsx
-// Shell principal ProcessMate — utilise ProcessMateSidebar + ProcessMateHeader
-// Plus de double header, plus de "ProcessMate Orchestration" comme titre de page
+// Écrans de l'organisation (référentiel, tâches, campagnes, analyse…) dans la coquille commune
+// (AppShell) : même barre latérale et même en-tête que le chat et l'accueil.
 
 import React, { useState, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
-import ProcessMateSidebar, { type ActiveModule } from '@/components/processmate/ProcessMateSidebar';
-import ProcessMateHeader from '@/components/processmate/Header';
+import AppShell from '@/components/home/AppShell';
+import type { MainModule } from '@/lib/processmate-navigation';
 import { useProceduresStore } from '@/store/proceduresStore';
 import { orchestrationApi } from '@/lib/orchestrationApi';
 import type { ActorRole, TaskActor } from '@/lib/orchestrationTasksApi';
@@ -66,6 +66,15 @@ type OrchestraTab =
     | 'pipeline' | 'irritants' | 'complexity' | 'applicatifs'
     | 'regulatory-impact' | 'analysis' | 'bian' | 'workflow'
     | 'raci' | 'validation' | 'tasks' | 'settings' | 'mockups';
+
+type ActiveModule = MainModule;
+
+/** Titre affiché dans l'en-tête commun, selon l'écran */
+const TAB_TITLES: Record<string, string> = {
+    procedures: 'Référentiel', workspace: 'Mon espace de travail', taches: 'À faire', campagnes: 'Campagnes',
+    analyser: 'Analyse', specifications: 'Spécifications', mockups: 'Maquettes', 'tableau-de-bord': 'Tableau de bord',
+    guide: 'Guide', settings: 'Paramètres',
+};
 
 function mapRole(globalRole: string): ActorRole {
     return globalRole === 'admin' ? 'admin' : 'user';
@@ -273,7 +282,6 @@ function ProcessMateInner() {
     }, [profile, myActorRole]);
 
     const [activeTab, setActiveTab] = useState<OrchestraTab>(navigation.tab as OrchestraTab);
-    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     useEffect(() => {
         const next = resolveProcessMateNavigation(searchParams);
@@ -354,33 +362,10 @@ function ProcessMateInner() {
     const studioWorkflowId = searchParams.get('studio') || undefined;
 
     return (
-        <div className="flex h-screen overflow-hidden bg-white">
-
-            {/* ── Sidebar ProcessMate unifiée ── */}
-            <ProcessMateSidebar
-                activeTab={activeTab}
-                activeModule={activeModule}
-                setActiveTab={handleTabChange}
-                setActiveModule={handleModuleChange}
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-                userRole={profile?.global_role}
-            />
-
-            {/* ── Zone principale ── */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-                {/* Header compact */}
-                <ProcessMateHeader
-                    activeModule={activeModule}
-                    activeTab={activeModule === 'orchestration' ? activeTab : undefined}
-                    currentActorName={profile?.display_name || profile?.full_name || currentActor?.name || user?.email?.split('@')[0]}
-                    currentActorTitle={profile?.job_title || currentActor?.job_title || undefined}
-                    currentActorId={currentActor?.id}
-                    onSettingsClick={access?.is_admin || profile?.global_role === 'admin' ? () => handleTabChange('settings') : undefined}
-                    onOpenStudio={() => handleOpenStudio()}
-                />
-
+        <AppShell activeNav={activeModule === 'stt' ? 'stt' : `tab:${activeTab}`}
+            headerLeft={<h1 className="truncate px-1 text-base font-semibold text-neutral-900">
+                {activeModule === 'stt' ? 'Studio' : (TAB_TITLES[activeTab] || 'Organisation')}
+            </h1>}>
                 <div className="flex-1 overflow-hidden flex flex-col">
                     <div className="flex-1 relative overflow-hidden">
 
@@ -472,7 +457,9 @@ function ProcessMateInner() {
                                 <LazyPanel active={activeTab === 'corrections'}><CorrectionsPanel /></LazyPanel>
                                 <LazyPanel active={activeTab === 'portfolio'}><ProjectsPortfolio /></LazyPanel>
                                 <LazyPanel active={activeTab === 'taxonomy'}><TaxonomyTree /></LazyPanel>
-                                <LazyPanel active={activeTab === 'settings'}><SettingsPanel /></LazyPanel>
+                                <LazyPanel active={activeTab === 'settings'}>
+                                    {access?.is_admin ? <SettingsPanel /> : <p className="p-8 text-sm text-neutral-700">Les paramètres sont réservés à l’administrateur de l’organisation.</p>}
+                                </LazyPanel>
                             </>
                         )}
 
@@ -488,13 +475,9 @@ function ProcessMateInner() {
                                 />
                             </div>
                         )}
-
-
-
                     </div>
                 </div>
-            </div>
-        </div>
+        </AppShell>
     );
 }
 

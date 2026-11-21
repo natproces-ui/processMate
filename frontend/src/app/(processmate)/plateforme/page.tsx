@@ -11,6 +11,7 @@ import { ArrowLeft, Building2, Loader2, Lock, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { platformApi, type PlatformOrg, type Usage } from '@/lib/platformApi';
 import LinkReveal from '@/components/shared/LinkReveal';
+import AppShell from '@/components/home/AppShell';
 
 const fmt = (n: number) => new Intl.NumberFormat('fr-FR').format(n);
 const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200';
@@ -114,9 +115,6 @@ function Console() {
     return (
         <main className="h-full overflow-y-auto">
             <div className="mx-auto max-w-5xl px-4 py-6 space-y-5">
-                <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-                    <ArrowLeft className="w-4 h-4" /> Retour
-                </Link>
                 <div>
                     <h1 className="text-xl font-semibold text-slate-900">Plateforme processMate</h1>
                     <p className="mt-1 text-sm text-slate-600">
@@ -181,6 +179,14 @@ function Console() {
 }
 
 export default function PlateformePage() {
+    return (
+        <AppShell activeNav="plateforme" headerLeft={<h1 className="truncate px-1 text-base font-semibold text-neutral-900">Plateforme processMate</h1>}>
+            <div className="flex-1 min-h-0 overflow-y-auto"><Plateforme /></div>
+        </AppShell>
+    );
+}
+
+function Plateforme() {
     const { access } = useAuth();
     if (access === null) {
         return <div className="h-full flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-blue-500" /></div>;

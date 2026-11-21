@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Search } from 'lucide-react';
 import MemberGuard from '@/components/auth/MemberGuard';
+import AppShell from '@/components/home/AppShell';
 import { useAuth } from '@/context/AuthContext';
 import { orchestrationApi, type UserProfile } from '@/lib/orchestrationApi';
 import OrganisationAdmin from '@/components/admin/OrganisationAdmin';
@@ -85,10 +86,7 @@ function UsersAdmin() {
     return (
         <main className="h-full overflow-y-auto">
             <div className="mx-auto max-w-5xl px-4 py-6">
-                <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-                    <ArrowLeft className="w-4 h-4" /> Retour au chat
-                </Link>
-                <h1 className="mt-3 text-xl font-semibold text-slate-900">Utilisateurs</h1>
+                <h1 className="text-xl font-semibold text-slate-900">Utilisateurs</h1>
                 <p className="mt-1 text-sm text-slate-600">
                     Un compte créé depuis l&apos;accueil a accès au chat et à ses projets. Pour le référentiel, les campagnes
                     et le pilotage, activez-le et choisissez son rôle.
@@ -165,8 +163,12 @@ function UsersAdmin() {
 export default function AdminPage() {
     const { access } = useAuth();
     return (
-        <MemberGuard admin>
-            {access?.organisations_mode ? <OrganisationAdmin /> : <UsersAdmin />}
-        </MemberGuard>
+        <AppShell activeNav="equipe" headerLeft={<h1 className="truncate px-1 text-base font-semibold text-neutral-900">Équipe</h1>}>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <MemberGuard admin>
+                    {access?.organisations_mode ? <OrganisationAdmin /> : <UsersAdmin />}
+                </MemberGuard>
+            </div>
+        </AppShell>
     );
 }

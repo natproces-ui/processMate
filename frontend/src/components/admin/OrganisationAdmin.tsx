@@ -38,10 +38,7 @@ export default function OrganisationAdmin() {
     return (
         <main className="h-full overflow-y-auto">
             <div className="mx-auto max-w-5xl px-4 py-6">
-                <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800">
-                    <ArrowLeft className="w-4 h-4" /> Retour au chat
-                </Link>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{access?.organisation?.nom}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{access?.organisation?.nom}</p>
                 <div className="flex flex-wrap items-end justify-between gap-3">
                     <h1 className="text-xl font-semibold text-slate-900">Administration de l&apos;organisation</h1>
                     <button type="button" onClick={() => setCreating(true)}

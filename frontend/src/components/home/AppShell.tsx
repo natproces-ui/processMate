@@ -20,8 +20,9 @@ import { ConversationHeader, ConversationRow, SearchDialog } from '@/components/
 import {
     Zap, SquarePen, FolderKanban, FileText, CheckSquare, Megaphone, BarChart3, PenTool, Search,
     BookOpen, Newspaper, Compass, Menu, X, LogOut, Users, Clock, Building2, ChevronDown, FolderOpen,
-    PanelLeftClose, PanelLeftOpen,
+    PanelLeftClose, PanelLeftOpen, Home, PenLine, Settings, MoreHorizontal, LayoutDashboard,
 } from 'lucide-react';
+import NotificationBell from '@/components/processmate/NotificationBell';
 
 const SIDEBAR_KEY = 'processmate-sidebar';
 const MIN_W = 220, MAX_W = 420, DEFAULT_W = 288;
@@ -38,20 +39,36 @@ export interface AppShellProps {
     onConversationDeleted?: (id: string) => void;
     /** incrémenter pour recharger projets et récents (après création, renommage…) */
     refreshKey?: number;
-    activeNav?: 'projets' | 'espace';
+    /** entrée active de la barre : 'projets', 'espace', 'equipe', ou 'tab:<onglet>' de l'Orchestration */
+    activeNav?: string;
 }
+
+/** Navigation de l'organisation (membres) : la même partout, chat compris */
+const ORG_NAV = [
+    { tab: 'procedures', label: 'Référentiel', icon: FileText },
+    { tab: 'workspace', label: 'Mon espace de travail', icon: PenLine },
+    { tab: 'taches', label: 'À faire', icon: CheckSquare },
+    { tab: 'campagnes', label: 'Campagnes', icon: Megaphone },
+    { tab: 'analyser', label: 'Analyse', icon: BarChart3 },
+];
+const MORE_NAV = [
+    { href: '/orchestration?tab=specifications', key: 'tab:specifications', label: 'Spécifications', icon: BookOpen },
+    { href: '/orchestration?tab=tableau-de-bord', key: 'tab:tableau-de-bord', label: 'Tableau de bord', icon: LayoutDashboard },
+    { href: '/orchestration?module=stt', key: 'stt', label: 'Studio complet', icon: PenTool },
+];
 
 export default function AppShell({
     children, headerLeft, activeConversationId = null, onOpenConversation, onNewConversation,
     onConversationDeleted, refreshKey = 0, activeNav,
 }: AppShellProps) {
-    const { user, signOut, access } = useAuth();
+    const { user, signOut, access, profile } = useAuth();
     const member = !!access?.member;
     const persistent = CONVERSATIONS_ENABLED && !!user;
     const [navOpen, setNavOpen] = useState(false);
     const [recents, setRecents] = useState<ConversationSummary[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [recentsOpen, setRecentsOpen] = useState(true);
+    const [moreOpen, setMoreOpen] = useState(() => MORE_NAV.some(m => m.key === activeNav) || activeNav === 'tab:settings');
     const [searchOpen, setSearchOpen] = useState(false);
     const [todo, setTodo] = useState<{ ouvertes: number; en_retard: number } | null>(null);
     // Barre latérale : l'utilisateur la replie (colonne d'icônes) ou l'élargit ; rien n'est automatique
@@ -157,8 +174,8 @@ export default function AppShell({
     const nav = (
         <nav aria-label="Navigation" style={{ width }} className="h-full flex flex-col bg-neutral-50 border-r border-neutral-200 text-neutral-900 max-w-[85vw]">
             <div className="h-14 shrink-0 flex items-center justify-between px-3">
-                <Link href="/" className="flex items-center gap-2 text-[17px] font-semibold text-neutral-900">
-                    <span className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center"><Zap className="w-4 h-4 text-white" /></span>
+                <Link href={member ? '/espace' : '/'} className="flex items-center gap-2 text-[17px] font-semibold text-neutral-900">
+                    <span className="w-7 h-7 rounded-lg bg-neutral-900 flex items-center justify-center"><Zap className="w-4 h-4 text-white" /></span>
                     ProcessMate
                 </Link>
                 <button type="button" onClick={() => setNavOpen(false)} aria-label="Fermer le menu" className="md:hidden p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-200"><X className="w-4 h-4" /></button>
@@ -166,11 +183,35 @@ export default function AppShell({
                     className="hidden md:inline-flex p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-200"><PanelLeftClose className="w-4 h-4" /></button>
             </div>
             <div className="px-2 space-y-0.5">
+                {user && member && <NavLink href="/espace" icon={<Home />} label="Accueil" active={activeNav === 'espace'} />}
                 <NavButton onClick={newConv} icon={<SquarePen />} label="Nouvelle conversation" />
                 {persistent && <NavButton onClick={() => setSearchOpen(true)} icon={<Search />} label="Rechercher" hint="Ctrl K" />}
                 {persistent && <NavLink href="/projets" icon={<FolderKanban />} label="Projets" active={activeNav === 'projets'} />}
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto px-2 pt-4 space-y-5">
+                {user && member && (
+                    <section aria-label="Espace de l'organisation" className="space-y-0.5">
+                        <p className={`${sectionLabel} truncate`} title={access?.organisation?.nom ?? undefined}>
+                            {access?.organisation?.nom || 'Organisation'}
+                        </p>
+                        {ORG_NAV.map(n => (
+                            <NavLink key={n.tab} href={`/orchestration?tab=${n.tab}`} icon={<n.icon />} label={n.label}
+                                active={activeNav === `tab:${n.tab}`}
+                                badge={n.tab === 'taches' && todo ? { count: todo.ouvertes, late: todo.en_retard } : undefined} />
+                        ))}
+                        {access?.is_admin && <NavLink href="/admin" icon={<Users />} label="Équipe" active={activeNav === 'equipe'} />}
+                        <button type="button" onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen} className={itemCls}>
+                            <MoreHorizontal /><span className="truncate">Plus</span>
+                            <ChevronDown className={`ml-auto transition-transform ${moreOpen ? '' : '-rotate-90'}`} />
+                        </button>
+                        {moreOpen && (
+                            <div className="pl-3 space-y-0.5">
+                                {MORE_NAV.map(m => <NavLink key={m.key} href={m.href} icon={<m.icon />} label={m.label} active={activeNav === m.key} />)}
+                                {access?.is_admin && <NavLink href="/orchestration?tab=settings" icon={<Settings />} label="Paramètres" active={activeNav === 'tab:settings'} />}
+                            </div>
+                        )}
+                    </section>
+                )}
                 {persistent && (pinnedConvs.length > 0 || pinnedProjects.length > 0) && (
                     <section aria-label="Épinglés">
                         <p className={sectionLabel}>Épinglés</p>
@@ -205,21 +246,6 @@ export default function AppShell({
                         </ul>
                     ))}
                 </section>
-                {user && member && (
-                    <section aria-label="Espace de l'organisation" className="space-y-0.5">
-                        <p className={`${sectionLabel} truncate`} title={access?.organisation?.nom ?? undefined}>
-                            {access?.organisation?.nom || 'Organisation'}
-                        </p>
-                        {access?.can_manage_campaigns && <NavLink href="/espace" icon={<Building2 />} label="Accueil de l’organisation" active={activeNav === 'espace'} />}
-                        <NavLink href="/orchestration?tab=procedures" icon={<FileText />} label="Référentiel" />
-                        <NavLink href="/orchestration?tab=taches" icon={<CheckSquare />} label="À faire"
-                            badge={todo ? { count: todo.ouvertes, late: todo.en_retard } : undefined} />
-                        <NavLink href="/orchestration?tab=campagnes" icon={<Megaphone />} label="Campagnes" />
-                        <NavLink href="/orchestration?tab=analyser" icon={<BarChart3 />} label="Analyse" />
-                        <NavLink href="/orchestration?module=stt" icon={<PenTool />} label="Studio complet" />
-                        {access?.is_admin && <NavLink href="/admin" icon={<Users />} label="Utilisateurs" />}
-                    </section>
-                )}
                 {user && access?.is_admin && access.organisations_mode && <OnboardingCard />}
                 {user && !member && <InvitationBanner />}
                 {user && access?.is_platform_admin && (
@@ -251,9 +277,8 @@ export default function AppShell({
             {persistent && <RailLink label="Projets" href="/projets"><FolderKanban /></RailLink>}
             {user && member && <>
                 <div className="my-2 h-px w-8 bg-neutral-200" />
-                <RailLink label="Référentiel" href="/orchestration?tab=procedures"><FileText /></RailLink>
-                <RailLink label="À faire" href="/orchestration?tab=taches"><CheckSquare /></RailLink>
-                <RailLink label="Campagnes" href="/orchestration?tab=campagnes"><Megaphone /></RailLink>
+                <RailLink label="Accueil" href="/espace"><Home /></RailLink>
+                {ORG_NAV.map(n => <RailLink key={n.tab} label={n.label} href={`/orchestration?tab=${n.tab}`}><n.icon /></RailLink>)}
             </>}
         </nav>
     );
@@ -289,6 +314,7 @@ export default function AppShell({
                     <div className="flex items-center gap-2 text-sm">
                         {user ? (
                             <>
+                                {member && profile?.id && <NotificationBell actorId={profile.id} />}
                                 <span className="hidden sm:inline text-sm text-neutral-900 truncate max-w-[220px]">{user.email}</span>
                                 <button type="button" onClick={() => signOut()} title="Se déconnecter" aria-label="Se déconnecter"
                                     className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100"><LogOut className="w-4 h-4" /></button>
