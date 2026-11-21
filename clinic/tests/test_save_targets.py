@@ -145,6 +145,32 @@ class SaveTargetsTest(unittest.TestCase):
         r = self.client.put("/api/orchestration/taxonomy/t-epargne/map", json={"layout": {}}, headers=self.as_("redac"))
         self.assertNotEqual(r.status_code, 403)
 
+    # ── Référentiel : état, partir de rien, référentiel par défaut ──
+
+    def test_referential_state_and_empty_guard(self):
+        st = self.client.get("/api/orchestration/referentiel/etat", headers=self.as_("redac")).json()
+        self.assertEqual((st["themes"], st["categories"], st["sous_categories"]), (2, 1, 1))
+        self.assertEqual((st["procedures"], st["procedures_classees"], st["origine"]), (4, 4, "personnalise"))
+        self.assertFalse(st["peut_vider"])  # des procédures y sont rangées
+        self.assertEqual(self.client.post("/api/orchestration/referentiel/vider", headers=self.as_("pilote")).status_code, 409)
+        self.assertEqual(self.client.post("/api/orchestration/referentiel/vider", headers=self.as_("redac")).status_code, 403)
+
+    def test_start_from_scratch_then_default(self):
+        for w in self.db.rows("workflows"):
+            w["taxonomy_id"] = None
+        self.db.tables["campaign_procedures"] = []
+        self.db.tables["equipe_branches"] = [{"organisation_id": A, "equipe_id": "e", "taxonomy_id": "t-ouv"}]
+        r = self.client.post("/api/orchestration/referentiel/vider", headers=self.as_("pilote"))
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual((r.json()["supprimes"], r.json()["etat"]["origine"]), (4, "vide"))
+        self.assertEqual(self.db.rows("equipe_branches"), [])
+        r = self.client.post("/api/orchestration/referentiel/defaut", headers=self.as_("pilote"))
+        self.assertEqual(r.json()["etat"]["origine"], "defaut")
+        self.assertEqual(r.json()["etat"]["themes"], 5)
+        again = self.client.post("/api/orchestration/referentiel/defaut", headers=self.as_("pilote")).json()
+        self.assertFalse(again["seeded"])
+        self.assertEqual(again["etat"]["themes"], 5)
+
     # ── Emplacement sans procédure (campagne en brouillon) ──
 
     def test_empty_slot_gets_its_procedure(self):

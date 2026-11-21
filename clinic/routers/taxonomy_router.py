@@ -7,10 +7,13 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
+import asyncio
+import logging
 import uuid
 
 from database.supabase_client import get_supabase
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/orchestration", tags=["taxonomy"])
 
 VALID_LEVELS = {"theme", "category", "subcategory"}
@@ -837,3 +840,71 @@ def seed_bian(force: bool = False) -> Dict[str, Any]:
         "categories_created": len(cat_rows),
         "subcategories_created": len(subcat_rows),
     }
+
+
+# ─── Référentiel de l'organisation : état, partir de rien, référentiel par défaut ───
+# (page d'accueil de l'organisation, pour l'admin et le pilote)
+
+DEFAULT_THEME_NAMES = {t["name"] for t in BIAN_SEED} | {"Reference Data", "Sales & Service", "Operations & Execution",
+                                                       "Risk & Compliance", "Business Support"}
+
+
+def referential_state() -> Dict[str, Any]:
+    db = get_supabase()
+    nodes = db.table("process_taxonomy").select("id,name,level").execute().data or []
+    ids = {n["id"] for n in nodes}
+    wfs = db.table("workflows").select("id,taxonomy_id,workflow_json").execute().data or []
+    slots = db.table("campaign_procedures").select("id,taxonomy_id").execute().data or []
+    camps = db.table("formalization_campaigns").select("id,status").execute().data or []
+    themes = [n for n in nodes if n.get("level") == "theme"]
+    classees = sum(1 for w in wfs if w.get("taxonomy_id") in ids)
+    rangees_campagne = sum(1 for s in slots if s.get("taxonomy_id") in ids)
+    if not nodes:
+        origine = "vide"
+    elif themes and all(t["name"] in DEFAULT_THEME_NAMES for t in themes):
+        origine = "defaut"
+    else:
+        origine = "personnalise"
+    return {
+        "themes": len(themes),
+        "categories": sum(1 for n in nodes if n.get("level") == "category"),
+        "sous_categories": sum(1 for n in nodes if n.get("level") == "subcategory"),
+        "procedures": len(wfs),
+        "procedures_classees": classees,
+        "procedures_redigees": sum(1 for w in wfs if w.get("workflow_json")),
+        "origine": origine,
+        # On ne vide qu'un référentiel où rien n'est encore rangé
+        "peut_vider": bool(nodes) and classees == 0 and rangees_campagne == 0,
+        "campagnes": {"total": len(camps), "en_cours": sum(1 for c in camps if c.get("status") == "active")},
+    }
+
+
+@router.get("/referentiel/etat")
+async def get_referential_state():
+    return await asyncio.to_thread(referential_state)
+
+
+@router.post("/referentiel/vider")
+def empty_referential():
+    """Partir de rien : supprime la taxonomie, tant qu'aucune procédure ni campagne n'y est rangée."""
+    state = referential_state()
+    if not state["peut_vider"]:
+        raise HTTPException(409, "Des procédures ou des campagnes sont déjà rangées dans ce référentiel : "
+                                 "on l'adapte (renommer, supprimer des branches), on ne le vide plus.")
+    db = get_supabase()
+    ids = [n["id"] for n in db.table("process_taxonomy").select("id").execute().data or []]
+    for table, column in (("equipe_branches", "taxonomy_id"), ("process_maps", "theme_id")):
+        try:
+            db.table(table).delete().in_(column, ids).execute()
+        except Exception as e:  # table absente (migration non appliquée)
+            logger.info(f"{table} ignorée : {str(e)[:80]}")
+    for i in range(0, len(ids), 200):
+        db.table("process_taxonomy").delete().in_("id", ids[i:i + 200]).execute()
+    return {"supprimes": len(ids), "etat": referential_state()}
+
+
+@router.post("/referentiel/defaut")
+def load_default_referential():
+    """Charge le référentiel par défaut (structure BIAN), sans jamais le dupliquer."""
+    r = seed_bian()
+    return {**r, "etat": referential_state()}

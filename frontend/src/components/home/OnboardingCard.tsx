@@ -13,9 +13,9 @@ type Steps = { taxonomie: boolean; comptes: boolean; campagne: boolean };
 const KEY = 'processmate-demarrage-masque';
 
 const ITEMS: { id: keyof Steps; label: string; href: string }[] = [
-    { id: 'taxonomie', label: 'Organiser la taxonomie des processus', href: '/orchestration?tab=procedures' },
+    { id: 'taxonomie', label: 'Adapter le référentiel des processus', href: '/espace' },
     { id: 'comptes', label: 'Créer les comptes de l’équipe', href: '/admin' },
-    { id: 'campagne', label: 'Lancer une première campagne', href: '/orchestration?tab=campagnes' },
+    { id: 'campagne', label: 'Lancer une première campagne', href: '/espace' },
 ];
 
 export default function OnboardingCard() {
@@ -40,7 +40,7 @@ export default function OnboardingCard() {
     };
 
     return (
-        <section aria-label="Premiers pas" className="rounded-lg border border-blue-100 bg-blue-50/60 p-2.5">
+        <section aria-label="Premiers pas" className="rounded-lg border border-neutral-200 bg-neutral-50 p-2.5">
             <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-800">Premiers pas · {done}/{ITEMS.length}</p>
                 <button type="button" onClick={hide} aria-label="Masquer les premiers pas" className="p-0.5 rounded text-slate-400 hover:text-slate-700">
@@ -50,9 +50,9 @@ export default function OnboardingCard() {
             <ul className="mt-1.5 space-y-1">
                 {ITEMS.map(i => (
                     <li key={i.id}>
-                        <Link href={i.href} className="flex items-start gap-1.5 text-xs text-slate-700 hover:text-blue-700">
+                        <Link href={i.href} className="flex items-start gap-1.5 text-xs text-neutral-700 hover:text-neutral-900">
                             {steps[i.id]
-                                ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-emerald-600" />
+                                ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-neutral-900" />
                                 : <Circle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />}
                             <span className={steps[i.id] ? 'line-through text-slate-400' : ''}>{i.label}</span>
                         </Link>

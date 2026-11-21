@@ -38,7 +38,7 @@ export interface AppShellProps {
     onConversationDeleted?: (id: string) => void;
     /** incrémenter pour recharger projets et récents (après création, renommage…) */
     refreshKey?: number;
-    activeNav?: 'projets';
+    activeNav?: 'projets' | 'espace';
 }
 
 export default function AppShell({
@@ -210,6 +210,7 @@ export default function AppShell({
                         <p className={`${sectionLabel} truncate`} title={access?.organisation?.nom ?? undefined}>
                             {access?.organisation?.nom || 'Organisation'}
                         </p>
+                        {access?.can_manage_campaigns && <NavLink href="/espace" icon={<Building2 />} label="Accueil de l’organisation" active={activeNav === 'espace'} />}
                         <NavLink href="/orchestration?tab=procedures" icon={<FileText />} label="Référentiel" />
                         <NavLink href="/orchestration?tab=taches" icon={<CheckSquare />} label="À faire"
                             badge={todo ? { count: todo.ouvertes, late: todo.en_retard } : undefined} />

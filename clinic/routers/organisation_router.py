@@ -114,10 +114,18 @@ def onboarding(org_id: str) -> Dict[str, bool]:
     db = _db()  # tables d'organisation : lecture cloisonnée par la requête
     members = db.table("organisation_members").select("user_id").eq("organisation_id", org_id).execute().data
     return {
-        "taxonomie": bool(db.table("process_taxonomy").select("id").limit(1).execute().data),
+        "taxonomie": _referential_adapted(),
         "comptes": len(members) > 1,
         "campagne": bool(db.table("formalization_campaigns").select("id").limit(1).execute().data),
     }
+
+
+def _referential_adapted() -> bool:
+    """Le référentiel par défaut est posé à la création : l'étape est faite quand on l'a adapté
+    (ou construit), ou qu'on y range déjà des procédures."""
+    from routers.taxonomy_router import referential_state
+    st = referential_state()
+    return st["origine"] == "personnalise" or st["procedures_classees"] > 0
 
 
 @router.get("/demarrage", dependencies=[Depends(_enabled)])
