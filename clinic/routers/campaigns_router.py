@@ -571,3 +571,53 @@ def _launch_v2(campaign_id: str, access: Access) -> Dict[str, Any]:
         logger.warning(f"Projet de campagne non créé : {str(e)[:120]}")
     ac.audit("campagne.lancee", access.user, access.organisation_id, "campagne", campaign_id, result)
     return result
+
+
+# ── Campagne guidée (accueil de l'organisation) ─────────────────────
+
+class GuidedSuggest(BaseModel):
+    procedure_ids: List[str]
+    coordinator_id: Optional[str] = None
+
+
+class GuidedEntry(BaseModel):
+    procedure_id: str
+    raci: Optional[Dict[str, Any]] = None
+
+
+class GuidedCampaign(BaseModel):
+    title: str
+    description: Optional[str] = None
+    end_date: Optional[str] = None
+    coordinator_id: Optional[str] = None
+    procedures: List[GuidedEntry]
+    lancer: bool = False
+
+
+@router.post("/guidee/proposition", dependencies=[Depends(_slots)])
+async def guided_suggest(body: GuidedSuggest):
+    """RACI proposé pour chaque procédure choisie (le sien, sinon l'équipe de sa branche ; A = pilote)."""
+    from manager import campaign_wizard
+    return {"procedures": await asyncio.to_thread(campaign_wizard.suggest, body.procedure_ids[:500], body.coordinator_id)}
+
+
+@router.post("/guidee", dependencies=[Depends(_slots)])
+def guided_create(body: GuidedCampaign, access: Access = Depends(current_access)):
+    """Crée la campagne d'un coup ; la lance si demandé. Un lancement refusé (RACI incomplet,
+    pas d'échéance) laisse la campagne en brouillon, avec la liste de ce qui manque."""
+    from manager import campaign_wizard
+    if not body.title.strip():
+        raise HTTPException(400, "Donnez un nom à la campagne.")
+    me = (access.profile or {}).get("id") or access.user.id
+    camp = _call(campaign_wizard.create, body.title, body.description, body.end_date, body.coordinator_id,
+                 [e.model_dump() for e in body.procedures], me)
+    ac.audit("campagne.creee", access.user, access.organisation_id, "campagne", camp["id"],
+             {"procedures": len(body.procedures), "guidee": True})
+    result: Dict[str, Any] = {"campaign": {"id": camp["id"], "title": camp["title"], "status": "draft"}, "lancee": False}
+    if body.lancer:
+        try:
+            result.update(_launch_v2(camp["id"], access), lancee=True)
+            result["campaign"]["status"] = "active"
+        except HTTPException as e:
+            result["problemes"] = e.detail if isinstance(e.detail, (list, dict)) else str(e.detail)
+    return result

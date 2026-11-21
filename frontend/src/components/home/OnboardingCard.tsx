@@ -15,7 +15,7 @@ const KEY = 'processmate-demarrage-masque';
 const ITEMS: { id: keyof Steps; label: string; href: string }[] = [
     { id: 'taxonomie', label: 'Adapter le référentiel des processus', href: '/espace' },
     { id: 'comptes', label: 'Créer les comptes de l’équipe', href: '/admin' },
-    { id: 'campagne', label: 'Lancer une première campagne', href: '/espace' },
+    { id: 'campagne', label: 'Lancer une première campagne', href: '/espace/campagne' },
 ];
 
 export default function OnboardingCard() {

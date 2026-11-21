@@ -150,9 +150,10 @@ function Espace() {
                                 : 'Aucune campagne. Une campagne rassemble les procédures à formaliser, leurs responsables (RACI) et une échéance.')
                                 : '…'}
                         </p>
-                        <Link href="/orchestration?tab=campagnes" className={`mt-3 ${state && !state.campagnes.total && manager ? btnPrimary : btnGhost}`}>
-                            {state && !state.campagnes.total && manager ? 'Créer une campagne' : 'Voir les campagnes'}
-                        </Link>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {manager && <Link href="/espace/campagne" className={btnPrimary}>Créer une campagne</Link>}
+                            {state && state.campagnes.total > 0 && <Link href="/orchestration?tab=campagnes" className={btnGhost}>Voir les campagnes</Link>}
+                        </div>
                     </div>
                 </div>
             </section>
