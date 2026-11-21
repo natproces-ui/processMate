@@ -33,7 +33,7 @@ function UserRow({
   return (
     <button type="button" onClick={onSelect}
       className={`w-full px-5 py-3 text-left flex items-center gap-3 transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{ini}</div>
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isSelected ? 'bg-neutral-900 text-white' : 'bg-gray-100 text-gray-600'}`}>{ini}</div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`text-sm font-semibold truncate ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>{name}</span>
@@ -117,7 +117,7 @@ export default function RecipientPicker({
               <button key={r.value} type="button" onClick={() => setSelectedRole(r.value)}
                 className={`flex-1 rounded-xl border px-3 py-2.5 text-left transition-all ${selectedRole === r.value ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${selectedRole === r.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{r.value}</span>
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${selectedRole === r.value ? 'bg-neutral-900 text-white' : 'bg-gray-100 text-gray-600'}`}>{r.value}</span>
                   <span className={`text-sm font-semibold ${selectedRole === r.value ? 'text-blue-700' : 'text-gray-700'}`}>{r.label}</span>
                   {(() => {
                     const count = allUsers.filter(u => u.id !== actorId && raciRoleMap[u.id]?.includes(r.value)).length;
@@ -201,7 +201,7 @@ export default function RecipientPicker({
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">Annuler</button>
             <button type="button" disabled={!selectedUserId} onClick={() => onConfirm(selectedUserId, selectedRole, message)}
-              className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-blue-700">{confirmLabel}</button>
+              className="px-5 py-2 bg-neutral-900 text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-neutral-700">{confirmLabel}</button>
           </div>
         </div>
       </div>

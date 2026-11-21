@@ -420,7 +420,7 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
                                                                     setActive(step);
                                                                     mapRef.current?.focusStep(step);
                                                                 }}
-                                                                className={`rounded-xl border overflow-hidden cursor-pointer transition-shadow ${isActive ? 'border-blue-500 ring-2 ring-blue-500/25 shadow-md' : 'border-slate-200 hover:shadow-md'}`}>
+                                                                className={`rounded-xl border overflow-hidden cursor-pointer transition-shadow ${isActive ? 'border-neutral-900 ring-2 ring-blue-500/25 shadow-md' : 'border-slate-200 hover:shadow-md'}`}>
                                                                 <div className="px-3.5 py-2 border-b border-slate-100 bg-slate-50/70">
                                                                     <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-600">
                                                                         {[...new Set(c.rows.map(r => r.acteur).filter(Boolean))].join(', ')}{c.offPath ? ' · autre branche' : ''}
@@ -484,7 +484,7 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
                                             <SmallButton title="Retirer de l'enchaînement" onClick={() => editRow(row.id, r => ({ ...r, sids: r.sids.filter((_, k) => k !== i) }))}><X className="w-3.5 h-3.5" /></SmallButton>
                                         </div>
                                     ))}
-                                    <button type="button" onClick={() => setMenu(null)} className="mt-1 w-full h-8 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">Terminé</button>
+                                    <button type="button" onClick={() => setMenu(null)} className="mt-1 w-full h-8 rounded-lg bg-neutral-900 text-white text-xs font-semibold hover:bg-neutral-700">Terminé</button>
                                 </div>
                             )}
                             {menu.mode === 'add' && (
@@ -498,7 +498,7 @@ export default function ProcessChainView({ initialWorkflowId, onClose }: Props) 
                                     setMenu(null);
                                 }}>
                                     <input name="name" defaultValue={row.name} autoFocus className="flex-1 h-9 px-3 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400" />
-                                    <button type="submit" className="h-9 px-3 rounded-lg bg-blue-600 text-white text-xs font-semibold">OK</button>
+                                    <button type="submit" className="h-9 px-3 rounded-lg bg-neutral-900 text-white text-xs font-semibold">OK</button>
                                 </form>
                             )}
                         </div>

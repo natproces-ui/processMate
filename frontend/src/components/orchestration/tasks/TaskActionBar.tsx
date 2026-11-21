@@ -43,7 +43,7 @@ const ALLOWED_TRANSITIONS: Record<string, Set<string>> = {
 };
 
 const ALL_ACTIONS: ActionConfig[] = [
-  { status: 'in_progress', label: 'Démarrer', tone: 'bg-blue-600 hover:bg-blue-700 text-white', icon: CirclePlay },
+  { status: 'in_progress', label: 'Démarrer', tone: 'bg-neutral-900 hover:bg-neutral-700 text-white', icon: CirclePlay },
   { status: 'submitted', label: 'Soumettre', tone: 'bg-indigo-600 hover:bg-indigo-700 text-white', icon: Send, needsRecipient: true },
   { status: 'validated', label: 'Valider', tone: 'bg-emerald-600 hover:bg-emerald-700 text-white', icon: ShieldCheck },
   { status: 'changes_requested', label: 'Demander correction', tone: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200', icon: RotateCcw, needsRecipient: true },
@@ -149,7 +149,7 @@ function UserRow({
       }`}
     >
       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-        isSelected ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+        isSelected ? 'bg-neutral-900 text-white' : 'bg-gray-100 text-gray-600'
       }`}>
         {ini}
       </div>
@@ -268,7 +268,7 @@ function RecipientPicker({ action, actorRole, procedureId, actorId, onConfirm, o
               >
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
-                    selectedRole === r.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
+                    selectedRole === r.value ? 'bg-neutral-900 text-white' : 'bg-gray-100 text-gray-600'
                   }`}>
                     {r.value}
                   </span>
@@ -401,7 +401,7 @@ function RecipientPicker({ action, actorRole, procedureId, actorId, onConfirm, o
               type="button"
               disabled={!selectedUserId}
               onClick={() => onConfirm(selectedUserId, selectedRole)}
-              className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-blue-700"
+              className="px-5 py-2 bg-neutral-900 text-white rounded-lg text-sm font-semibold disabled:opacity-40 hover:bg-neutral-700"
             >
               Confirmer
             </button>

@@ -204,7 +204,7 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
                     type="button"
                     onClick={applyAll}
                     disabled={applyingAll}
-                    className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-neutral-700 disabled:opacity-50"
                   >
                     {applyingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                     Appliquer toutes les modifications
@@ -272,7 +272,7 @@ export default function TaskDetailDrawer({ task: initialTask, actor, actors, onC
                   type="button"
                   onClick={addComment}
                   disabled={savingComment || !comment.trim()}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 bg-neutral-900 text-white rounded-lg text-sm font-semibold hover:bg-neutral-700 disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
                   Envoyer

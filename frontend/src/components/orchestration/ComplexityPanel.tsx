@@ -204,7 +204,7 @@ function ScoreBar({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-2">
       <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className="h-full bg-blue-600 rounded-full" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-neutral-900 rounded-full" style={{ width: `${pct}%` }} />
       </div>
       <span className="text-xs font-bold text-gray-700">{score}/12</span>
     </div>

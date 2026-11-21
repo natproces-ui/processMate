@@ -349,7 +349,7 @@ function DetailView({ toolUsages, selectedOutil, onSelectTool, onClearTool, onOp
                                             type="button"
                                             title="Ouvrir dans le chat"
                                             onClick={e => { e.stopPropagation(); onOpenStudio(proc.id); }}
-                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors flex-shrink-0"
+                                            className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-900 text-white rounded-lg text-xs font-semibold hover:bg-neutral-700 transition-colors flex-shrink-0"
                                         >
                                             <ExternalLink className="w-3 h-3" />Chat
                                         </button>

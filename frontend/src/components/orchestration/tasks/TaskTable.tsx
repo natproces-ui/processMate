@@ -224,7 +224,7 @@ export default function TaskTable({ tasks, actors, onOpenTask, onOpenProcedure, 
                         type="button"
                         onClick={() => onOpenTask?.(task)}
                         title="Ouvrir la tâche"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-neutral-900 text-white hover:bg-neutral-700 transition-colors"
                       >
                         <FolderOpen className="w-3.5 h-3.5" />
                         Ouvrir

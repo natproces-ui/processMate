@@ -152,7 +152,7 @@ function CreateCampaignModal({ onClose, onCreated }: { onClose: () => void; onCr
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Annuler</button>
             <button type="submit" disabled={saving || !title.trim()}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50 flex items-center gap-2">
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Créer
             </button>
@@ -447,7 +447,7 @@ export function AddProceduresModal({
           <div className="flex gap-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Annuler</button>
             <button type="button" onClick={handleAdd} disabled={saving || !selected.size}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50 flex items-center gap-2">
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Ajouter {selected.size > 0 ? `(${selected.size})` : ''}
             </button>
@@ -655,7 +655,7 @@ function CampaignDetail({
               </button>
               {campaign.status === 'draft' && !CAMPAIGN_SLOTS_ENABLED && (
                 <button type="button" onClick={handleLaunch} disabled={actionLoading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white text-xs font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
                   {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlayCircle className="w-3.5 h-3.5" />}
                   Lancer
                 </button>
@@ -679,7 +679,7 @@ function CampaignDetail({
               )}
               {(campaign.status === 'blocked' || campaign.status === 'on_hold') && (
                 <button type="button" onClick={handleResume} disabled={actionLoading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white text-xs font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
                   {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlayCircle className="w-3.5 h-3.5" />}
                   Reprendre
                 </button>
@@ -732,7 +732,7 @@ function CampaignDetail({
         </select>
         {isAdmin && campaign.status !== 'completed' && campaign.status !== 'archived' && (
           <button type="button" onClick={() => setShowAddModal(true)}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700">
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700">
             <Plus className="w-4 h-4" /> Ajouter des procédures
           </button>
         )}
@@ -917,7 +917,7 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
         <div className="shrink-0 p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-orange-500 rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 bg-neutral-900 rounded-lg flex items-center justify-center">
                 <BarChart2 className="w-4 h-4 text-white" />
               </div>
               <h1 className="text-base font-bold text-gray-900">Campagnes</h1>
@@ -926,8 +926,8 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
               <button type="button" onClick={loadCampaigns} title="Actualiser"
                 className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><RefreshCw className="w-3.5 h-3.5" /></button>
               {isAdmin && (
-                <button type="button" onClick={() => setShowCreate(true)} title="Créer une campagne"
-                  className="p-1.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600"><Plus className="w-3.5 h-3.5" /></button>
+                <button type="button" onClick={() => { window.location.href = "/espace/campagne"; }} title="Créer une campagne"
+                  className="p-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700"><Plus className="w-3.5 h-3.5" /></button>
               )}
             </div>
           </div>
@@ -950,10 +950,10 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
           <div className="relative mb-2">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input title="Rechercher" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
-              className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-neutral-300" />
           </div>
           <select title="Filtrer par statut" value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)}
-            className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-400">
+            className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-neutral-300">
             <option value="all">Tous les statuts</option>
             {(['draft', 'active', 'completed', 'archived'] as CampaignStatus[]).map(s => (
               <option key={s} value={s}>{CAMPAIGN_STATUS_LABELS[s]}</option>
@@ -963,7 +963,7 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
 
         <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
           {loading ? (
-            <div className="flex items-center justify-center h-24"><Loader2 className="w-5 h-5 animate-spin text-orange-400" /></div>
+            <div className="flex items-center justify-center h-24"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>
           ) : error ? (
             <div className="p-4 text-center">
               <p className="text-xs text-red-500">{error}</p>
@@ -974,7 +974,7 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
               <FolderOpen className="w-7 h-7 mb-2 opacity-30" />
               <p className="text-xs">{campaigns.length === 0 ? 'Aucune campagne' : 'Aucun résultat'}</p>
               {isAdmin && campaigns.length === 0 && (
-                <button type="button" onClick={() => setShowCreate(true)} className="mt-2 text-xs text-orange-500 hover:underline font-medium">
+                <button type="button" onClick={() => { window.location.href = "/espace/campagne"; }} className="mt-2 text-xs text-neutral-900 underline font-medium">
                   Créer la première campagne
                 </button>
               )}
@@ -991,14 +991,14 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
                   if (res) setActiveCampaign(res.campaign);
                 }}
                 className={`w-full text-left p-3 rounded-xl border transition-all ${
-                  isActive ? 'bg-orange-50 border-orange-200 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                  isActive ? 'bg-neutral-100 border-neutral-300 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className={`text-xs font-semibold leading-snug ${isActive ? 'text-orange-900' : 'text-gray-800'} line-clamp-2`}>{c.title}</p>
+                  <p className={`text-xs font-semibold leading-snug ${isActive ? 'text-neutral-900' : 'text-gray-800'} line-clamp-2`}>{c.title}</p>
                   <StatusBadge status={c.status} />
                 </div>
-                <ProgressBar pct={c.stats.progress_pct} size="sm" color={c.stats.progress_pct >= 100 ? 'bg-green-500' : 'bg-orange-400'} />
+                <ProgressBar pct={c.stats.progress_pct} size="sm" color={c.stats.progress_pct >= 100 ? 'bg-green-500' : 'bg-neutral-900'} />
                 <div className="flex items-center justify-between mt-1.5 text-xs text-gray-400">
                   <span>{c.stats.done}/{c.stats.total} proc.</span>
                   <span className="font-semibold text-gray-600">{c.stats.progress_pct}%</span>
@@ -1029,7 +1029,7 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
             <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mb-4">
-              <BarChart2 className="w-8 h-8 text-orange-300" />
+              <BarChart2 className="w-8 h-8 text-neutral-300" />
             </div>
             <p className="text-sm font-medium text-gray-500">Sélectionnez une campagne</p>
             <p className="text-xs text-gray-400 mt-1">ou créez-en une nouvelle</p>

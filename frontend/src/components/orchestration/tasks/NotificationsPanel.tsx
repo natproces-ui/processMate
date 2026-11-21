@@ -64,7 +64,7 @@ export default function NotificationsPanel({ actor }: Props) {
           {notifications.map(item => (
             <div key={item.id} className={`px-4 py-3 ${item.read_at ? 'bg-white opacity-70' : 'bg-blue-50/60'}`}>
               <div className="flex items-start gap-3">
-                <div className={`mt-1 w-2 h-2 rounded-full ${item.read_at ? 'bg-gray-300' : 'bg-blue-600'}`} />
+                <div className={`mt-1 w-2 h-2 rounded-full ${item.read_at ? 'bg-gray-300' : 'bg-neutral-900'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">{item.title}</p>
                   {item.body && <p className="text-sm text-gray-600 mt-0.5">{item.body}</p>}

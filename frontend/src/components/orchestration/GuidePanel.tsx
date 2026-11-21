@@ -254,7 +254,7 @@ export default function GuidePanel() {
             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 max-w-2xl">
               <li>Depuis la page d&apos;accueil, cliquez sur <Kbd>Mon espace</Kbd> (déjà connecté) ou <Kbd>Démarrer maintenant</Kbd>. Les deux mènent au même atelier.</li>
               <li>La barre latérale gauche donne accès aux deux métiers de ProcessMate : <strong>Orchestration</strong> (le pilotage, ouvert par défaut) et <strong>BPMN Studio</strong> (la formalisation). Deux raccourcis complémentaires y figurent aussi — ils ouvrent en plein écran des outils autonomes dont les capacités clés sont par ailleurs déjà intégrées dans ProcessMate même (code legacy dans le Studio, spécifications dans l&apos;écran dédié).</li>
-              <li>Dans le module Orchestration, la navigation donne accès à : <Kbd>Créer / Modifier</Kbd>, <Kbd>Campagnes</Kbd>, <Kbd>Analyse</Kbd>, <Kbd>Suivi des tâches</Kbd>, <Kbd>Espace de travail personnel</Kbd>, <Kbd>Tableau de bord</Kbd>, <Kbd>Spécifications</Kbd>, et — pour les administrateurs — <Kbd>Réglages</Kbd>.</li>
+              <li>La barre latérale est la même partout, chat compris : <Kbd>Accueil</Kbd> (page d&apos;arrivée, adaptée à votre rôle), <Kbd>Nouvelle conversation</Kbd>, puis pour l&apos;organisation <Kbd>Référentiel</Kbd>, <Kbd>Mon espace de travail</Kbd>, <Kbd>À faire</Kbd>, <Kbd>Campagnes</Kbd>, <Kbd>Analyse</Kbd>, et sous <Kbd>Plus</Kbd> : <Kbd>Spécifications</Kbd>, <Kbd>Tableau de bord</Kbd>, <Kbd>Studio complet</Kbd>. Les administrateurs y trouvent aussi <Kbd>Équipe</Kbd> et <Kbd>Paramètres</Kbd>.</li>
             </ol>
             <p className="text-sm text-gray-700 max-w-2xl">Retenez simplement : <strong>tout part de là</strong>. Les sections qui suivent décrivent ce que vous trouverez derrière chaque écran.</p>
           </Section>
@@ -363,10 +363,10 @@ export default function GuidePanel() {
             </ul>
             <p className="text-sm text-gray-700 max-w-2xl">Un chat IA est intégré à l&apos;éditeur de procédure : les mêmes corrections que dans Formaliser peuvent s&apos;y faire à la conversation.</p>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Depuis la bibliothèque <Kbd>Créer / Modifier</Kbd>, chaque procédure ouvre aussi sa <strong>matrice RACI</strong> : pour chaque étape, on assigne à chaque personne un rôle — <strong>R</strong>esponsable, <strong>A</strong>pprobateur, <strong>C</strong>onsulté ou <strong>I</strong>nformé. C&apos;est ce même rôle qui qualifie ensuite les tâches liées à l&apos;étape.
+              Depuis le <Kbd>Référentiel</Kbd> (vue <Kbd>Liste</Kbd>), chaque procédure ouvre aussi sa <strong>matrice RACI</strong> : pour chaque étape, on assigne à chaque personne un rôle — <strong>R</strong>esponsable, <strong>A</strong>pprobateur, <strong>C</strong>onsulté ou <strong>I</strong>nformé. C&apos;est ce même rôle qui qualifie ensuite les tâches liées à l&apos;étape.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
-              <Kbd>Créer / Modifier</Kbd> donne aussi accès à la <strong>Carte BIAN</strong> : le référentiel BIAN v4.0 sert de carte pour situer vos procédures dans le métier bancaire standard. Depuis un service de la carte, on peut créer directement une nouvelle procédure rattachée à ce point du référentiel, ou naviguer vers une procédure déjà liée.
+              Le <Kbd>Référentiel</Kbd> s&apos;affiche aussi en <strong>Carte</strong> : la même structure, organisée comme le paysage BIAN, pour situer vos procédures dans le métier bancaire standard. Depuis un service de la carte, on peut créer directement une nouvelle procédure rattachée à ce point du référentiel, ou naviguer vers une procédure déjà liée.
             </p>
 
             <SubHeading>Les tâches</SubHeading>
@@ -456,10 +456,10 @@ export default function GuidePanel() {
               <Cheat q="Faire évoluer un vieux programme legacy" path={['BPMN Studio', 'Code legacy', 'déposer le fichier', 'générer']} />
               <Cheat q="Générer une spécification fonctionnelle" path={['Spécifications', 'choisir un périmètre', 'générer le document']} />
               <Cheat q="Grouper des procédures dans un projet" path={['Campagnes', 'créer', 'ajouter des procédures']} />
-              <Cheat q="Assigner un rôle RACI par étape" path={['Créer / Modifier', 'ouvrir une procédure', 'RACI']} />
+              <Cheat q="Assigner un rôle RACI par étape" path={['Référentiel', 'ouvrir une procédure', 'RACI']} />
               <Cheat q="Détecter les irritants d'une procédure" path={['Analyse', 'Irritants', 'Détecter avec l’IA']} />
               <Cheat q="Évaluer la complexité d'une procédure" path={['Analyse', 'Complexité']} />
-              <Cheat q="Créer une procédure depuis le référentiel BIAN" path={['Créer / Modifier', 'Carte BIAN', 'clic sur un service', 'Créer une procédure']} />
+              <Cheat q="Créer une procédure depuis le référentiel BIAN" path={['Référentiel', 'Carte', 'clic sur une case', 'Créer une procédure']} />
               <Cheat q="Générer le rapport d'une campagne" path={['Campagnes', 'ouvrir une campagne', 'Rapport']} />
             </div>
           </Section>

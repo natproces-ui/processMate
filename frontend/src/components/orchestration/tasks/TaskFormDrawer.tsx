@@ -184,7 +184,7 @@ export default function TaskFormDrawer({ procedureId, actors, assignedBy, initia
             type="button"
             onClick={submit}
             disabled={saving || !form.title.trim() || !form.assigned_to}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-neutral-900 text-white rounded-lg text-sm font-semibold hover:bg-neutral-700 disabled:opacity-50"
           >
             {saving ? 'Creation...' : 'Creer la tache'}
           </button>

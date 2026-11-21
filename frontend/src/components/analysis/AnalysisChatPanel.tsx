@@ -208,7 +208,7 @@ export function AnalysisChatPanel({ session, procedures, selectedProcedures, onA
           messages.map((msg, i) => (
             <div key={msg.id || i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[88%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === 'user'
-                ? 'bg-blue-600 text-white rounded-br-sm'
+                ? 'bg-neutral-900 text-white rounded-br-sm'
                 : 'bg-slate-100 text-slate-800 rounded-bl-sm'
                 }`}>
                 {/* Fichiers attachés */}
@@ -290,7 +290,7 @@ export function AnalysisChatPanel({ session, procedures, selectedProcedures, onA
           </div>
         )}
 
-        <div className="flex items-end gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus-within:border-blue-500 focus-within:bg-white transition-colors">
+        <div className="flex items-end gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 focus-within:border-neutral-900 focus-within:bg-white transition-colors">
           {/* Bouton fichier */}
           <button
             type="button"
@@ -330,7 +330,7 @@ export function AnalysisChatPanel({ session, procedures, selectedProcedures, onA
             type="button"
             onClick={handleSend}
             disabled={(!input.trim() && files.length === 0 && selectedProcedures.length === 0) || analyzing || streaming}
-            className="shrink-0 rounded-lg bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+            className="shrink-0 rounded-lg bg-neutral-900 p-2 text-white hover:bg-neutral-700 disabled:opacity-40 transition-colors"
           >
             <Send className="h-4 w-4" />
           </button>

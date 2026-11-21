@@ -252,13 +252,13 @@ function CampaignDrilldown({
             <div className="flex items-center gap-1.5 ml-auto shrink-0">
               {canAddProcs && (
                 <button type="button" onClick={() => setShowAddProcs(true)}
-                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700">
                   <Plus className="w-3 h-3" /> Ajouter procédures
                 </button>
               )}
               {campaign.status === 'draft' && (
                 <button type="button" onClick={() => doAction(() => campaignsApi.launch(campaign.id), 'Lancer ce projet ?')} disabled={actioning}
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Lancer</button>
+                  className="px-2.5 py-1 text-[11px] font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50">Lancer</button>
               )}
               {campaign.status === 'active' && (
                 <>
@@ -272,7 +272,7 @@ function CampaignDrilldown({
               )}
               {(campaign.status === 'blocked' || campaign.status === 'on_hold') && (
                 <button type="button" onClick={() => doAction(() => campaignsApi.resume(campaign.id))} disabled={actioning}
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">Reprendre</button>
+                  className="px-2.5 py-1 text-[11px] font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700 disabled:opacity-50">Reprendre</button>
               )}
               <button type="button" onClick={() => doAction(() => campaignsApi.sync(campaign.id))} disabled={actioning} title="Synchroniser"
                 className="p-1 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 disabled:opacity-50">
@@ -518,7 +518,7 @@ function HierarchicalPicker({
                 onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setCreating(false); setNewName(''); } }}
                 className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300" />
               <button onClick={handleCreate} disabled={saving || !newName.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white text-xs font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} Créer
               </button>
               <button onClick={() => { setCreating(false); setNewName(''); }}
@@ -538,7 +538,7 @@ function HierarchicalPicker({
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200">Annuler</button>
             <button onClick={handleAdd} disabled={saving || selected.size === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Ajouter à la campagne
             </button>
           </div>
@@ -598,7 +598,7 @@ function RevisionTool({
         </p>
       </div>
       <button type="button" onClick={onRun}
-        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700">
+        className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white text-sm font-semibold rounded-xl hover:bg-neutral-700">
         <Wand2 className="w-4 h-4" /> Lancer la révision
       </button>
     </div>
@@ -891,7 +891,7 @@ function ProcedureSelector({ onSelect, onClose }: { onSelect: (p: Procedure) => 
           {[{ id: 'library', label: 'Bibliothèque', icon: BookOpen }, { id: 'upload', label: 'Importer', icon: Upload }].map(t => (
             <button key={t.id} type="button" onClick={() => setTab(t.id as any)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border-b-2 transition-colors ${
-                tab === t.id ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+                tab === t.id ? 'border-neutral-900 text-neutral-900' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}>
               <t.icon className="w-3.5 h-3.5" /> {t.label}
             </button>
@@ -1093,7 +1093,7 @@ function CreateTaskModal({
             Annuler
           </button>
           <button type="button" onClick={handleSubmit} disabled={saving || !title.trim() || !assignedTo}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             Créer et notifier
           </button>
@@ -1441,7 +1441,7 @@ function TaskDetailCenter({
             {task.description && <p className="text-sm text-gray-500 mt-1 leading-relaxed">{task.description}</p>}
           </div>
           <button type="button" onClick={onSwitchToEditor}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white text-xs font-semibold rounded-lg hover:bg-neutral-700">
             <PenLine className="w-3.5 h-3.5" /> Modifier
           </button>
         </div>
@@ -1816,7 +1816,7 @@ function WsCreateCampaignModal({ onClose, onCreated }: { onClose: () => void; on
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Annuler</button>
             <button type="submit" disabled={saving || !title.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 disabled:opacity-50">
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Créer
             </button>
           </div>
@@ -1886,7 +1886,7 @@ function EditCampaignModal({ campaign, onClose, onSaved }: { campaign: Campaign;
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg">Annuler</button>
             <button type="submit" disabled={saving || !title.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-900 text-white text-sm font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Enregistrer
             </button>
           </div>
@@ -1980,7 +1980,7 @@ function CampaignDetailPanel({
         <div className="shrink-0 px-3 py-2.5 border-b border-gray-100 space-y-2">
           {campaign.status !== 'completed' && campaign.status !== 'archived' && (
             <button type="button" onClick={() => setShowAdd(true)}
-              className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700">
+              className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 bg-neutral-900 text-white text-xs font-semibold rounded-lg hover:bg-neutral-700">
               <Plus className="w-3.5 h-3.5" /> Ajouter des procédures
             </button>
           )}
@@ -2005,7 +2005,7 @@ function CampaignDetailPanel({
             {campaign.status === 'draft' && (
               <button type="button" onClick={() => doAction(() => campaignsApi.launch(campaign.id), 'Lancer ce projet ?')}
                 disabled={actioning}
-                className="flex-1 px-2 py-1.5 bg-blue-600 text-white text-[11px] font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="flex-1 px-2 py-1.5 bg-neutral-900 text-white text-[11px] font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
                 Lancer
               </button>
             )}
@@ -2033,7 +2033,7 @@ function CampaignDetailPanel({
             {(campaign.status === 'blocked' || campaign.status === 'on_hold') && (
               <button type="button" onClick={() => doAction(() => campaignsApi.resume(campaign.id))}
                 disabled={actioning}
-                className="flex-1 px-2 py-1.5 bg-blue-600 text-white text-[11px] font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="flex-1 px-2 py-1.5 bg-neutral-900 text-white text-[11px] font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
                 Reprendre
               </button>
             )}
@@ -2577,7 +2577,7 @@ export default function WorkspaceShell({ openProcedureId, onNavigateBack, onOpen
           return (
             <div key={tab.id}
               className={`flex items-center gap-1.5 px-3 py-2 border-b-2 whitespace-nowrap cursor-pointer select-none transition-colors ${
-                active ? 'border-blue-600 text-blue-700 bg-blue-50/40' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                active ? 'border-neutral-900 text-neutral-900 bg-blue-50/40' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
               onClick={() => setActiveTabId(tab.id)}>
               {tab.type === 'backlog'   && <FileSearch className="w-3 h-3 shrink-0" />}

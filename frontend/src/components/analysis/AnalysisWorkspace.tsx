@@ -218,7 +218,7 @@ export default function AnalysisWorkspace({ actors = [], currentActor = null }: 
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && createSession()}
-              className="w-full rounded border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-blue-500"
+              className="w-full rounded border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-neutral-900"
               placeholder="Titre de l'analyse..."
             />
             <button
@@ -348,7 +348,7 @@ export default function AnalysisWorkspace({ actors = [], currentActor = null }: 
               <button
                 type="button"
                 onClick={createSession}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-700"
               >
                 <Plus className="h-4 w-4" />Nouvelle session
               </button>

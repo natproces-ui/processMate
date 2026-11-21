@@ -325,7 +325,7 @@ export default function CampaignSlots({ campaignId, campaignStatus, canManage, o
                     ) : (
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="text-xs text-slate-600">Tout est prêt. Au lancement, les procédures attendues sont créées dans le référentiel et chaque R reçoit une tâche « Formaliser ».</p>
-                            <button type="button" disabled={launching} onClick={() => void launch()} className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}>
+                            <button type="button" disabled={launching} onClick={() => void launch()} className={`${btn} bg-neutral-900 text-white hover:bg-neutral-700`}>
                                 {launching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PlayCircle className="w-3.5 h-3.5" />} Lancer la campagne
                             </button>
                         </div>
