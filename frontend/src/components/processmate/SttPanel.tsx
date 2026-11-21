@@ -23,7 +23,8 @@ import type { ProcessCard } from '@/components/MultiDocUpload';
 import ProcessDiscoveryPanel from '@/components/ProcessDiscoveryPanel';
 import SttToolbar from './SttToolbar';
 import ChatInterface, { type GeneratedProcedure } from '@/components/ChatInterface';
-import SaveToBiblioModal from '@/components/SaveToBiblioModal';
+import SaveTargetModal, { type SaveChoice } from '@/components/processmate/SaveTargetModal';
+import { saveTargetsApi } from '@/lib/saveTargetsApi';
 import { LiveBpmn, LiveHeader, LiveTable } from './LiveProcedurePreview';
 import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
@@ -37,7 +38,6 @@ import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } fr
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
 import CircuitBar from '@/components/shared/CircuitBar';
 import { RowMenu } from '@/components/home/ui';
-import { circuitApi } from '@/lib/circuitApi';
 import { useAuth } from '@/context/AuthContext';
 import VersionHistoryModal from '@/components/shared/VersionHistoryModal';
 import OpenPointsPanel, { readOpenPoints, type OpenPoint } from '@/components/shared/OpenPointsPanel';
@@ -101,6 +101,9 @@ const defaultData: Table1Row[] = [
 
 const NO_ROWS: Table1Row[] = [];
 const NO_ENRICHMENTS = new Map<string, TaskEnrichment>();
+/** Tenus par le référentiel : jamais écrasés par une procédure rédigée qu'on y enregistre */
+const PROTECTED_META = new Set(['nom', 'ref', 'title', 'category', 'status', 'lifecycle_stages', 'raci', 'remarks',
+    'validation', 'circuit', 'created_from', 'cible', 'has_unsaved_changes', 'last_modified_at']);
 
 export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage }: Props) {
     const autoSend = useMemo(() => (initialMessage?.trim() ? { id: 1, text: initialMessage } : undefined), [initialMessage]);
@@ -138,7 +141,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     /** Le backend refuse l'enregistrement aux invités et aux comptes non membres : on ne le propose pas */
     const canSave = !guestMode && librarySave;
     const { access } = useAuth();
-    const [proposing, setProposing] = useState(false);
     const [versionsOpen, setVersionsOpen] = useState(false);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
@@ -419,24 +421,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         downloadBlob('\ufeff' + csv, 'text/csv;charset=utf-8', 'csv'); // BOM : accents corrects dans Excel
     };
 
-    /** Membre : proposer la procédure au pilote (triage, puis validation) au lieu de l'écrire au référentiel */
-    const proposeToLibrary = async () => {
-        if (!activeInst) return;
-        const message = window.prompt('Un mot pour le pilote (facultatif) :', '');
-        if (message === null) return;
-        setProposing(true);
-        try {
-            const enrich: Record<string, unknown> = {};
-            activeInst.enrichments.forEach((v, k) => { enrich[k] = v; });
-            await circuitApi.propose({
-                titre: activeInst.title || 'Procédure proposée', workflow_json: activeData as unknown[],
-                enrichments_json: enrich, metadata: (activeInst.metadata || {}) as unknown as Record<string, unknown>,
-                message: message || undefined,
-            });
-            showSuccess('Proposition envoyée au pilote');
-        } catch (e) { showError(e instanceof Error ? e.message : 'Proposition impossible'); }
-        finally { setProposing(false); }
-    };
     const activeTitle = instances.length > 0 && activeInst ? activeInst.title : processTitle;
     const activeEnrichments = instances.length > 0 && activeInst ? activeInst.enrichments : enrichments;
     const activeBpmnXml = instances.length > 0 && activeInst ? activeInst.bpmnXml : bpmnXml;
@@ -644,7 +628,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         showSuccess('Diagramme BPMN généré !');
     }, [activeInst, activeTab, instances, data, processTitle]);
 
-    const handleSave = useCallback(async (nom: string, category: string, taxonomyId?: string) => {
+    const handleSave = useCallback(async (nom: string, category: string, taxonomyId?: string,
+        target?: { procedureId: string; titre: string }) => {
         const inst = instances.length > 0 ? activeInst : null;
         setSaving(true);
         try {
@@ -673,16 +658,29 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 applySyncResult(parsed);
             }
 
-            if (inst?.workflow_db_id) {
+            const targetId = target?.procedureId ?? inst?.workflow_db_id;
+            if (targetId) {
                 const enrichObj: Record<string, unknown> = {};
                 saveEnrichments.forEach((v, k) => { enrichObj[k] = v; });
                 // Une sauvegarde manuelle depuis le Studio efface le tampon "modifications
                 // récentes de l'IA" — l'utilisateur a vu et repris la main sur la procédure.
                 const exportEdits = exportEditsRef.current[activeTab] ?? {};
-                const openPoints = readOpenPoints(inst.initialMeta);
-                await orchestrationApi.saveWorkflowData(inst.workflow_db_id, saveRows as unknown[], enrichObj, { ...exportEdits, ...(openPoints.length ? { open_points: openPoints } : {}), recent_ai_changes: null }, currentXml);
-                linkConversation(inst.workflow_db_id);
-                setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, initialMeta: { ...i.initialMeta, ...exportEdits, recent_ai_changes: null } } : i));
+                const openPoints = readOpenPoints(inst?.initialMeta);
+                // Première écriture dans une procédure choisie : on apporte les métadonnées rédigées
+                // (objet, périmètre…), jamais son nom, sa référence ni ce que tient le référentiel
+                const generated: Record<string, unknown> = {};
+                if (target) {
+                    for (const [k, v] of Object.entries((activeInitialMeta ?? {}) as Record<string, unknown>)) {
+                        if (!PROTECTED_META.has(k)) generated[k] = v;
+                    }
+                }
+                await orchestrationApi.saveWorkflowData(targetId, saveRows as unknown[], enrichObj, { ...generated, ...exportEdits, ...(openPoints.length ? { open_points: openPoints } : {}), recent_ai_changes: null }, currentXml);
+                linkConversation(targetId);
+                if (inst) setInstances(prev => prev.map((i, idx) => idx === activeTab ? {
+                    ...i, ...(target ? { workflow_db_id: target.procedureId, title: target.titre } : {}),
+                    initialMeta: { ...i.initialMeta, ...generated, ...exportEdits, recent_ai_changes: null },
+                } : i));
+                if (target) invalidate();
             } else {
                 const res = await orchestrationApi.createProcedure({ nom, category, taxonomy_id: taxonomyId });
                 const newId = res.procedure.id;
@@ -699,6 +697,31 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         } catch (err: any) { showError(`Erreur : ${err.message}`); throw err; }
         finally { setSaving(false); }
     }, [activeInst, activeTab, instances, data, enrichments, invalidate, runParser, applySyncResult, activeInitialMeta]);
+
+    /** Fenêtre « Enregistrer » : procédure à mettre à jour, emplacement de campagne, ou nouvelle procédure */
+    const handleSaveChoice = useCallback(async (choice: SaveChoice) => {
+        if (choice.kind === 'procedure') {
+            await handleSave(choice.titre, '', undefined, { procedureId: choice.procedureId, titre: choice.titre });
+            return;
+        }
+        if (choice.kind === 'slot') {
+            const r = await saveTargetsApi.attachSlot(choice.slotId);
+            await handleSave(r.titre || choice.titre, '', undefined, { procedureId: r.procedure_id, titre: r.titre || choice.titre });
+            return;
+        }
+        const enrich: Record<string, unknown> = {};
+        (activeInst?.enrichments ?? enrichments).forEach((v, k) => { enrich[k] = v; });
+        const r = await saveTargetsApi.create({
+            titre: choice.titre, taxonomy_id: choice.taxonomyId, campaign_id: choice.campaignId, message: choice.message,
+            workflow_json: activeData as unknown[], enrichments_json: enrich,
+            metadata: (activeInst?.metadata || {}) as unknown as Record<string, unknown>,
+        });
+        if (r.resultat === 'creee' && r.procedure_id) {
+            await handleSave(choice.titre, '', undefined, { procedureId: r.procedure_id, titre: choice.titre });
+        } else {
+            showSuccess('Proposition envoyée au pilote');
+        }
+    }, [handleSave, activeInst, enrichments, activeData]);
 
     const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
@@ -1277,8 +1300,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 )}
                                 {(() => {
                                     const more = [
-                                        ...(canSave && access?.organisations_mode && activeInst && !activeInst.workflow_db_id && activeData.length > 0
-                                            ? [{ label: proposing ? 'Envoi…' : 'Proposer au référentiel', icon: <Send />, onSelect: () => { if (!proposing) void proposeToLibrary(); } }] : []),
                                         ...(VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id
                                             ? [{ label: 'Historique des versions', icon: <History />, onSelect: () => setVersionsOpen(true) }] : []),
                                     ];
@@ -1511,7 +1532,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 <VersionHistoryModal procedureId={activeInst.workflow_db_id} currentWorkflow={activeData}
                     onClose={() => setVersionsOpen(false)} onRestored={handleVersionRestored} />
             )}
-            <SaveToBiblioModal open={saveModalOpen} initialNom={activeTitle} onClose={() => setSaveModalOpen(false)} onConfirm={handleSave} />
+            <SaveTargetModal open={saveModalOpen} titre={activeTitle} onClose={() => setSaveModalOpen(false)} onConfirm={handleSaveChoice} />
 
             {outillageTool && (
                 <ToolQuickCard

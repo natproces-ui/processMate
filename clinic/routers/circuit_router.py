@@ -98,7 +98,7 @@ def create_proposition(body: PropositionCreate, access: Access = Depends(current
 
 @router.get("/propositions")
 def list_propositions(access: Access = Depends(current_access)):
-    q = _db().table("procedure_propositions").select("id,titre,message,propose_par,statut,decision,motif,procedure_id,campaign_id,created_at")
+    q = _db().table("procedure_propositions").select("id,titre,message,propose_par,statut,decision,motif,procedure_id,campaign_id,created_at,metadata")
     if access.role not in ac.MANAGERS:
         q = q.eq("propose_par", _me(access))
     else:
@@ -106,6 +106,7 @@ def list_propositions(access: Access = Depends(current_access)):
     rows = q.order("created_at", desc=True).execute().data or []
     for r in rows:
         r["propose_par_nom"] = flow.person_name(r.get("propose_par"))
+        r["cible"] = (r.pop("metadata", None) or {}).get("cible")  # endroit souhaité (taxonomie, campagne)
         r["nb_etapes"] = None
     return {"propositions": rows}
 
@@ -147,8 +148,9 @@ def treat(prop_id: str, body: Treatment, access: Access) -> Dict[str, Any]:
     from routers.orchestration_router import create_procedure_shell
     from routers.orchestration_tasks_router import TaskCreate, _create_task_core
     from manager.campaign_items import _write_assignments
-    wf = create_procedure_shell(prop["titre"], (prop.get("metadata") or {}).get("ref"), None, created_from="proposition")
-    meta = {**(wf.get("procedure_metadata_json") or {}), **{k: v for k, v in (prop.get("metadata") or {}).items() if k not in ("status", "lifecycle_stages")},
+    cible = (prop.get("metadata") or {}).get("cible") or {}  # endroit choisi par la personne qui propose
+    wf = create_procedure_shell(prop["titre"], (prop.get("metadata") or {}).get("ref"), cible.get("taxonomy_id"), created_from="proposition")
+    meta = {**(wf.get("procedure_metadata_json") or {}), **{k: v for k, v in (prop.get("metadata") or {}).items() if k not in ("status", "lifecycle_stages", "cible")},
             "circuit": {"etape": "soumise", "soumise_par": prop["propose_par"], "soumise_par_nom": flow.person_name(prop["propose_par"]), "soumise_le": _now()}}
     db.table("workflows").update({"workflow_json": prop.get("workflow_json") or [], "enrichments_json": prop.get("enrichments_json") or {},
                                   "procedure_metadata_json": meta}).eq("id", wf["id"]).execute()
@@ -159,7 +161,7 @@ def treat(prop_id: str, body: Treatment, access: Access) -> Dict[str, Any]:
     if camp:
         db.table("campaign_procedures").insert({
             "campaign_id": camp["id"], "procedure_id": wf["id"], "procedure_nom": prop["titre"],
-            "status": "submitted", "origine": "proposition"}).execute()
+            "taxonomy_id": cible.get("taxonomy_id"), "status": "submitted", "origine": "proposition"}).execute()
     db.table("procedure_propositions").update({**done, "procedure_id": wf["id"], "campaign_id": camp["id"] if camp else None}).eq("id", prop_id).execute()
     ac.audit("proposition.acceptee", access.user, access.organisation_id, "proposition", prop_id,
              {"decision": body.decision, "procedure_id": wf["id"]})

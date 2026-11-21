@@ -45,7 +45,8 @@ from routers import (
     analysis_router, taxonomy_router, campaigns_router, reports_router, corrections_router,
     workspace_router, specifications_router, tools_router, jira_router, bian_scenarios_router,
     studio_router, demo_files_router, conversations_router, projects_router, versions_router,
-    account_router, organisation_router, platform_router, circuit_router, inbox_router
+    account_router, organisation_router, platform_router, circuit_router, inbox_router,
+    save_target_router
 )
 from manager import access_control
 
@@ -153,6 +154,7 @@ app.include_router(organisation_router.router)
 app.include_router(organisation_router.invitations_router)
 app.include_router(platform_router.router)
 app.include_router(circuit_router.router)
+app.include_router(save_target_router.router)
 app.include_router(inbox_router.router)
 
 @app.head("/")

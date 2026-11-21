@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Loader2, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { taxonomyApi } from '@/lib/taxonomyApi';
 import { resolveProcessMateNavigation, processMateHref, LEGACY_TAB_REDIRECTS } from '@/lib/processmate-navigation';
+import { CHAT_HOME } from '@/lib/features';
 
 // ─── Skeleton commun ──────────────────────────────────────────
 
@@ -308,6 +309,11 @@ function ProcessMateInner() {
     };
 
     const handleOpenStudio = (procedureId?: string) => {
+        // Une procédure du référentiel s'ouvre dans le chat, où l'on travaille avec l'IA puis enregistre
+        if (procedureId && CHAT_HOME) {
+            router.push(`/?procedure=${encodeURIComponent(procedureId)}`);
+            return;
+        }
         setStudioReturnContext({ tab: activeTab, procedureId: workspaceProcedureId ?? undefined });
         setStudioProcedureId(procedureId ?? null);
         setActiveModule('stt');

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import {
     ChevronRight, ChevronDown, FolderOpen, Tag, Layers, FileText,
     Plus, Search, Loader2, MoreVertical, X, PenLine, Users,
-    GitBranch, ListChecks, Megaphone, Pencil, Trash2, RefreshCw, Workflow, Wand2,
+    GitBranch, ListChecks, Megaphone, Pencil, Trash2, RefreshCw, Workflow, Wand2, MessageSquare,
 } from 'lucide-react';
 import { taxonomyApi, type TaxonomyNode } from '@/lib/taxonomyApi';
 import { orchestrationApi, type Procedure } from '@/lib/orchestrationApi';
@@ -76,7 +76,7 @@ function ContextMenu({ pos, target, isAdmin, onAction, onClose }: {
     if (target.kind === 'procedure') {
         items.push(
             { label: "Ouvrir dans l'éditeur", action: 'open-editor', icon: <PenLine className="w-3.5 h-3.5" /> },
-            { label: 'Ouvrir dans le Studio', action: 'open-studio', icon: <Wand2 className="w-3.5 h-3.5" /> },
+            { label: 'Ouvrir dans le chat', action: 'open-studio', icon: <MessageSquare className="w-3.5 h-3.5" /> },
             { label: 'Voir le RACI', action: 'show-raci', icon: <Users className="w-3.5 h-3.5" /> },
             { label: 'Voir le parcours', action: 'show-journey', icon: <GitBranch className="w-3.5 h-3.5" /> },
             { label: 'Flux de travail', action: 'show-workflow', icon: <Workflow className="w-3.5 h-3.5" /> },

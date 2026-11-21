@@ -16,6 +16,9 @@ export interface CircuitContext {
 export interface Proposition {
     id: string; titre: string; message: string | null; propose_par: string; propose_par_nom: string | null;
     statut: 'en_attente' | 'acceptee' | 'refusee'; decision: string | null; motif: string | null; created_at: string;
+    campaign_id?: string | null;
+    /** Endroit choisi par la personne qui propose (taxonomie, campagne) */
+    cible?: { taxonomy_id: string | null; campaign_id: string | null; chemin: string; campagne: string | null } | null;
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {

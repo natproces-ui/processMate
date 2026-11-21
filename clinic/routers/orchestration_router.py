@@ -4,7 +4,7 @@ Router Orchestration — Gestion centralisée des procédures ProcessMate
 Données stockées dans procedure_metadata_json (Supabase workflows table)
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from manager import version_store
@@ -972,9 +972,11 @@ class SaveWorkflowDataRequest(BaseModel):
 
 
 @router.patch("/procedures/{workflow_id}/workflow")
-async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest,
+async def save_workflow_data(workflow_id: str, body: SaveWorkflowDataRequest, request: Request,
                              user: Optional[AuthUser] = Depends(get_optional_user)):
     """Met à jour le tableau de travail (workflow_json + enrichments) d'une procédure existante."""
+    from manager.save_targets import enforce_write
+    enforce_write(request, workflow_id)  # R ou A seulement (pilotage : partout)
     try:
         db = get_supabase()
         wf = _get_workflow(workflow_id)

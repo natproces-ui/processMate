@@ -17,7 +17,13 @@ export default function PropositionsPanel({ campaigns, onTreated }: { campaigns:
     const [error, setError] = useState<string | null>(null);
     const [target, setTarget] = useState<Record<string, string>>({});
 
-    useEffect(() => { circuitApi.propositions().then(setItems).catch(() => setItems([])); }, []);
+    useEffect(() => {
+        circuitApi.propositions().then(list => {
+            setItems(list);
+            // la campagne choisie par la personne qui propose est présélectionnée
+            setTarget(Object.fromEntries(list.filter(p => p.campaign_id).map(p => [p.id, p.campaign_id as string])));
+        }).catch(() => setItems([]));
+    }, []);
     if (!items || items.length === 0) return null;
     const usable = campaigns.filter(c => c.status === 'draft' || c.status === 'active');
 
@@ -53,6 +59,11 @@ export default function PropositionsPanel({ campaigns, onTreated }: { campaigns:
                                 <p className="text-xs text-slate-500">
                                     Proposée par {p.propose_par_nom || '—'} le {new Date(p.created_at).toLocaleDateString('fr-FR')}{p.message ? ` — « ${p.message} »` : ''}
                                 </p>
+                                {p.cible && (p.cible.chemin || p.cible.campagne) && (
+                                    <p className="text-xs text-slate-600">
+                                        Souhaitée dans : {[p.cible.campagne, p.cible.chemin].filter(Boolean).join(' › ')}
+                                    </p>
+                                )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 {busy === p.id ? <Loader2 className="w-4 h-4 animate-spin text-slate-400" /> : (<>

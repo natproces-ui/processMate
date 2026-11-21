@@ -7,7 +7,7 @@ import {
   AlertCircle, ArrowLeft, BookOpen, CheckCircle2, ChevronDown, ChevronRight,
   Clock, ExternalLink, FileSearch, FileText, Filter, FolderOpen, History,
   Layers, Loader2, Megaphone, PenLine, Plus, RefreshCw, RotateCcw, Search,
-  Tag, Trash2, Upload, Wand2, X,
+  Tag, Trash2, Upload, Wand2, X, MessageSquare,
 } from 'lucide-react';
 import { orchestrationApi, type Procedure } from '@/lib/orchestrationApi';
 import {
@@ -2511,8 +2511,8 @@ export default function WorkspaceShell({ openProcedureId, onNavigateBack, onOpen
         <span className="text-sm font-semibold text-gray-700 flex-1 truncate">{activeTab.procedureName ?? activeTab.procedureId}</span>
         {onOpenStudio && (
           <button type="button" onClick={() => onOpenStudio(activeTab.procedureId)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-colors shrink-0 ml-2">
-            <Wand2 className="w-3.5 h-3.5" /> Studio IA
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-neutral-900 hover:bg-neutral-700 rounded-lg transition-colors shrink-0 ml-2">
+            <MessageSquare className="w-3.5 h-3.5" /> Ouvrir dans le chat
           </button>
         )}
       </>
