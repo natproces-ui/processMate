@@ -12,6 +12,11 @@ import { orchestrationApi, type Procedure } from '@/lib/orchestrationApi';
 import { campaignsApi, type Campaign, CAMPAIGN_STATUS_COLORS, CAMPAIGN_STATUS_LABELS } from '@/lib/campaignsApi';
 import { useProceduresStore } from '@/store/proceduresStore';
 import { useAuth } from '@/context/AuthContext';
+import { referentialApi } from '@/lib/referentialApi';
+
+/** Premier message proposé dans le chat : on joint ses sources et on l'adapte avant d'envoyer */
+const SOURCES_DRAFT = 'Construis le référentiel de nos processus à partir de ces documents (cartographie, manuels, code…) : '
+    + 'thèmes, catégories, sous-catégories et noms des procédures, avec tes remarques.';
 import type { TaskActor } from '@/lib/orchestrationTasksApi';
 
 const ProcedureJourney = dynamic(
@@ -574,6 +579,49 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                     /* Tree view */
                     <div className="space-y-0.5">
                         {tree.filter(visibleNode).map(node => renderNode(node, 0))}
+
+                        {/* Aucune procédure rangée : on ne laisse pas un écran vide, on dit par où commencer */}
+                        {!creating && tree.length > 0 && !tree.some(visibleNode) && (
+                            <div className="mx-auto max-w-xl rounded-xl border border-neutral-200 bg-white px-5 py-5">
+                                <p className="text-sm font-semibold text-neutral-900">Aucune procédure n’est encore rangée dans ce référentiel.</p>
+                                <p className="mt-1 text-sm text-neutral-600">
+                                    La structure par défaut ({tree.length} thème{tree.length > 1 ? 's' : ''}, organisés comme le paysage BIAN) est masquée tant
+                                    qu’elle est vide. Pour commencer :
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <a href={`/?brouillon=${encodeURIComponent(SOURCES_DRAFT)}`}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700">
+                                        Partir de mes sources
+                                    </a>
+                                    <button type="button" onClick={() => toggleEmpty(true)}
+                                        className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-neutral-50">
+                                        Voir la structure par défaut
+                                    </button>
+                                    {isAdmin && (
+                                        <button type="button" onClick={async () => {
+                                            if (!window.confirm('Supprimer toute la structure par défaut pour construire la vôtre ? Aucune procédure n’y est rangée.')) return;
+                                            try { await referentialApi.empty(); await loadTree(); } catch (e) { window.alert(e instanceof Error ? e.message : 'Action impossible'); }
+                                        }} className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-900 hover:bg-neutral-50">
+                                            Partir de rien
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="mt-3 text-xs text-neutral-500">
+                                    « Partir de mes sources » ouvre une conversation : joignez votre cartographie, vos manuels ou votre code,
+                                    l’assistant propose une structure que vous appliquez ici.
+                                </p>
+                            </div>
+                        )}
+                        {!creating && tree.length === 0 && (
+                            <div className="mx-auto max-w-xl rounded-xl border border-neutral-200 bg-white px-5 py-5">
+                                <p className="text-sm font-semibold text-neutral-900">Le référentiel est vide.</p>
+                                <p className="mt-1 text-sm text-neutral-600">Créez vos thèmes avec « Nouveau thème », ou partez de vos sources.</p>
+                                <a href={`/?brouillon=${encodeURIComponent(SOURCES_DRAFT)}`}
+                                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700">
+                                    Partir de mes sources
+                                </a>
+                            </div>
+                        )}
 
                         {/* Create theme form (at root) */}
                         {creating?.parentId === null && creating.level === 'theme' && (
