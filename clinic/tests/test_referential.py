@@ -47,12 +47,17 @@ class BuilderTest(unittest.TestCase):
         self.assertEqual([n["nom"] for n in tree], ["Épargne", "Crédit"])  # numérotation retirée, nom vide écarté
         livrets = tree[0]["enfants"]
         self.assertEqual(len(livrets), 1)  # « Livrets » et « livrets » réunis
-        self.assertEqual([x["nom"] for x in livrets[0]["procedures"]], ["Ouvrir un livret", "Clôturer un livret"])
         ouverture = livrets[0]["enfants"][0]
         self.assertEqual(ouverture["enfants"], [])  # 3 niveaux au plus…
         self.assertEqual(ouverture["procedures"], [{"nom": "Transférer un livret"}])  # …les procédures remontent
-        self.assertEqual(len(tree[1]["procedures"]), 1)  # doublon de procédure retiré
-        self.assertEqual(p["stats"], {"themes": 2, "categories": 1, "sous_categories": 1, "procedures": 4})
+        # trois niveaux toujours : les procédures du thème Crédit descendent dans Général › Général
+        self.assertEqual(tree[1]["procedures"], [])
+        self.assertEqual(tree[1]["enfants"][0]["nom"], "Général")
+        self.assertEqual(len(tree[1]["enfants"][0]["enfants"][0]["procedures"]), 1)  # doublon retiré
+        # « Livrets » (catégorie) gardait 2 procédures : elles passent dans sa sous-catégorie Général
+        self.assertEqual(livrets[0]["procedures"], [])
+        self.assertEqual([x["nom"] for x in livrets[0]["enfants"][1]["procedures"]], ["Ouvrir un livret", "Clôturer un livret"])
+        self.assertEqual(p["stats"], {"themes": 2, "categories": 2, "sous_categories": 3, "procedures": 4})
         self.assertEqual(p["remarques"][1]["type"], "conseil")
 
     def test_planner_keeps_structure_action(self):
@@ -137,7 +142,7 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text)
         out = r.json()
         # « Épargne » existe déjà (« Epargne ») : branche reprise ; « Crédit » créé
-        self.assertEqual(out["crees"], {"themes": 1, "categories": 1, "sous_categories": 1, "procedures": 3})
+        self.assertEqual(out["crees"], {"themes": 1, "categories": 2, "sous_categories": 3, "procedures": 3})
         self.assertEqual(out["procedures_deja_presentes"], ["Ouvrir un livret"])
         themes = [n for n in self.db.rows("process_taxonomy") if n["level"] == "theme"]
         self.assertEqual(sorted(n["name"] for n in themes), ["Crédit", "Epargne"])

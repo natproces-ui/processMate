@@ -128,6 +128,10 @@ function CategoryBlock({
           onClick={e => onTileClick(e, cat, 'category')}
         >
           <span className="flex-1 text-center leading-tight">{cat.name}</span>
+          {/* procédures rangées directement dans la catégorie (sans sous-catégorie) */}
+          {cat.procedure_count ? (
+            <span className="shrink-0 text-[9px] font-bold px-1 py-px rounded bg-white text-[#001489]">{cat.procedure_count}</span>
+          ) : null}
           {isAdmin && <Edit2 className="w-2.5 h-2.5 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" />}
         </div>
       )}

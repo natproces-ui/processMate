@@ -101,6 +101,7 @@ function ContextMenu({ pos, target, isAdmin, onAction, onClose }: {
         } else if (target.kind === 'category') {
             items.push({ label: 'Créer une sous-catégorie', action: 'create-child', icon: <Plus className="w-3.5 h-3.5" />, admin: true, divider: true });
         } else if (target.kind === 'subcategory') {
+            // une procédure se range toujours dans une sous-catégorie (thème › catégorie › sous-catégorie)
             items.push({ label: 'Créer une procédure', action: 'create-proc', icon: <Plus className="w-3.5 h-3.5" />, admin: true, divider: true });
         }
         items.push(
@@ -435,7 +436,6 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
         const count = countProcs(node);
         const procs = procsByTaxId[node.id] || [];
         const hasChildren = (node.children || []).length > 0;
-        const isLeaf = node.level === 'subcategory';
         const creatingHere = creating?.parentId === node.id;
 
         return (
@@ -460,7 +460,9 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                         {(node.children || []).filter(visibleNode).map(child => renderNode(child, depth + 1))}
 
                         {/* Procedures at leaf level */}
-                        {isLeaf && procs.map(proc => (
+                        {/* procédures de ce nœud ; normalement une sous-catégorie, mais un rangement plus haut (ancien
+                            ou importé) reste visible au lieu de disparaître */}
+                        {procs.map(proc => (
                             <div key={proc.id}
                                 style={{ marginLeft: (depth + 1) * 16 }}
                                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"

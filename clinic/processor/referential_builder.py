@@ -31,8 +31,11 @@ Règles :
   te fait en ajouter d'autres, dis-le dans une remarque.
 - Si une proposition précédente existe et que le message la corrige (« fusionne… », « ajoute le crédit-bail »,
   « renomme… », « enlève… »), repars d'elle, applique exactement la demande et garde tout le reste.
-- Trois niveaux au plus (thème, catégorie, sous-catégorie). Noms courts, en français, sans numérotation.
-- Range chaque procédure au niveau le plus précis possible. Nom de procédure = verbe + objet
+- TOUJOURS trois niveaux : thème › catégorie › sous-catégorie, et chaque procédure rangée dans une
+  sous-catégorie (jamais directement sous un thème ou une catégorie). Si la demande ne nomme pas certains
+  niveaux, propose-les toi-même (noms courts du métier, tirés des sources) : ne demande jamais de les préciser,
+  l'utilisateur les renommera s'il le souhaite. Noms en français, sans numérotation.
+- Nom de procédure = verbe + objet
   (« Ouvrir un compte sur livret », « Traiter une opposition sur carte »).
 - Si le référentiel actuel contient déjà un thème ou une catégorie équivalents, reprends EXACTEMENT son nom :
   l'application rangera la proposition dedans au lieu d'en créer un doublon.
@@ -134,6 +137,25 @@ def _flatten_procedures(nodes: Any, budget: Dict[str, int]) -> List[Dict[str, st
     return out
 
 
+DEFAULT_BRANCH = "Général"  # nom par défaut d'un niveau manquant (comme « Nouveau dossier ») : renommable
+
+
+def ensure_levels(tree: List[Dict[str, Any]], depth: int = 1) -> List[Dict[str, Any]]:
+    """Trois niveaux toujours : une procédure rangée sous un thème ou une catégorie va dans une
+    sous-branche « Général » (créée ou reprise), que l'utilisateur renommera."""
+    for node in tree:
+        kids = node.setdefault("enfants", [])
+        if depth < MAX_DEPTH and node.get("procedures"):
+            general = next((k for k in kids if k["nom"].lower() == DEFAULT_BRANCH.lower()), None)
+            if general is None:
+                general = {"nom": DEFAULT_BRANCH, "procedures": [], "enfants": []}
+                kids.append(general)
+            general["procedures"] = node["procedures"] + general.get("procedures", [])
+            node["procedures"] = []
+        ensure_levels(kids, depth + 1)
+    return tree
+
+
 def stats(tree: List[Dict[str, Any]]) -> Dict[str, int]:
     counts = {"themes": 0, "categories": 0, "sous_categories": 0, "procedures": 0}
     keys = ("themes", "categories", "sous_categories")
@@ -148,7 +170,7 @@ def stats(tree: List[Dict[str, Any]]) -> Dict[str, int]:
 
 
 def normalize(data: Dict[str, Any]) -> Dict[str, Any]:
-    tree = clean_tree(data.get("arbre") or data.get("tree") or [])
+    tree = ensure_levels(clean_tree(data.get("arbre") or data.get("tree") or []))
     remarks = []
     for r in data.get("remarques") or []:
         if isinstance(r, dict) and str(r.get("texte") or "").strip():

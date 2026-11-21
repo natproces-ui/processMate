@@ -924,9 +924,9 @@ def _norm_name(text: Optional[str]) -> str:
 def apply_referential(tree: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Applique une proposition de référentiel : les branches de même nom au même endroit sont
     réutilisées, les procédures déjà présentes (même nom) ne sont pas recréées, rien n'est supprimé."""
-    from processor.referential_builder import clean_tree
+    from processor.referential_builder import clean_tree, ensure_levels
     from routers.orchestration_router import create_procedure_shell
-    tree = clean_tree(tree)
+    tree = ensure_levels(clean_tree(tree))  # toujours thème › catégorie › sous-catégorie
     db = get_supabase()
     nodes = db.table("process_taxonomy").select("id,parent_id,name,level,order_index").execute().data or []
     index = {(n.get("parent_id"), _norm_name(n["name"])): n["id"] for n in nodes}
