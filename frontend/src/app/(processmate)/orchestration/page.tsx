@@ -377,7 +377,7 @@ function ProcessMateInner() {
                     currentActorName={profile?.display_name || profile?.full_name || currentActor?.name || user?.email?.split('@')[0]}
                     currentActorTitle={profile?.job_title || currentActor?.job_title || undefined}
                     currentActorId={currentActor?.id}
-                    onSettingsClick={() => handleTabChange('settings')}
+                    onSettingsClick={access?.is_admin || profile?.global_role === 'admin' ? () => handleTabChange('settings') : undefined}
                     onOpenStudio={() => handleOpenStudio()}
                 />
 
@@ -401,13 +401,13 @@ function ProcessMateInner() {
                                         onAssignToCampaign={() => handleTabChange('campagnes')}
                                         onOpenStudio={pid => handleOpenStudio(pid)}
                                         onGoToWorkspace={() => handleTabChange('workspace')}
-                                        isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
+                                        isAdmin={!!access?.can_manage_campaigns || profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
                                     />
                                 </LazyPanel>
 
                                 <LazyPanel active={activeTab === 'campagnes'}>
                                     <ProceduresDrilldown
-                                        isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
+                                        isAdmin={!!access?.can_manage_campaigns || profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
                                         onOpenStudio={wfId => handleOpenStudio(wfId)}
                                         onOpenWorkspace={pid => {
                                             setWorkspaceProcedureId(pid);
@@ -420,7 +420,7 @@ function ProcessMateInner() {
                                     <AnalyserPanel
                                         actors={actors}
                                         currentActor={currentActor}
-                                        isAdmin={profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
+                                        isAdmin={!!access?.can_manage_campaigns || profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
                                         onOpenStudio={() => handleOpenStudio()}
                                         onGoToProcedures={() => handleTabChange('procedures')}
                                         onGoToWorkspace={() => handleTabChange('workspace')}
@@ -596,10 +596,6 @@ function SettingsPanel() {
             <h2 className="text-2xl font-bold text-gray-900">Paramètres</h2>
             <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
                 <div className="p-5">
-                    <h3 className="font-semibold text-gray-800 mb-1">Module</h3>
-                    <p className="text-sm text-gray-500">ProcessMate v2.0</p>
-                </div>
-                <div className="p-5">
                     <h3 className="font-semibold text-gray-800 mb-3">Statuts disponibles</h3>
                     <div className="flex flex-wrap gap-2">
                         {['Brouillon', 'En cours', 'En validation', 'Retours reçus', 'En révision', 'Validée', 'Rejetée', 'Bloquée'].map(s => (
@@ -607,10 +603,11 @@ function SettingsPanel() {
                         ))}
                     </div>
                 </div>
-                <div className="p-5">
-                    <h3 className="font-semibold text-gray-800 mb-1">Source de données</h3>
-                    <p className="text-sm text-gray-500">Supabase — table <code className="bg-gray-100 px-1 rounded">workflows</code></p>
-                </div>
+            </div>
+            {/* Opérations ponctuelles de reprise des données : repliées, réservées à l'administrateur */}
+            <details className="bg-white rounded-xl border border-gray-200">
+                <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-gray-800">Maintenance (opérations ponctuelles)</summary>
+                <div className="divide-y divide-gray-100 border-t border-gray-100">
                 <div className="p-5 space-y-3">
                     <h3 className="font-semibold text-gray-800">Migration cycle de vie</h3>
                     <p className="text-sm text-gray-500">
@@ -706,7 +703,8 @@ function SettingsPanel() {
                         )}
                     </div>
                 </div>
-            </div>
+                </div>
+            </details>
         </div>
     );
 }

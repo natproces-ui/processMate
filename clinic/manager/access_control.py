@@ -104,6 +104,9 @@ RULES: List[Rule] = [
     _r(rf"^/api/campaigns/{_ID}/(launch|close|block|pause|resume)/?$", MEMBER, "POST", roles=MANAGERS),
     _r(rf"^/api/propositions/{_ID}/traiter/?$", MEMBER, "POST", roles=MANAGERS),
     _r(r"^/api/bian/couverture/emplacements/?$", MEMBER, "POST", roles=MANAGERS),
+    # Taxonomie du référentiel : structurée par le pilotage (la disposition de la carte reste à tous)
+    _r(rf"^/api/orchestration/taxonomy/{_ID}/map/?$", MEMBER, "PUT"),
+    _r(r"^/api/orchestration/taxonomy(/.*)?$", MEMBER, "POST,PUT,PATCH,DELETE", roles=MANAGERS),
     # Emplacements : la structure de la campagne est l'affaire du pilotage
     _r(rf"^/api/campaigns/{_ID}/emplacements(/.*)?$", MEMBER, "POST,PUT,PATCH,DELETE", roles=MANAGERS),
 ]

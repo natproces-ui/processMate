@@ -203,9 +203,10 @@ function RaciModalLazy({ procedureId, procedureName, isAdmin, onClose, currentAc
 // ── Main component ────────────────────────────────────────────
 
 export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignToCampaign, onOpenStudio, expandToNodeId }: ProceduresLibraryProps) {
-    const { profile } = useAuth();
+    const { profile, access } = useAuth();
     const { procedures, fetchProcedures, removeProcedure } = useProceduresStore();
-    const isAdmin = profile?.global_role === 'admin';
+    // Structurer le référentiel (branches, procédures, campagnes) : admin et pilote
+    const isAdmin = !!access?.can_manage_campaigns || profile?.global_role === 'admin' || profile?.global_role === 'process_owner';
 
     const [tree, setTree] = useState<TaxonomyNode[]>([]);
     const [loading, setLoading] = useState(true);

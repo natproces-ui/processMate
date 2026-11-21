@@ -131,6 +131,20 @@ class SaveTargetsTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {"AUTH_MODE": "report"}):
             self.assertEqual(self.save("redac", "w3").status_code, 200)
 
+    # ── Taxonomie : structurée par le pilotage ──
+
+    def test_taxonomy_is_structured_by_managers(self):
+        body = {"name": "Assurance", "level": "theme"}
+        self.assertEqual(self.client.post("/api/orchestration/taxonomy", json=body, headers=self.as_("redac")).status_code, 403)
+        self.assertEqual(self.client.patch("/api/orchestration/taxonomy/t-ouv", json={"name": "x"}, headers=self.as_("redac")).status_code, 403)
+        self.assertEqual(self.client.delete("/api/orchestration/taxonomy/t-ouv", headers=self.as_("redac")).status_code, 403)
+        self.assertEqual(self.client.post("/api/orchestration/taxonomy/seed-bian", headers=self.as_("redac")).status_code, 403)
+        r = self.client.post("/api/orchestration/taxonomy", json=body, headers=self.as_("pilote"))
+        self.assertEqual(r.status_code, 200, r.text)
+        # la disposition de la carte reste à tous (lecteur excepté : écriture)
+        r = self.client.put("/api/orchestration/taxonomy/t-epargne/map", json={"layout": {}}, headers=self.as_("redac"))
+        self.assertNotEqual(r.status_code, 403)
+
     # ── Emplacement sans procédure (campagne en brouillon) ──
 
     def test_empty_slot_gets_its_procedure(self):

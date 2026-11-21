@@ -81,6 +81,26 @@ class PlatformTest(unittest.TestCase):
         # le lien n'est enregistré nulle part
         self.assertNotIn("https://lien", repr(self.db.tables))
 
+    def test_new_space_gets_default_referential(self):
+        self.db.tables["process_taxonomy"] = [{"id": "x", "organisation_id": "org-a", "name": "Mon thème", "level": "theme", "parent_id": None}]
+        r = self.create()
+        self.assertEqual(r.status_code, 200, r.text)
+        org = r.json()["organisation"]["id"]
+        ref = r.json()["referentiel"]
+        self.assertEqual(ref["themes_created"], 5)
+        rows = self.db.rows("process_taxonomy")
+        new = [n for n in rows if n["organisation_id"] == org]
+        self.assertEqual(len(new), ref["themes_created"] + ref["categories_created"] + ref["subcategories_created"])
+        self.assertIn("Données de Référence", {n["name"] for n in new if n["level"] == "theme"})
+        # l'autre organisation n'a rien reçu
+        self.assertEqual([n["id"] for n in rows if n["organisation_id"] == "org-a"], ["x"])
+        # un second chargement ne duplique rien
+        from database.org_scope import org_scope
+        from routers.taxonomy_router import seed_bian
+        with org_scope(org):
+            self.assertFalse(seed_bian()["seeded"])
+        self.assertEqual(len([n for n in self.db.rows("process_taxonomy") if n["organisation_id"] == org]), len(new))
+
     def test_refuses_member_of_another_org(self):
         r = self.create(admin_email="admin@a.com")
         self.assertEqual(r.status_code, 409)

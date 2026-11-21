@@ -105,15 +105,15 @@ export default function ProcessMateHeader({
                 {/* Cloche avec dropdown notifications */}
                 <NotificationBell actorId={currentActorId} />
 
-                {/* Paramètres */}
-                <button
+                {/* Paramètres (administrateur) */}
+                {onSettingsClick && <button
                     type="button"
                     onClick={onSettingsClick}
                     title="Paramètres"
                     className="p-2 text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
                 >
                     <Settings className="w-4 h-4" />
-                </button>
+                </button>}
 
                 <div className="w-px h-6 bg-neutral-200" />
 

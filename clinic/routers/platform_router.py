@@ -14,6 +14,7 @@ Chaque action est tracée (audit_log).
 import re
 import unicodedata
 from datetime import datetime, timezone
+import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -23,6 +24,7 @@ from manager import access_control as ac
 from manager import account_links, usage_meter
 from manager.auth import AuthUser
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/plateforme", tags=["Plateforme"])
 
 
@@ -118,13 +120,28 @@ def create_organisation(body: CreateOrganisation, actor: AuthUser = Depends(ac.r
         db.table("organisations").delete().eq("id", org["id"]).execute()
         raise
     ac.forget_profile(acc.user_id)
+    referentiel = _default_referential(org["id"])
     sent = body.envoyer_email and account_links.email_link(
         email, body.admin_nom.strip(), org["nom"], "admin", acc.link, "processMate", not acc.created)
     ac.audit("organisation.creee", actor, org["id"], "organisation", org["id"],
              {"nom": org["nom"], "slug": slug, "admin": acc.user_id, "compte_existant": not acc.created,
               "email_envoye": bool(sent)})
     return {"organisation": _summary([org])[0], "admin_id": acc.user_id, "lien": acc.link,
-            "compte_existant": not acc.created, "email_envoye": bool(sent)}
+            "compte_existant": not acc.created, "email_envoye": bool(sent), "referentiel": referentiel}
+
+
+def _default_referential(org_id: str) -> Optional[Dict[str, int]]:
+    """Le nouvel espace reçoit le référentiel par défaut (structure BIAN), que l'admin garde,
+    adapte ou remplace. Ne fait jamais échouer la création : l'admin peut repartir de rien."""
+    from database.org_scope import org_scope
+    from routers.taxonomy_router import seed_bian
+    try:
+        with org_scope(org_id):
+            r = seed_bian()
+        return {k: r.get(k, 0) for k in ("themes_created", "categories_created", "subcategories_created")}
+    except Exception as e:
+        logger.warning(f"Référentiel par défaut non chargé pour {org_id[:8]} : {str(e)[:150]}")
+        return None
 
 
 class NewLink(BaseModel):

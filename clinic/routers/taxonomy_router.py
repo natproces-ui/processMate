@@ -739,94 +739,101 @@ async def seed_bian_taxonomy(force: bool = False):
     force=true : supprime les nœuds BIAN existants avant de re-seeder.
     """
     try:
-        db = get_supabase()
+        return seed_bian(force)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        # Idempotency check
-        existing = (
+
+def seed_bian(force: bool = False) -> Dict[str, Any]:
+    """Référentiel par défaut (structure BIAN) dans la taxonomie de l'organisation courante.
+    Aussi appelé à la création d'un espace (dans org_scope de la nouvelle organisation)."""
+    db = get_supabase()
+
+    # Déjà chargé ? (un thème du modèle, ou son ancien nom anglais) : jamais de doublon
+    bian_names = [t["name"] for t in BIAN_SEED] + ["Reference Data"]
+    existing = (
+        db.table("process_taxonomy")
+        .select("id")
+        .in_("name", bian_names)
+        .eq("level", "theme")
+        .execute()
+        .data
+    )
+    if existing and not force:
+        return {
+            "success": True,
+            "seeded": False,
+            "message": "BIAN taxonomy already seeded",
+            "themes_created": 0,
+            "categories_created": 0,
+            "subcategories_created": 0,
+        }
+
+    # If force, delete existing BIAN themes (cascade deletes categories + subcategories)
+    if existing and force:
+        bian_names = [t["name"] for t in BIAN_SEED]
+        bian_theme_ids = (
             db.table("process_taxonomy")
             .select("id")
-            .eq("name", "Reference Data")
+            .in_("name", bian_names)
             .eq("level", "theme")
             .execute()
             .data
         )
-        if existing and not force:
-            return {
-                "success": True,
-                "seeded": False,
-                "message": "BIAN taxonomy already seeded",
-                "themes_created": 0,
-                "categories_created": 0,
-                "subcategories_created": 0,
-            }
+        for row in bian_theme_ids:
+            db.table("process_taxonomy").delete().eq("id", row["id"]).execute()
 
-        # If force, delete existing BIAN themes (cascade deletes categories + subcategories)
-        if existing and force:
-            bian_names = [t["name"] for t in BIAN_SEED]
-            bian_theme_ids = (
-                db.table("process_taxonomy")
-                .select("id")
-                .in_("name", bian_names)
-                .eq("level", "theme")
-                .execute()
-                .data
-            )
-            for row in bian_theme_ids:
-                db.table("process_taxonomy").delete().eq("id", row["id"]).execute()
+    now = _now()
+    theme_rows: List[Dict] = []
+    cat_rows: List[Dict] = []
+    subcat_rows: List[Dict] = []
 
-        now = _now()
-        theme_rows: List[Dict] = []
-        cat_rows: List[Dict] = []
-        subcat_rows: List[Dict] = []
+    for ti, theme_data in enumerate(BIAN_SEED):
+        theme_id = str(uuid.uuid4())
+        theme_rows.append({
+            "id": theme_id,
+            "name": theme_data["name"],
+            "level": "theme",
+            "description": "BIAN v4.0 Domain",
+            "parent_id": None,
+            "order_index": ti,
+            "created_at": now,
+            "updated_at": now,
+        })
 
-        for ti, theme_data in enumerate(BIAN_SEED):
-            theme_id = str(uuid.uuid4())
-            theme_rows.append({
-                "id": theme_id,
-                "name": theme_data["name"],
-                "level": "theme",
-                "description": "BIAN v4.0 Domain",
-                "parent_id": None,
-                "order_index": ti,
+        for ci, cat_data in enumerate(theme_data["categories"]):
+            cat_id = str(uuid.uuid4())
+            cat_rows.append({
+                "id": cat_id,
+                "name": cat_data["name"],
+                "level": "category",
+                "description": "",
+                "parent_id": theme_id,
+                "order_index": ci,
                 "created_at": now,
                 "updated_at": now,
             })
 
-            for ci, cat_data in enumerate(theme_data["categories"]):
-                cat_id = str(uuid.uuid4())
-                cat_rows.append({
-                    "id": cat_id,
-                    "name": cat_data["name"],
-                    "level": "category",
+            for si, subcat_name in enumerate(cat_data["subcategories"]):
+                subcat_rows.append({
+                    "id": str(uuid.uuid4()),
+                    "name": subcat_name,
+                    "level": "subcategory",
                     "description": "",
-                    "parent_id": theme_id,
-                    "order_index": ci,
+                    "parent_id": cat_id,
+                    "order_index": si,
                     "created_at": now,
                     "updated_at": now,
                 })
 
-                for si, subcat_name in enumerate(cat_data["subcategories"]):
-                    subcat_rows.append({
-                        "id": str(uuid.uuid4()),
-                        "name": subcat_name,
-                        "level": "subcategory",
-                        "description": "",
-                        "parent_id": cat_id,
-                        "order_index": si,
-                        "created_at": now,
-                        "updated_at": now,
-                    })
+    db.table("process_taxonomy").insert(theme_rows).execute()
+    db.table("process_taxonomy").insert(cat_rows).execute()
+    db.table("process_taxonomy").insert(subcat_rows).execute()
 
-        db.table("process_taxonomy").insert(theme_rows).execute()
-        db.table("process_taxonomy").insert(cat_rows).execute()
-        db.table("process_taxonomy").insert(subcat_rows).execute()
-
-        return {
-            "success": True,
-            "seeded": True,
-            "themes_created": len(theme_rows),
-            "categories_created": len(cat_rows),
-            "subcategories_created": len(subcat_rows),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "success": True,
+        "seeded": True,
+        "themes_created": len(theme_rows),
+        "categories_created": len(cat_rows),
+        "subcategories_created": len(subcat_rows),
+    }
