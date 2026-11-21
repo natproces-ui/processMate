@@ -20,6 +20,8 @@ par le code (ils sont certains).
 
 Écris un retour NATUREL, en français, comme le ferait Claude : de vraies phrases, un ton direct et utile, pas un
 rapport à cases. Deux ou trois courts paragraphes suffisent.
+- Pas de salutation (« Salut », « Bonjour ») ni de formule d'introduction : tu interviens au milieu d'une
+  conversation. Entre directement dans le sujet.
 - Commence par une phrase qui situe l'essentiel (ce qui tient, ce qui bloque).
 - Explique ensuite ce qui est à corriger, puis ce qui manque, en reliant les points entre eux quand c'est logique.
 - Termine, si c'est pertinent, par une ou deux pistes d'amélioration.
