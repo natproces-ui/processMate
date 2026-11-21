@@ -2,6 +2,8 @@
 
 // Page d'un projet (comme Claude) : /projet/?id=<id> (export statique : pas de route dynamique).
 // Nouvelle conversation directement depuis le projet, récents, instructions, contexte, campagne.
+import StartComposer from '@/components/home/StartComposer';
+import { setPendingTurn } from '@/lib/pendingTurn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -38,7 +40,6 @@ function ProjectPage() {
     const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
     const [campaign, setCampaign] = useState<ProjectCampaign | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [draft, setDraft] = useState('');
     const [editingDesc, setEditingDesc] = useState(false);
     const [descValue, setDescValue] = useState('');
     const [instructionsOpen, setInstructionsOpen] = useState(false);
@@ -91,9 +92,11 @@ function ProjectPage() {
         catch (e) { setProject(before); setError(e instanceof Error ? e.message : 'Modification impossible'); }
     };
 
-    const startConversation = () => {
-        if (!project || !draft.trim()) return;
-        router.push(`/?projet=${project.id}&message=${encodeURIComponent(draft.trim())}`);
+    // Texte et fichiers passent au chat, qui les envoie aussitôt dans le projet
+    const startConversation = (text: string, files: File[]) => {
+        if (!project || (!text && !files.length)) return;
+        setPendingTurn({ text, files });
+        router.push(`/?projet=${project.id}&depart=1`);
     };
 
     const upload = async (files: File[]) => {
@@ -179,17 +182,8 @@ function ProjectPage() {
                                     </button>
                                 )}
 
-                                <div className="mt-8 rounded-2xl border border-neutral-900/80 bg-white px-4 pt-3 pb-2 shadow-sm focus-within:border-neutral-900">
-                                    <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={2}
-                                        placeholder={`Nouvelle conversation dans ${project.name}`} aria-label={`Nouvelle conversation dans ${project.name}`}
-                                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); startConversation(); } }}
-                                        className="w-full resize-none bg-transparent text-[15px] text-neutral-900 outline-none placeholder:text-neutral-500" />
-                                    <div className="flex justify-end">
-                                        <button type="button" onClick={startConversation} disabled={!draft.trim()} aria-label="Démarrer la conversation"
-                                            className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-30">
-                                            <ArrowUp className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                <div className="mt-8">
+                                    <StartComposer placeholder={`Nouvelle conversation dans ${project.name}`} onSend={startConversation} />
                                 </div>
 
                                 <h2 className="mt-10 text-sm font-medium text-neutral-500">Récents</h2>

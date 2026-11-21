@@ -19,6 +19,7 @@ import { referentialApi, type ReferentialState } from '@/lib/referentialApi';
 import { fetchHome, type HomeData } from '@/lib/homeApi';
 import { CONVERSATIONS_ENABLED, conversationsApi, type ConversationSummary } from '@/lib/conversationsApi';
 import { setPendingTurn } from '@/lib/pendingTurn';
+import StartComposer from '@/components/home/StartComposer';
 
 export default function EspacePage() {
     return (
@@ -217,54 +218,12 @@ function Tile({ href, value, label, plural: many, hint, alert }: { href: string;
     );
 }
 
-/** « Que voulez-vous faire ? » : écrire ou déposer un fichier ouvre une conversation, envoyée aussitôt */
+/** « Que voulez-vous faire ? » : le champ de départ commun (fichiers, dictée, niveau) ; la conversation part aussitôt */
 function Composer() {
     const router = useRouter();
-    const [text, setText] = useState('');
-    const [files, setFiles] = useState<File[]>([]);
-    const [drag, setDrag] = useState(false);
-    const fileRef = useRef<HTMLInputElement>(null);
-    // copie immédiate : la FileList est vidée quand on réinitialise le champ, avant que React ne la lise
-    const add = (list: FileList | null) => {
-        const picked = list ? Array.from(list) : [];
-        if (picked.length) setFiles(prev => [...prev, ...picked].slice(0, 10));
-    };
-    const send = useCallback(() => {
-        if (!text.trim() && !files.length) return;
-        setPendingTurn({ text: text.trim(), files });
-        router.push('/?depart=1');
-    }, [text, files, router]);
-
     return (
-        <div onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
-            onDrop={e => { e.preventDefault(); setDrag(false); add(e.dataTransfer.files); }}
-            className={`rounded-2xl border bg-white px-3 py-2.5 shadow-sm ${drag ? 'border-neutral-900' : 'border-neutral-300'}`}>
-            <textarea value={text} onChange={e => setText(e.target.value)} rows={2} aria-label="Que voulez-vous faire ?"
-                placeholder="Que voulez-vous faire ? Décrivez une procédure, posez une question, ou déposez un fichier…"
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                className="w-full resize-none bg-transparent px-1 text-sm text-neutral-900 outline-none placeholder:text-neutral-500" />
-            {files.length > 0 && (
-                <ul className="mb-1 flex flex-wrap gap-1.5">
-                    {files.map((f, i) => (
-                        <li key={`${f.name}-${i}`} className="flex items-center gap-1 rounded-lg bg-neutral-100 px-2 py-1 text-xs text-neutral-900">
-                            <span className="max-w-[200px] truncate">{f.name}</span>
-                            <button type="button" aria-label={`Retirer ${f.name}`} onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}><X className="w-3 h-3" /></button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-            <div className="flex items-center justify-between">
-                <button type="button" onClick={() => fileRef.current?.click()} aria-label="Joindre des fichiers"
-                    className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm text-neutral-700 hover:bg-neutral-100">
-                    <Paperclip className="w-4 h-4" /> Joindre
-                </button>
-                <input ref={fileRef} type="file" multiple hidden accept={ACCEPT} onChange={e => { add(e.target.files); e.target.value = ''; }} />
-                <button type="button" onClick={send} disabled={!text.trim() && !files.length} aria-label="Envoyer"
-                    className="rounded-full bg-neutral-900 p-2 text-white hover:bg-neutral-700 disabled:opacity-30">
-                    <ArrowUp className="w-4 h-4" />
-                </button>
-            </div>
-        </div>
+        <StartComposer placeholder="Que voulez-vous faire ? Décrivez une procédure, posez une question, ou déposez un fichier…"
+            onSend={(text, files) => { setPendingTurn({ text, files }); router.push('/?depart=1'); }} />
     );
 }
 
