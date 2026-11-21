@@ -16,17 +16,19 @@ import type { TaskActor } from '@/lib/orchestrationTasksApi';
 
 const ProcedureJourney = dynamic(
     () => import('@/components/orchestration/ProcedureJourney'),
-    { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 animate-spin text-blue-400" /></div> }
+    { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div> }
 );
 
 const ProcedureDetail = dynamic(
     () => import('@/components/orchestration/ProcedureDetail'),
-    { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 animate-spin text-blue-400" /></div> }
+    { loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div> }
 );
 
 // ── Types ─────────────────────────────────────────────────────
 
 interface ProceduresLibraryProps {
+    /** titre de l'écran (« Référentiel · nom de l'organisation ») */
+    title?: string;
     onOpenEditor?: (procedureId: string) => void;
     onOpenTasks?: (filter: { procedureIds?: string[]; label: string }) => void;
     onAssignToCampaign?: (procedureId: string) => void;
@@ -140,9 +142,9 @@ function InlineCreateForm({ placeholder, onSubmit, onCancel }: {
             <input autoFocus type="text" value={name} onChange={e => setName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); if (e.key === 'Escape') onCancel(); }}
                 placeholder={placeholder}
-                className="flex-1 px-3 py-1.5 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                className="flex-1 px-3 py-1.5 text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-300" />
             <button type="button" onClick={handleSubmit} disabled={!name.trim() || saving}
-                className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-3 py-1.5 bg-neutral-900 text-white text-xs font-semibold rounded-lg hover:bg-neutral-700 disabled:opacity-50">
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Créer'}
             </button>
             <button type="button" onClick={onCancel}
@@ -170,7 +172,7 @@ function StatusBadge({ status }: { status: string }) {
 // ── Raci Modal (editable, single-procedure) ──────────────────
 
 const RACIMatrix = dynamic(() => import('@/components/orchestration/RACIMatrix'), {
-    loading: () => <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-blue-400" /></div>,
+    loading: () => <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>,
 });
 
 function RaciModalLazy({ procedureId, procedureName, isAdmin, onClose, currentActor }: {
@@ -185,8 +187,8 @@ function RaciModalLazy({ procedureId, procedureName, isAdmin, onClose, currentAc
                 <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                     <div>
                         <div className="flex items-center gap-2 mb-0.5">
-                            <Users className="w-4 h-4 text-blue-600" />
-                            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-widest">Matrice RACI</span>
+                            <Users className="w-4 h-4 text-neutral-900" />
+                            <span className="text-[11px] font-bold text-neutral-900 uppercase tracking-widest">Matrice RACI</span>
                         </div>
                         <h2 className="text-sm font-bold text-gray-900 leading-snug">{procedureName}</h2>
                     </div>
@@ -202,13 +204,18 @@ function RaciModalLazy({ procedureId, procedureName, isAdmin, onClose, currentAc
 
 // ── Main component ────────────────────────────────────────────
 
-export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignToCampaign, onOpenStudio, expandToNodeId }: ProceduresLibraryProps) {
+export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignToCampaign, onOpenStudio, expandToNodeId, title }: ProceduresLibraryProps) {
     const { profile, access } = useAuth();
     const { procedures, fetchProcedures, removeProcedure } = useProceduresStore();
     // Structurer le référentiel (branches, procédures, campagnes) : admin et pilote
     const isAdmin = !!access?.can_manage_campaigns || profile?.global_role === 'admin' || profile?.global_role === 'process_owner';
 
     const [tree, setTree] = useState<TaxonomyNode[]>([]);
+    // Branches sans procédure : masquées par défaut (le référentiel montre ce qui existe) ; préférence mémorisée
+    const [showEmpty, setShowEmpty] = useState(() => { try { return localStorage.getItem('processmate-ref-vides') === '1'; } catch { return false; } });
+    const toggleEmpty = (v: boolean) => { setShowEmpty(v); try { localStorage.setItem('processmate-ref-vides', v ? '1' : '0'); } catch { /* facultatif */ } };
+    /** branches créées pendant la session : restent visibles même vides, le temps d'y ranger quelque chose */
+    const [justCreated, setJustCreated] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState('');
@@ -358,7 +365,8 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                 onOpenEditor?.(res.procedure.id);
             }
         } else {
-            await taxonomyApi.create({ name, level: creating.level, parent_id: creating.parentId });
+            const res = await taxonomyApi.create({ name, level: creating.level, parent_id: creating.parentId });
+            if (res.node?.id) setJustCreated(prev => new Set(prev).add(res.node.id));
             await loadTree();
         }
         setCreating(null);
@@ -402,8 +410,18 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
     // ── Render tree node ──────────────────────────────────────────
 
     const ICONS = { theme: FolderOpen, category: Tag, subcategory: Layers };
-    const COLORS = { theme: 'text-indigo-500', category: 'text-blue-400', subcategory: 'text-violet-400' };
+    const COLORS = { theme: 'text-neutral-900', category: 'text-neutral-600', subcategory: 'text-neutral-500' };
     const LEVEL_LABELS = { theme: 'thème', category: 'catégorie', subcategory: 'sous-catégorie' };
+
+    const emptyCount = useMemo(() => {
+        let n = 0;
+        const walk = (nodes: TaxonomyNode[]) => nodes.forEach(x => { if (countProcs(x) === 0) n++; walk(x.children || []); });
+        walk(tree);
+        return n;
+    }, [tree, countProcs]);
+    const visibleNode = (node: TaxonomyNode): boolean =>
+        showEmpty || countProcs(node) > 0 || justCreated.has(node.id) || (node.children || []).some(visibleNode)
+        || creating?.parentId === node.id;
 
     function renderNode(node: TaxonomyNode, depth: number) {
         const isExp = expanded.has(node.id);
@@ -426,7 +444,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                     <span className="text-sm font-medium text-gray-900 truncate min-w-0">{node.name}</span>
                     <span className="text-[10px] font-semibold text-gray-700 shrink-0 ml-2">{count}</span>
                     <button type="button" title="Actions" onClick={e => openMenu(e, { kind: node.level as any, id: node.id, name: node.name, parentId: node.parent_id })}
-                        className="p-1 rounded text-gray-700 hover:text-blue-600 hover:bg-blue-50 shrink-0 ml-1">
+                        className="p-1 rounded text-gray-700 hover:text-neutral-900 hover:bg-neutral-100 shrink-0 ml-1">
                         <MoreVertical className="w-4 h-4" />
                     </button>
                 </div>
@@ -434,19 +452,19 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                 {/* Children */}
                 {isExp && (
                     <div>
-                        {(node.children || []).map(child => renderNode(child, depth + 1))}
+                        {(node.children || []).filter(visibleNode).map(child => renderNode(child, depth + 1))}
 
                         {/* Procedures at leaf level */}
                         {isLeaf && procs.map(proc => (
                             <div key={proc.id}
                                 style={{ marginLeft: (depth + 1) * 16 }}
-                                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
                                 onClick={() => onOpenEditor?.(proc.id)}>
-                                <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                <FileText className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                                 <span className="text-sm text-gray-900 truncate min-w-0">{proc.nom}</span>
                                 <button type="button" title="Actions"
                                     onClick={e => { e.stopPropagation(); openMenu(e, { kind: 'procedure', id: proc.id, name: proc.nom }); }}
-                                    className="p-1 rounded text-gray-700 hover:text-blue-600 hover:bg-blue-50 shrink-0">
+                                    className="p-1 rounded text-gray-700 hover:text-neutral-900 hover:bg-neutral-100 shrink-0">
                                     <MoreVertical className="w-4 h-4" />
                                 </button>
                                 {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
@@ -480,8 +498,16 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
             <div className="shrink-0 bg-white border-b border-gray-200 px-5 py-3">
                 <div className="flex items-center justify-between mb-3">
                     <div>
-                        <h1 className="text-lg font-bold text-gray-900">Procédures</h1>
-                        <p className="text-xs text-gray-400">{procedures.length} procédure{procedures.length !== 1 ? 's' : ''} · {tree.length} thème{tree.length !== 1 ? 's' : ''}</p>
+                        <h1 className="text-lg font-semibold text-neutral-900">{title || 'Référentiel'}</h1>
+                        <p className="text-xs text-neutral-500">
+                            {procedures.length} procédure{procedures.length !== 1 ? 's' : ''} · {tree.length} thème{tree.length !== 1 ? 's' : ''}
+                            {emptyCount > 0 && (
+                                <label className="ml-3 inline-flex cursor-pointer items-center gap-1.5 text-neutral-700">
+                                    <input type="checkbox" className="accent-neutral-900" checked={showEmpty} onChange={e => toggleEmpty(e.target.checked)} />
+                                    Afficher les branches vides ({emptyCount})
+                                </label>
+                            )}
+                        </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button type="button" onClick={() => { loadTree(); fetchProcedures(true); }} title="Actualiser"
@@ -490,7 +516,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                         </button>
                         {isAdmin && (
                             <button type="button" onClick={() => setCreating({ parentId: null, level: 'theme' })}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700">
                                 <Plus className="w-3.5 h-3.5" /> Nouveau thème
                             </button>
                         )}
@@ -500,7 +526,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                         placeholder="Rechercher une procédure, référence ou domaine…"
-                        className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400" />
+                        className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:border-neutral-900" />
                     {search && (
                         <button type="button" onClick={() => setSearch('')}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -514,7 +540,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
             <div className="flex-1 overflow-y-auto px-3 py-3">
                 {loading ? (
                     <div className="flex items-center justify-center py-16">
-                        <Loader2 className="w-5 h-5 animate-spin text-blue-400" />
+                        <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
                     </div>
                 ) : searchResults ? (
                     /* Search results */
@@ -529,14 +555,14 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                             <div key={proc.id}
                                 className="flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 group transition-all cursor-pointer mb-1"
                                 onClick={() => onOpenEditor?.(proc.id)}>
-                                <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                                <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">{proc.nom}</p>
                                     <p className="text-[11px] text-gray-400 truncate">{[proc.ref, proc.category].filter(Boolean).join(' · ')}</p>
                                 </div>
                                 <button type="button" title="Actions"
                                     onClick={e => { e.stopPropagation(); openMenu(e, { kind: 'procedure', id: proc.id, name: proc.nom }); }}
-                                    className="p-1 rounded text-gray-700 hover:text-blue-600 hover:bg-blue-50 shrink-0">
+                                    className="p-1 rounded text-gray-700 hover:text-neutral-900 hover:bg-neutral-100 shrink-0">
                                     <MoreVertical className="w-4 h-4" />
                                 </button>
                                 {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
@@ -547,7 +573,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                 ) : (
                     /* Tree view */
                     <div className="space-y-0.5">
-                        {tree.map(node => renderNode(node, 0))}
+                        {tree.filter(visibleNode).map(node => renderNode(node, 0))}
 
                         {/* Create theme form (at root) */}
                         {creating?.parentId === null && creating.level === 'theme' && (
@@ -564,13 +590,13 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                 </p>
                                 {unclassifiedProcs.map(proc => (
                                     <div key={proc.id}
-                                        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                                        className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
                                         onClick={() => onOpenEditor?.(proc.id)}>
-                                        <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                        <FileText className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                                         <span className="text-sm text-gray-900 truncate min-w-0">{proc.nom}</span>
                                         <button type="button" title="Actions"
                                             onClick={e => { e.stopPropagation(); openMenu(e, { kind: 'procedure', id: proc.id, name: proc.nom }); }}
-                                            className="p-1 rounded text-gray-700 hover:text-blue-600 hover:bg-blue-50 shrink-0">
+                                            className="p-1 rounded text-gray-700 hover:text-neutral-900 hover:bg-neutral-100 shrink-0">
                                             <MoreVertical className="w-4 h-4" />
                                         </button>
                                         {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
@@ -647,11 +673,11 @@ function RenameModal({ currentName, level, onSave, onCancel }: { currentName: st
                 <h3 className="text-base font-bold text-gray-900 mb-4">Renommer</h3>
                 <input autoFocus type="text" value={name} onChange={e => setName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && name.trim()) onSave(name.trim()); if (e.key === 'Escape') onCancel(); }}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" />
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-300 mb-4" />
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button>
                     <button type="button" onClick={() => name.trim() && onSave(name.trim())} disabled={!name.trim()}
-                        className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">Enregistrer</button>
+                        className="px-4 py-2 text-sm font-semibold text-white bg-neutral-900 rounded-lg hover:bg-neutral-700 disabled:opacity-50">Enregistrer</button>
                 </div>
             </div>
         </div>
@@ -713,7 +739,7 @@ function CampaignPickerModal({ procedureId, procedureName, onDone, onCancel }: {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {loading ? (
-                        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-blue-400" /></div>
+                        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>
                     ) : campaigns.length === 0 ? (
                         <div className="text-center py-8 text-gray-400">
                             <Megaphone className="w-8 h-8 mx-auto mb-2 text-gray-200" />
@@ -726,7 +752,7 @@ function CampaignPickerModal({ procedureId, procedureName, onDone, onCancel }: {
                                 const isAdding = adding === c.id;
                                 return (
                                     <button key={c.id} type="button" onClick={() => handlePick(c.id)} disabled={!!adding}
-                                        className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-blue-50 transition-colors disabled:opacity-50">
+                                        className="w-full flex items-center gap-3 px-5 py-3 text-left hover:bg-neutral-100 transition-colors disabled:opacity-50">
                                         <Megaphone className="w-4 h-4 text-orange-400 shrink-0" />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-gray-800 truncate">{c.title}</p>
@@ -735,7 +761,7 @@ function CampaignPickerModal({ procedureId, procedureName, onDone, onCancel }: {
                                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sc?.bg} ${sc?.text}`}>
                                             {CAMPAIGN_STATUS_LABELS[c.status]}
                                         </span>
-                                        {isAdding && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500 shrink-0" />}
+                                        {isAdding && <Loader2 className="w-3.5 h-3.5 animate-spin text-neutral-400 shrink-0" />}
                                     </button>
                                 );
                             })}

@@ -100,7 +100,7 @@ function LazyPanel({ active, children }: { active: boolean; children: React.Reac
 
 function ProceduresPanel({
     onOpenEditor, onOpenTasks, onAssignToCampaign, onOpenStudio,
-    onGoToWorkspace, isAdmin,
+    onGoToWorkspace, isAdmin, title,
 }: {
     onOpenEditor: (pid: string) => void;
     onOpenTasks: (filter: { procedureIds?: string[] }) => void;
@@ -108,6 +108,7 @@ function ProceduresPanel({
     onOpenStudio: (pid?: string) => void;
     onGoToWorkspace: () => void;
     isAdmin: boolean;
+    title: string;
 }) {
     const [subTab, setSubTab] = useState<'modifier' | 'creer'>('modifier');
     const [creatingFor, setCreatingFor] = useState<{ id: string; name: string } | null>(null);
@@ -144,8 +145,8 @@ function ProceduresPanel({
         <div className="h-full flex flex-col bg-gray-50">
             <div className="shrink-0 bg-white border-b border-gray-200 flex items-end gap-0 px-4 pt-2">
                 {([
-                    { id: 'modifier' as const, label: 'Modifier' },
-                    { id: 'creer' as const, label: 'Créer' },
+                    { id: 'modifier' as const, label: 'Liste' },
+                    { id: 'creer' as const, label: 'Carte' },
                 ]).map(tab => (
                     <button
                         key={tab.id}
@@ -153,7 +154,7 @@ function ProceduresPanel({
                         onClick={() => setSubTab(tab.id)}
                         className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
                             subTab === tab.id
-                                ? 'border-blue-600 text-blue-700'
+                                ? 'border-neutral-900 text-neutral-900'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                         }`}
                     >
@@ -194,6 +195,7 @@ function ProceduresPanel({
                         onAssignToCampaign={onAssignToCampaign}
                         onOpenStudio={onOpenStudio}
                         expandToNodeId={expandToNode}
+                        title={title}
                     />
                 </div>
                 <div className={subTab === 'creer' ? 'absolute inset-0 overflow-y-auto' : 'absolute inset-0 overflow-y-auto invisible pointer-events-none'}>
@@ -206,6 +208,7 @@ function ProceduresPanel({
                         onGoToWorkspace={onGoToWorkspace}
                         isAdmin={isAdmin}
                         onCreateProcedure={handleCreateProcedure}
+                        title={title}
                     />
                 </div>
             </div>
@@ -386,6 +389,7 @@ function ProcessMateInner() {
                                         onOpenStudio={pid => handleOpenStudio(pid)}
                                         onGoToWorkspace={() => handleTabChange('workspace')}
                                         isAdmin={!!access?.can_manage_campaigns || profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
+                                        title={`Référentiel · ${access?.organisation?.nom || 'organisation'}`}
                                     />
                                 </LazyPanel>
 

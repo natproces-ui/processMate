@@ -7,19 +7,19 @@ import { useProceduresStore } from '@/store/proceduresStore';
 import ImportPdfModal from '@/components/orchestration/ImportPdfModal';
 import BianScenarioMap from '@/components/orchestration/BianScenarioMap';
 
-// ─── BIAN uniform colours (matching the standard image) ───────
+// ─── Couleurs : la charte de l'application (noir, blanc, gris), plus celles de l'image BIAN ───
 
 const C = {
-  domainBg:   'bg-[#001489]',
+  domainBg:   'bg-neutral-900',
   domainText: 'text-white',
-  sectionBg:  'bg-[#001489]',   // "Product Specific Fulfillment" banner
+  sectionBg:  'bg-neutral-900',  // bandeau de section
   sectionText:'text-white',
-  catBg:      'bg-[#1565C0]',
+  catBg:      'bg-neutral-700',
   catText:    'text-white',
-  tileBg:     'bg-[#FFFFCC]',
-  tileText:   'text-gray-900',
-  tileBorder: 'border border-[#c8c870]',
-  colBg:      'bg-gray-200',     // outer column background
+  tileBg:     'bg-white',
+  tileText:   'text-neutral-900',
+  tileBorder: 'border border-neutral-200',
+  colBg:      'bg-neutral-100',  // fond de colonne
 };
 
 // ─── Multi-column layout config ───────────────────────────────
@@ -85,6 +85,8 @@ interface Props {
   onGoToWorkspace?: () => void;
   isAdmin: boolean;
   onCreateProcedure?: (subcategoryId: string, subcategoryName: string) => void;
+  /** titre (« Référentiel · nom de l'organisation ») : c'est le référentiel de l'organisation, pas BIAN */
+  title?: string;
 }
 
 // ─── Sub-components ───────────────────────────────────────────
@@ -157,7 +159,7 @@ function CategoryBlock({
                 >
                   <span className="leading-snug">{sub.name}</span>
                   {sub.procedure_count ? (
-                    <span className="shrink-0 text-[9px] font-bold px-1 py-px rounded bg-[#001489] text-white">
+                    <span className="shrink-0 text-[9px] font-bold px-1 py-px rounded bg-neutral-900 text-white">
                       {sub.procedure_count}
                     </span>
                   ) : null}
@@ -173,7 +175,7 @@ function CategoryBlock({
 
 // ─── Main component ───────────────────────────────────────────
 
-export default function BianServiceMap({ onGoToProcedures, onOpenProcedure, onGoToWorkspace, isAdmin, onCreateProcedure }: Props) {
+export default function BianServiceMap({ onGoToProcedures, onOpenProcedure, onGoToWorkspace, isAdmin, onCreateProcedure, title }: Props) {
   const [themes, setThemes] = useState<TaxonomyNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -260,7 +262,7 @@ export default function BianServiceMap({ onGoToProcedures, onOpenProcedure, onGo
         {/* Domain header */}
         <div className={`${C.domainBg} ${C.domainText} px-3 py-2 text-center`}>
           <p className="text-[11px] font-extrabold uppercase tracking-wide leading-tight">{theme.name}</p>
-          <p className="text-[9px] opacity-50 mt-0.5">{theme.children.length} categories · {totalSubs} service domains</p>
+          <p className="text-[9px] opacity-50 mt-0.5">{theme.children.length} catégorie{theme.children.length > 1 ? 's' : ''} · {totalSubs} sous-catégorie{totalSubs > 1 ? 's' : ''}</p>
         </div>
 
         {/* Body */}
@@ -329,13 +331,13 @@ export default function BianServiceMap({ onGoToProcedures, onOpenProcedure, onGo
   // ── Main render ─────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col bg-gray-300">
+    <div className="h-full flex flex-col bg-neutral-50">
 
       {/* Top bar */}
       <div className="shrink-0 px-5 py-2.5 border-b border-gray-300 bg-white flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-gray-900">The BIAN Service Landscape v4.0</h2>
-          <p className="text-[11px] text-gray-400">Banking Industry Architecture Network — cliquez sur un service domain pour agir</p>
+          <h2 className="text-sm font-semibold text-neutral-900">{title || 'Référentiel'}</h2>
+          <p className="text-[11px] text-neutral-500">Vue en carte, organisée comme le paysage BIAN — cliquez sur une case pour agir</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setShowImportPdf(true)}
@@ -369,7 +371,7 @@ export default function BianServiceMap({ onGoToProcedures, onOpenProcedure, onGo
           >
             <div className="px-3 py-2 border-b border-gray-100">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                {ctxMenu.level === 'subcategory' ? 'Service Domain' : 'Business Area'}
+                {ctxMenu.level === 'subcategory' ? 'Sous-catégorie' : 'Catégorie'}
               </p>
               <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">{ctxMenu.node.name}</p>
               {ctxMenu.node.procedure_count
