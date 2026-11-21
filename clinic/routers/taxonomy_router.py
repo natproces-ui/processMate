@@ -618,29 +618,38 @@ async def update_taxonomy_node(node_id: str, body: TaxonomyUpdate):
 
 
 @router.delete("/taxonomy/{node_id}")
-async def delete_taxonomy_node(node_id: str):
+async def delete_taxonomy_node(node_id: str, procedures: Optional[str] = None):
     """
-    Supprime un nœud. La cascade ON DELETE CASCADE supprime
-    automatiquement tous les enfants en DB.
-    Les procédures liées voient leur taxonomy_id mis à NULL (ON DELETE SET NULL).
+    Supprime une branche et ses sous-branches. Ses procédures ne restent jamais orphelines
+    (« Non classées ») : sans ?procedures=supprimer, la suppression est refusée tant que la
+    branche en contient ; avec, elles sont supprimées avec elle — seulement si elles sont
+    vides et hors campagne (une procédure rédigée se déplace d'abord).
     """
-    try:
-        db = get_supabase()
-        # Compter les procédures directement liées
-        procs = (
-            db.table("workflows")
-            .select("id")
-            .eq("taxonomy_id", node_id)
-            .execute()
-            .data or []
-        )
-        db.table("process_taxonomy").delete().eq("id", node_id).execute()
-        return {
-            "success": True,
-            "detached_procedures": len(procs),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    db = get_supabase()
+    nodes = db.table("process_taxonomy").select("id,parent_id").execute().data or []
+    subtree, frontier = {node_id}, [node_id]
+    while frontier:
+        nxt = [n["id"] for n in nodes if n.get("parent_id") in frontier and n["id"] not in subtree]
+        subtree.update(nxt)
+        frontier = nxt
+    procs = [w for w in db.table("workflows").select("id,title,session_id,taxonomy_id,workflow_json").execute().data or []
+             if w.get("taxonomy_id") in subtree]
+    if procs and procedures != "supprimer":
+        raise HTTPException(409, f"Cette branche contient {len(procs)} procédure{'s' if len(procs) > 1 else ''}.")
+    if procs:
+        in_camp = {s["procedure_id"] for s in db.table("campaign_procedures").select("procedure_id").execute().data or []}
+        kept = [w["title"] for w in procs if (w.get("workflow_json") or []) or w["id"] in in_camp]
+        if kept:
+            names = ", ".join(f"« {t} »" for t in kept[:5]) + ("…" if len(kept) > 5 else "")
+            raise HTTPException(409, f"{len(kept)} procédure{'s' if len(kept) > 1 else ''} rédigée{'s' if len(kept) > 1 else ''} "
+                                     f"ou en campagne ({names}) : déplacez-les ou supprimez-les d'abord.")
+        from routers.orchestration_router import _delete_procedure_cascade
+        for w in procs:
+            _delete_procedure_cascade(w["session_id"])
+    ids = list(subtree)
+    for i in range(0, len(ids), 200):  # sous-branches comprises (la base le fait aussi en cascade)
+        db.table("process_taxonomy").delete().in_("id", ids[i:i + 200]).execute()
+    return {"success": True, "procedures_supprimees": len(procs), "branches_supprimees": len(ids)}
 
 
 # ─── Migration données existantes ─────────────────────────────

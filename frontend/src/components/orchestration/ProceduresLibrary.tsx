@@ -222,6 +222,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
     const toggleEmpty = (v: boolean) => { setShowEmpty(v); try { localStorage.setItem('processmate-ref-vides', v ? '1' : '0'); } catch { /* facultatif */ } };
     /** branches créées pendant la session : restent visibles même vides, le temps d'y ranger quelque chose */
     const [justCreated, setJustCreated] = useState<Set<string>>(new Set());
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [search, setSearch] = useState('');
@@ -400,9 +401,17 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
             await fetchProcedures(true);
             return;
         }
-        await taxonomyApi.delete(modal.nodeId);
+        const node = findNode(tree, modal.nodeId);
+        const inside = node ? countProcs(node) : 0;
+        try {
+            await taxonomyApi.delete(modal.nodeId, inside > 0);
+        } catch (e) {
+            setDeleteError(e instanceof Error ? e.message : 'Suppression impossible');
+            return;
+        }
         setModal(null);
         await loadTree();
+        if (inside) await fetchProcedures(true);
     };
 
     // ── Open context menu ─────────────────────────────────────────
@@ -706,8 +715,9 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                     onSave={handleRename} onCancel={() => setModal(null)} />
             )}
             {modal?.type === 'confirm-delete' && (
-                <ConfirmDeleteModal name={modal.nodeName} level={modal.level}
-                    onConfirm={handleDelete} onCancel={() => setModal(null)} />
+                <ConfirmDeleteModal name={modal.nodeName} level={modal.level} error={deleteError}
+                    procCount={modal.level === 'procedure' ? 0 : (() => { const n = findNode(tree, modal.nodeId); return n ? countProcs(n) : 0; })()}
+                    onConfirm={handleDelete} onCancel={() => { setModal(null); setDeleteError(null); }} />
             )}
         </div>
     );
@@ -734,7 +744,7 @@ function RenameModal({ currentName, level, onSave, onCancel }: { currentName: st
     );
 }
 
-function ConfirmDeleteModal({ name, level, onConfirm, onCancel }: { name: string; level: string; onConfirm: () => void; onCancel: () => void }) {
+function ConfirmDeleteModal({ name, level, procCount = 0, error, onConfirm, onCancel }: { name: string; level: string; procCount?: number; error?: string | null; onConfirm: () => void; onCancel: () => void }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
@@ -742,8 +752,11 @@ function ConfirmDeleteModal({ name, level, onConfirm, onCancel }: { name: string
                 <p className="text-sm text-gray-500 mb-6">
                     {level === 'procedure'
                         ? <>Supprimer définitivement « {name} » ? Ses versions, tâches, affectations, irritants et historique seront aussi supprimés. Action irréversible.</>
-                        : <>Supprimer « {name} » ? Les procédures liées ne seront pas supprimées.</>}
+                        : procCount > 0
+                            ? <>Supprimer « {name} », ses sous-branches et {procCount === 1 ? 'la procédure' : `les ${procCount} procédures`} qu’elle contient ? Seules des procédures vides (non rédigées, hors campagne) partent ainsi ; une procédure rédigée se déplace d’abord.</>
+                            : <>Supprimer « {name} » et ses sous-branches ? Elles ne contiennent aucune procédure.</>}
                 </p>
+                {error && <p role="alert" className="-mt-3 mb-4 text-sm text-red-600">{error}</p>}
                 <div className="flex justify-end gap-2">
                     <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Annuler</button>
                     <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700">Supprimer</button>

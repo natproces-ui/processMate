@@ -68,6 +68,20 @@ class FakeQuery:
         self.filters.append(lambda r: r.get(k) in values)
         return self
 
+    def filter(self, k, op, v):
+        """Opérateurs PostgREST bruts utilisés par clinic : cs (contient, tableau JSON)."""
+        import json as _json
+        if op != "cs":
+            raise NotImplementedError(op)
+        wanted = set(_json.loads(v) if isinstance(v, str) else v)
+        self.filters.append(lambda r: wanted <= set(r.get(k) or []))
+        return self
+
+    def overlaps(self, k, values):
+        wanted = set(values)
+        self.filters.append(lambda r: bool(set(r.get(k) or []) & wanted))
+        return self
+
     def is_(self, k, v):
         self.filters.append(lambda r: r.get(k) is None if v in (None, "null") else r.get(k) is not None)
         return self

@@ -82,8 +82,9 @@ export const taxonomyApi = {
       body: JSON.stringify(body),
     }),
 
-  delete: (id: string) =>
-    fetchJSON<{ success: boolean; detached_procedures: number }>(`/api/orchestration/taxonomy/${id}`, {
+  /** withProcedures : supprime aussi les procédures (vides) de la branche ; sinon refusé si elle en contient */
+  delete: (id: string, withProcedures = false) =>
+    fetchJSON<{ success: boolean; procedures_supprimees: number }>(`/api/orchestration/taxonomy/${id}${withProcedures ? '?procedures=supprimer' : ''}`, {
       method: 'DELETE',
     }),
 

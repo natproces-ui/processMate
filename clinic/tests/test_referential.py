@@ -154,6 +154,25 @@ class ApplyTest(unittest.TestCase):
         again = self.client.post("/api/orchestration/referentiel/appliquer", json={"arbre": tree}, headers=self.as_("pilote")).json()
         self.assertEqual(again["crees"], {"themes": 0, "categories": 0, "sous_categories": 0, "procedures": 0})
 
+    def test_deleting_a_branch_never_orphans_procedures(self):
+        tree = rb.normalize(PROPOSAL)["arbre"]
+        self.client.post("/api/orchestration/referentiel/appliquer", json={"arbre": tree}, headers=self.as_("pilote"))
+        credit = next(n for n in self.db.rows("process_taxonomy") if n["name"] == "Crédit")
+        url = f"/api/orchestration/taxonomy/{credit['id']}"
+        r = self.client.delete(url, headers=self.as_("pilote"))
+        self.assertEqual(r.status_code, 409)  # elle contient une procédure : rien sans confirmation
+        r = self.client.delete(url + "?procedures=supprimer", headers=self.as_("pilote"))
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["procedures_supprimees"], 1)
+        self.assertFalse(any(w["title"] == "Octroyer un crédit" for w in self.db.rows("workflows")))
+        self.assertFalse(any(n["name"] == "Crédit" for n in self.db.rows("process_taxonomy")))
+        # une procédure rédigée bloque la suppression de sa branche
+        next(w for w in self.db.rows("workflows") if w["title"] == "Ouvrir un livret")["workflow_json"] = [{"id": "1"}]
+        r = self.client.delete("/api/orchestration/taxonomy/t-ep?procedures=supprimer", headers=self.as_("pilote"))
+        self.assertEqual(r.status_code, 409)
+        self.assertIn("Ouvrir un livret", r.json()["detail"])
+        self.assertTrue(any(n["id"] == "t-ep" for n in self.db.rows("process_taxonomy")))
+
 
 if __name__ == "__main__":
     unittest.main()
