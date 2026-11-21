@@ -160,3 +160,10 @@ def slots_from_gaps(body: GapSlots, access: Access = Depends(current_access)):
         return _call(bian.slots_from_gaps, body.campaign_id, body.domaines, _me(access))
     except CampaignError as e:
         raise HTTPException(e.status, str(e))
+
+
+@router.get("/accueil")
+async def get_home(access: Access = Depends(current_access)):
+    """Accueil de l'organisation, adapté au rôle (mes tâches, mes procédures ; pilotage)."""
+    from manager import home
+    return await asyncio.to_thread(home.home, _me(access), access.role)

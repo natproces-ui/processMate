@@ -157,7 +157,7 @@ export default function AppShell({
     };
     const newConv = () => {
         setNavOpen(false);
-        if (onNewConversation) onNewConversation(); else window.location.href = '/';
+        if (onNewConversation) onNewConversation(); else window.location.href = '/?nouvelle=1';
     };
     const onChanged = (id: string) => (next: ConversationSummary | null) => {
         setRecents(prev => (next ? prev.map(c => (c.id === id ? next : c)) : prev.filter(c => c.id !== id)));

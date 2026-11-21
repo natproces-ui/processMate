@@ -32,7 +32,6 @@ function PanelSkeleton() {
 
 // ── Main new panels ──
 const ProceduresLibrary   = dynamic(() => import('@/components/orchestration/ProceduresLibrary'),   { loading: PanelSkeleton });
-const ProceduresDrilldown = dynamic(() => import('@/components/orchestration/ProceduresDrilldown'), { loading: PanelSkeleton });
 const AnalyserPanel       = dynamic(() => import('@/components/orchestration/AnalyserPanel'),       { loading: PanelSkeleton });
 const WorkspaceShell      = dynamic(() => import('@/components/workspace/WorkspaceShell'),           { loading: PanelSkeleton });
 const TaskOrchestrationHub = dynamic(
@@ -390,15 +389,12 @@ function ProcessMateInner() {
                                     />
                                 </LazyPanel>
 
+                                {/* Campagnes : l'écran des procédures attendues (RACI, lancement, propositions du pilote) */}
                                 <LazyPanel active={activeTab === 'campagnes'}>
-                                    <ProceduresDrilldown
-                                        isAdmin={!!access?.can_manage_campaigns || profile?.global_role === 'admin' || profile?.global_role === 'process_owner'}
-                                        onOpenStudio={wfId => handleOpenStudio(wfId)}
-                                        onOpenWorkspace={pid => {
-                                            setWorkspaceProcedureId(pid);
-                                            handleTabChange('workspace');
-                                        }}
-                                    />
+                                    <CampaignsPanel onOpenProcedure={pid => {
+                                        setWorkspaceProcedureId(pid);
+                                        handleTabChange('workspace');
+                                    }} />
                                 </LazyPanel>
 
                                 <LazyPanel active={activeTab === 'analyser'}>
@@ -448,12 +444,7 @@ function ProcessMateInner() {
 
                                 {/* ─ Legacy / deep-link panels ─ */}
                                 <LazyPanel active={activeTab === 'dashboard'}><Dashboard /></LazyPanel>
-                                <LazyPanel active={activeTab === 'campaigns'}>
-                                    <CampaignsPanel onOpenProcedure={pid => {
-                                        setWorkspaceProcedureId(pid);
-                                        handleTabChange('workspace');
-                                    }} />
-                                </LazyPanel>
+
                                 <LazyPanel active={activeTab === 'corrections'}><CorrectionsPanel /></LazyPanel>
                                 <LazyPanel active={activeTab === 'portfolio'}><ProjectsPortfolio /></LazyPanel>
                                 <LazyPanel active={activeTab === 'taxonomy'}><TaxonomyTree /></LazyPanel>

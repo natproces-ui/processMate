@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam } from '@/lib/conversationsApi';
 import { projectsApi, type Project } from '@/lib/projectsApi';
 import { guestStore, GUEST_CONVERSATION_KEY, type GuestConversation } from '@/lib/guestStore';
+import { takePendingTurn } from '@/lib/pendingTurn';
 import AppShell from '@/components/home/AppShell';
 import { FolderOpen, Loader2 } from 'lucide-react';
 
@@ -33,6 +34,10 @@ export default function ChatHome() {
     const [initialMessage, setInitialMessage] = useState<string | undefined>();
     /** Texte prérempli, non envoyé (?brouillon=) : « Partir de mes sources » depuis l'accueil de l'organisation */
     const [initialDraft, setInitialDraft] = useState<string | undefined>();
+    /** Fichiers déposés sur l'accueil de l'organisation, envoyés avec le premier message */
+    const [initialFiles, setInitialFiles] = useState<File[] | undefined>();
+    /** Un membre arrive sur l'accueil de son organisation, pas dans un chat vide */
+    const [toHome, setToHome] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [guestWork, setGuestWork] = useState<GuestConversation | null>(null);
     const [importing, setImporting] = useState(false);
@@ -45,6 +50,19 @@ export default function ChatHome() {
         if (p) setProjectId(p);
         const proc = params.get('procedure');
         if (proc) setProcedureId(proc);
+        const bare = [...params.keys()].length === 0;  // avant de retirer les marqueurs ci-dessous
+        if (params.has('depart')) {  // premier message saisi sur l'accueil
+            const turn = takePendingTurn();
+            if (turn) { setInitialMessage(turn.text); setInitialFiles(turn.files); }
+            params.delete('depart');
+            window.history.replaceState(null, '', `${window.location.pathname}${params.toString() ? `?${params}` : ''}`);
+        }
+        if (params.has('nouvelle')) {  // « Nouvelle conversation » depuis un autre écran
+            params.delete('nouvelle');
+            window.history.replaceState(null, '', `${window.location.pathname}${params.toString() ? `?${params}` : ''}`);
+        } else if (bare) {
+            setToHome(true);  // adresse nue : l'accueil, si c'est un membre (décidé quand l'accès est connu)
+        }
         const draft = params.get('brouillon');
         if (draft) {
             setInitialDraft(draft);
@@ -116,7 +134,13 @@ export default function ChatHome() {
         setGuestWork(null);
     };
 
-    if (loading) {
+    // Membre arrivé sur l'adresse nue : son accueil (le chat reste à un clic : « Nouvelle conversation »)
+    const goHome = toHome && !!user && (access === null || !!access?.member);
+    useEffect(() => {
+        if (toHome && access?.member) window.location.replace('/espace');
+    }, [toHome, access?.member]);
+
+    if (loading || goHome) {
         return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="w-6 h-6 animate-spin text-neutral-900" /></div>;
     }
 
@@ -148,7 +172,7 @@ export default function ChatHome() {
                 <SttPanel key={panelKey} chatFirst guestMode={!user} projectId={projectId}
                     workflowId={member ? procedureId : undefined}
                     librarySave={member && !access?.read_only}
-                    initialMessage={initialMessage} initialDraft={initialDraft} />
+                    initialMessage={initialMessage} initialDraft={initialDraft} initialFiles={initialFiles} />
             </div>
         </AppShell>
     );

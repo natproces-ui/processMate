@@ -90,6 +90,8 @@ interface Props {
     initialMessage?: string;
     /** Texte prérempli dans le champ, NON envoyé (l'utilisateur joint ses fichiers d'abord) */
     initialDraft?: string;
+    /** Fichiers envoyés avec le premier message (déposés sur l'accueil de l'organisation) */
+    initialFiles?: File[];
 }
 
 const defaultData: Table1Row[] = [
@@ -107,8 +109,9 @@ const NO_ENRICHMENTS = new Map<string, TaskEnrichment>();
 const PROTECTED_META = new Set(['nom', 'ref', 'title', 'category', 'status', 'lifecycle_stages', 'raci', 'remarks',
     'validation', 'circuit', 'created_from', 'cible', 'has_unsaved_changes', 'last_modified_at']);
 
-export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage, initialDraft }: Props) {
-    const autoSend = useMemo(() => (initialMessage?.trim() ? { id: 1, text: initialMessage } : undefined), [initialMessage]);
+export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage, initialDraft, initialFiles }: Props) {
+    const autoSend = useMemo(() => (initialMessage?.trim() || initialFiles?.length
+        ? { id: 1, text: initialMessage || '', files: initialFiles } : undefined), [initialMessage, initialFiles]);
     const { invalidate } = useProceduresStore();
     const [processingLevel, setProcessingLevel] = useProcessingLevel();
     const [phase, setPhase] = useState<Phase>('upload');

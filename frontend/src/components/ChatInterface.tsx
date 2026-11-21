@@ -130,7 +130,7 @@ interface ChatInterfaceProps {
     /** Texte dicté à insérer dans le champ (id change à chaque dictée) */
     insertText?: { id: number; text: string };
     /** Message envoyé tout seul à l'ouverture (« Nouvelle conversation dans <projet> ») */
-    autoSendText?: { id: number; text: string };
+    autoSendText?: { id: number; text: string; files?: File[] };
     currentWorkflow: Table1Row[];
     currentEnrichments?: Map<string, TaskEnrichment>;
     currentProcedureMetadata?: Record<string, unknown> | null;
@@ -312,11 +312,19 @@ export default function ChatInterface({
     // Envoi automatique d'un premier message (page d'un projet → nouvelle conversation)
     const autoSentRef = useRef<number | null>(null);
     useEffect(() => {
-        if (!autoSendText?.text.trim() || autoSentRef.current === autoSendText.id) return;
+        // attendre la session : envoyé trop tôt, le premier message était ignoré sans bruit
+        if (!sessionId || !autoSendText || (!autoSendText.text.trim() && !autoSendText.files?.length) || autoSentRef.current === autoSendText.id) return;
         autoSentRef.current = autoSendText.id;
-        const t = setTimeout(() => { void sendMessage(autoSendText.text); }, 0);
+        // fichiers déposés hors du chat (accueil de l'organisation) : envoyés avec le premier message
+        const files = autoSendText.files || [];
+        const override = files.length ? {
+            files,
+            attachments: files.map(f => ({ name: f.name, size: f.size,
+                type: ACCEPTED_TYPES[f.type] || EXT_KIND[f.name.toLowerCase().split('.').pop() || ''] || 'pdf' })),
+        } : undefined;
+        const t = setTimeout(() => { void sendMessage(autoSendText.text, override); }, 0);
         return () => clearTimeout(t);
-    }, [autoSendText?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [autoSendText?.id, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Menu « + » : se ferme au clic extérieur ou avec Échap (plus besoin de recliquer sur +)
     useEffect(() => {
