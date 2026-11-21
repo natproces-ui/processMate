@@ -7,19 +7,19 @@ import { useProceduresStore } from '@/store/proceduresStore';
 import ImportPdfModal from '@/components/orchestration/ImportPdfModal';
 import BianScenarioMap from '@/components/orchestration/BianScenarioMap';
 
-// ─── Couleurs : la charte de l'application (noir, blanc, gris), plus celles de l'image BIAN ───
+// ─── Couleurs officielles du paysage BIAN (la carte reprend ce standard, on le reconnaît à ses couleurs) ───
 
 const C = {
-  domainBg:   'bg-neutral-900',
+  domainBg:   'bg-[#001489]',
   domainText: 'text-white',
-  sectionBg:  'bg-neutral-900',  // bandeau de section
+  sectionBg:  'bg-[#001489]',   // bandeau « Product Specific Fulfillment »
   sectionText:'text-white',
-  catBg:      'bg-neutral-700',
+  catBg:      'bg-[#1565C0]',
   catText:    'text-white',
-  tileBg:     'bg-white',
-  tileText:   'text-neutral-900',
-  tileBorder: 'border border-neutral-200',
-  colBg:      'bg-neutral-100',  // fond de colonne
+  tileBg:     'bg-[#FFFFCC]',
+  tileText:   'text-gray-900',
+  tileBorder: 'border border-[#c8c870]',
+  colBg:      'bg-gray-200',     // fond de colonne
 };
 
 // ─── Multi-column layout config ───────────────────────────────
@@ -159,7 +159,7 @@ function CategoryBlock({
                 >
                   <span className="leading-snug">{sub.name}</span>
                   {sub.procedure_count ? (
-                    <span className="shrink-0 text-[9px] font-bold px-1 py-px rounded bg-neutral-900 text-white">
+                    <span className="shrink-0 text-[9px] font-bold px-1 py-px rounded bg-[#001489] text-white">
                       {sub.procedure_count}
                     </span>
                   ) : null}
@@ -331,7 +331,7 @@ export default function BianServiceMap({ onGoToProcedures, onOpenProcedure, onGo
   // ── Main render ─────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col bg-neutral-50">
+    <div className="h-full flex flex-col bg-gray-300">
 
       {/* Top bar */}
       <div className="shrink-0 px-5 py-2.5 border-b border-gray-300 bg-white flex items-center justify-between">
