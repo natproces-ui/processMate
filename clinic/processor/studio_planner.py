@@ -82,6 +82,23 @@ def _norm(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (name or "").lower())
 
 
+def mentioned_procedures(message: str, titles: List[str]) -> List[int]:
+    """Numéros (1…n) des procédures de la conversation nommées dans le message : tous les mots
+    significatifs du titre (4 lettres et plus) y figurent."""
+    import unicodedata
+
+    def words(text: str) -> List[str]:
+        text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode().lower()
+        return re.findall(r"[a-z0-9]+", text)
+    said = set(words(message))
+    out = []
+    for n, title in enumerate(titles, 1):
+        key = [w for w in words(title) if len(w) >= 4 and w not in {"procedure", "formacash", "etape"}]
+        if key and all(w in said for w in key):
+            out.append(n)
+    return out
+
+
 def apply_guardrails(
     data: Dict[str, Any],
     filenames: List[str],
@@ -89,6 +106,7 @@ def apply_guardrails(
     previous_proposal: Optional[List[Dict[str, Any]]] = None,
     conversation_count: int = 0,
     conversation_titles: Optional[List[str]] = None,
+    message: str = "",
 ) -> StudioPlan:
     adjustments: List[str] = []
     conversation_count = max(conversation_count, len(conversation_titles or []))
@@ -101,6 +119,16 @@ def apply_guardrails(
     ref_set = set(references)
     procedures: List[Dict[str, Any]] = []
     for p in data.get("procedures") or []:
+        # procédures de la conversation dont celle-ci part (sa matière principale, corrections comprises)
+        base = []
+        for n in p.get("base") or []:
+            try:
+                n = int(n)
+            except (TypeError, ValueError):
+                continue
+            if 1 <= n <= conversation_count and n not in base:
+                base.append(n)
+        p = {**p, "base": base}
         sources = []
         for s in p.get("sources") or []:
             real = known.get(_norm(s.get("file", "")))
@@ -108,7 +136,7 @@ def apply_guardrails(
                 real = filenames[0]  # un seul fichier : la source ne peut être que lui
             if real and real not in ref_set:  # un fichier de référence n'est pas une source
                 sources.append({"file": real, "pages": s.get("pages") or None})
-        if p.get("title") and sources:
+        if p.get("title") and (sources or base):
             procedures.append({**p, "sources": sources})
         elif p.get("title"):
             adjustments.append(f"écartée faute de source : {p.get('title')}")
@@ -126,13 +154,34 @@ def apply_guardrails(
     ids = [p["id"] for p in procedures]
     targets = [t for t in (data.get("targets") or []) if t in ids]
 
+    # « Modifier » ne touche qu'UNE procédure. Une demande qui nomme plusieurs procédures de la conversation
+    # (« déplace le contrôle de Former dans Vérifier ») les refait chacune à partir d'elle-même
+    named = mentioned_procedures(message, conversation_titles or [])
+    if action == "edit" and len(named) >= 2 and not procedures:
+        # chacune voit toutes les procédures nommées : une étape déplacée garde son acteur et son outil d'origine
+        procedures = [{"id": f"p{i}", "title": conversation_titles[n - 1], "base": list(named), "sources": [],
+                       "description": f"« {conversation_titles[n - 1]} » après cette demande : {message.strip()[:300]}"}
+                      for i, n in enumerate(named, 1)]
+        ids = [p["id"] for p in procedures]
+        reply = "Je refais " + " et ".join(f"« {conversation_titles[n - 1]} »" for n in named) + " pour appliquer votre demande."
+    based = sorted({n for p in procedures for n in p.get("base") or []})
+    if action == "edit" and procedures and (len(based) >= 2 or len(procedures) >= 2) and based:
+        action = "generate"
+        targets = [p["id"] for p in procedures]
+        data = {**data, "remplace": data.get("remplace") or based}
+        adjustments.append("modification de plusieurs procédures : traitée comme une opération sur l'ensemble")
     if action == "edit" and not has_workflow:
         action = "generate" if procedures else "answer"
         adjustments.append("edit sans procédure ouverte")
     if action in ("generate", "propose", "merge") and not procedures:
-        action = "answer"
-        reply = reply or "Je n'ai pas trouvé de procédure exploitable dans ces fichiers. Pouvez-vous préciser ce que vous attendez ?"
-        adjustments.append("aucune procédure repérée")
+        if not filenames:
+            # sans fichier ni procédure existante dont partir : le chat rédige à partir du texte
+            action = "edit"
+            adjustments.append("création à partir du texte : confiée au chat")
+        else:
+            action = "answer"
+            reply = reply or "Je n'ai pas trouvé de procédure exploitable dans ces fichiers. Pouvez-vous préciser ce que vous attendez ?"
+            adjustments.append("aucune procédure repérée")
     # Une seule procédure proposée : le modèle ne la génère pas d'office quand le message ne fait que
     # présenter le fichier (« voici notre support ») ; l'utilisateur confirme d'un clic.
     if action == "merge" and not targets:
@@ -222,7 +271,7 @@ def plan_turn(
         if len(retry.get("procedures") or []) > found:
             data = retry
     plan = apply_guardrails(data, filenames, has_workflow, previous_proposal, len(conversation_procedures or []),
-                            [p.get("titre") or "" for p in conversation_procedures or []])
+                            [p.get("titre") or "" for p in conversation_procedures or []], message)
     if wanted and plan.action in ("generate", "propose") and 0 < len(plan.procedures) < wanted and str(wanted) not in plan.reply:
         n = len(plan.procedures)
         plan.reply = (plan.reply + f" Vous en attendiez {wanted} : les fichiers en décrivent {n} distinctes. "

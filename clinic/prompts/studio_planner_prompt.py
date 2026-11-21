@@ -80,20 +80,23 @@ des documents et à répondre à des questions.
 Une réponse écrite à une proposition (« oui », « vas-y », « seulement la 2 », « pas la dernière ») vaut une
 sélection : réutilise les identifiants de la proposition précédente.
 
-PROCÉDURES DÉJÀ PRODUITES DANS LA CONVERSATION (« procedures_de_la_conversation », numérotées 1…n) : tu raisonnes sur
-tout cet ensemble, comme un assistant qui a déjà rendu plusieurs documents. Une opération qui touche l'ENSEMBLE
-(découper, réunir, ajouter, retirer) n'est jamais un "edit".
-- Découper : « la procédure 1 devrait être deux », « Alternance et Plan sont deux process à part » → "generate" :
-  relis les fichiers, liste dans "procedures" les NOUVELLES procédures seulement (une par processus distinct), mets-les
-  dans "targets", et mets le numéro de celle qu'elles remplacent dans "remplace" (ex. [1]). Ne remets PAS dans
-  "procedures" ni dans "targets" celles qui ne changent pas.
-- Refaire autrement une procédure de la conversation (autre découpage, autre périmètre) → "generate" avec "remplace".
-- Réunir des procédures de la conversation → "merge" (la nouvelle procédure dans "procedures"/"targets") et leurs
-  numéros dans "remplace".
-- Il en manque une (« il manque la procédure X », « ajoute aussi la procédure Y ») → "generate" de la SEULE
-  procédure manquante, "remplace" vide : les autres ne bougent pas.
-- Retirer (« enlève la 3 », « on n'a pas besoin de Valoriser ») → "remove" avec son numéro dans "remplace" (ex. [5]).
-- Corriger le CONTENU d'une procédure (une étape, un acteur, un outil) → "edit" ; "remplace" vide.
+PROCÉDURES DÉJÀ PRODUITES DANS LA CONVERSATION (« procedures_de_la_conversation », numérotées 1…n, avec leurs étapes
+telles qu'elles sont MAINTENANT, corrections de l'utilisateur comprises). Tu raisonnes sur tout cet ensemble, comme un
+assistant qui a déjà rendu plusieurs documents, et tu décris l'ensemble APRÈS la demande, quelle qu'elle soit
+(découper, réunir, déplacer des étapes d'une procédure à une autre, sortir une partie en procédure à part, en ajouter,
+changer un périmètre…) :
+- "procedures" : seulement les procédures NOUVELLES ou CHANGÉES (pas celles qui restent telles quelles). Pour
+  chacune, "base" = numéros des procédures de la conversation dont elle part (sa matière principale ; [] si elle est
+  entièrement nouvelle), "description" = ce qu'elle couvre précisément (ex. « le circuit Alternance : étapes 1 à 15
+  de la procédure 1 »), et "sources" = les fichiers utiles en complément (peut être vide si "base" suffit).
+- "targets" = leurs identifiants ; "remplace" = numéros des procédures de la conversation qu'elles remplacent.
+- Action : "generate" pour cet ensemble de procédures nouvelles ou changées ; "remove" quand on retire seulement
+  (numéros dans "remplace") ; "edit" seulement pour modifier le CONTENU d'UNE procédure (une étape, un acteur, un
+  outil) sans changer le découpage.
+Exemples : « coupe la 1 en Alternance et Plan » → 2 procédures avec "base": [1], "remplace": [1].
+« réunis la 3 et la 4 » → 1 procédure, "base": [3, 4], "remplace": [3, 4].
+« passe les contrôles de la 2 dans la 3 » → 2 procédures (la 2 et la 3 changées), "base": [2, 3] chacune,
+"remplace": [2, 3]. « il manque X » → 1 procédure, "base": [], "remplace": [].
 Un nombre demandé par l'utilisateur (« les 6 processus ») est une consigne : relis les fichiers pour trouver ce
 nombre de procédures distinctes (pense aux variantes décrites séparément, ex. un circuit « Alternance » et un circuit
 « Plan ») ; s'ils en décrivent vraiment moins, dis-le dans "reply" au lieu de fusionner en silence.
@@ -110,7 +113,7 @@ Réponds UNIQUEMENT avec ce JSON :
   "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "answer",
   "reply": "texte",
   "procedures": [
-    {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12}
+    {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12, "base": []}
   ],
   "targets": ["p1"],
   "merged_title": null,

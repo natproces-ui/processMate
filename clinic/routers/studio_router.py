@@ -148,6 +148,52 @@ def _scope_instructions(proc: Dict[str, Any]) -> str:
             "Le document peut contenir d'autres procédures : ignore-les.")
 
 
+def _steps_summary(proc: Dict[str, Any], limit: int = 80) -> List[str]:
+    """Étapes d'une procédure de la conversation, en une ligne chacune (pour l'aiguillage)."""
+    out = []
+    for r in (proc.get("workflow") or [])[:limit]:
+        if not isinstance(r, dict):
+            continue
+        who = r.get("acteur") or r.get("département") or ""
+        tool = f" · {r['outil']}" if r.get("outil") else ""
+        out.append(f"{r.get('id')}. {str(r.get('étape') or '')[:90]} — {who}{tool}")
+    return out
+
+
+def _existing_as_source(proc: Dict[str, Any]) -> Dict[str, Any]:
+    """Une procédure de la conversation présentée au moteur de rédaction comme un document source (texte) :
+    ses étapes, acteurs, outils, conditions, enchaînements et descriptions, tels qu'ils sont maintenant."""
+    title = proc.get("title") or "Procédure"
+    enr = proc.get("enrichments") or {}
+    lines = [f"# Procédure existante : {title}", "",
+             "| id | étape | type | département | acteur | outil | condition | suivantes | description |",
+             "|---|---|---|---|---|---|---|---|---|"]
+    for r in proc.get("workflow") or []:
+        if not isinstance(r, dict):
+            continue
+        nxt = ", ".join(f"{o.get('targetId')}" + (f" ({o.get('label')})" if o.get("label") else "")
+                        for o in r.get("outputs") or [] if isinstance(o, dict))
+        desc = (enr.get(str(r.get("id"))) or {}).get("descriptif") if isinstance(enr.get(str(r.get("id"))), dict) else ""
+        cells = [r.get("id"), r.get("étape"), r.get("typeBpmn"), r.get("département"), r.get("acteur"),
+                 r.get("outil"), r.get("condition"), nxt, desc]
+        lines.append("| " + " | ".join(str(c or "").replace("|", "/").replace("\n", " ") for c in cells) + " |")
+    text = "\n".join(lines)
+    name = f"Procédure existante — {title}.txt"
+    return {"file_id": f"existante-{proc.get('key')}", "filename": name, "type": "texte", "data": text.encode("utf-8"),
+            "size": len(text), "office": {"text": text, "images": [], "connections": 0}}
+
+
+def _base_note(proc: Dict[str, Any], base_files: Dict[int, Dict[str, Any]]) -> str:
+    names = [base_files[n]["filename"] for n in proc.get("base") or [] if n in base_files]
+    if not names:
+        return ""
+    return ("\nMATIÈRE PRINCIPALE : " + ", ".join(f"« {x} »" for x in names) + " — la version À JOUR, corrigée par "
+            "l'utilisateur. Reprends-en fidèlement les étapes, acteurs, outils, conditions et descriptions pour la partie "
+            f"qui correspond à « {proc.get('title')} »" + (f" ({proc['description']})" if proc.get("description") else "")
+            + ". Les autres documents ne servent qu'à compléter un détail manquant ; en cas de désaccord, la procédure "
+            "existante l'emporte.")
+
+
 def _archived_event(replaced: List[Dict[str, Any]], by: Optional[List[str]] = None) -> str:
     """Procédures de la conversation archivées (remplacées ou retirées) : rien n'est détruit, on peut les rétablir."""
     return _sse({"type": "procedures_archived", "keys": [p["key"] for p in replaced],
@@ -156,8 +202,29 @@ def _archived_event(replaced: List[Dict[str, Any]], by: Optional[List[str]] = No
 
 async def _generate(request: Request, files: List[Dict[str, Any]], procedures: List[Dict[str, Any]],
                     targets: List[str], merge: bool, merged_title: Optional[str], message: str,
-                    references: Optional[List[str]] = None, replaced: Optional[List[Dict[str, Any]]] = None):
+                    references: Optional[List[str]] = None, replaced: Optional[List[Dict[str, Any]]] = None,
+                    existing: Optional[List[Dict[str, Any]]] = None):
     chosen = [p for p in procedures if p["id"] in targets]
+    # Procédures de la conversation dont partent les nouvelles : jointes comme sources de premier rang
+    # (la version à jour, corrections comprises) ; les fichiers ne servent plus qu'en complément
+    # Plusieurs procédures refaites ensemble (déplacer des étapes, réorganiser) : chacune voit tous les originaux
+    # concernés, une étape qui passe de l'une à l'autre garde ainsi son acteur, son outil, sa description
+    involved = sorted({n for p in chosen for n in p.get("base") or []})
+    if len(involved) >= 2:
+        chosen = [{**p, "base": involved} if p.get("base") else p for p in chosen]
+    base_files: Dict[int, Dict[str, Any]] = {}
+    for p in chosen:
+        for n in p.get("base") or []:
+            if existing and 1 <= n <= len(existing) and n not in base_files:
+                base_files[n] = _existing_as_source(existing[n - 1])
+    # une procédure de la conversation qu'on refait garde son nom (le rédacteur ne la rebaptise pas)
+    existing_titles = {(p.get("title") or "").strip().lower() for p in existing or []}
+    chosen = [{**p, "keep_title": True} if p.get("base") and p["title"].strip().lower() in existing_titles else p
+              for p in chosen]
+    if base_files:
+        files = list(files) + list(base_files.values())
+        chosen = [{**p, "sources": [{"file": base_files[n]["filename"]} for n in p.get("base") or [] if n in base_files]
+                   + list(p.get("sources") or [])} for p in chosen]
     if not chosen:
         yield _sse({"type": "error", "message": "Aucune procédure sélectionnée."})
         return
@@ -169,7 +236,7 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
                   "sources": [s for p in chosen for s in p.get("sources") or []]}
         jobs = [(merged, MERGE_RULES.format(titles=", ".join(f"« {p['title']} »" for p in chosen)) + user_note)]
     else:
-        jobs = [(p, _scope_instructions(p) + user_note) for p in chosen]
+        jobs = [(p, _scope_instructions(p) + _base_note(p, base_files) + user_note) for p in chosen]
 
     for proc, _ in jobs:
         yield _sse({"type": "procedure_started", "id": proc["id"], "title": proc["title"]})
@@ -222,7 +289,8 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
                 _, proc, result, error = item
                 remaining -= 1
                 if error is None:
-                    done = {"title": result.get("title") or proc["title"], "workflow": result.get("workflow") or [],
+                    done = {"title": proc["title"] if proc.get("keep_title") else (result.get("title") or proc["title"]),
+                            "workflow": result.get("workflow") or [],
                             "procedureMetadata": result.get("procedureMetadata") or {}}
                     ready.append({**done, "id": proc["id"]})
                     yield _sse({"type": "procedure_ready", "id": proc["id"], **done,
@@ -573,8 +641,8 @@ async def studio_turn(
     workflow = _loads(current_workflow, None)
     # Procédures déjà produites dans la conversation : l'aiguillage raisonne sur tout l'ensemble
     conv_procs = [p for p in (_loads(conversation_procedures, None) or []) if isinstance(p, dict) and p.get("key")]
-    conv_summary = [{"n": i + 1, "titre": p.get("title") or "Procédure", "etapes": len(p.get("workflow") or [])}
-                    for i, p in enumerate(conv_procs)]
+    conv_summary = [{"n": i + 1, "titre": p.get("title") or "Procédure", "nb_etapes": len(p.get("workflow") or []),
+                     "etapes": _steps_summary(p)} for i, p in enumerate(conv_procs)]
     has_workflow = bool(workflow)
     conv = await _owned_conversation(session_id, user)
     plan_files = new_files
@@ -628,7 +696,7 @@ async def studio_turn(
                                                   False, None, message, sess.get("references")):
                             yield ev
                     return
-                if not sess["files"] and not sess.get("proposal") and not sess.get("referentiel"):
+                if not sess["files"] and not sess.get("proposal") and not sess.get("referentiel") and not conv_procs:
                     # Ni sources ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…).
                     # Avec des sources déjà jointes (ex. relance après une erreur), on passe par leur analyse :
                     # sinon le chat rédigeait une procédure sans avoir lu le fichier.
@@ -672,7 +740,7 @@ async def studio_turn(
                         consume(guest, "generations")  # GuestLimitError → message d'erreur ci-dessous
                     async for ev in _generate(request, sess["files"], plan.procedures, plan.targets,
                                               plan.action == "merge", plan.merged_title, message,
-                                              sess.get("references"), replaced):
+                                              sess.get("references"), replaced, conv_procs):
                         yield ev
                 elif plan.action == "remove":
                     yield _archived_event(replaced)

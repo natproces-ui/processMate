@@ -41,7 +41,54 @@ class PlannerOpsTest(unittest.TestCase):
                                       [{"n": 1, "titre": "Organiser la formation", "etapes": 31}])
         ctx = json.loads(prompt.split("CONTEXTE :\n", 1)[1])
         self.assertEqual(ctx["procedures_de_la_conversation"][0]["titre"], "Organiser la formation")
-        self.assertIn("Découper", prompt)
+        self.assertIn('"base"', prompt)
+
+
+class FromExistingTest(unittest.TestCase):
+    def test_procedure_based_on_the_conversation_needs_no_file(self):
+        plan = apply_guardrails({"action": "generate", "remplace": [1], "targets": ["p1", "p2"], "procedures": [
+            {"id": "p1", "title": "Organiser — Alternance", "base": [1, 7]},
+            {"id": "p2", "title": "Organiser — Plan", "base": [1]},
+            {"id": "p3", "title": "Sans rien", "base": []}]}, [], True, None, conversation_count=2)
+        self.assertEqual([(p["title"], p["base"]) for p in plan.procedures],
+                         [("Organiser — Alternance", [1]), ("Organiser — Plan", [1])])  # 7 n'existe pas ; « Sans rien » écartée
+        self.assertEqual((plan.action, plan.replaces), ("generate", [1]))
+
+    def test_moving_steps_between_two_procedures_is_not_an_edit(self):
+        plan = apply_guardrails({"action": "edit", "procedures": [
+            {"id": "p1", "title": "Former", "base": [1]}, {"id": "p2", "title": "Vérifier", "base": [2]}]},
+            ["deck.pptx"], True, None, conversation_count=2)
+        self.assertEqual((plan.action, plan.targets, plan.replaces), ("generate", ["p1", "p2"], [1, 2]))
+
+    def test_edit_naming_two_procedures_redoes_both(self):
+        plan = apply_guardrails({"action": "edit", "reply": "J'ai déplacé l'étape."}, [], True, None, 3,
+                                ["Former", "Vérifier", "Payer"],
+                                "Le contrôle des émargements doit se faire dans Vérifier, pas dans Former")
+        self.assertEqual((plan.action, plan.replaces), ("generate", [1, 2]))
+        self.assertEqual([(p["title"], p["base"]) for p in plan.procedures], [("Former", [1, 2]), ("Vérifier", [1, 2])])
+        # une seule procédure nommée : la modification reste une modification
+        plan = apply_guardrails({"action": "edit"}, [], True, None, 3, ["Former", "Vérifier", "Payer"],
+                                "Dans Former, l'étape 3 est faite par la RH")
+        self.assertEqual(plan.action, "edit")
+
+    def test_new_procedure_from_text_goes_to_the_chat(self):
+        plan = apply_guardrails({"action": "generate", "procedures": [{"id": "p1", "title": "Recycler", "base": []}],
+                                 "targets": ["p1"]}, [], True, None, conversation_count=2)
+        self.assertEqual(plan.action, "edit")  # pas de fichier ni d'existant : le chat rédige à partir du texte
+
+    def test_existing_procedure_is_given_as_source_with_corrections(self):
+        from routers.studio_router import _base_note, _existing_as_source
+        proc = {"key": "k1", "title": "Organiser la formation",
+                "workflow": [{"id": "1", "étape": "Exprimer le besoin", "typeBpmn": "UserTask", "acteur": "Service RH",
+                              "outil": "ServiceNow", "outputs": [{"targetId": "2"}]}],
+                "enrichments": {"1": {"descriptif": "Le manager saisit | la demande"}}}
+        src = _existing_as_source(proc)
+        self.assertEqual((src["type"], src["filename"]), ("texte", "Procédure existante — Organiser la formation.txt"))
+        self.assertIn("| 1 | Exprimer le besoin | UserTask |  | Service RH | ServiceNow |  | 2 | Le manager saisit / la demande |",
+                      src["office"]["text"])
+        note = _base_note({"title": "Organiser — Plan", "base": [1], "description": "le circuit Plan"}, {1: src})
+        self.assertIn("MATIÈRE PRINCIPALE", note)
+        self.assertIn("la procédure existante l'emporte", note)
 
 
 class RecordedArchiveTest(unittest.TestCase):
