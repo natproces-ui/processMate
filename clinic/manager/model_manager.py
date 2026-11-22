@@ -88,6 +88,20 @@ def _client() -> genai.Client:
     return _shared_client
 
 
+# Un client par clé, gardé pour toute la vie du serveur. Un genai.Client se ferme quand Python le détruit
+# (Client.__del__) : un client propre à un objet de passage (ChatProcessor, MultiDocProcessor…) cassait les appels
+# encore en cours avec « Cannot send a request, as the client has been closed ».
+_clients_by_key: Dict[str, genai.Client] = {}
+
+
+def shared_client(api_key: Optional[str]) -> genai.Client:
+    if not api_key or api_key == GOOGLE_API_KEY:
+        return _client()
+    if api_key not in _clients_by_key:
+        _clients_by_key[api_key] = genai.Client(api_key=api_key)
+    return _clients_by_key[api_key]
+
+
 def transcribe_audio(audio_bytes: bytes, mime_type: str, language_codes: List[str] = ["fr-FR"]) -> str:
     """Dictée : texte fidèle d'un enregistrement audio.
 
@@ -456,7 +470,7 @@ class GeminiModelManager:
     """
 
     def __init__(self, api_key: str):
-        self.client = genai.Client(api_key=api_key)
+        self.client = shared_client(api_key)  # jamais un client propre à l'objet (voir shared_client)
         self.retry_strategy = ModelRetryStrategy(max_retries=1, retry_delay=2.0)
 
     def get_model(self, model_name: str):

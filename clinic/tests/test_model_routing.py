@@ -101,3 +101,20 @@ class UserErrorTest(unittest.TestCase):
         self.assertNotIn("prepayment", credit)
         self.assertIn("très sollicité", user_error("429 RESOURCE_EXHAUSTED quota exceeded"))
         self.assertIn("ne répond plus", user_error("Le modèle ne répond plus depuis 180 s"))
+
+
+class SharedClientTest(unittest.TestCase):
+    def test_processors_share_one_client(self):
+        import gc
+        from unittest import mock
+        from manager import model_manager as mm
+        with mock.patch.object(mm.genai, "Client", side_effect=lambda **k: mock.Mock(name="client")),                 mock.patch.object(mm, "_shared_client", None), mock.patch.dict(mm._clients_by_key, clear=True):
+            a = mm.GeminiModelManager(mm.GOOGLE_API_KEY)
+            b = mm.GeminiModelManager(mm.GOOGLE_API_KEY)
+            self.assertIs(a.client, b.client)
+            models = b.client.models
+            del b
+            gc.collect()
+            self.assertIs(mm._client().models, models)  # rien n'a été fermé
+        self.assertIn("connexion au service d'IA", __import__("manager.model_routing", fromlist=["x"]).user_error(
+            "Cannot send a request, as the client has been closed."))

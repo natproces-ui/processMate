@@ -164,6 +164,8 @@ def user_error(text: str) -> str:
         return "Le service d'IA est très sollicité en ce moment. Réessayez dans une minute ; votre travail est conservé."
     if "api key" in low or "permission_denied" in low or "unauthenticated" in low:
         return "Le service d'IA refuse l'accès (clé non valide). Prévenez l'administrateur de ProcessMate."
+    if "client has been closed" in low:
+        return "La connexion au service d'IA s'est interrompue. Réessayez ; votre travail est conservé."
     if "503" in low or "unavailable" in low or "overloaded" in low:
         return "Le service d'IA est momentanément indisponible. Réessayez dans un instant."
     return scrub_model_names(raw)[:300]
