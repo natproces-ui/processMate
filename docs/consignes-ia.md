@@ -60,7 +60,7 @@ Les dix contradictions sont tranchées ; le glossaire (`clinic/prompts/glossaire
 | C4 | Descriptions | **Autant que possible**, à partir de la source, des explications du chat ou de la compréhension du métier. Sinon vide : l'utilisateur complète. Jamais « à préciser ». |
 | C5 | Déduire / inventer | Comme recommandé : on déduit le titre, l'acteur évident, la nature, les abréviations, la description générale ; on n'invente ni étape, ni outil, ni délai, ni montant, ni règle propres à l'organisation. |
 | C6 | Libellés des décisions | Comme recommandé : question + Oui/Non en formalisation, exacts en transcription. |
-| C7 | Noms | Étape : verbe à l'infinitif + objet. Procédure : **le titre de la source quand il existe** (« Crédit documentaire à l'export – Modification »), sinon un titre court qui dit ce qu'elle accomplit. |
+| C7 | Noms | Étape : verbe à l'infinitif + objet. Procédure : **le titre de la source quand il existe** ; sinon un titre **nominal dans le style des fiches CIH** (décision du 22/11/2026) : « Objet – Événement » (« SBLC Import – Mise en jeu », « Formation en alternance – Organisation ») ou « Action + objet » (« Ouverture des cautions émises à l'international ») ; jamais « Procédure / Processus / Workflow de… » sauf si la source l'écrit, jamais de verbe à l'infinitif, une seule des deux formes. |
 | C8 | Définition d'une procédure | Celle du chat, pour tous les détecteurs, complétée : une procédure peut regrouper des sous-procédures (un début, une fin, des transitions) ; des circuits sans passage de l'un à l'autre sont distincts ; si on ne peut pas trancher, on propose ou on demande. Chaque forme de source se lit selon sa forme. |
 | C9 | Outils | Applicatifs et outils utilisés (TI+, Docflow, Swift Alliance, Outlook, Excel…). **Ni le papier ni le téléphone.** Pas les documents produits. |
 | C10 | Ton | On répond dès la première phrase ; pas de salutation quand l'utilisateur demande quelque chose, une réponse simple s'il salue sans rien demander. Texte bien mis en forme, visuel si utile, pas d'étiquettes « Conseil », « Remarque », « Recommandation ». |
@@ -141,6 +141,11 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
      procédure visée, annonce d'un document à venir). Actions ajoutées : `explain`, `search`.
      Banc des décisions (3 passages) : 52/53, comme avant, avec un seul appel de décision par message au lieu de deux.
      Le classifieur ne sert plus qu'à la route `/api/chat/message`, qu'aucun écran n'appelle (à retirer sur décision).
+   - **Titres des procédures — fait le 22/11/2026** (glossaire 0.5, rédaction, aiguillage, découverte, référentiel). La rédaction
+     demandait jusque-là de commencer par « Processus de… / Workflow de… / Procédure de… », et le référentiel « verbe + objet ».
+     Banc `bench/titres.py` (aiguillage sur Forma Cash, MCNE, modes opératoires DEP-MP, découverte, création depuis un texte) :
+     **2/23 → 22/22 titres conformes**. Garde-fou ajouté : une demande explicite de copie fidèle (« tel quel », « à l'identique »,
+     « sans reformuler »…) avec un fichier joint est toujours une transcription. Banc des décisions : 57/58 (3 passages).
    - **Interfaces applicatives dans le cerveau — fait le 22/11/2026.** `interface_prompt` (systèmes utilisés, tâches liées,
      échanges entre outils) est rebranché : action `interfaces` de l'aiguillage (« quelles sont les interfaces ? », « quels
      systèmes dans Vérifier ? »), sur la procédure visée. Réponse dans le chat (un système par ligne, avec ses étapes ; « à

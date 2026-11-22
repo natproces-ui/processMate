@@ -47,7 +47,7 @@ Réponds UNIQUEMENT avec ce JSON, sans markdown :
 {
   "processes": [
     {
-      "title": "Titre clair et professionnel du processus",
+      "title": "Titre selon la règle TITRE ci-dessus (titre de la source, sinon nominal : « Objet – Événement » ou « Action + objet »)",
       "description": "Description en 2-3 phrases : objectif, acteurs principaux, étapes clés",
       "source_files": ["nom_fichier_1", "nom_fichier_2"],
       "estimated_steps": 12,

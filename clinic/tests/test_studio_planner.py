@@ -39,6 +39,14 @@ class GuardrailTests(unittest.TestCase):
         # sans fichier, le chat recopie le texte donné
         self.assertEqual(apply_guardrails({"action": "transcribe"}, [], False).action, "edit")
 
+    def test_explicit_faithful_copy_is_a_transcription(self):
+        plan = apply_guardrails({"action": "generate", "procedures": [{"id": "p1", "title": "MCNE", "sources": [{"file": "mcne.pdf"}]}]},
+                                ["mcne.pdf"], False, message="Recopie ce logigramme tel quel, sans reformuler.")
+        self.assertEqual(plan.action, "transcribe")
+        plan = apply_guardrails({"action": "generate", "procedures": [{"id": "p1", "title": "MCNE", "sources": [{"file": "mcne.pdf"}]}]},
+                                ["mcne.pdf"], False, message="Formalise ce logigramme.")
+        self.assertEqual(plan.action, "generate")
+
     def test_targeted_question(self):
         plan = apply_guardrails({"action": "ask", "reply": "Ce fichier est un plan de risques : que voulez-vous en tirer ?"},
                                 ["plan.xlsx"], False)

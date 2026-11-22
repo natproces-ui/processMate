@@ -41,8 +41,10 @@ Règles :
   sous-catégorie (jamais directement sous un thème ou une catégorie). Si la demande ne nomme pas certains
   niveaux, propose-les toi-même (noms courts du métier, tirés des sources) : ne demande jamais de les préciser,
   l'utilisateur les renommera s'il le souhaite. Noms en français, sans numérotation.
-- Nom de procédure = verbe + objet
-  (« Ouvrir un compte sur livret », « Traiter une opposition sur carte »).
+- Nom de procédure : celui des sources quand elles le donnent ; sinon un nom NOMINAL dans le style des référentiels
+  bancaires, sans « Procédure » ni verbe à l'infinitif : « Objet – Événement » pour une étape de la vie d'un produit
+  (« Credoc Export – Réalisation », « Compte sur livret – Ouverture ») ou « Action + objet » (« Ouverture des cautions
+  émises à l'international », « Traitement des oppositions sur carte »).
 - Si le référentiel actuel contient déjà un thème ou une catégorie équivalents, reprends EXACTEMENT son nom :
   l'application rangera la proposition dedans au lieu d'en créer un doublon.
 - Remarques : de 3 à 8, utiles et concrètes, une phrase chacune. Types : "doublon" (deux procédures ou branches

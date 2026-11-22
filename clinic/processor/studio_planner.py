@@ -91,6 +91,10 @@ def _norm(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (name or "").lower())
 
 
+_FAITHFUL = re.compile(r"tel(le)?s? quel(le)?s?|à l.identique|sans (le |la |les )?reformul|mot pour mot|"
+                       r"recopie|copie (fidèle|exacte)|transcri(s|re|ption) (fidèle|exacte|à l)", re.I)
+
+
 def mentioned_procedures(message: str, titles: List[str]) -> List[int]:
     """Numéros (1…n) des procédures de la conversation nommées dans le message : tous les mots
     significatifs du titre (4 lettres et plus) y figurent, ou son premier mot quand aucun autre titre ne
@@ -187,6 +191,10 @@ def apply_guardrails(
     if action == "edit" and not has_workflow and not conversation_count:
         action = "generate" if procedures else "answer"
         adjustments.append("edit sans procédure ouverte")
+    # Une demande explicite de copie fidèle d'un fichier joint est une transcription, jamais une formalisation
+    if action in ("generate", "propose") and filenames and _FAITHFUL.search(message or ""):
+        action = "transcribe"
+        adjustments.append("copie fidèle demandée : transcription")
     # Transcrire porte sur un fichier joint ; sans fichier, le chat recopie le texte donné
     if action == "transcribe" and not filenames:
         action, chat_intent = "edit", "transcribe"

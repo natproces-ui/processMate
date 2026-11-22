@@ -12,7 +12,7 @@ Exemples tirés de procédures réelles (procédures Opérations à l'internatio
 Branché dans : aiguillage du chat (prompts/studio_planner_prompt.py).
 """
 
-GLOSSAIRE_VERSION = "0.4"
+GLOSSAIRE_VERSION = "0.5"
 
 GLOSSAIRE = """RÈGLES MÉTIER COMMUNES (ProcessMate — procédures bancaires et d'entreprise)
 
@@ -51,9 +51,18 @@ PROCÉDURE
   seul déroulé (un seul logigramme, une seule fiche : un début, une fin, des transitions entre elles).
 - Quand on ne peut pas trancher, on propose un découpage et on le dit, ou on demande.
 - Une fiche procédure = en général une procédure (son titre le dit).
-- Titre : celui de la source quand elle en donne un (« Crédit documentaire à l'export –
-  Modification ») ; sinon un titre court qui dit ce que la procédure accomplit (« Organiser une
-  formation en alternance »), jamais un mot vague (« Formation »).
+- Titre : celui de la source quand elle en donne un. Sinon, un titre NOMINAL dans le style des
+  référentiels bancaires, sans « Procédure », « Processus » ni « Workflow » (sauf si la source nomme
+  ainsi la procédure) et sans verbe à l'infinitif (réservé aux étapes) :
+  · « Objet – Événement » quand la procédure traite une étape de la vie d'un produit ou d'un dossier
+    (« Credoc Export – Réalisation », « SBLC Import – Mise en jeu », « MCNE en devise – Prorogation »,
+    « Titres d'importation – Domiciliation », « Formation en alternance – Organisation ») ;
+  · sinon « Action + objet » au nom (« Ouverture des cautions émises à l'international »,
+    « Rapatriements en devises », « Gestion des comptes NOSTRO », « Contrôle des pièces de formation »).
+  Une seule des deux formes : un titre qui commence déjà par une action n'a pas d'événement après le
+  tiret (« Contrôle des pièces de formation », pas « Contrôle des pièces de formation – Vérification »).
+  Le partenaire ou le canal se met en fin de titre quand il distingue la procédure (« … – CDG »).
+  Jamais un mot vague seul (« Formation », « Traitement »).
 
 ÉTAPE
 - Formaliser (par défaut) : un verbe à l'infinitif et un objet précis (« Contrôler la complétude du

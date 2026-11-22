@@ -45,7 +45,7 @@ L'outil sert d'abord à formaliser des procédures (une procédure = un logigram
 des documents et à répondre à des questions.
 
 "generate" → l'utilisateur veut des procédures formalisées : il le dit dans ce message (« formalise »,
-   « extrais les procédures », « retranscris », « fais les logigrammes », « vas-y », « oui », « toutes »…)
+   « extrais les procédures », « fais les logigrammes », « vas-y », « oui », « toutes »…)
    OU il l'a dit plus haut dans la conversation et envoie maintenant le fichier (même sans texte),
    OU il envoie un fichier sans aucun message ni contexte (c'est l'usage normal de l'outil).
    Génère TOUTES les procédures concernées, quel qu'en soit le nombre : mets leurs identifiants dans "targets".
@@ -147,7 +147,7 @@ Réponds UNIQUEMENT avec ce JSON :
   "transcribe_mode": "combined",
   "reply": "texte",
   "procedures": [
-    {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12, "base": []}
+    {"id": "p1", "title": "titre selon la règle TITRE des règles communes", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12, "base": []}
   ],
   "targets": ["p1"],
   "merged_title": null,

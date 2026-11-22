@@ -133,8 +133,9 @@ Si un acteur externe intervient dans le processus — que ce soit par une swimla
 - Dans les métadonnées du document
 - En en-tête de page
 
-**SI AUCUN TITRE VISIBLE** : Déduis un titre professionnel depuis le contenu global
-- Commence par "Processus de..." ou "Workflow de..." ou "Procédure de..."
+**SI AUCUN TITRE VISIBLE** : Déduis un titre selon la règle TITRE des règles communes (nominal, style des
+référentiels bancaires : « Objet – Événement » ou « Action + objet », sans « Procédure de… », « Processus de… »
+ni « Workflow de… », sans verbe à l'infinitif)
 - Maximum 80 caractères
 - Exemples : "Processus d'ouverture de compte bancaire", "Processus de vérification KYC"
 
