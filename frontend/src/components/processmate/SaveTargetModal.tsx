@@ -27,9 +27,11 @@ const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 
 const STATUT_LABELS: Record<string, string> = { completed: 'Terminée', archived: 'Archivée', blocked: 'Bloquée', draft: 'Brouillon', on_hold: 'En pause' };
 
-export default function SaveTargetModal({ open, titre, onClose, onConfirm }: {
+export default function SaveTargetModal({ open, titre, bulk, onClose, onConfirm }: {
     open: boolean;
     titre: string;
+    /** « Tout enregistrer » : les titres des procédures à ranger au même endroit (chacune sous son nom) */
+    bulk?: string[];
     onClose: () => void;
     onConfirm: (choice: SaveChoice) => Promise<void>;
 }) {
@@ -154,8 +156,8 @@ export default function SaveTargetModal({ open, titre, onClose, onConfirm }: {
                 await onConfirm(it.procedureId ? { kind: 'procedure', procedureId: it.procedureId, titre: it.titre }
                     : { kind: 'slot', slotId: it.slotId!, titre: it.titre });
             } else {
-                if (newTitle.trim().length < 2) { setError('Donnez un nom à la procédure.'); setBusy(false); return; }
-                await onConfirm({ kind: 'new', titre: newTitle.trim(), taxonomyId: sel.taxonomyId, campaignId: sel.folder.campaignId,
+                if (!bulk && newTitle.trim().length < 2) { setError('Donnez un nom à la procédure.'); setBusy(false); return; }
+                await onConfirm({ kind: 'new', titre: bulk ? '' : newTitle.trim(), taxonomyId: sel.taxonomyId, campaignId: sel.folder.campaignId,
                     message: message.trim() || undefined });
             }
             onClose();
@@ -180,7 +182,7 @@ export default function SaveTargetModal({ open, titre, onClose, onConfirm }: {
 
         const itemRow = (it: Item, depth: number) => {
             const active = sel?.type === 'item' && sel.item.key === it.key && sel.folder.key === f.key;
-            const disabled = !it.ecriture;
+            const disabled = !it.ecriture || !!bulk;  // plusieurs procédures : on choisit un endroit, pas une procédure existante
             return (
                 <li key={`${f.key}-${it.key}`}>
                     <button type="button" disabled={disabled} onClick={() => setSel({ type: 'item', folder: f, item: it })}
@@ -266,8 +268,13 @@ export default function SaveTargetModal({ open, titre, onClose, onConfirm }: {
                 className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
                 <div className="flex items-start gap-3 border-b border-neutral-200 px-5 py-4">
                     <div className="min-w-0 flex-1">
-                        <h2 id="save-target-title" className="text-base font-semibold text-neutral-900">Enregistrer « {titre || 'Nouvelle procédure'} »</h2>
-                        <p className="mt-0.5 text-sm text-neutral-600">Choisissez la procédure à mettre à jour{canCreate ? ', ou un endroit pour en ajouter une' : ''}.</p>
+                        <h2 id="save-target-title" className="text-base font-semibold text-neutral-900">
+                            {bulk ? `Enregistrer ${bulk.length} procédure${bulk.length > 1 ? 's' : ''}` : <>Enregistrer « {titre || 'Nouvelle procédure'} »</>}
+                        </h2>
+                        <p className="mt-0.5 text-sm text-neutral-600">
+                            {bulk ? 'Choisissez où les ranger : chacune y est ajoutée sous son nom.'
+                                : <>Choisissez la procédure à mettre à jour{canCreate ? ', ou un endroit pour en ajouter une' : ''}.</>}
+                        </p>
                     </div>
                     <button type="button" onClick={onClose} disabled={busy} aria-label="Fermer" className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
                         <X className="w-4 h-4" />
@@ -276,7 +283,7 @@ export default function SaveTargetModal({ open, titre, onClose, onConfirm }: {
 
                 <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3">
                     {!tree && !error && <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>}
-                    {tree?.suggestion && !needle && (
+                    {tree?.suggestion && !needle && !bulk && (
                         <button type="button" onClick={pickSuggestion}
                             className="mb-3 flex w-full items-center gap-2 rounded-xl border border-neutral-200 px-3 py-2.5 text-left text-sm hover:bg-neutral-50">
                             <Sparkles className="w-4 h-4 shrink-0 text-neutral-900" />
@@ -320,11 +327,19 @@ export default function SaveTargetModal({ open, titre, onClose, onConfirm }: {
                     {sel?.type === 'place' && (
                         <div className="space-y-2">
                             <p className="text-sm text-neutral-700">
-                                {tree?.creation === 'directe' ? 'Nouvelle procédure' : 'Proposer une procédure'}{selPlace ? <> dans <span className="font-medium text-neutral-900">{selPlace}</span></> : null}
-                                {tree?.creation === 'proposition' && <span className="text-neutral-500"> — le pilote la valide avant qu’elle entre au référentiel.</span>}
+                                {bulk ? (tree?.creation === 'directe' ? `${bulk.length} nouvelle${bulk.length > 1 ? 's' : ''} procédure${bulk.length > 1 ? 's' : ''}` : `Proposer ${bulk.length} procédure${bulk.length > 1 ? 's' : ''}`)
+                                    : (tree?.creation === 'directe' ? 'Nouvelle procédure' : 'Proposer une procédure')}
+                                {selPlace ? <> dans <span className="font-medium text-neutral-900">{selPlace}</span></> : null}
+                                {tree?.creation === 'proposition' && <span className="text-neutral-500"> — le pilote {bulk ? 'les' : 'la'} valide avant {bulk ? 'qu’elles entrent' : 'qu’elle entre'} au référentiel.</span>}
                             </p>
-                            <input value={newTitle} onChange={e => setNewTitle(e.target.value)} aria-label="Nom de la procédure"
-                                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900" />
+                            {bulk ? (
+                                <ul className="max-h-28 overflow-y-auto rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-800">
+                                    {bulk.map(t => <li key={t} className="truncate">· {t}</li>)}
+                                </ul>
+                            ) : (
+                                <input value={newTitle} onChange={e => setNewTitle(e.target.value)} aria-label="Nom de la procédure"
+                                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900" />
+                            )}
                             {tree?.creation === 'proposition' && (
                                 <input value={message} onChange={e => setMessage(e.target.value)} placeholder="Un mot pour le pilote (facultatif)"
                                     aria-label="Message au pilote" className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900" />
@@ -337,7 +352,7 @@ export default function SaveTargetModal({ open, titre, onClose, onConfirm }: {
                         <button type="button" onClick={() => void confirm()} disabled={!sel || busy}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-40">
                             {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                            {sel?.type === 'place' ? creationLabel : 'Enregistrer'}
+                            {sel?.type === 'place' ? (bulk ? (tree?.creation === 'directe' ? 'Tout enregistrer ici' : 'Tout proposer au pilote') : creationLabel) : 'Enregistrer'}
                         </button>
                     </div>
                 </div>

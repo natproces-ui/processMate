@@ -46,6 +46,12 @@ export interface StoredProcedure {
     saved_version?: number | null;
 }
 
+/** Une version d'une procédure de la conversation (sans son contenu) */
+export interface ConversationVersion {
+    version: number; title: string; origine: string; resume: string | null; created_at: string;
+    courante: boolean; enregistree: boolean;
+}
+
 /** Une correction à la main partait d'une version dépassée : le serveur renvoie la version à jour */
 export class ProcedureConflict extends Error {
     constructor(message: string, public procedure: StoredProcedure) { super(message); }
@@ -111,8 +117,9 @@ export const conversationsApi = {
         call<{ procedure: StoredProcedure }>(`/${id}/procedures/${encodeURIComponent(key)}/saved`,
             { method: 'POST', body: JSON.stringify({ workflow_db_id: workflowDbId, version: version ?? null }) }).then(r => r.procedure),
     procedureVersions: (id: string, key: string) =>
-        call<{ versions: { version: number; title: string; origine: string; resume: string | null; created_at: string;
-            courante: boolean; enregistree: boolean }[] }>(`/${id}/procedures/${encodeURIComponent(key)}/versions`).then(r => r.versions),
+        call<{ versions: ConversationVersion[] }>(`/${id}/procedures/${encodeURIComponent(key)}/versions`).then(r => r.versions),
+    procedureVersion: (id: string, key: string, version: number) =>
+        call<{ procedure: StoredProcedure }>(`/${id}/procedures/${encodeURIComponent(key)}/versions/${version}`).then(r => r.procedure),
     restoreProcedureVersion: (id: string, key: string, version: number) =>
         call<{ procedure: StoredProcedure }>(`/${id}/procedures/${encodeURIComponent(key)}/versions/${version}/restore`,
             { method: 'POST' }).then(r => r.procedure),

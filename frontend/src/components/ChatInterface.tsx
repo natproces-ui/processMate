@@ -21,7 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     ArrowUp, ArrowDown, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, HelpCircle, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2
+    Sparkles, HelpCircle, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2, Save
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -163,6 +163,10 @@ interface ChatInterfaceProps {
     onProcedureReady?: (proc: GeneratedProcedure) => void;
     onProcedureError?: (key: string, message: string) => void;
     onSelectProcedure?: (key: string) => void;
+    /** Procédures de la conversation telles qu'affichées (titre et étapes retenus par le serveur, état) : cartes des messages */
+    procedureStates?: Record<string, { title: string; steps: number; label: string; tone: string }>;
+    /** « Tout enregistrer » : les procédures d'un message (ou de la conversation) rangées au même endroit */
+    onSaveAll?: (keys: string[]) => void;
     /** 'sidebar' : colonne pleine hauteur, composeur en bas (Studio) */
     variant?: 'inline' | 'sidebar';
     /** Masquer l’assistant (mode colonne) */
@@ -183,6 +187,8 @@ interface ChatInterfaceProps {
     onRestoreProcedures?: (procedures: StoredProcedure[], active: string | null, serverMode?: boolean) => void;
     /** Fin d'un tour : les procédures de la conversation telles que le serveur les garde (il fait foi) */
     onServerProcedures?: (procedures: StoredProcedure[]) => void;
+    /** Sources de la conversation (panneau « Cette conversation ») */
+    onSourcesChange?: (sources: ConversationSource[]) => void;
     /** Juste avant d'envoyer un message : les corrections à la main en attente partent d'abord */
     onBeforeSend?: () => Promise<void>;
     /** procédures de la conversation remplacées ou retirées par le chat (true), ou rétablies (false) */
@@ -243,6 +249,8 @@ export default function ChatInterface({
     onProcedureReady,
     onProcedureError,
     onSelectProcedure,
+    procedureStates,
+    onSaveAll,
     variant = 'inline',
     onCollapse,
     onFilesSent,
@@ -254,6 +262,7 @@ export default function ChatInterface({
     onRestoreProcedures,
     onServerProcedures,
     onBeforeSend,
+    onSourcesChange,
     restoreGenerated = true,
     syncUrl = false,
     projectId,
@@ -290,6 +299,7 @@ export default function ChatInterface({
     const [conversationId, setConversationIdState] = useState<string | null>(null);
     const conversationIdRef = useRef<string | null>(null);
     const [sources, setSources] = useState<ConversationSource[]>([]);
+    useEffect(() => { onSourcesChange?.(sources); }, [sources, onSourcesChange]);
     const [sourcesOpen, setSourcesOpen] = useState(false);
     const sourcesRef = useRef<HTMLDivElement>(null);
     // la liste des sources se ferme au clic ailleurs ou avec Échap
@@ -1189,7 +1199,7 @@ export default function ChatInterface({
                                         {/* Générations : chaque procédure arrive dès qu'elle est prête */}
                                         {msg.generations && msg.generations.length > 0 && (
                                             <ul className="space-y-1.5">
-                                                {msg.generations.map(g => (
+                                                {msg.generations.map(g => { const ps = g.status === 'ready' ? procedureStates?.[g.key] : undefined; return (
                                                     <li key={g.key}>
                                                         <button type="button" disabled={g.status !== 'ready'} onClick={() => onSelectProcedure?.(g.key)}
                                                             className={`group relative w-full overflow-hidden flex items-center gap-3 rounded-2xl border bg-white px-3.5 py-3 text-left shadow-sm transition-all ${g.status === 'ready' ? 'border-neutral-300 hover:-translate-y-0.5 hover:shadow-md hover:border-neutral-900' : g.status === 'error' ? 'border-red-200' : 'border-neutral-300'}`}>
@@ -1201,10 +1211,11 @@ export default function ChatInterface({
                                                                     : <Workflow className="w-4 h-4" />}
                                                             </span>
                                                             <span className="relative min-w-0 flex-1">
-                                                                <span className="block text-[15px] font-medium text-neutral-900 truncate">{g.title}</span>
+                                                                <span className="block text-[15px] font-medium text-neutral-900 truncate">{ps?.title ?? g.title}</span>
                                                                 <span className="flex items-center gap-1 text-xs text-neutral-700">
                                                                     {g.status === 'generating' && <span className="truncate">{`${g.phase || 'Génération en cours'}…`}{g.rows ? ` · ${g.rows} étape${g.rows > 1 ? 's' : ''}` : ''}</span>}
-                                                                    {g.status === 'ready' && <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{`${g.steps} étape${(g.steps || 0) > 1 ? 's' : ''}`}</>}
+                                                                    {g.status === 'ready' && <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />{`${ps?.steps ?? g.steps} étape${((ps?.steps ?? g.steps) || 0) > 1 ? 's' : ''}`}
+                                                                        {ps && <span className={`ml-1 rounded-full px-1.5 py-px text-[10px] font-semibold ${ps.tone}`}>{ps.label}</span>}</>}
                                                                     {g.status === 'error' && (g.error || 'Échec de la génération')}
                                                                     {g.status === 'stopped' && 'Arrêtée'}
                                                                 </span>
@@ -1212,9 +1223,19 @@ export default function ChatInterface({
                                                             {g.status === 'ready' && <span className="relative text-xs font-medium text-neutral-900 opacity-0 group-hover:opacity-100 transition-opacity">Ouvrir</span>}
                                                         </button>
                                                     </li>
-                                                ))}
+                                                ); })}
                                             </ul>
                                         )}
+                                        {(() => {
+                                            const keys = (msg.generations || []).filter(g => g.status === 'ready' && procedureStates?.[g.key]
+                                                && ['Brouillon', 'Modifiée depuis l’enregistrement'].includes(procedureStates[g.key].label)).map(g => g.key);
+                                            return onSaveAll && keys.length > 1 && !msg.streaming ? (
+                                                <button type="button" onClick={() => onSaveAll(keys)}
+                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:border-neutral-900">
+                                                    <Save className="w-3.5 h-3.5" />Tout enregistrer · {keys.length}
+                                                </button>
+                                            ) : null;
+                                        })()}
                                         {/* Relecture : texte naturel (comme une réponse), étapes cliquables */}
                                         {msg.remarks && (
                                             <div className={msg.streaming && !msg.suggestions ? 'pm-caret' : undefined}>

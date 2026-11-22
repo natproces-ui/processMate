@@ -30,10 +30,12 @@ import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
     PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes, History,
-    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink,
+    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
-import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type StoredProcedure } from '@/lib/conversationsApi';
+import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type ConversationSource, type StoredProcedure } from '@/lib/conversationsApi';
+import ConversationPanel, { outputState, toSave, type ConversationOutput } from '@/components/processmate/ConversationPanel';
+import ConversationVersionsModal from '@/components/processmate/ConversationVersionsModal';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
 import CircuitBar from '@/components/shared/CircuitBar';
@@ -152,6 +154,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const canSave = !guestMode && librarySave;
     const { access } = useAuth();
     const [versionsOpen, setVersionsOpen] = useState(false);
+    // Panneau « Cette conversation » : sorties (procédures, état, versions) et sources utilisées
+    const [convPanelOpen, setConvPanelOpen] = useState(false);
+    const [convVersionsKey, setConvVersionsKey] = useState<string | null>(null);
+    const [pendingSaveKey, setPendingSaveKey] = useState<string | null>(null);
+    const [chatSources, setChatSources] = useState<ConversationSource[]>([]);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
     /** Côté serveur : la version enregistrée dans le référentiel (« modifiée depuis l'enregistrement » ensuite) */
@@ -718,6 +725,61 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         finally { setSaving(false); }
     }, [activeInst, activeTab, instances, data, enrichments, invalidate, runParser, applySyncResult, activeInitialMeta]);
 
+    // ── « Tout enregistrer » : les procédures de la conversation rangées au même endroit ──
+    const [bulkKeys, setBulkKeys] = useState<string[] | null>(null);
+    const outputOf = (i: ProcessInstance): ConversationOutput => ({ key: i.process_id, title: i.title, steps: i.data.length, status: i.status,
+        archived: i.archived, version: i.version, saved_version: i.saved_version, workflow_db_id: i.workflow_db_id });
+    /** Écrit une procédure de la conversation dans une procédure du référentiel (sans passer par l'onglet affiché) */
+    const saveInstanceTo = useCallback(async (inst: ProcessInstance, procedureId: string) => {
+        const generated: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries((inst.initialMeta ?? {}) as Record<string, unknown>)) {
+            if (!PROTECTED_META.has(k)) generated[k] = v;
+        }
+        await orchestrationApi.saveWorkflowData(procedureId, inst.data as unknown[], Object.fromEntries(inst.enrichments),
+            { ...generated, recent_ai_changes: null }, inst.bpmnXml);
+        linkConversation(procedureId);
+        setInstances(prev => prev.map(x => x.process_id === inst.process_id ? { ...x, workflow_db_id: procedureId } : x));
+        markSaved({ ...inst, workflow_db_id: procedureId }, procedureId);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const startSaveAll = useCallback(async (keys?: string[]) => {
+        const list = toSave(instancesRef.current.map(outputOf)).filter(o => !keys || keys.includes(o.key));
+        const byKey = (k: string) => instancesRef.current.find(i => i.process_id === k)!;
+        // déjà enregistrées puis modifiées : mises à jour à leur place
+        const modified = list.filter(o => o.workflow_db_id);
+        try {
+            for (const o of modified) await saveInstanceTo(byKey(o.key), o.workflow_db_id!);
+        } catch (err: any) { showError(`Erreur : ${err.message}`); return; }
+        const fresh = list.filter(o => !o.workflow_db_id).map(o => o.key);
+        if (fresh.length > 0) setBulkKeys(fresh);
+        else if (modified.length > 0) showSuccess(`${modified.length} procédure${modified.length > 1 ? 's' : ''} mise${modified.length > 1 ? 's' : ''} à jour`);
+    }, [saveInstanceTo]); // eslint-disable-line react-hooks/exhaustive-deps
+    const handleBulkChoice = useCallback(async (choice: SaveChoice) => {
+        if (choice.kind !== 'new' || !bulkKeys) return;
+        let created = 0, proposed = 0;
+        for (const key of bulkKeys) {
+            const inst = instancesRef.current.find(i => i.process_id === key);
+            if (!inst) continue;
+            const r = await saveTargetsApi.create({
+                titre: inst.title, taxonomy_id: choice.taxonomyId, campaign_id: choice.campaignId, message: choice.message,
+                workflow_json: inst.data as unknown[], enrichments_json: Object.fromEntries(inst.enrichments),
+                metadata: (inst.metadata || {}) as unknown as Record<string, unknown>,
+            });
+            if (r.resultat === 'creee' && r.procedure_id) { await saveInstanceTo(inst, r.procedure_id); created++; }
+            else proposed++;
+        }
+        invalidate();
+        showSuccess([created ? `${created} procédure${created > 1 ? 's' : ''} enregistrée${created > 1 ? 's' : ''}` : '',
+            proposed ? `${proposed} proposée${proposed > 1 ? 's' : ''} au pilote` : ''].filter(Boolean).join(', '));
+    }, [bulkKeys, saveInstanceTo, invalidate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // « Mettre à jour le référentiel » depuis le panneau de la conversation : une fois la procédure affichée
+    useEffect(() => {
+        if (!pendingSaveKey || activeInst?.process_id !== pendingSaveKey || saving) return;
+        setPendingSaveKey(null);
+        if (activeInst.workflow_db_id) handleSave(activeInst.title, '', undefined).catch(() => { /* message déjà affiché */ });
+        else setSaveModalOpen(true);
+    }, [pendingSaveKey, activeInst, saving, handleSave]);
+
     /** Fenêtre « Enregistrer » : procédure à mettre à jour, emplacement de campagne, ou nouvelle procédure */
     const handleSaveChoice = useCallback(async (choice: SaveChoice) => {
         if (choice.kind === 'procedure') {
@@ -756,6 +818,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         });
     }, []);
     const activeCount = instances.filter(i => !i.archived).length;
+    /** Cartes des messages : titre et étapes tels qu'affichés (retenus par le serveur), et état par rapport au référentiel */
+    const procedureStates = useMemo(() => Object.fromEntries(instances.map(i => {
+        const st = outputState({ key: i.process_id, title: i.title, steps: i.data.length, status: i.status, archived: i.archived,
+            version: i.version, saved_version: i.saved_version, workflow_db_id: i.workflow_db_id });
+        return [i.process_id, { title: i.title, steps: i.data.length, ...st }];
+    })), [instances]);
 
     const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
@@ -1304,6 +1372,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onRestoreProcedures={restoreProcedures}
                         onServerProcedures={applyServerProcedures}
                         onBeforeSend={flushServerEdits}
+                        onSourcesChange={setChatSources}
+                        procedureStates={procedureStates}
+                        onSaveAll={canSave ? keys => { void startSaveAll(keys); } : undefined}
                         onArchiveProcedures={archiveProcedures}
                         /* page d'accueil : « Nouvelle conversation » est déjà dans la barre latérale */
                         showNewConversation={!chatFirst}
@@ -1328,7 +1399,22 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         className={chatFull ? 'hidden' : 'hidden lg:block absolute top-0 -right-1 h-full w-2 cursor-col-resize z-10 hover:bg-neutral-900/20'} />
                 </aside>
                 {/* Procédure : en-tête (onglets + vues + actions) puis la vue choisie en pleine hauteur */}
-                <div ref={procPanelRef} hidden={chatFull} className={`flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50 ${mobileView === 'chat' ? 'hidden lg:flex' : ''}`}>
+                <div ref={procPanelRef} hidden={chatFull} className={`relative flex-1 min-w-0 min-h-0 flex flex-col bg-slate-50 ${mobileView === 'chat' ? 'hidden lg:flex' : ''}`}>
+                    {convPanelOpen && (
+                        <ConversationPanel
+                            outputs={instances.map(i => ({ key: i.process_id, title: i.title, steps: i.data.length, status: i.status,
+                                archived: i.archived, version: i.version, saved_version: i.saved_version, workflow_db_id: i.workflow_db_id }))}
+                            activeKey={activeInst?.process_id}
+                            sources={chatSources}
+                            canSave={canSave}
+                            versionsEnabled={serverModeRef.current && !!conversationIdRef.current}
+                            onOpen={key => { const idx = instances.findIndex(i => i.process_id === key); if (idx >= 0) setActiveTab(idx); }}
+                            onRestore={key => archiveProcedures([key], false)}
+                            onUpdate={key => { const idx = instances.findIndex(i => i.process_id === key); if (idx >= 0) { setActiveTab(idx); setPendingSaveKey(key); } }}
+                            onVersions={key => setConvVersionsKey(key)}
+                            onSaveAll={() => { void startSaveAll(); }}
+                            onClose={() => setConvPanelOpen(false)} />
+                    )}
                     {guestMode && (
                         <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 flex flex-wrap items-center gap-x-2">
                             <span>Mode invité : rien n&apos;est enregistré.</span>
@@ -1426,11 +1512,20 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 )}
                                 {(() => {
                                     const more = [
+                                        ...(serverModeRef.current && conversationIdRef.current && activeInst?.version
+                                            ? [{ label: 'Versions dans cette conversation', icon: <History />, onSelect: () => setConvVersionsKey(activeInst.process_id) }] : []),
                                         ...(VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id
                                             ? [{ label: 'Historique des versions', icon: <History />, onSelect: () => setVersionsOpen(true) }] : []),
                                     ];
                                     return more.length > 0 && <RowMenu label="Autres actions" align="right" triggerClassName="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100" items={more} />;
                                 })()}
+                                {instances.length > 0 && !workflowId && (
+                                    <button type="button" onClick={() => setConvPanelOpen(o => !o)} aria-pressed={convPanelOpen}
+                                        title="Cette conversation : procédures produites, leur état, sources utilisées" aria-label="Cette conversation"
+                                        className={`flex items-center gap-1 rounded-lg px-1.5 py-1.5 text-xs font-semibold text-neutral-900 hover:bg-neutral-100 ${convPanelOpen ? 'bg-neutral-100' : ''}`}>
+                                        <Layers className="w-4 h-4" />{activeCount}
+                                    </button>
+                                )}
                                 <button type="button" onClick={toggleProcFullscreen}
                                     title={procFullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran (tableau, logigramme, fiche)'}
                                     aria-label={procFullscreen ? 'Quitter le plein écran' : 'Afficher la procédure en plein écran'}
@@ -1654,11 +1749,26 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 </div>
             </div>
 
+            {convVersionsKey && conversationIdRef.current && (() => {
+                const inst = instances.find(i => i.process_id === convVersionsKey);
+                return inst ? (
+                    <ConversationVersionsModal conversationId={conversationIdRef.current} procedureKey={inst.process_id} title={inst.title}
+                        currentWorkflow={inst.data} onClose={() => setConvVersionsKey(null)}
+                        onRestored={proc => {
+                            const fresh = toInstance(proc, inst);
+                            serverContentRef.current[inst.process_id] = contentOf(fresh);
+                            setInstances(prev => prev.map(x => x.process_id === inst.process_id ? fresh : x));
+                            showSuccess(`Version ${proc.version} : retour effectué`);
+                        }} />
+                ) : null;
+            })()}
             {versionsOpen && activeInst?.workflow_db_id && (
                 <VersionHistoryModal procedureId={activeInst.workflow_db_id} currentWorkflow={activeData}
                     onClose={() => setVersionsOpen(false)} onRestored={handleVersionRestored} />
             )}
             <SaveTargetModal open={saveModalOpen} titre={activeTitle} onClose={() => setSaveModalOpen(false)} onConfirm={handleSaveChoice} />
+            <SaveTargetModal open={!!bulkKeys} titre="" bulk={(bulkKeys || []).map(k => instances.find(i => i.process_id === k)?.title || 'Procédure')}
+                onClose={() => setBulkKeys(null)} onConfirm={handleBulkChoice} />
 
             {outillageTool && (
                 <ToolQuickCard
