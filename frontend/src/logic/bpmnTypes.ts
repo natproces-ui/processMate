@@ -42,6 +42,8 @@ export interface TaskEnrichment {
     kpi: string;                   // Ex: "taux d'erreur < 2%", "délai < 24h"
     ecrans?: string[];             // ids tool_screens, choisis parmi les écrans de l'outil de l'étape (Table1Row.outil)
     liens?: StepLink[];            // liens vers d'autres procédures, voir lib/processLinks.ts
+    /** d'où vient l'étape : fichier joint, endroit (page, diapositive, section), extrait recopié */
+    source?: { fichier: string; endroit?: string; extrait?: string };
 }
 
 /**

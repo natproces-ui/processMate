@@ -31,6 +31,15 @@ from prompts.extract_prompt import get_extraction_prompt
 
 logger = logging.getLogger(__name__)
 
+def _source_of(enr: Dict[str, Any]) -> Dict[str, Any]:
+    """Citation d'une tâche (fichier, endroit, extrait recopié), seulement quand elle désigne un fichier."""
+    src = enr.get("source")
+    if not isinstance(src, dict) or not str(src.get("fichier") or "").strip():
+        return {}
+    clean = {k: str(src.get(k) or "").strip()[:300] for k in ("fichier", "endroit", "extrait")}
+    return {"source": clean}
+
+
 class ImageProcessor:
     def __init__(self):
         """
@@ -98,7 +107,8 @@ class ImageProcessor:
                         "applicatif": enr.get("applicatif", "").strip(),
                         "duree_estimee": enr.get("duree_estimee", "").strip(),
                         "frequence": enr.get("frequence", "").strip(),
-                        "kpi": enr.get("kpi", "").strip()
+                        "kpi": enr.get("kpi", "").strip(),
+                        **_source_of(enr),
                     }
             
             logger.info(f"✓ Titre: '{title}' - {len(workflow)} étapes, {len(enrichments_dict)} enrichies")

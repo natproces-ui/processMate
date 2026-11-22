@@ -1,5 +1,6 @@
 'use client';
 
+import SourceCitation from '@/components/shared/SourceCitation';
 import CircuitBar from '@/components/shared/CircuitBar';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
@@ -896,9 +897,12 @@ export default function ProcedureEditor({ procedure, hideHeader }: Props) {
                                             </div>
                                             <div className="px-5 py-4">
                                                 {!editingDescriptions ? (
-                                                    <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                                                        {enr?.descriptif || <span className="text-slate-400 italic">Aucune description</span>}
-                                                    </p>
+                                                    <>
+                                                        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                                            {enr?.descriptif || <span className="text-slate-400 italic">Aucune description</span>}
+                                                        </p>
+                                                        {enr?.source?.fichier && <div className="mt-1.5"><SourceCitation source={enr.source} /></div>}
+                                                    </>
                                                 ) : (
                                                     <textarea
                                                         value={draftEnrichments.get(row.id)?.descriptif || ''}

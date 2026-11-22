@@ -141,6 +141,12 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
      procédure visée, annonce d'un document à venir). Actions ajoutées : `explain`, `search`.
      Banc des décisions (3 passages) : 52/53, comme avant, avec un seul appel de décision par message au lieu de deux.
      Le classifieur ne sert plus qu'à la route `/api/chat/message`, qu'aucun écran n'appelle (à retirer sur décision).
+   - **Citations par étape et chiffres non inventés — fait le 22/11/2026.** La rédaction demandait d'estimer les durées
+     (« tâche manuelle simple → 5-15 min ») et d'imaginer des KPI (« Taux d'erreur < 2 % ») : supprimé, durée / fréquence / KPI
+     seulement si la source les donne. Chaque tâche tirée d'un fichier porte sa source (fichier, endroit, extrait recopié),
+     affichée dans les détails de l'étape (Studio et Mon espace) et comptée par source dans le panneau de la conversation.
+     Banc du contenu (6 fiches CIH, `bench/resultats_contenu_citations.json`) : citations 68/68, bon fichier 68/68, extrait
+     retrouvé dans la fiche 65/68, chiffres inventés 0 ; acteurs : 0 inventé, fonction/entité 70/70.
    - **Titres des procédures — fait le 22/11/2026** (glossaire 0.5, rédaction, aiguillage, découverte, référentiel). La rédaction
      demandait jusque-là de commencer par « Processus de… / Workflow de… / Procédure de… », et le référentiel « verbe + objet ».
      Banc `bench/titres.py` (aiguillage sur Forma Cash, MCNE, modes opératoires DEP-MP, découverte, création depuis un texte) :

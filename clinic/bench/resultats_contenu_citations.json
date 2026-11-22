@@ -1,0 +1,2650 @@
+{
+ "date": "2026-11-22 21:02",
+ "resultats": [
+  {
+   "etapes": 19,
+   "acteurs": [
+    "Agence",
+    "Direction coverage institutionnel",
+    "Gestionnaire des opérations",
+    "Superviseur"
+   ],
+   "departements": [
+    "Agence",
+    "Back Office International",
+    "Direction coverage institutionnel"
+   ],
+   "paires": [
+    "Agence | Agence",
+    "Direction coverage institutionnel | Direction coverage institutionnel",
+    "Gestionnaire des opérations | Back Office International",
+    "Superviseur | Back Office International"
+   ],
+   "acteurs_inventes": [],
+   "acteurs_perdus": [],
+   "departements_justes": "12/12",
+   "outils": [
+    "e mail",
+    "swift",
+    "ti+"
+   ],
+   "outils_inventes": [],
+   "outils_graphies": [],
+   "descriptions": "12/12",
+   "citations": "12/12",
+   "citations_bon_fichier": "12/12",
+   "extraits_verifies": "11/12",
+   "chiffres_inventes": [],
+   "workflow": [
+    {
+     "id": "2",
+     "étape": "Début",
+     "typeBpmn": "StartEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "1",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "1",
+     "étape": "Envoi d'un message SWIFT de demande de modification",
+     "typeBpmn": "Task",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "3",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "La banque correspondante transmet une demande de modification de crédit documentaire export par message SWIFT.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Procéder au contrôle du dossier »",
+      "extrait": "Réception d’un message Swift de demande de modification"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "3",
+     "étape": "Procéder au contrôle du dossier",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "4",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le gestionnaire des opérations BOI contrôle la conformité de la demande reçue par SWIFT au regard de la réglementation internationale, des RUU 600, de l'IGOC 2026, des Incoterms 2020 et du texte initial du CREDOC.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Procéder au contrôle du dossier »",
+      "extrait": "Contrôle la conformité de la demande par rapport à la réglementation international"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "4",
+     "étape": "Contrôle concluant ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Contrôle concluant ?",
+     "outputs": [
+      {
+       "targetId": "5",
+       "label": "Oui"
+      },
+      {
+       "targetId": "6",
+       "label": "Non"
+      },
+      {
+       "targetId": "7",
+       "label": "Augmentation montant / Prorogation validité / Changement pays fournisseur / Changement type Credoc"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "5",
+     "étape": "Notifier l'agence",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "10",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "En cas de contrôle concluant ou d'accord de la Direction Coverage Institutionnel, le gestionnaire BOI notifie l'agence par email pour engager le contact avec le client.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Notifier l’agence »",
+      "extrait": "Notifie l’agence par E-mail pour contacter le client"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "6",
+     "étape": "Retourner l'opération à la banque correspondante",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "12",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "En cas de contrôle non concluant ou d'avis défavorable de la Direction Coverage Institutionnel, le gestionnaire BOI adresse un message SWIFT de refus à la banque correspondante.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Retourner l’opération à la banque correspondante »",
+      "extrait": "Adresse un message Swift de refus à la banque correspondante"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "7",
+     "étape": "Statuer sur la demande de modification",
+     "typeBpmn": "Task",
+     "département": "Direction coverage institutionnel",
+     "acteur": "Direction coverage institutionnel",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "8",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "Si la modification porte sur le montant, la validité, le pays fournisseur ou le type de CREDOC, la Direction Coverage Institutionnel analyse les termes, statue et notifie sa décision par e-mail au BOI.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Statuer sur la demande de modification »",
+      "extrait": "Analyse les termes à modifier Statue sur la demande Notifie la décision au BOI par e-mail"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "8",
+     "étape": "Avis favorable ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Direction coverage institutionnel",
+     "acteur": "Direction coverage institutionnel",
+     "typeActeur": "interne",
+     "condition": "Avis favorable ?",
+     "outputs": [
+      {
+       "targetId": "5",
+       "label": "Oui"
+      },
+      {
+       "targetId": "6",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "10",
+     "étape": "Contacter le client",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Agence",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "11",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "À réception de l'instruction, l'agence prend contact avec le client pour lui soumettre les termes de la modification, recueille sa position formelle et la communique au BOI.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Contacter le client »",
+      "extrait": "Contacte le client afin de lui présenter la modification sollicitée par la banque correspondante"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "11",
+     "étape": "Réception de la notification et décision sur les modifications",
+     "typeBpmn": "Task",
+     "département": "Client",
+     "acteur": "Client",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "13",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le client prend connaissance des modifications sollicitées et transmet son accord ou son refus à l'agence.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "diagramme « CREDOC EXPORT : Modification »",
+      "extrait": "Aller / Retour pour approuver les modifications"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "12",
+     "étape": "En attente du retour de la banque correspondante",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "13",
+     "étape": "Modification approuvée ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Modification approuvée ?",
+     "outputs": [
+      {
+       "targetId": "14",
+       "label": "Oui"
+      },
+      {
+       "targetId": "15",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "14",
+     "étape": "Valider l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Superviseur",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "18",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "En cas d'accord du client, le superviseur BOI vérifie la conformité des données modifiées par rapport à la demande et valide l'opération dans TI+.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Valider l’opération »",
+      "extrait": "Vérifie la conformité des données modifiées par rapport à la demande de modification Valide l’opération sur TI+"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "15",
+     "étape": "Notifier la banque correspondante",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "16",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "En cas de refus du client, le gestionnaire BOI adresse un message SWIFT de rejet motivé à la banque correspondante et conserve le dossier en attente.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Notifier la banque correspondante »",
+      "extrait": "Adresse un message Swift à la banque correspondante, précisant le refus de modification ainsi que le motif"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "16",
+     "étape": "Réception du message SWIFT de refus de modification",
+     "typeBpmn": "Task",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "17",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "La banque correspondante reçoit le message SWIFT lui notifiant le refus de la modification et son motif.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "diagramme « CREDOC EXPORT : Modification »",
+      "extrait": "Envoi un message Swift de refus de modification"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "17",
+     "étape": "En attente du retour de la banque correspondante",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "18",
+     "étape": "Valider le Swift",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Superviseur",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "19",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "Après validation sur TI+, le superviseur BOI contrôle la conformité des données saisies et valide l'émission du message SWIFT d'approbation à destination de la banque correspondante.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "section « Description des opérations », sous-section « Valider le Swift »",
+      "extrait": "Vérifie la conformité des données saisies par rapport à la demande modification Valide le Swift"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "19",
+     "étape": "Réception du message SWIFT d'approbation de la modification",
+     "typeBpmn": "Task",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "20",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "La banque correspondante reçoit le message SWIFT d'approbation confirmant la prise en compte de la modification du crédit documentaire.",
+     "_source": {
+      "fichier": "CREDOC EXPORT Modification V2 (1).docx",
+      "endroit": "diagramme « CREDOC EXPORT : Modification »",
+      "extrait": "Envoi d’un message Swift d’approbation de la modification"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "20",
+     "étape": "Fin",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Superviseur",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    }
+   ],
+   "fiche": "CREDOC EXPORT Modification V2 (1).docx",
+   "mode": "rediger",
+   "duree_s": 61
+  },
+  {
+   "etapes": 23,
+   "acteurs": [
+    "BO salle des marchés & BOI",
+    "Chef de caisse",
+    "Direction conformité",
+    "Gestionnaire des opérations",
+    "Responsable de service"
+   ],
+   "departements": [
+    "Agence",
+    "Back Office International",
+    "Direction conformité"
+   ],
+   "paires": [
+    "BO salle des marchés & BOI | Back Office International",
+    "Chef de caisse | Agence",
+    "Direction conformité | Direction conformité",
+    "Gestionnaire des opérations | Back Office International",
+    "Responsable de service | Back Office International"
+   ],
+   "acteurs_inventes": [],
+   "acteurs_perdus": [],
+   "departements_justes": "19/19",
+   "outils": [
+    "e mail",
+    "nov@gc",
+    "swift alliance",
+    "ti+"
+   ],
+   "outils_inventes": [],
+   "outils_graphies": [],
+   "descriptions": "13/13",
+   "citations": "13/13",
+   "citations_bon_fichier": "13/13",
+   "extraits_verifies": "13/13",
+   "chiffres_inventes": [],
+   "workflow": [
+    {
+     "id": "2",
+     "étape": "Début",
+     "typeBpmn": "StartEvent",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "1",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "1",
+     "étape": "Transmission de la demande de virement",
+     "typeBpmn": "Task",
+     "département": "Client",
+     "acteur": "Client",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "3",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le client dépose sa demande de virement financier ou commercial accompagnée de l'ordre de virement et des pièces justificatives requises auprès de son agence bancaire.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Objet »",
+      "extrait": "Elle est déclenchée par une demande du client"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "3",
+     "étape": "Scanner les pièces justificatives",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "4",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "À réception de la demande, le chef de caisse en agence numérise l'ensemble des pièces justificatives et les transmet par e-mail au Back Office International pour vérification.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Scanner les pièces justificatives »",
+      "extrait": "Scanne les pièces justificatives ; Les transmet au BOI par e-mail pour contrôle"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "4",
+     "étape": "Procéder au contrôle du dossier",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "5",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "Le gestionnaire BOI contrôle l'exhaustivité des documents, la conformité réglementaire, la présence du cachet SV, le pays de destination, la concordance des données et les modalités de paiement.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Procéder au contrôle du dossier »",
+      "extrait": "Contrôle l’exhaustivité des documents et la conformité de la demande selon les dispositions réglementaires"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "5",
+     "étape": "Pays sous embargo ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Pays sous embargo ?",
+     "outputs": [
+      {
+       "targetId": "6",
+       "label": "Oui"
+      },
+      {
+       "targetId": "8",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "6",
+     "étape": "Statuer sur la conformité du dossier",
+     "typeBpmn": "Task",
+     "département": "Direction conformité",
+     "acteur": "Direction conformité",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "7",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "Pour les dossiers à destination d'un pays sous embargo, la direction conformité instruit la demande, statue sur son autorisation ou son rejet, et informe le BOI de sa décision par e-mail.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Statuer sur la conformité du dossier »",
+      "extrait": "Après analyse du dossier, la direction conformité : Autorise l’opération ou la rejette"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "7",
+     "étape": "Opération autorisée par la conformité ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Direction conformité",
+     "acteur": "Direction conformité",
+     "typeActeur": "interne",
+     "condition": "Opération autorisée par la conformité ?",
+     "outputs": [
+      {
+       "targetId": "8",
+       "label": "Oui"
+      },
+      {
+       "targetId": "9",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "8",
+     "étape": "Contrôle concluant ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Contrôle concluant ?",
+     "outputs": [
+      {
+       "targetId": "12",
+       "label": "Oui"
+      },
+      {
+       "targetId": "9",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "9",
+     "étape": "Notifier l'agence",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "10",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "En cas de contrôle non concluant ou de rejet conformité, le gestionnaire BOI notifie l'agence par e-mail en précisant le motif de retour (dérogation OC, complément de pièces ou d'informations).",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Notifier l’agence »",
+      "extrait": "Envoie un mail à l’agence pour la notifier du motif de retour"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "10",
+     "étape": "Contacter le client",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "11",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le chef de caisse prend contact avec le client pour lui demander de compléter son dossier ou d'initier une demande de dérogation auprès de l'Office des Changes via SMART.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Contacter le client »",
+      "extrait": "contacte le client afin de : Compléter son dossier Demander une dérogation de l’OC"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "11",
+     "étape": "Attente du retour client",
+     "typeBpmn": "EndEvent",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "12",
+     "étape": "Bloquer la provision",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "13",
+       "label": ""
+      }
+     ],
+     "outil": "Nov@GC",
+     "descriptif": "Dès que le dossier est déclaré complet et conforme, le chef de caisse en agence procède au blocage de la provision correspondante sur le compte du client via l'application Nov@GC.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Bloquer la provision »",
+      "extrait": "Si le dossier est complet et conforme : Le chef de caisse procède au blocage de la provision"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "13",
+     "étape": "Fonds suffisants ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "Fonds suffisants ?",
+     "outputs": [
+      {
+       "targetId": "17",
+       "label": "Oui"
+      },
+      {
+       "targetId": "14",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "14",
+     "étape": "Informer le client de l'insuffisance de ses fonds",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "15",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "En cas d'insuffisance de provision, le chef de caisse contacte le client pour l'inviter à alimenter son compte, l'opération étant rejetée à défaut d'apport de fonds suffisants.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Informer le client de l’insuffisance de ses fonds »",
+      "extrait": "Demande au client d’alimenter son compte Si le client n’apporte pas les fonds suffisants"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "15",
+     "étape": "Apport de fonds ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "Apport de fonds ?",
+     "outputs": [
+      {
+       "targetId": "17",
+       "label": "Oui"
+      },
+      {
+       "targetId": "16",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "16",
+     "étape": "Opération rejetée",
+     "typeBpmn": "EndEvent",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "17",
+     "étape": "Traiter l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "18",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Une fois la provision bloquée, l'opération est automatiquement générée sur TI+ ; le gestionnaire des opérations BOI vérifie les données remontées et finalise la saisie de l'opération.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Traiter l’opération »",
+      "extrait": "Vérifie la conformité des données remontées et complète la saisie"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "18",
+     "étape": "Nature du compte et montant ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Nature du compte et montant ?",
+     "outputs": [
+      {
+       "targetId": "19",
+       "label": "Compte en MAD convertible opération < 100 000 MAD"
+      },
+      {
+       "targetId": "21",
+       "label": "Compte en Devise"
+      },
+      {
+       "targetId": "20",
+       "label": "Compte en MAD convertible opération >= 100 000 MAD"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "19",
+     "étape": "Exécuter l'opération au cours du jour (fixing)",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "21",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Pour les virements sur compte en MAD convertibles d'un montant inférieur à 100 000 MAD, le gestionnaire BOI applique le cours de fixing du jour, intégré automatiquement dans TI+.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Exécuter l’opération au cours du jour (fixing) »",
+      "extrait": "Pour les opérations < 100 000 MAD, le cours de fixing du jour est utilisé"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "20",
+     "étape": "Négocier le cours de change",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "BO salle des marchés & BOI",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "21",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Pour les virements sur compte en MAD convertibles d'un montant supérieur ou égal à 100 000 MAD, le cours de change est négocié avec la Salle des Marchés puis intégré dans TI+.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Négocier le cours de change »",
+      "extrait": "Pour les opérations d’un montant >= 100 000 MAD, le cours de change est négocié"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "21",
+     "étape": "Valider l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "22",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire BOI habilité au profil de validation vérifie la conformité des données saisies par rapport au dossier papier et valide définitivement l'opération sur TI+.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Valider l’opération sur TI+ »",
+      "extrait": "Vérifie la conformité des données saisies par rapport au dossier Valide l’opération sur TI+"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "22",
+     "étape": "Valider le Swift",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Responsable de service",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "23",
+       "label": ""
+      }
+     ],
+     "outil": "Swift Alliance",
+     "descriptif": "Le responsable de service BOI vérifie les données finales du dossier et valide le message SWIFT sur Swift Alliance ; un e-mail est automatiquement adressé au client souscrit au service.",
+     "_source": {
+      "fichier": "Virements.docx",
+      "endroit": "section « Valider le Swift »",
+      "extrait": "Vérifie la conformité des données saisies par rapport au dossier ; Valide le Swift"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "23",
+     "étape": "Le client est notifié sous condition de souscription au service",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Responsable de service",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    }
+   ],
+   "fiche": "Virements.docx",
+   "mode": "rediger",
+   "duree_s": 156
+  },
+  {
+   "etapes": 36,
+   "acteurs": [
+    "Back Office - Salle de marché",
+    "Chef de caisse",
+    "Direction conformité",
+    "Gestionnaire des opérations",
+    "Profil de validation",
+    "Service Back office virement"
+   ],
+   "departements": [
+    "Agence",
+    "Back Office International",
+    "Back office Virement",
+    "Direction conformité",
+    "Salle des marchés"
+   ],
+   "paires": [
+    "Back Office - Salle de marché | Salle des marchés",
+    "Chef de caisse | Agence",
+    "Direction conformité | Direction conformité",
+    "Gestionnaire des opérations | Back Office International",
+    "Profil de validation | Back Office International",
+    "Service Back office virement | Back office Virement"
+   ],
+   "acteurs_inventes": [],
+   "acteurs_perdus": [
+    "charge clientele",
+    "gestionnaire operations boi"
+   ],
+   "departements_justes": "17/17",
+   "outils": [
+    "carthago",
+    "e mail",
+    "firco",
+    "rtgs",
+    "swift",
+    "ti+"
+   ],
+   "outils_inventes": [],
+   "outils_graphies": [],
+   "descriptions": "22/22",
+   "citations": "22/22",
+   "citations_bon_fichier": "22/22",
+   "extraits_verifies": "21/22",
+   "chiffres_inventes": [],
+   "workflow": [
+    {
+     "id": "2",
+     "étape": "Début",
+     "typeBpmn": "StartEvent",
+     "département": "Direction conformité",
+     "acteur": "Direction conformité",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "1",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "1",
+     "étape": "Envoi d'un message SWIFT MT XXX sur SWIFT ALLIANCE",
+     "typeBpmn": "Task",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "3",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "La banque correspondante étrangère émet et transmet le message SWIFT de rapatriement de fonds en devises.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Section Description des opérations",
+      "extrait": "Envoi d’un message SWIFT MT XXX sur SWIFT ALLIANCE-1"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "3",
+     "étape": "Procéder au contrôle de la conformité de l’opération",
+     "typeBpmn": "Task",
+     "département": "Direction conformité",
+     "acteur": "Direction conformité",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "4",
+       "label": ""
+      }
+     ],
+     "outil": "FIRCO",
+     "descriptif": "La Direction Conformité procède au contrôle de l'opération via FIRCO à la réception du message SWIFT.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Procéder au contrôle de la conformité de l’opération",
+      "extrait": "A la réception du message SWIF, la direction conformité procède au contrôle de l’opération."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "4",
+     "étape": "Opération conforme ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Direction conformité",
+     "acteur": "Direction conformité",
+     "typeActeur": "interne",
+     "condition": "Opération conforme ?",
+     "outputs": [
+      {
+       "targetId": "5",
+       "label": "Non"
+      },
+      {
+       "targetId": "6",
+       "label": "Oui / Opération < 11 000 MAD"
+      },
+      {
+       "targetId": "7",
+       "label": "Oui / Compte bénéficiaire incomplet"
+      },
+      {
+       "targetId": "11",
+       "label": "Oui / Opération >= 11 000 MAD"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "5",
+     "étape": "Opération rejetée",
+     "typeBpmn": "EndEvent",
+     "département": "Direction conformité",
+     "acteur": "Direction conformité",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "6",
+     "étape": "Opération traitée sans intervention du BOI",
+     "typeBpmn": "EndEvent",
+     "département": "Direction conformité",
+     "acteur": "Direction conformité",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "7",
+     "étape": "Traiter l’anomalie",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "8",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire BOI prend en charge l'anomalie sur Interface TI+ lorsque le compte bénéficiaire est incomplet.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Traiter l’anomalie",
+      "extrait": "Lorsque le compte bénéficiaire est incomplet : L’opération apparait au niveau de l’outil « Interface TI+ »."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "8",
+     "étape": "Anomalie traitée ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Anomalie traitée ?",
+     "outputs": [
+      {
+       "targetId": "10",
+       "label": "Oui"
+      },
+      {
+       "targetId": "9",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "9",
+     "étape": "Rejeter l'opération avec motif",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "23",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "Le gestionnaire BOI saisit le motif de rejet sur SWIFT Alliance et rejette l'opération non redressée.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Rejeter l’opération avec motif",
+      "extrait": "Saisit le motif de rejet sur Swift Aliance Rejette l’opération sur Swift Aliance"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "10",
+     "étape": "Redresser l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "11",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire d'opérations BOI redresse l'opération sur l'Interface TI+ après obtention des informations requises.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Redresser l’opération",
+      "extrait": "parvient à obtenir les informations nécessaires pour traiter l’anomalie : Il redresse l’opération sur Interface TI+."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "11",
+     "étape": "Procéder au contrôle de l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "12",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire BOI contrôle la date de valeur, le numéro de compte et le nom du bénéficiaire sur TI+.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Procéder au contrôle de l’opération",
+      "extrait": "Contrôle l’opération, notamment : La date de valeur Le numéro de compte Le nom du bénéficiaire"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "12",
+     "étape": "Contrôle concluant ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Contrôle concluant ?",
+     "outputs": [
+      {
+       "targetId": "13",
+       "label": "Oui"
+      },
+      {
+       "targetId": "18",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "13",
+     "étape": "Saisir les informations sur TI+",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "14",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire des opérations BOI saisit les détails de l'opération dans TI+ suite à un contrôle concluant.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Saisir les informations sur TI+",
+      "extrait": "Lorsque le contrôle est concluant, le gestionnaire d’opération BOI : Saisie les informations de l’opération sur TI+"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "14",
+     "étape": "Montant de l'opération ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Montant de l'opération ?",
+     "outputs": [
+      {
+       "targetId": "15",
+       "label": "Opérations < 10 000 Devise"
+      },
+      {
+       "targetId": "16",
+       "label": "Opérations >= 10 000 Devise"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "15",
+     "étape": "Traiter l’opération au fixing",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "26",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le gestionnaire BOI applique le cours au fixing pour les opérations de montant inférieur à 10 000 devises.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Traiter l’opération au fixing",
+      "extrait": "Si le montant de l’opération est inférieur à 10 000 devises, le gestionnaire d’opération BOI : Traite l’opération au fixing"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "16",
+     "étape": "Négocier le cours de change",
+     "typeBpmn": "Task",
+     "département": "Salle des marchés",
+     "acteur": "Back Office - Salle de marché",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "17",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "La Salle des marchés négocie le cours de change avec le client pour les montants supérieurs à 10 000 devises.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Négocier cours de change",
+      "extrait": "Avise la salle de marché afin de négocier le cours de change avec le client"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "17",
+     "étape": "Intégrer le cours de change",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "26",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire d'opération BOI intègre le cours de change négocié retenu dans le système TI+.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Intégrer le cours de change",
+      "extrait": "Le gestionnaire d’opération BOI intègre le cours de change négocié retenu dans TI+."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "18",
+     "étape": "Nature de la non-conformité ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Nature de la non-conformité ?",
+     "outputs": [
+      {
+       "targetId": "19",
+       "label": "< 10 000 Devise"
+      },
+      {
+       "targetId": "20",
+       "label": "Opération avec un grand montant sans motif"
+      },
+      {
+       "targetId": "21",
+       "label": "Compte à créditer en devises ou en dirhams convertibles"
+      },
+      {
+       "targetId": "22",
+       "label": ">= 10 000 Devise"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "19",
+     "étape": "Rejeter l'opération avec motif",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "23",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "Le gestionnaire BOI saisit le motif et rejette l'opération non concluante de moins de 10 000 devises sur SWIFT.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Rejeter l’opération avec motif",
+      "extrait": "Si l’opération est inférieure à 10 000 devises, le gestionnaire des opérations BOI : Saisit le motif de rejet"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "20",
+     "étape": "Contacter le client",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "25",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "L'agence prend contact avec le client pour recueillir la nature de l'opération et obtenir la codification OC requise.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Contacter le client",
+      "extrait": "L’agence recueille les éléments auprès du client et les transmet au BOI"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "21",
+     "étape": "Vérifier le statut du client pour créditer le compte",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Chef de caisse",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "25",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le chef de caisse en agence vérifie la catégorie du compte client pour déterminer la part à créditer et le code OC.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Vérifier le statut du client pour créditer son compte",
+      "extrait": "Vérifie le statut du client à son niveau (compte négoce, contribution libératoire, exportateur, société de droit étranger, etc.)"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "22",
+     "étape": "Contacter la banque correspondante",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "24",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "Le gestionnaire BOI contacte la banque correspondante par SWIFT pour obtenir les renseignements manquants.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Contacter la banque correspondante",
+      "extrait": "Informe la banque correspondante afin d’obtenir les informations nécessaires."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "23",
+     "étape": "Opération rejetée",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "24",
+     "étape": "Délai de réponse < 3 jours ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Délai de réponse < 3 jours ?",
+     "outputs": [
+      {
+       "targetId": "25",
+       "label": "Oui"
+      },
+      {
+       "targetId": "23",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "25",
+     "étape": "Saisir les informations sur TI+",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "26",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire BOI saisit les informations régularisées sur TI+ suite aux retours de l'agence ou de la banque.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Saisir les informations sur TI+",
+      "extrait": "Le gestionnaire d’opérations BOI, saisie les informations dans TI+ S’il obtient les informations requises"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "26",
+     "étape": "Vérifier les informations saisies",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Profil de validation",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "27",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le profil validation BOI contrôle les informations saisies ainsi que le taux de change appliqué sur TI+.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Vérifier les informations saisies",
+      "extrait": "Vérifie les informations saisies Vérifie le taux de change utilisé"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "27",
+     "étape": "Client CIH ou confrère ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Profil de validation",
+     "typeActeur": "interne",
+     "condition": "Client CIH ou confrère ?",
+     "outputs": [
+      {
+       "targetId": "28",
+       "label": "Compte bénéficiaire Client CIH"
+      },
+      {
+       "targetId": "30",
+       "label": "Compte confrère >= 10 M MAD"
+      },
+      {
+       "targetId": "34",
+       "label": "Compte confrère < 10 M MAD"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "28",
+     "étape": "Valider l’opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Profil de validation",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "29",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le profil validation BOI valide l'opération sur TI+, déclenchant le crédit effectif du compte client CIH.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Valider l’opération",
+      "extrait": "Lorsque le bénéficiaire est un client CIH, le gestionnaire d’opérations BOI : Valide l’opération. Le compte client est alors crédité."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "29",
+     "étape": "Compte client crédité",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Profil de validation",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "30",
+     "étape": "Valider l'opération pour créditer le compte confrère via RTGS",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Profil de validation",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "31",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le profil validation BOI valide sur TI+ le règlement confrère supérieur ou égal à 10 M MAD destiné au RTGS.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Valider l’opération pour créditer le compte confrère via RTGS",
+      "extrait": "montant de l’opération est supérieur à 10 M MAD, le gestionnaire des opérations BOI : Valide l’opération pour créditer le compte confrère via RTGS"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "31",
+     "étape": "Contacter le Back office Salle des marchés",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "32",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "Le gestionnaire BOI sollicite l'accord de la direction puis transmet les éléments par email à la Salle des marchés.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Contacter le back-office salle de marché",
+      "extrait": "Demande l’accord du directeur des flux internationaux et marché des capitaux par email Contacte le back-office salle de marché"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "32",
+     "étape": "Valider l’opération",
+     "typeBpmn": "Task",
+     "département": "Salle des marchés",
+     "acteur": "Back Office - Salle de marché",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "33",
+       "label": ""
+      }
+     ],
+     "outil": "RTGS",
+     "descriptif": "Le Back Office Salle de Marché saisit et valide le virement sur RTGS pour créditer le compte confrère le jour même.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Valider l’opération (Salle de marché)",
+      "extrait": "Saisie l’opération sur RTGS Valide à son tour l’opération sur RTGS Le compte confrère est crédité le même jour."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "33",
+     "étape": "Fin",
+     "typeBpmn": "EndEvent",
+     "département": "Salle des marchés",
+     "acteur": "Back Office - Salle de marché",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "34",
+     "étape": "Valider l'opération pour créditer le compte confrère via SIMT",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Profil de validation",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "35",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le profil validation BOI valide l'opération sur TI+ pour transmission du virement interbancaire au SIMT.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Valider l’opération pour créditer le compte confrère via SIMT",
+      "extrait": "compte confrère et que le montant de l’opération est inférieur à 10 Millions MAD, le gestionnaire des opérations BOI : Valide l’opération pour créditer le compte confrère via SIMT"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "35",
+     "étape": "Valider l’opération par le Service Back office virement",
+     "typeBpmn": "Task",
+     "département": "Back office Virement",
+     "acteur": "Service Back office virement",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "36",
+       "label": ""
+      }
+     ],
+     "outil": "Carthago",
+     "descriptif": "Le Service Back office virement valide l'opération sur Carthago pour créditer le compte confrère.",
+     "_source": {
+      "fichier": "Rapatriements en devises.docx",
+      "endroit": "Tableau Valider l’opération par le Service Back office virement",
+      "extrait": "Une fois l’opération validée par le BOI, le Service Back office virement Valide l’opération sur Carthago"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "36",
+     "étape": "Fin",
+     "typeBpmn": "EndEvent",
+     "département": "Back office Virement",
+     "acteur": "Service Back office virement",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    }
+   ],
+   "fiche": "Rapatriements en devises.docx",
+   "mode": "rediger",
+   "duree_s": 75
+  },
+  {
+   "etapes": 5,
+   "acteurs": [
+    "Gestionnaire Processing Garanties",
+    "Responsable"
+   ],
+   "departements": [
+    "Back Office International"
+   ],
+   "paires": [
+    "Gestionnaire Processing Garanties | Back Office International",
+    "Responsable | Back Office International"
+   ],
+   "acteurs_inventes": [],
+   "acteurs_perdus": [],
+   "departements_justes": "4/4",
+   "outils": [
+    "ti+"
+   ],
+   "outils_inventes": [],
+   "outils_graphies": [],
+   "descriptions": "3/3",
+   "citations": "3/3",
+   "citations_bon_fichier": "3/3",
+   "extraits_verifies": "3/3",
+   "chiffres_inventes": [],
+   "workflow": [
+    {
+     "id": "2",
+     "étape": "Début",
+     "typeBpmn": "StartEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire Processing Garanties",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "1",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "1",
+     "étape": "Envoi du message SWIFT de libération de la caution",
+     "typeBpmn": "Task",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "3",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "La banque correspondante émet et transmet le message SWIFT de libération de la caution à destination de la banque.",
+     "_source": {
+      "fichier": "Expiration des cautions émises à l'international.docx",
+      "endroit": "Logigramme",
+      "extrait": "Message SWIFT de libération de la caution"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "3",
+     "étape": "Saisir l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire Processing Garanties",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "4",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "À la réception du message SWIFT de libération de caution, le gestionnaire Processing Garanties saisit l'opération évènement expiration sur TI+.",
+     "_source": {
+      "fichier": "Expiration des cautions émises à l'international.docx",
+      "endroit": "section 1.3 Description des opérations",
+      "extrait": "Saisit l’opération « évènement expiration » sur TI+"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "4",
+     "étape": "Valider l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Responsable",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "5",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le responsable du BOI vérifie la conformité des données saisies et valide l'opération sur TI+.",
+     "_source": {
+      "fichier": "Expiration des cautions émises à l'international.docx",
+      "endroit": "section 1.3 Description des opérations",
+      "extrait": "Vérifie, à son tour, la conformité des données saisies Valide l’opération"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "5",
+     "étape": "Fin",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Responsable",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    }
+   ],
+   "fiche": "Expiration des cautions émises à l'international.docx",
+   "mode": "rediger",
+   "duree_s": 18
+  },
+  {
+   "etapes": 14,
+   "acteurs": [
+    "Chargé d'affaires",
+    "Gestionnaire des opérations",
+    "Responsable / Superviseur",
+    "Salle de marché"
+   ],
+   "departements": [
+    "Agence",
+    "Back Office International",
+    "Salle de marché"
+   ],
+   "paires": [
+    "Chargé d'affaires | Agence",
+    "Gestionnaire des opérations | Back Office International",
+    "Responsable / Superviseur | Back Office International",
+    "Salle de marché | Salle de marché"
+   ],
+   "acteurs_inventes": [],
+   "acteurs_perdus": [],
+   "departements_justes": "8/8",
+   "outils": [
+    "e mail",
+    "swift",
+    "ti+"
+   ],
+   "outils_inventes": [],
+   "outils_graphies": [],
+   "descriptions": "10/10",
+   "citations": "10/10",
+   "citations_bon_fichier": "10/10",
+   "extraits_verifies": "9/10",
+   "chiffres_inventes": [],
+   "workflow": [
+    {
+     "id": "2",
+     "étape": "Début",
+     "typeBpmn": "StartEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "1",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "1",
+     "étape": "Transmission des documents de non-paiement et du message SWIFT de mise en jeu",
+     "typeBpmn": "Task",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "3",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "La banque correspondante expédie l'attestation de non-paiement par courrier express et transmet le message SWIFT de mise en jeu de la garantie.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Réception d'un message Swift de mise en jeu /document attestant le non-paiement via courrier express"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "3",
+     "étape": "Contacter le chargé d'affaires pour notifier le client",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "4",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "Le gestionnaire BOI reçoit la mise en jeu et envoie un e-mail au chargé d'affaires afin que ce dernier avise le client de la réclamation formulée.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Contacte le chargé d'affaires via E-mail afin d'informer le client de la mise en jeu"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "4",
+     "étape": "Notifier le client",
+     "typeBpmn": "Task",
+     "département": "Agence",
+     "acteur": "Chargé d'affaires",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "5",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le chargé d'affaires contacte immédiatement le client pour vérifier sous 48h l'existence d'un éventuel règlement antérieur ou obtenir l'instruction de débit.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Contacte le client immédiatement afin de l'informer de la mise en jeu de la SBLC"
+     },
+     "_chiffres": [
+      "48h"
+     ]
+    },
+    {
+     "id": "5",
+     "étape": "Contacter la Salle de Marché",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "6",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "Dès réception des instructions de règlement, le gestionnaire BOI adresse un e-mail à la Salle de Marché afin de solliciter la cotation du cours de change.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Contacte la Salle de Marché afin de solliciter le taux à appliquer"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "6",
+     "étape": "Contacter le client",
+     "typeBpmn": "Task",
+     "département": "Salle de marché",
+     "acteur": "Salle de marché",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "7",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "La Salle de Marché prend attache avec le client afin de recueillir ses consignes d'achat de devises pour couvrir le montant réclamé.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Contacte le client pour avoir les instructions d'achat de devises"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "7",
+     "étape": "Montant supérieur ou égal à 100 000 MAD ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Salle de marché",
+     "acteur": "Salle de marché",
+     "typeActeur": "interne",
+     "condition": "Montant supérieur ou égal à 100 000 MAD ?",
+     "outputs": [
+      {
+       "targetId": "8",
+       "label": "Oui"
+      },
+      {
+       "targetId": "9",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "8",
+     "étape": "Négocier le cours de change",
+     "typeBpmn": "Task",
+     "département": "Salle de marché",
+     "acteur": "Salle de marché",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "9",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Pour tout montant supérieur ou égal à 100 000 MAD, la Salle de Marché négocie le cours de change directement avec le client avant validation.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Négocie le cours du change avec le client"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "9",
+     "étape": "Saisir l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "10",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le gestionnaire BOI enregistre l'opération sur TI+ au cours du jour ou au taux négocié, entraînant la génération automatique du message SWIFT de paiement.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Procède à la saisie de l'opération sur TI+ Un message Swift est automatiquement généré"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "10",
+     "étape": "Valider l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Responsable / Superviseur",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "11",
+       "label": ""
+      }
+     ],
+     "outil": "TI+",
+     "descriptif": "Le responsable ou superviseur BOI contrôle l'exactitude des éléments saisis sur TI+ par rapport aux justificatifs et valide l'opération.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Vérifie la conformité des données saisies par rapport au dossier ; Valide l'opération sur TI+"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "11",
+     "étape": "Valider le Swift",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Responsable / Superviseur",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "12",
+       "label": ""
+      },
+      {
+       "targetId": "13",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "Le responsable ou superviseur vérifie la teneur du message SWIFT généré et procède à sa validation sur Swift Alliance pour émission du paiement.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "section « Description des opérations »",
+      "extrait": "Vérifie la conformité des données saisies par rapport au dossier ; Valide le Swift"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "12",
+     "étape": "Fin",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Responsable / Superviseur",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "13",
+     "étape": "Réception du message SWIFT de paiement",
+     "typeBpmn": "Task",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "14",
+       "label": ""
+      }
+     ],
+     "outil": "SWIFT",
+     "descriptif": "La banque correspondante reçoit le message SWIFT confirmant le dénouement et le règlement de la mise en jeu.",
+     "_source": {
+      "fichier": "SBLC Import - Mise en jeu (1).docx",
+      "endroit": "logigramme",
+      "extrait": "Envoi d'un message Swift de paiement"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "14",
+     "étape": "Fin",
+     "typeBpmn": "EndEvent",
+     "département": "Banque correspondante",
+     "acteur": "Banque correspondante",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    }
+   ],
+   "fiche": "SBLC Import - Mise en jeu (1).docx",
+   "mode": "rediger",
+   "duree_s": 137
+  },
+  {
+   "etapes": 14,
+   "acteurs": [
+    "Gestionnaire des opérations",
+    "Responsable de service",
+    "Service activités internationales"
+   ],
+   "departements": [
+    "Back Office International",
+    "Service activités internationales"
+   ],
+   "paires": [
+    "Gestionnaire des opérations | Back Office International",
+    "Responsable de service | Back Office International",
+    "Service activités internationales | Service activités internationales"
+   ],
+   "acteurs_inventes": [],
+   "acteurs_perdus": [],
+   "departements_justes": "10/10",
+   "outils": [
+    "e mail",
+    "ibo",
+    "swift alliance"
+   ],
+   "outils_inventes": [],
+   "outils_graphies": [],
+   "descriptions": "8/8",
+   "citations": "8/8",
+   "citations_bon_fichier": "8/8",
+   "extraits_verifies": "8/8",
+   "chiffres_inventes": [],
+   "workflow": [
+    {
+     "id": "2",
+     "étape": "Début",
+     "typeBpmn": "StartEvent",
+     "département": "Service activités internationales",
+     "acteur": "Service activités internationales",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "1",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "1",
+     "étape": "Transmettre la demande de transfert de masse avec les fonds et le fichier XML",
+     "typeBpmn": "Task",
+     "département": "CDG",
+     "acteur": "CDG",
+     "typeActeur": "externe",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "3",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "La CDG envoie la demande de transfert de masse des pensions de retraite accompagnée du fichier XML et émet les fonds correspondants.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Objet » et logigramme",
+      "extrait": "Elle est déclenchée par une demande de la CDG"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "3",
+     "étape": "Charger le fichier",
+     "typeBpmn": "Task",
+     "département": "Service activités internationales",
+     "acteur": "Service activités internationales",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "4",
+       "label": ""
+      }
+     ],
+     "outil": "IBO",
+     "descriptif": "Le service activités internationales réceptionne le fichier XML transmis par la CDG et procède à son chargement sur l'outil IBO.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Description des opérations - Charger le fichier »",
+      "extrait": "A la réception du fichier XML envoyé par la CDG, le service « activités internationales » le charge sur IBO."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "4",
+     "étape": "Notifier le BOI",
+     "typeBpmn": "Task",
+     "département": "Service activités internationales",
+     "acteur": "Service activités internationales",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "5",
+       "label": ""
+      }
+     ],
+     "outil": "E-mail",
+     "descriptif": "Une fois le chargement terminé dans IBO, le service activités internationales adresse une notification par e-mail au Back Office International.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Description des opérations - Notifier le BOI »",
+      "extrait": "Une fois le fichier chargé sur IBO, le service « activités internationales » : Notifie le Back office international par mail."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "5",
+     "étape": "Vérifier la réception des fonds",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "6",
+       "label": ""
+      }
+     ],
+     "outil": "Swift Alliance",
+     "descriptif": "Le gestionnaire des opérations du BOI consulte Swift Alliance pour contrôler la réception effective des fonds associés au transfert.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Description des opérations - Vérifier la réception des fonds »",
+      "extrait": "Le gestionnaire des opérations BOI : Vérifie la réception des fonds sur Swift Aliance"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "6",
+     "étape": "Fonds reçus ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Fonds reçus ?",
+     "outputs": [
+      {
+       "targetId": "7",
+       "label": "Oui"
+      },
+      {
+       "targetId": "8",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "7",
+     "étape": "S'assurer du chargement du fichier XML dans IBO",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "9",
+       "label": ""
+      }
+     ],
+     "outil": "IBO",
+     "descriptif": "Lorsque les fonds sont bien reçus, le gestionnaire BOI vérifie dans IBO que le fichier XML a été correctement chargé par les activités internationales.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Description des opérations - S'assurer du chargement du fichier XML dans IBO »",
+      "extrait": "Si les fonds sont reçus, le gestionnaire des opérations BOI : S’assure du chargement du fichier XML dans IBO"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "8",
+     "étape": "Opération en instance jusqu'à réception des fonds",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "9",
+     "étape": "Vérifier la concordance entre le montant global du fichier et le montant reçu",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "10",
+       "label": ""
+      }
+     ],
+     "outil": "",
+     "descriptif": "Le gestionnaire des opérations vérifie la stricte concordance entre le montant global déclaré dans le fichier XML et le montant des fonds reçus.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Description des opérations - Vérifier la concordance entre le montant global du fichier et le montant reçu »",
+      "extrait": "Le gestionnaire des opérations : Vérifie la concordance entre le montant global du fichier et le montant reçu."
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "10",
+     "étape": "Vérification concluante ?",
+     "typeBpmn": "ExclusiveGateway",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "Vérification concluante ?",
+     "outputs": [
+      {
+       "targetId": "11",
+       "label": "Oui"
+      },
+      {
+       "targetId": "12",
+       "label": "Non"
+      }
+     ],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "11",
+     "étape": "Valider l'opération",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "13",
+       "label": ""
+      }
+     ],
+     "outil": "IBO",
+     "descriptif": "En cas de parfaite concordance des montants, le gestionnaire des opérations valide l'opération de transfert de masse sur IBO.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Description des opérations - Valider l'opération »",
+      "extrait": "En cas de concordance des montants, le gestionnaire des opérations : Valide l’opération sur IBO"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "12",
+     "étape": "Opération en instance jusqu'à réception de la totalité des fonds",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Gestionnaire des opérations",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    },
+    {
+     "id": "13",
+     "étape": "Valider le Swift",
+     "typeBpmn": "Task",
+     "département": "Back Office International",
+     "acteur": "Responsable de service",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [
+      {
+       "targetId": "14",
+       "label": ""
+      }
+     ],
+     "outil": "Swift Alliance",
+     "descriptif": "Après validation sur IBO, le responsable de service valide les messages SWIFT sur Swift Alliance, déclenchant l'envoi systématique par e-mail au client.",
+     "_source": {
+      "fichier": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+      "endroit": "section « Description des opérations - Valider le Swift »",
+      "extrait": "Lorsque l’opération est validée sur IBO, le Responsable de service : Valide les Swift"
+     },
+     "_chiffres": []
+    },
+    {
+     "id": "14",
+     "étape": "Messages SWIFT générés et client notifié",
+     "typeBpmn": "EndEvent",
+     "département": "Back Office International",
+     "acteur": "Responsable de service",
+     "typeActeur": "interne",
+     "condition": "",
+     "outputs": [],
+     "outil": "",
+     "descriptif": "",
+     "_source": null,
+     "_chiffres": []
+    }
+   ],
+   "fiche": "Gestion des transferts de masse des pensions de retraite - CDG.docx",
+   "mode": "rediger",
+   "duree_s": 111
+  }
+ ]
+}

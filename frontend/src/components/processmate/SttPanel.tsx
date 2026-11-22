@@ -1410,6 +1410,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             sources={chatSources.sources}
                             references={chatSources.references}
                             searches={chatSources.searches}
+                            citations={instances.filter(i => !i.archived).reduce<Record<string, number>>((acc, i) => {
+                                i.enrichments.forEach(e => { const f = e.source?.fichier; if (f) acc[f] = (acc[f] || 0) + 1; });
+                                return acc;
+                            }, {})}
                             canSave={canSave}
                             versionsEnabled={serverModeRef.current && !!conversationIdRef.current}
                             onOpen={key => { const idx = instances.findIndex(i => i.process_id === key); if (idx >= 0) setActiveTab(idx); }}

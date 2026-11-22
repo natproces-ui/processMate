@@ -357,50 +357,23 @@ Une tâche externe est SOIT un prédécesseur SOIT un successeur d'une tâche in
 
 Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
 
-**1. DESCRIPTIF** (OBLIGATOIRE, 100-200 caractères)
-   - Décris l'objectif de la tâche
-   - Mentionne les inputs (ce qui est reçu)
-   - Mentionne les outputs (ce qui est produit)
-   - Identifie les risques potentiels si pertinent
+**1. DESCRIPTIF** (100-200 caractères, autant que possible — voir DESCRIPTIONS dans les règles communes)
+   - Ce que fait la tâche, ce qui est reçu et ce qui est produit, d'après la source ou les explications de l'utilisateur
+   - Vide si rien ne permet de la décrire (jamais de remplissage)
 
    **Exemples** :
    - "Le client accède au portail en ligne et sélectionne un créneau disponible. Le système envoie une confirmation par email et SMS."
-   - "Vérifier l'authenticité des documents via des outils de détection de fraude. Contrôler les hologrammes, filigranes et signatures."
    - "Création du compte dans le système Core Banking. Paramétrage des droits et des produits associés."
 
-**2. DURÉE ESTIMÉE** (optionnel, format : "X min" ou "X h")
-   - Tâche manuelle simple → 5-15 min
-   - Tâche manuelle complexe → 20-45 min
-   - Tâche système automatisée → 1-5 min
-   - Tâche de validation/contrôle → 10-30 min
-   - Tâche externe (client, banque tierce) → "" (durée non maîtrisée)
-   - Si manque d'infos → ""
+**2. DURÉE, FRÉQUENCE, KPI** : SEULEMENT si la source les donne (« sous 48 h », « chaque mois », « taux de rejet < 2 % »),
+   recopiés tels quels. Sinon "" : jamais d'estimation, jamais d'indicateur imaginé (règle DÉDUIRE OU INVENTER).
 
-   **Exemples** : "5 min", "15-20 min", "1 h", "2-3 min"
-
-**3. FRÉQUENCE** (optionnel, valeur exacte parmi) :
-   Quotidien | Hebdomadaire | Mensuel | Trimestriel | Annuel | À la demande | En continu | Ponctuel
-
-   **Règles de déduction** :
-   - Demandes clients → "À la demande"
-   - Reporting → "Mensuel" ou "Hebdomadaire"
-   - Clôture → "Quotidien" ou "Mensuel"
-   - Validation → "À la demande"
-   - Monitoring → "En continu"
-   - Si manque d'infos → ""
-
-**4. KPI** (optionnel, 20-60 caractères)
-   - Un indicateur concret et mesurable
-   - Lié à la performance de la tâche
-
-   **Exemples** :
-   - "Taux de conversion > 80%"
-   - "Taux d'erreur < 2%"
-   - "Taux de détection fraude > 95%"
-   - "Délai de création < 1h"
-   - "Délai de notification < 2h"
-   - "Temps de traitement < 15 min"
-   - Si manque d'infos → ""
+**3. SOURCE** (citation) : d'où vient la tâche, quand elle vient d'un fichier joint
+   - "fichier" : le nom EXACT du fichier joint
+   - "endroit" : où, dans le fichier : "page 3", "diapositive 4", "section « Contrôles »", "ligne « Acteur : Responsable – BOI »"
+   - "extrait" : 5 à 15 mots RECOPIÉS mot pour mot de la source, qui justifient la tâche
+   - Tâche venue des explications de l'utilisateur dans le chat, ou déduite (événement, décision implicite) :
+     "source": {"fichier": "", "endroit": "", "extrait": ""}
 
 ⚠️ **RÈGLES IMPORTANTES** :
 - Ne génère PAS d'enrichissement pour StartEvent, EndEvent, ExclusiveGateway, ParallelGateway, InclusiveGateway
@@ -449,10 +422,11 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
   "enrichments": [
     {
       "id_tache": "2",
-      "descriptif": "Description complète de la tâche avec objectif, inputs, outputs (OBLIGATOIRE)",
-      "duree_estimee": "15 min (optionnel)",
-      "frequence": "À la demande (optionnel)",
-      "kpi": "Taux d'erreur < 2% (optionnel)"
+      "descriptif": "Ce que fait la tâche, ce qui est reçu et produit (vide si rien ne permet de la décrire)",
+      "duree_estimee": "seulement si la source la donne, sinon vide",
+      "frequence": "seulement si la source la donne, sinon vide",
+      "kpi": "seulement si la source le donne, sinon vide",
+      "source": {"fichier": "nom exact du fichier joint", "endroit": "page 3", "extrait": "5 à 15 mots recopiés de la source"}
     }
   ]
 }
@@ -558,22 +532,25 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
       "id_tache": "1",
       "descriptif": "Le client prépare et soumet sa demande de mise en place d'une MCNE en MAD avec les justificatifs requis (demande signée, DUM, facture, billet à ordre).",
       "duree_estimee": "",
-      "frequence": "À la demande",
-      "kpi": ""
+      "frequence": "",
+      "kpi": "",
+      "source": {"fichier": "MCNE en MAD Mise en place.pdf", "endroit": "page 2", "extrait": "Le client dépose sa demande accompagnée de la DUM et de la facture"}
     },
     {
       "id_tache": "3",
       "descriptif": "Le chargé de caisse s'assure de l'exhaustivité des documents (demande signée, DUM, facture, billet à ordre) et les rattache sur Nov@BOmain.",
-      "duree_estimee": "15 min",
-      "frequence": "À la demande",
-      "kpi": "Taux de dossiers complets > 95%"
+      "duree_estimee": "",
+      "frequence": "",
+      "kpi": "",
+      "source": {"fichier": "MCNE en MAD Mise en place.pdf", "endroit": "page 2", "extrait": "vérifie l'exhaustivité du dossier et le rattache sur Nov@BOmain"}
     },
     {
       "id_tache": "4",
       "descriptif": "Le gestionnaire contrôle l'exhaustivité et la conformité des documents. Il recalcule l'avance (max 80% du montant facturé).",
-      "duree_estimee": "20 min",
-      "frequence": "À la demande",
-      "kpi": "Taux d'erreur < 2%"
+      "duree_estimee": "",
+      "frequence": "",
+      "kpi": "",
+      "source": {"fichier": "MCNE en MAD Mise en place.pdf", "endroit": "page 3", "extrait": "le montant de l'avance ne peut excéder 80% du montant facturé"}
     }
   ]
 }
@@ -605,7 +582,7 @@ Avant de retourner le JSON, vérifie :
 ✓ Toutes les connexions (flèches) sont capturées dans les tableaux outputs ?
 ✓ Le flow est continu, logique et fait du sens métier ?
 ✓ Les Tasks ont un descriptif autant que possible, sans fait inventé ?
-✓ Les enrichissements optionnels (durée, fréquence, KPI) sont remplis quand possible ?
+✓ Durée, fréquence, KPI remplis SEULEMENT quand la source les donne ? Chaque tâche tirée d'un fichier a sa source (fichier, endroit, extrait recopié) ?
 ✓ JSON pur sans markdown (pas de ```json) ?
 
 ⚡ COMMENCE L'ANALYSE ET L'EXTRACTION MAINTENANT :"""

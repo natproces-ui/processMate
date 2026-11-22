@@ -1,4 +1,5 @@
 'use client';
+import SourceCitation from '@/components/shared/SourceCitation';
 import { useState, useRef } from 'react';
 import { FileText, Trash2, Plus, Edit, Eye, EyeOff, GripVertical } from 'lucide-react';
 import type { Table1Row } from '@/logic/types';
@@ -514,6 +515,7 @@ export default function Table({
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">ID Tâche</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Nom Tâche</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Descriptif</th>
+                                    <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Source</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Durée estimée</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Écrans</th>
                                     <th className="border border-gray-600 px-3 py-2 text-left font-semibold">Liens</th>
@@ -543,6 +545,9 @@ export default function Table({
                                                 <div className="truncate" title={enrichment?.descriptif}>
                                                     {enrichment?.descriptif || <span className="text-gray-400">-</span>}
                                                 </div>
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 max-w-[14rem]">
+                                                {enrichment?.source?.fichier ? <SourceCitation source={enrichment.source} compact /> : <span className="text-gray-400">-</span>}
                                             </td>
                                             <td className="border border-gray-300 px-3 py-2">
                                                 {enrichment?.duree_estimee || <span className="text-gray-400">-</span>}

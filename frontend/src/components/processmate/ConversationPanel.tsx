@@ -35,7 +35,7 @@ export function toSave(outputs: ConversationOutput[]): ConversationOutput[] {
         (!o.workflow_db_id || outputState(o).label.startsWith('Modifiée')));
 }
 
-export default function ConversationPanel({ outputs, activeKey, sources, references = [], searches = [], canSave, versionsEnabled, onOpen, onRestore, onUpdate,
+export default function ConversationPanel({ outputs, activeKey, sources, references = [], searches = [], citations = {}, canSave, versionsEnabled, onOpen, onRestore, onUpdate,
     onVersions, onSaveAll, onClose }: {
     outputs: ConversationOutput[];
     activeKey?: string | null;
@@ -44,6 +44,8 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
     references?: string[];
     /** recherches sur internet faites dans la conversation */
     searches?: WebSearch[];
+    /** nombre d'étapes (procédures actives) qui citent chaque fichier */
+    citations?: Record<string, number>;
     canSave: boolean;
     versionsEnabled: boolean;
     onOpen: (key: string) => void;
@@ -137,6 +139,10 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                                 <li key={s.id} className="flex items-center gap-2 py-1 text-sm text-neutral-800">
                                     <Icon className="w-3.5 h-3.5 shrink-0 text-neutral-500" />
                                     <span className="min-w-0 flex-1 truncate" title={s.filename}>{s.filename}</span>
+                                    {citations[s.filename] ? (
+                                        <span title="Étapes des procédures de la conversation qui citent ce fichier"
+                                            className="shrink-0 text-[10px] text-neutral-500">{citations[s.filename]} étape{citations[s.filename] > 1 ? 's' : ''}</span>
+                                    ) : null}
                                     {references.includes(s.filename) && (
                                         <span title="Utilisé comme modèle de style, pas comme source de contenu"
                                             className="shrink-0 rounded-full bg-neutral-100 px-1.5 text-[10px] font-semibold text-neutral-700">modèle</span>

@@ -82,7 +82,7 @@ def read_fiche(path: Path) -> dict:
         tools = (tools - {"TIPLUS"}) | {"TI+"}
     return {"acteurs": actors, "fonctions": {norm(split_actor(a)[0]) for a in actors},
             "entites": {norm(split_actor(a)[1]) for a in actors}, "complets": {norm(a) for a in actors},
-            "outils": {norm(o) for o in tools}, "texte": norm(text)}
+            "outils": {norm(o) for o in tools}, "texte": norm(text), "nom": path.name}
 
 
 def score(fiche: dict, workflow: list) -> dict:
@@ -122,12 +122,25 @@ def score(fiche: dict, workflow: list) -> dict:
     tools_invented = sorted(t for t in tools_out if not any(t == o or t in o or o in t for o in fiche["outils"]))
     variants = sorted(", ".join(sorted(v)) for v in tools_out.values() if len(v) > 1)
     described = sum(bool((r.get("descriptif") or r.get("description") or "").strip()) for r in tasks)
+    # citations (rédaction) : la tâche cite le bon fichier, et l'extrait se retrouve dans la fiche
+    cited = [r for r in tasks if isinstance(r.get("_source"), dict) and r["_source"].get("fichier")]
+    good_file = [r for r in cited if norm(r["_source"]["fichier"]) == norm(fiche.get("nom") or "")]
+
+    def found(extrait: str) -> bool:
+        words = [w for w in norm(extrait).split() if len(w) > 2]
+        return bool(words) and sum(w in fiche["texte"].split() for w in words) / len(words) >= 0.8
+    verified = [r for r in good_file if found(r["_source"].get("extrait") or "")]
+    # durée / KPI absents de la fiche : inventés
+    invented_figures = [v for r in tasks for v in r.get("_chiffres") or [] if norm(v) not in fiche["texte"]]
     return {"etapes": len(workflow), "acteurs": sorted(actors),
             "departements": sorted({r.get("département") or "" for r in internes}),
             "paires": sorted({f"{r.get('acteur')} | {r.get('département')}" for r in internes}), "acteurs_inventes": invented, "acteurs_perdus": lost,
             "departements_justes": f"{dept_ok}/{len(with_entity)}", "outils": sorted(tools_out),
             "outils_inventes": tools_invented, "outils_graphies": variants,
-            "descriptions": f"{described}/{len(tasks)}", "workflow": workflow}
+            "descriptions": f"{described}/{len(tasks)}",
+            "citations": f"{len(cited)}/{len(tasks)}", "citations_bon_fichier": f"{len(good_file)}/{len(cited)}",
+            "extraits_verifies": f"{len(verified)}/{len(good_file)}", "chiffres_inventes": invented_figures,
+            "workflow": workflow}
 
 
 class FakeRequest:
@@ -156,6 +169,8 @@ async def produce(mode: str, path: Path) -> list:
             for r in wf:  # les descriptions de la rédaction sont dans les enrichissements
                 e = desc.get(str(r.get("id"))) or {}
                 r.setdefault("descriptif", e.get("descriptif") or "")
+                r["_source"] = e.get("source") or None
+                r["_chiffres"] = [v for v in (e.get("duree_estimee"), e.get("kpi")) if v]
             return wf
         if ev.get("type") == "procedure_error":
             raise RuntimeError(ev.get("message"))
@@ -202,9 +217,10 @@ async def main():
             print(f"  {mode:<10} {name[:45]:<45} {s['etapes']:>3} étapes · acteurs inventés {len(s['acteurs_inventes'])}"
                   f" · perdus {len(s['acteurs_perdus'])} · fonction/entité {s["departements_justes"]}"
                   f" · outils inventés {len(s['outils_inventes'])} · graphies {len(s['outils_graphies'])}"
-                  f" · descriptions {s['descriptions']} · {s['duree_s']} s")
+                  f" · descriptions {s['descriptions']} · citations {s['citations']} (bon fichier {s['citations_bon_fichier']},"
+                  f" extrait retrouvé {s['extraits_verifies']}) · chiffres inventés {len(s['chiffres_inventes'])} · {s['duree_s']} s")
             print(f"       acteur | département : {s['paires']}")
-            for k in ("acteurs_inventes", "acteurs_perdus", "outils_inventes", "outils_graphies"):
+            for k in ("acteurs_inventes", "acteurs_perdus", "outils_inventes", "outils_graphies", "chiffres_inventes"):
                 if s[k]:
                     print(f"       {k.replace('_', ' ')} : {s[k]}")
     ok = [r for r in results if "erreur" not in r]
