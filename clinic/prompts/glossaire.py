@@ -12,7 +12,7 @@ Exemples tirés de procédures réelles (procédures Opérations à l'internatio
 Branché dans : aiguillage du chat (prompts/studio_planner_prompt.py).
 """
 
-GLOSSAIRE_VERSION = "0.2"
+GLOSSAIRE_VERSION = "0.3"
 
 GLOSSAIRE = """RÈGLES MÉTIER COMMUNES (ProcessMate — procédures bancaires et d'entreprise)
 
@@ -63,6 +63,15 @@ ACTEUR
   avec un autre ni supprimé, sauf si l'utilisateur le demande. « Responsable – BOI »,
   « Gestionnaire des opérations – BOI » et « Superviseur – BOI » sont trois acteurs ; « Back office »
   tout court en est un.
+- Le nom de l'acteur n'est jamais raccourci (« Responsable de service – BOI » → « Responsable de service », pas
+  « Responsable »). Une précision entre parenthèses est un profil ou une habilitation, pas un acteur
+  (« Gestionnaire des opérations – BOI (Profil de validation) » → acteur « Gestionnaire des opérations » ;
+  la précision va dans le libellé ou la description de l'étape : « Valider la saisie (profil de validation) »).
+- Quand la source ne nomme qu'un service (« Back Office – Salle de marché », « Service Back office virement »),
+  l'acteur EST ce service : n'invente jamais une fonction (« Opérateur salle des marchés », « Gestionnaire virement »)
+  ni une autre personne (« Chef de caisse » quand la fiche dit « Chargé de clientèle »).
+- Un acteur écrit « A / B » (« Responsable / Superviseur – BOI ») se garde tel quel : ni « A » seul, ni fondu dans
+  un autre acteur.
 - Seules les écritures différentes d'un MÊME nom sont réunies : tiret, casse, article, abréviation
   (« Gestionnaire des opérations – BOI », « Gestionnaire des Opérations - BOI », « Le gestionnaire
   des opérations BOI » → un seul).

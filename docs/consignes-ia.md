@@ -101,6 +101,24 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
      Banc (3 passages par situation, `bench/resultats_decisions_glossaire.json`) : **51/53** contre 48/53 ; transcrire 0/3 → 3/3,
      opérations sur l'ensemble 8/8 sur 5 passages. Restent : le plan d'atténuation des risques (proposé comme procédures,
      avec ou sans glossaire) et « préfixe sur toutes les procédures » (4/5 : une question de temps en temps).
-   - À suivre : rédaction (`extract_prompt`), transcription (`transcribe_prompt` : écrit « Back Office International » là où
-     la fiche dit « Gestionnaire des opérations – BOI »), modification (`revision_prompt`), relecture, classifieur du chat.
+   - **Rédaction et transcription — faits le 22/11/2026.** Glossaire (0.3) en tête de `extract_prompt` et de `transcribe_prompt`
+     (mode TRANSCRIRE annoncé). Règles en conflit réécrites : département = entité, acteur = rôle tel que nommé (fiches
+     « Acteur : » comprises), outil = applicatif, descriptif « autant que possible », acteurs externes qui interviennent réellement.
+     Ajouts au glossaire après mesure : nom d'acteur jamais raccourci, précision entre parenthèses = profil (pas un acteur),
+     service seul = l'acteur (ne pas inventer de fonction), « A / B » gardé tel quel.
+     Banc du contenu (`bench/contenu.py`, 6 fiches CIH × rédaction et transcription, mesure contre les lignes « Acteur : ») :
+
+     | 12 productions | Avant | Glossaire 0.3 |
+     |---|---|---|
+     | Acteurs inventés | 4 | 0 |
+     | Acteurs perdus | 22 | 8 |
+     | Fonction / entité séparées | 64/85 (75 %) | 122/130 (94 %) |
+     | Outils inventés | 0 | 0 |
+
+     Restes : « BO salle des marchés & BOI » réduit, « Chargé de clientèle » remplacé par le « Chef de caisse » que la fiche
+     cite aussi dans sa liste d'acteurs (fiche incohérente). **À surveiller** : rédaction ~10 % plus lente (consigne plus longue) ;
+     une rédaction a dépassé le délai de 180 s sans réponse du modèle, réussie au second essai (170 s).
+     Banc des décisions refait avec le glossaire 0.3 : 52/53.
+   - À suivre : modification (`revision_prompt`), relecture (`studio_remarks_prompt`), classifieur du chat (`intent_prompt`,
+     à fondre dans l'aiguillage), découverte du Studio complet (`discovery_prompt`, définition d'une procédure).
 4. Retrait des doublons et des consignes mortes (après confirmation).

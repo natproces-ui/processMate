@@ -2,6 +2,8 @@
 Prompt pour l'extraction de workflows depuis des images BPMN
 """
 
+from prompts.glossaire import GLOSSAIRE
+
 EXTRACTION_PROMPT = """Tu es un expert en extraction de processus métier depuis des documents de tout type (diagrammes BPMN, procédures textuelles, images manuscrites, PDF structurés, etc.).
 
 🎯 OBJECTIF: Extraire le workflow (TABLE 1), les enrichissements documentaires (TABLE 2) ET constituer les métadonnées de la procédure (TABLE 0) en un seul JSON structuré.
@@ -13,7 +15,7 @@ Sois méthodique et précis, ne néglige aucune étape visible.
 
 Le document peut avoir n'importe quelle structure. Tu dois **constituer** ces champs à partir de ce que tu comprends du contenu global, peu importe sa forme.
 
-**RÈGLE GÉNÉRALE** : Si une information est absente ou non déductible → laisser "" (jamais null). Ne jamais inventer une information qui n'est pas dans le document.
+**RÈGLE GÉNÉRALE** : Si une information est absente ou non déductible → laisser "" (jamais null). Ce qu'on peut déduire et ce qu'on n'invente jamais : voir DÉDUIRE OU INVENTER dans les règles communes.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ DÉFINITION FONDAMENTALE : ACTEUR INTERNE vs ACTEUR EXTERNE
@@ -92,7 +94,7 @@ Si un acteur externe intervient dans le processus — que ce soit par une swimla
 
 **`responsabilites_externes`** — Liste des acteurs EXTERNES (hors organisation).
 - Appliquer la définition EXTERNE établie ci-dessus.
-- Inclure TOUS les acteurs externes identifiés, même ceux sans swimlane explicite (identifiés par le contexte).
+- Inclure les acteurs externes qui interviennent réellement (ils envoient, reçoivent, demandent), même sans swimlane ; jamais un acteur qui n'intervient pas.
 - Exemples : ["Client", "Banque présentatrice", "Office des Changes", "Correspondant étranger"]
 
 **`references`** — Documents, textes réglementaires ou normes mentionnés dans le document.
@@ -270,20 +272,21 @@ Pour CHAQUE forme géométrique visible, extrais :
 - **id** : Séquentiel "1", "2", "3"... (dans l'ordre du flux)
 - **étape** : Nom descriptif de l'action
 - **typeBpmn** : StartEvent | Task | ExclusiveGateway | ParallelGateway | InclusiveGateway | EndEvent
-- **département** : Service métier déduit de l'acteur (ex: "CAE/Middle Office" → "Middle Office")
-- **acteur** : Copie EXACTEMENT l'en-tête de swimlane (ou "" si absent)
+- **département** : l'entité de l'organisation (le couloir) ; « Gestionnaire des opérations – BOI » → "BOI" ; la même valeur que l'acteur quand la source ne distingue pas
+- **acteur** : le rôle tel que la source le nomme (en-tête de swimlane, ligne « Acteur : » d'une fiche, rôle cité dans le texte), sans l'entité quand elle est donnée à part ("" si absent)
 - **typeActeur** : "interne" | "externe" — Appliquer la définition établie ci-dessus. Le même acteur doit avoir le même typeActeur sur TOUTES les étapes où il apparaît.
 - **condition** : Question pour Gateway (ex: "Dossier conforme ?"), sinon ""
 - **outputs** : Tableau des sorties, chaque entrée sous la forme {"targetId": "ID", "label": "label optionnel"}
-- **outil** : Système informatique utilisé (ex: "CRM", "Nov@ OA"), sinon ""
+- **outil** : applicatif ou outil utilisé pour la tâche (logiciel, messagerie, portail, tableur : "TI+", "Docflow", "Swift Alliance", "Nov@ OA"), sinon "" ; ni papier ni téléphone
 
 **RÈGLES D'EXTRACTION** :
 
 📌 **ACTEURS** :
-- **Avec swimlanes** : Copie EXACTEMENT le texte de l'en-tête
-  - "Agence/Chef de caisse Super CCO" → acteur: "Agence/Chef de caisse Super CCO"
-  - **NE JAMAIS raccourcir ou modifier**
-- **Sans swimlanes** : Extrait le rôle depuis le texte de la forme
+- **Avec swimlanes** : le rôle de l'en-tête, sans le raccourcir ni le fusionner avec un autre
+  - "Agence/Chef de caisse Super CCO" → acteur: "Chef de caisse Super CCO", département: "Agence"
+- **Fiche procédure** (lignes « Acteur : … ») : l'acteur de la ligne ; « Responsable – BOI » → acteur: "Responsable", département: "BOI" ;
+  les écritures différentes d'un même acteur (tiret, casse, article) sont réunies sous un seul nom, des acteurs différents jamais
+- **Sans swimlanes** : Extrait le rôle depuis le texte de la forme, ou déduis-le clairement de ce qui est fait
 - **Aucun acteur visible** : acteur = ""
 
 📌 **TYPE ACTEUR** :
@@ -400,7 +403,7 @@ Pour CHAQUE Task (typeBpmn = "Task"), génère un enrichissement documentaire :
 
 ⚠️ **RÈGLES IMPORTANTES** :
 - Ne génère PAS d'enrichissement pour StartEvent, EndEvent, ExclusiveGateway, ParallelGateway, InclusiveGateway
-- **DESCRIPTIF OBLIGATOIRE** pour TOUTES les Tasks — internes ET externes (ne jamais laisser vide)
+- **DESCRIPTIF** : autant que possible pour chaque Task, à partir de la source, des explications de l'utilisateur ou de ta compréhension du métier, sans ajouter de fait propre à l'organisation (outil, délai, montant, règle) ; vide si rien ne permet de la décrire
 - Durée, fréquence, KPI sont optionnels (laisse "" si incertain)
 - Base-toi sur le département, l'acteur et l'outil pour déduire le contexte métier
 - Sois réaliste et professionnel
@@ -600,7 +603,7 @@ Avant de retourner le JSON, vérifie :
 ✓ Tous les EndEvent ont outputs = [] ?
 ✓ Toutes les connexions (flèches) sont capturées dans les tableaux outputs ?
 ✓ Le flow est continu, logique et fait du sens métier ?
-✓ TOUTES les Tasks (internes ET externes) ont un descriptif obligatoire ?
+✓ Les Tasks ont un descriptif autant que possible, sans fait inventé ?
 ✓ Les enrichissements optionnels (durée, fréquence, KPI) sont remplis quand possible ?
 ✓ JSON pur sans markdown (pas de ```json) ?
 
@@ -608,5 +611,5 @@ Avant de retourner le JSON, vérifie :
 
 
 def get_extraction_prompt() -> str:
-    """Retourne le prompt d'extraction de workflow"""
-    return EXTRACTION_PROMPT
+    """Retourne le prompt d'extraction de workflow, règles métier communes en tête."""
+    return GLOSSAIRE + "\n\n" + EXTRACTION_PROMPT

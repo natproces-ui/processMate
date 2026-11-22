@@ -4,6 +4,8 @@ Prompts de transcription fidèle — AUCUNE reformulation.
 Trois modes : image_only, text_only, combined.
 """
 
+from prompts.glossaire import GLOSSAIRE
+
 # ─────────────────────────────────────────────────────────────
 # RÈGLES COMMUNES À TOUS LES MODES
 # ─────────────────────────────────────────────────────────────
@@ -39,7 +41,9 @@ Si absent → déduire depuis la forme ou le rôle :
 📌 ACTEURS ET typeActeur
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-- Copier EXACTEMENT les noms d'acteurs depuis les en-têtes de swimlanes de la source
+- Copier EXACTEMENT les noms d'acteurs depuis la source : en-têtes de swimlanes, ou lignes « Acteur : » d'une fiche procédure
+- « Fonction – Entité » (« Gestionnaire des opérations – BOI ») → acteur: la fonction, département: l'entité, chacun tel qu'écrit
+- Ne jamais remplacer un acteur par son service (« Back Office International » au lieu de « Gestionnaire des opérations – BOI » est faux)
 - typeActeur doit être renseigné sur TOUTES les étapes : "interne" ou "externe"
 - Si un acteur externe a une swimlane et des éléments visibles dans la source → les transcrire tels quels avec typeActeur: "externe"
 - Si un acteur est absent de la source → ne pas le créer
@@ -56,7 +60,7 @@ Si absent → déduire depuis la forme ou le rôle :
       "id": "1",
       "étape": "Texte EXACT de l'étape, copié tel quel depuis la source",
       "typeBpmn": "StartEvent | Task | ExclusiveGateway | ParallelGateway | EndEvent",
-      "département": "Département exact depuis la source (ou déduit de l'acteur si absent)",
+      "département": "Entité exacte depuis la source (couloir, ou partie après le tiret d'un acteur « Fonction – Entité ») ; l'acteur si absente",
       "acteur": "Acteur exact depuis la source",
       "typeActeur": "interne | externe",
       "condition": "Texte exact de la condition si Gateway, sinon \"\"",
@@ -153,7 +157,11 @@ def get_transcribe_prompt(message: str, mode: str = "combined") -> str:
     }
     base = prompts.get(mode, _COMBINED_PROMPT)
 
-    return f"""{base}
+    return f"""{GLOSSAIRE}
+
+MODE DE TRAVAIL : TRANSCRIRE (règles communes ci-dessus : libellés, acteurs et décisions exacts).
+
+{base}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📥 SOURCE À TRANSCRIRE
