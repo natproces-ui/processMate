@@ -28,6 +28,8 @@ class TurnRecorder:
         self.generated: List[Dict[str, Any]] = []
         self.error: Optional[str] = None
         self._streaming: Optional[int] = None
+        self.chat_data: Optional[Dict[str, Any]] = None
+        self.target_key: Optional[str] = None
 
     def feed(self, ev: Dict[str, Any]) -> None:
         t = ev.get("type")
@@ -88,6 +90,7 @@ class TurnRecorder:
         elif t == "target_procedure":
             # le message visait une autre procédure de la conversation : son nom reste sur la carte
             self.payload["targetTitle"] = ev.get("title")
+            self.target_key = ev.get("key")
         elif t == "error":
             self.error = ev.get("message")
 
@@ -99,6 +102,7 @@ class TurnRecorder:
         self.payload["generations"].append({"id": gid, **{k: v for k, v in fields.items() if v is not None}})
 
     def _chat_result(self, data: Dict[str, Any]) -> None:
+        self.chat_data = data  # le serveur applique lui-même la modification (conversation_procedures)
         intent = data.get("intent") or "generate"
         self.payload["intent"] = intent
         if intent == "clarify":

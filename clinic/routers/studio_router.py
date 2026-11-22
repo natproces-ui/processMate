@@ -46,6 +46,7 @@ from manager.processing_level import ProcessingLevel, get_processing_level, proc
 from models.discovery_models import ProcessCard, SourceReference, SourceType
 from processor import studio_agent
 from processor.studio_planner import plan_turn
+from manager import conversation_procedures as cp
 from processor.office_extract import EXTRACTED_TYPES, extract_office, office_type
 
 logger = logging.getLogger(__name__)
@@ -622,10 +623,30 @@ def _record(gen, conv: Optional[Dict[str, Any]], sess: Dict[str, Any], ix: Optio
     if conv is None:
         return gen
 
+    turn = dict(sess.get("_turn") or {})
+
+    def save(stopped: bool) -> Optional[List[Dict[str, Any]]]:
+        """Enregistre la réponse ; quand le serveur fait foi, écrit aussi les procédures et leurs versions."""
+        msg = recorder.finish(stopped=stopped)
+        ids = (ix or {}).get("ids") or []
+        saved = store.add_message(conv["id"], msg["role"], msg["content"], msg["payload"],
+                                  interaction_id=ids[-1] if ids else None)
+        store.merge_state(conv["id"], conv["owner_id"],
+                          proposal=sess.get("proposal"), references=sess.get("references"),
+                          referentiel=sess.get("referentiel"))
+        if turn.get("server"):
+            turn["target_key"] = (sess.get("_turn") or {}).get("target_key") or turn.get("target_key")
+            from manager import turn_procedures
+            return turn_procedures.persist(conv["id"], recorder, (saved or {}).get("id"), turn)
+        return None
+
+    recorder = TurnRecorder()
+
     async def wrapper():
-        recorder, finished = TurnRecorder(), False
+        saved = False
         try:
             async for chunk in gen:
+                done_here = False
                 for line in chunk.splitlines():
                     if line.startswith("data: "):
                         try:
@@ -633,21 +654,25 @@ def _record(gen, conv: Optional[Dict[str, Any]], sess: Dict[str, Any], ix: Optio
                         except ValueError:
                             continue
                         if ev.get("type") == "done":
-                            finished = True
-                        recorder.feed(ev)
+                            done_here = True
+                        else:
+                            recorder.feed(ev)
+                if done_here and not saved:
+                    # avant « done » : la réponse est enregistrée et l'écran reçoit les procédures telles que le serveur les garde
+                    saved = True
+                    try:
+                        procs = await asyncio.to_thread(save, False)
+                        if procs is not None:
+                            yield _sse({"type": "conversation_procedures", "procedures": procs})
+                    except Exception as e:
+                        logger.error(f"❌ Réponse non enregistrée dans la conversation {conv['id']} : {e}")
                 yield chunk
         finally:
-            try:
-                msg = recorder.finish(stopped=not finished)
-                ids = (ix or {}).get("ids") or []
-                store.add_message(conv["id"], msg["role"], msg["content"], msg["payload"],
-                                  interaction_id=ids[-1] if ids else None)
-                # fusion : les procédures enregistrées par le navigateur restent dans l'état
-                store.merge_state(conv["id"], conv["owner_id"],
-                                  proposal=sess.get("proposal"), references=sess.get("references"),
-                                  referentiel=sess.get("referentiel"))
-            except Exception as e:
-                logger.error(f"❌ Réponse non enregistrée dans la conversation {conv['id']} : {e}")
+            if not saved:  # arrêté par l'utilisateur ou coupé : enregistré comme arrêté
+                try:
+                    save(True)
+                except Exception as e:
+                    logger.error(f"❌ Réponse non enregistrée dans la conversation {conv['id']} : {e}")
 
     return wrapper()
 
@@ -668,6 +693,8 @@ async def studio_turn(
     current_procedure_metadata: Optional[str] = Form(None),
     conversation_procedures: Optional[str] = Form(None),
     active_procedure: Optional[str] = Form(None),
+    client_message_id: Optional[str] = Form(None),
+    server_procedures: Optional[str] = Form(None),
     files: List[UploadFile] = File(default=[]),
     user: Optional[AuthUser] = Depends(get_optional_user),
 ):
@@ -689,6 +716,16 @@ async def studio_turn(
                     for i, p in enumerate(conv_procs)]
     has_workflow = bool(workflow)
     conv = await _owned_conversation(session_id, user)
+    # Le serveur fait foi (docs/conversation-serveur.md) : l'écran récent le demande, les tables existent
+    server_mode = bool(conv is not None and server_procedures == "1" and await asyncio.to_thread(cp.available))
+    chat_procs = _loads(conversation_procedures, None)
+    if server_mode:
+        await asyncio.to_thread(cp.ensure_seeded, conv)
+        conv_procs = await asyncio.to_thread(cp.list_procedures, conv["id"], False)
+        chat_procs = conv_procs
+        conv_summary = [{"n": i + 1, "titre": p.get("title") or "Procédure", "nb_etapes": len(p.get("workflow") or []),
+                         "affichee": p.get("key") == active_procedure, "etapes": _steps_summary(p)}
+                        for i, p in enumerate(conv_procs)]
     plan_files = new_files
     if conv is None:
         sess = _sessions.setdefault(session_id, {"files": [], "proposal": None})
@@ -719,6 +756,8 @@ async def studio_turn(
         from manager import conversation_title
         title_task = asyncio.create_task(asyncio.to_thread(conversation_title.ensure_title, conv, message, new_files))
     sess["updated"] = time.time()
+    sess["_turn"] = {"server": server_mode, "client_message_id": (client_message_id or "")[:80] or None,
+                     "active": active_procedure, "author": user.id if user else None, "target_key": None}
     level = _level_for(guest)
     ix = {"store": user is not None, "ids": []}  # API Interactions : rien de conservé pour un invité
 
@@ -798,9 +837,10 @@ async def studio_turn(
                     # le chat exécute ce que l'aiguillage a décidé ; une question sans source à lire = explication
                     intent = plan.chat_intent or ("transcribe" if plan.action == "transcribe" else "explain")
                     target_key = conv_procs[plan.target - 1].get("key") if plan.target else None
+                    sess.setdefault("_turn", {})["target_key"] = target_key
                     chat_files = [] if intent == "explain" else sess["files"]
                     async for ev in _delegate_to_chat(message, chat_files, history_list, workflow, current_enrichments,
-                                                      current_procedure_metadata, _loads(conversation_procedures, None),
+                                                      current_procedure_metadata, chat_procs,
                                                       active_procedure, request, intent=intent, target_key=target_key,
                                                       transcribe_mode=plan.transcribe_mode):
                         yield ev
@@ -928,6 +968,8 @@ class GenerateRequest(BaseModel):
     merge: bool = False
     merged_title: Optional[str] = None
     message: str = ""
+    client_message_id: Optional[str] = None
+    server_procedures: bool = False
 
 
 @router.post("/generate")
@@ -948,6 +990,10 @@ async def studio_generate(request: Request, body: GenerateRequest,
     if guest is not None:
         _consume_or_raise(guest, "generations")
     sess["updated"] = time.time()
+    # contexte propre à ce tour (sinon les versions seraient écrites avec celui du tour précédent)
+    sess["_turn"] = {"server": bool(conv is not None and body.server_procedures and await asyncio.to_thread(cp.available)),
+                     "client_message_id": (body.client_message_id or "")[:80] or None, "active": None,
+                     "author": user.id if user else None, "target_key": None}
     level = _level_for(guest)
 
     async def stream():

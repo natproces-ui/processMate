@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from manager import conversation_store as store
+from manager import conversation_procedures as cp
 from manager.auth import AuthUser, require_user
 
 router = APIRouter(prefix="/api/conversations", tags=["Conversations"])
@@ -125,11 +126,17 @@ async def get_conversation(conversation_id: str, user: AuthUser = Depends(requir
         raise HTTPException(404, "Conversation introuvable")
     msgs, srcs = await asyncio.gather(asyncio.to_thread(store.messages, conversation_id),
                                       asyncio.to_thread(store.sources, conversation_id))
+    procedures = store.procedures_of(conv)
+    if await asyncio.to_thread(cp.available):
+        # le serveur fait foi : une conversation d'avant est reprise à sa première ouverture
+        await asyncio.to_thread(cp.ensure_seeded, conv)
+        procedures = {"procedures": await asyncio.to_thread(cp.list_procedures, conversation_id),
+                      "active_procedure": procedures.get("active_procedure"), "procedures_serveur": True}
     return {
         "conversation": _public(conv),
         "messages": [{k: m.get(k) for k in ("id", "role", "content", "payload", "created_at")} for m in msgs],
         "sources": [_public_source(s) for s in srcs],
-        **store.procedures_of(conv),
+        **procedures,
     }
 
 
@@ -140,7 +147,135 @@ async def save_procedures(conversation_id: str, body: ProceduresBody, user: Auth
         raise HTTPException(413, "Procédures trop volumineuses pour être gardées avec la conversation")
     if not await asyncio.to_thread(store.save_procedures, conversation_id, user.id, body.procedures, body.active):
         raise HTTPException(404, "Conversation introuvable")
+    if await asyncio.to_thread(cp.available):
+        # écran d'avant (il recopie toute la liste) : seules les procédures dont le contenu diffère de la version
+        # courante deviennent une version « manuel » ; rien n'est perdu pendant la transition
+        await asyncio.to_thread(_sync_from_screen, conversation_id, body.procedures, user.id)
     return {"success": True}
+
+
+def _same(a: dict, b: dict) -> bool:
+    return all(json.dumps(a.get(k) or None, sort_keys=True, ensure_ascii=False)
+               == json.dumps(b.get(k) or None, sort_keys=True, ensure_ascii=False)
+               for k in ("title", "workflow", "enrichments", "procedureMetadata", "bpmnXml"))
+
+
+def _sync_from_screen(conversation_id: str, procedures: List[dict], author: str) -> None:
+    conv = {"id": conversation_id}
+    for p in procedures or []:
+        if not isinstance(p, dict) or not p.get("key"):
+            continue
+        proc = cp.get(conv["id"], p["key"])
+        if proc is None:
+            cp.create(conv["id"], p["key"], p, "generation", resume="enregistrée par l'écran", author_id=author)
+        else:
+            cur = cp.current(conv["id"], p["key"]) or {}
+            if not _same(cur, p):
+                cp.add_version(proc, p, "manuel", resume="correction à la main", author_id=author)
+        was_archived = (proc or {}).get("status") == "archivee"
+        if proc is not None and bool(p.get("archived")) != was_archived:
+            cp.set_archived(conv["id"], [p["key"]], bool(p.get("archived")))
+
+
+# ── Procédures de la conversation, côté serveur (docs/conversation-serveur.md) ──
+
+class ProcedureEdit(BaseModel):
+    base_version: int
+    title: Optional[str] = None
+    workflow: list = Field(default_factory=list)
+    enrichments: dict = Field(default_factory=dict)
+    procedureMetadata: Optional[dict] = None
+    bpmnXml: Optional[str] = None
+
+
+class ArchiveBody(BaseModel):
+    archived: bool = True
+
+
+class SavedBody(BaseModel):
+    workflow_db_id: str
+    version: Optional[int] = None
+
+
+async def _owned_with_procedures(conversation_id: str, user: AuthUser) -> dict:
+    conv = await asyncio.to_thread(store.get_owned, conversation_id, user.id)
+    if not conv:
+        raise HTTPException(404, "Conversation introuvable")
+    if not await asyncio.to_thread(cp.available):
+        raise HTTPException(409, "Les procédures de la conversation ne sont pas encore gardées côté serveur")
+    await asyncio.to_thread(cp.ensure_seeded, conv)
+    return conv
+
+
+@router.get("/{conversation_id}/procedures", dependencies=[Depends(_enabled)])
+async def list_conversation_procedures(conversation_id: str, user: AuthUser = Depends(require_user)):
+    await _owned_with_procedures(conversation_id, user)
+    return {"procedures": await asyncio.to_thread(cp.list_procedures, conversation_id)}
+
+
+@router.put("/{conversation_id}/procedures/{key}", dependencies=[Depends(_enabled)])
+async def edit_conversation_procedure(conversation_id: str, key: str, body: ProcedureEdit,
+                                      user: AuthUser = Depends(require_user)):
+    """Correction à la main (tableau, diagramme) : une version « manuel », à partir de `base_version`.
+    Si la procédure a changé entre-temps → 409 avec la version à jour."""
+    await _owned_with_procedures(conversation_id, user)
+    if len(json.dumps(body.workflow, ensure_ascii=False)) > store.MAX_PROCEDURES_BYTES:
+        raise HTTPException(413, "Procédure trop volumineuse")
+    proc = await asyncio.to_thread(cp.get, conversation_id, key)
+    content = body.model_dump()
+    try:
+        if proc is None:  # procédure créée à la main dans la conversation
+            current = await asyncio.to_thread(cp.create, conversation_id, key, content, "manuel", None,
+                                              "créée à la main", user.id)
+        else:
+            current = await asyncio.to_thread(cp.add_version, proc, content, "manuel", None, "correction à la main",
+                                              user.id, body.base_version)
+    except cp.Conflict as e:
+        raise HTTPException(409, {"message": "Cette procédure a changé pendant votre correction : voici la version à jour.",
+                                  "procedure": e.current})
+    return {"procedure": current}
+
+
+@router.get("/{conversation_id}/procedures/{key}/versions", dependencies=[Depends(_enabled)])
+async def procedure_versions(conversation_id: str, key: str, user: AuthUser = Depends(require_user)):
+    await _owned_with_procedures(conversation_id, user)
+    return {"versions": await asyncio.to_thread(cp.versions, conversation_id, key)}
+
+
+@router.get("/{conversation_id}/procedures/{key}/versions/{version}", dependencies=[Depends(_enabled)])
+async def procedure_version(conversation_id: str, key: str, version: int, user: AuthUser = Depends(require_user)):
+    await _owned_with_procedures(conversation_id, user)
+    content = await asyncio.to_thread(cp.version_content, conversation_id, key, version)
+    if content is None:
+        raise HTTPException(404, "Version introuvable")
+    return {"procedure": content}
+
+
+@router.post("/{conversation_id}/procedures/{key}/versions/{version}/restore", dependencies=[Depends(_enabled)])
+async def restore_procedure_version(conversation_id: str, key: str, version: int, user: AuthUser = Depends(require_user)):
+    """Revenir à une version : une nouvelle version « restauration », l'historique reste entier."""
+    await _owned_with_procedures(conversation_id, user)
+    current = await asyncio.to_thread(cp.restore_version, conversation_id, key, version, user.id)
+    if current is None:
+        raise HTTPException(404, "Version introuvable")
+    return {"procedure": current}
+
+
+@router.post("/{conversation_id}/procedures/{key}/archive", dependencies=[Depends(_enabled)])
+async def archive_procedure(conversation_id: str, key: str, body: ArchiveBody, user: AuthUser = Depends(require_user)):
+    await _owned_with_procedures(conversation_id, user)
+    if not await asyncio.to_thread(cp.set_archived, conversation_id, [key], body.archived):
+        raise HTTPException(404, "Procédure introuvable")
+    return {"procedures": await asyncio.to_thread(cp.list_procedures, conversation_id)}
+
+
+@router.post("/{conversation_id}/procedures/{key}/saved", dependencies=[Depends(_enabled)])
+async def procedure_saved(conversation_id: str, key: str, body: SavedBody, user: AuthUser = Depends(require_user)):
+    """Enregistrée dans le référentiel : lien et version enregistrée (« modifiée depuis l'enregistrement »)."""
+    await _owned_with_procedures(conversation_id, user)
+    if not await asyncio.to_thread(cp.link_saved, conversation_id, key, body.workflow_db_id, body.version):
+        raise HTTPException(404, "Procédure introuvable")
+    return {"procedure": await asyncio.to_thread(cp.current, conversation_id, key)}
 
 
 @router.patch("/{conversation_id}", dependencies=[Depends(_enabled)])
