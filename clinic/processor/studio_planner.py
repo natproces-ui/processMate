@@ -46,6 +46,8 @@ class StudioPlan:
     # procédure de la conversation (numéro 1…n) ; décidé ici, une seule fois
     chat_intent: Optional[str] = None
     target: Optional[int] = None
+    # recherche sur internet : en tirer une procédure (sinon : répondre avec les sources)
+    search_produce: bool = False
     transcribe_mode: str = "combined"
 
     def to_dict(self) -> Dict[str, Any]:
@@ -272,8 +274,8 @@ def apply_guardrails(
         chat_intent = "regen" if data.get("mode") == "refaire" and filenames else "patch"
     elif action == "explain":
         chat_intent = "explain"
-    elif action == "search":
-        chat_intent = "web_search"
+    elif action == "search" and data.get("produire"):
+        chat_intent = "web_search"  # rédiger une procédure à partir de ce que la recherche a trouvé
     target = None
     try:
         n = int(data.get("cible")) if data.get("cible") is not None else None
@@ -292,6 +294,7 @@ def apply_guardrails(
         replaces=replaces,
         chat_intent=chat_intent,
         target=target,
+        search_produce=bool(action == "search" and data.get("produire")),
         transcribe_mode=mode,
     )
 

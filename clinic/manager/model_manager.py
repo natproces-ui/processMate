@@ -243,6 +243,8 @@ def _try_interaction(model: "GeminiModel", contents: Any, config: Any, task_name
     scope = _interactions.get()
     if not STUDIO_USE_INTERACTIONS or scope is None:
         return None
+    if getattr(config, "tools", None):  # outils (recherche Google…) : seulement par generateContent
+        return None
     client = _client()
     if not hasattr(client, "interactions"):
         return None

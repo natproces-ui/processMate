@@ -46,6 +46,12 @@ export interface StoredProcedure {
     saved_version?: number | null;
 }
 
+/** Une recherche sur internet faite dans la conversation : requêtes et sources citées */
+export interface WebSearch {
+    queries: string[];
+    sources: { title: string; uri: string; domain: string }[];
+}
+
 /** Une version d'une procédure de la conversation (sans son contenu) */
 export interface ConversationVersion {
     version: number; title: string; origine: string; resume: string | null; created_at: string;

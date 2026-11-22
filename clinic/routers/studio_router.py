@@ -834,7 +834,31 @@ async def studio_turn(
                                   "workflow": workflow or []}
                     async for ev in _stream_interfaces(target):
                         yield ev
-                elif plan.action in ("edit", "transcribe", "explain", "search", "analyze"):
+                elif plan.action == "search":
+                    # vraie recherche sur internet : réponse avec ses sources, ou matière d'une procédure
+                    from processor import web_search
+                    yield _sse({"type": "status", "id": "search", "label": "Je cherche sur internet", "state": "running"})
+                    try:
+                        found = await asyncio.to_thread(web_search.search, message, history_list, plan.search_produce)
+                    except Exception as e:
+                        logger.warning(f"⚠️ Recherche sur internet impossible : {str(e)[:200]}")
+                        yield _sse({"type": "status", "id": "search", "label": "Recherche interrompue", "state": "done"})
+                        yield _sse({"type": "message", "text": "La recherche sur internet n'a pas abouti. Pouvez-vous réessayer ?"})
+                        found = None
+                    if found is not None:
+                        n = len(found["sources"])
+                        yield _sse({"type": "web_search", "queries": found["queries"], "sources": found["sources"]})
+                        yield _sse({"type": "status", "id": "search", "state": "done",
+                                    "label": f"Recherche sur internet · {n} source{'s' if n > 1 else ''}" if n else "Recherche sur internet · aucune source"})
+                        if plan.search_produce:
+                            async for ev in _delegate_to_chat(message + web_search.as_material(found), sess["files"], history_list,
+                                                              workflow, current_enrichments, current_procedure_metadata, chat_procs,
+                                                              active_procedure, request, intent="web_search"):
+                                yield ev
+                        else:
+                            yield _sse({"type": "message", "text": found["text"] or
+                                        "Je n'ai rien trouvé de fiable sur internet pour cette question."})
+                elif plan.action in ("edit", "transcribe", "explain", "analyze"):
                     # le chat exécute ce que l'aiguillage a décidé ; une question sans source à lire = explication
                     intent = plan.chat_intent or ("transcribe" if plan.action == "transcribe" else "explain")
                     target_key = conv_procs[plan.target - 1].get("key") if plan.target else None

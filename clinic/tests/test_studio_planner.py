@@ -60,7 +60,11 @@ class GuardrailTests(unittest.TestCase):
         plan = apply_guardrails({"action": "edit", "cible": 1, "mode": "refaire"}, ["v2.docx"], True, None, 1, ["A"])
         self.assertEqual(plan.chat_intent, "regen")
         self.assertEqual(apply_guardrails({"action": "explain", "cible": 9}, [], True, None, 1, ["A"]).target, None)
-        self.assertEqual(apply_guardrails({"action": "search"}, [], False).chat_intent, "web_search")
+        # recherche : répondre avec les sources, ou en tirer une procédure (le chat rédige)
+        plan = apply_guardrails({"action": "search"}, [], False)
+        self.assertEqual((plan.action, plan.chat_intent, plan.search_produce), ("search", None, False))
+        plan = apply_guardrails({"action": "search", "produire": True}, [], False)
+        self.assertEqual((plan.chat_intent, plan.search_produce), ("web_search", True))
         # rédiger depuis le seul texte : le chat rédige
         plan = apply_guardrails({"action": "generate", "procedures": []}, [], False)
         self.assertEqual((plan.action, plan.chat_intent), ("edit", "generate"))

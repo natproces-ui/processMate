@@ -557,14 +557,13 @@ Ne laisse JAMAIS un champ vide dans ta réponse si une valeur existait déjà ci
         current_workflow: Optional[List[Dict]]
     ) -> Dict[str, Any]:
 
-        prompt = f"""Tu es un expert en processus bancaires avec accès à des connaissances réglementaires à jour.
+        prompt = f"""Tu es un expert en processus bancaires. Tu rédiges la procédure demandée à partir du résultat d'une
+recherche sur internet joint à la demande (« CE QUE LA RECHERCHE SUR INTERNET A TROUVÉ ») : c'est ta matière principale.
+N'ajoute ni étape, ni délai, ni seuil, ni règle que la recherche ne mentionne pas ; ce qui manque reste vide.
 
 L'utilisateur demande : "{message}"
 
 {f"Workflow existant à compléter : {json.dumps(current_workflow, ensure_ascii=False)}" if current_workflow else ""}
-
-Utilise tes connaissances des réglementations bancaires, des normes SWIFT, BAM, Bank Al-Maghrib, Bâle III, etc.
-pour générer ou enrichir le processus demandé.
 
 {get_extraction_prompt()}"""
 

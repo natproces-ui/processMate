@@ -33,7 +33,7 @@ import {
     PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
-import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type ConversationSource, type StoredProcedure } from '@/lib/conversationsApi';
+import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type ConversationSource, type StoredProcedure, type WebSearch } from '@/lib/conversationsApi';
 import ConversationPanel, { outputState, toSave, type ConversationOutput } from '@/components/processmate/ConversationPanel';
 import ConversationVersionsModal from '@/components/processmate/ConversationVersionsModal';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
@@ -158,8 +158,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [convPanelOpen, setConvPanelOpen] = useState(false);
     const [convVersionsKey, setConvVersionsKey] = useState<string | null>(null);
     const [pendingSaveKey, setPendingSaveKey] = useState<string | null>(null);
-    const [chatSources, setChatSources] = useState<{ sources: ConversationSource[]; references: string[] }>({ sources: [], references: [] });
-    const handleSourcesChange = useCallback((sources: ConversationSource[], references: string[]) => setChatSources({ sources, references }), []);
+    const [chatSources, setChatSources] = useState<{ sources: ConversationSource[]; references: string[]; searches: WebSearch[] }>({ sources: [], references: [], searches: [] });
+    const handleSourcesChange = useCallback((sources: ConversationSource[], references: string[], searches: WebSearch[]) =>
+        setChatSources({ sources, references, searches }), []);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
     /** Côté serveur : la version enregistrée dans le référentiel (« modifiée depuis l'enregistrement » ensuite) */
@@ -1408,6 +1409,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             activeKey={activeInst?.process_id}
                             sources={chatSources.sources}
                             references={chatSources.references}
+                            searches={chatSources.searches}
                             canSave={canSave}
                             versionsEnabled={serverModeRef.current && !!conversationIdRef.current}
                             onOpen={key => { const idx = instances.findIndex(i => i.process_id === key); if (idx >= 0) setActiveTab(idx); }}

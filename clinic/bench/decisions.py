@@ -87,7 +87,10 @@ async def decide(case: dict, files: list) -> dict:
         out["nombre"] = len(plan.targets) if plan.action == "generate" and plan.targets else len(plan.procedures)
     simple = {"propose": "proposer", "merge": "fusionner", "remove": "retirer", "structure": "referentiel",
               "transcribe": "transcrire", "ask": "demander", "answer": "repondre", "interfaces": "interfaces"}
-    if plan.action == "generate":
+    if plan.action == "search":
+        out["decision"] = "recherche"  # vraie recherche sur internet (réponse avec sources, ou matière d'une procédure)
+        out["nombre"] = 1 if plan.search_produce else None
+    elif plan.action == "generate":
         out["decision"] = "operation" if plan.replaces else "rediger"
     elif plan.action in simple:
         out["decision"] = simple[plan.action]
@@ -116,6 +119,8 @@ def judge(case: dict, got: dict) -> list:
     if case.get("nombre") is not None and got["decision"] in ("rediger", "operation", "proposer") \
             and got["nombre"] is not None and got["nombre"] != case["nombre"]:
         errors.append(f"{got['nombre']} procédure(s) au lieu de {case['nombre']}")
+    if got["decision"] == "recherche" and (case.get("nombre") == 1) != (got.get("nombre") == 1):
+        errors.append("recherche sans procédure ensuite" if case.get("nombre") == 1 else "procédure rédigée alors qu'on demandait une réponse")
     if "remplace" in case and got["decision"] in ("operation", "retirer", "fusionner", "rediger") \
             and sorted(got["remplace"]) != sorted(case["remplace"]):
         errors.append(f"refait {got['remplace']} au lieu de {case['remplace']}")

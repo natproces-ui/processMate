@@ -145,6 +145,13 @@ tout fonctionne comme avant. Pour couper : `CONVERSATION_PROCEDURES_SERVEUR=fals
 Vérifié dans le navigateur (serveur simulé) : états, versions et retour, Tout enregistrer (mise à jour + création + version
 enregistrée notée), cartes, fichier modèle ; parcours précédents inchangés.
 
-**Constat** : l'action « recherche » du chat (`web_search`) ne cherche pas sur internet : elle rédige une procédure à partir des
-connaissances du modèle, sans source. Aucune « recherche » n'est donc listée dans le panneau. Une vraie recherche (avec sources
-citées) est une décision à prendre.
+**Recherche sur internet — faite le 22/11/2026 (option 1 retenue).** L'ancienne action « recherche » rédigeait à partir des
+connaissances du modèle, sans chercher. Elle cherche maintenant vraiment (outil de recherche Google de Gemini,
+`processor/web_search.py`) :
+- l'aiguillage décide `search` quand on demande de chercher, ou pour une réglementation / information datée ; `produire: true`
+  quand l'utilisateur veut une procédure construite sur ce qui est trouvé ;
+- sans procédure : une réponse fondée sur les pages trouvées, avec les sources citées sous la réponse (liens) ;
+- avec procédure : la rédaction s'appuie sur ce que la recherche a trouvé (seule matière, rien d'inventé) ;
+- les requêtes et les sources sont gardées dans le message et listées dans le panneau (« Recherche sur internet »).
+Essai réel : dotation voyages personnels → 2 requêtes, sources oc.gov.ma… ; en procédure : 9 sources (oc.gov.ma, douane.gov.ma…),
+15 étapes. Banc des décisions : 3 situations de recherche, 3/3 sur 3 passages.

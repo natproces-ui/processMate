@@ -2,7 +2,7 @@
 
 import ReferentialCard from '@/components/shared/ReferentialCard';
 import type { ReferentialProposal } from '@/lib/referentialApi';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import type { Table1Row } from '@/logic/types';
 import { TaskEnrichment } from '@/logic/bpmnTypes';
 import { applyOperations, type Operation } from '@/logic/workflowOperations';
@@ -10,6 +10,7 @@ import { API_CONFIG } from '@/lib/api-config';
 import { getAuthHeaders } from '@/lib/authHeaders';
 import { GUEST_LIMITS } from '@/lib/features';
 import { guestStore, GUEST_CONVERSATION_KEY } from '@/lib/guestStore';
+import type { WebSearch } from '@/lib/conversationsApi';
 import { CONVERSATIONS_ENABLED, conversationsApi, readConversationParam, writeConversationParam, type ConversationSource, type StoredMessage, type StoredProcedure } from '@/lib/conversationsApi';
 import { processingLevelHeaders, type ProcessingLevel } from '@/lib/processing-level';
 import ProcessingLevelSelector from '@/components/processmate/ProcessingLevelSelector';
@@ -66,6 +67,8 @@ interface ChatMessage {
     id: string;
     role: 'user' | 'assistant' | 'clarify';
     content: string;
+    /** recherches sur internet faites pour cette réponse (sources citées) */
+    searches?: WebSearch[];
     intent?: Intent;
     totalSteps?: number;
     title?: string;
@@ -188,7 +191,7 @@ interface ChatInterfaceProps {
     /** Fin d'un tour : les procédures de la conversation telles que le serveur les garde (il fait foi) */
     onServerProcedures?: (procedures: StoredProcedure[]) => void;
     /** Sources de la conversation (panneau « Cette conversation ») */
-    onSourcesChange?: (sources: ConversationSource[], references: string[]) => void;
+    onSourcesChange?: (sources: ConversationSource[], references: string[], searches: WebSearch[]) => void;
     /** Juste avant d'envoyer un message : les corrections à la main en attente partent d'abord */
     onBeforeSend?: () => Promise<void>;
     /** procédures de la conversation remplacées ou retirées par le chat (true), ou rétablies (false) */
@@ -301,7 +304,8 @@ export default function ChatInterface({
     const [sources, setSources] = useState<ConversationSource[]>([]);
     /** fichiers désignés comme modèles de style par l'aiguillage */
     const [references, setReferences] = useState<string[]>([]);
-    useEffect(() => { onSourcesChange?.(sources, references); }, [sources, references, onSourcesChange]);
+    const searches = useMemo(() => messages.flatMap(m => m.searches || []), [messages]);
+    useEffect(() => { onSourcesChange?.(sources, references, searches); }, [sources, references, searches, onSourcesChange]);
     const [sourcesOpen, setSourcesOpen] = useState(false);
     const sourcesRef = useRef<HTMLDivElement>(null);
     // la liste des sources se ferme au clic ailleurs ou avec Échap
@@ -446,7 +450,7 @@ export default function ChatInterface({
             generations: (p.generations || []).map((g: { id: string; title: string; status: TurnGeneration['status']; steps?: number; error?: string }) => ({
                 key: `${m.id}:${g.id}`, title: g.title, status: g.status === 'generating' ? 'stopped' : g.status, steps: g.steps, error: g.error,
             })),
-            remarks: p.remarks, suggestions: p.suggestions,
+            remarks: p.remarks, suggestions: p.suggestions, searches: p.searches,
             referentiel: p.referentiel?.arbre ? p.referentiel : undefined,
             archived: Array.isArray(p.archived) ? p.archived : undefined,
             agentProposals: (p.agentProposals || []).map((a: AgentProposal) => ({ ...a, decision: a.decision || 'historique' })),
@@ -743,6 +747,9 @@ export default function ChatInterface({
             case 'procedures_archived':
                 onArchiveProcedures?.(ev.keys || [], true);
                 updateMsg(msgId, m => ({ ...m, archived: [...(m.archived || []), { keys: ev.keys || [], titles: ev.titles || [], by: ev.by || [] }] }));
+                break;
+            case 'web_search':
+                updateMsg(msgId, m => ({ ...m, searches: [...(m.searches || []), { queries: ev.queries || [], sources: ev.sources || [] }] }));
                 break;
             case 'conversation_procedures':
                 // le serveur a écrit les procédures et leurs versions : l'écran reprend sa liste
@@ -1130,6 +1137,18 @@ export default function ChatInterface({
                                             ? <ProcedureCard title={msg.title!} steps={msg.totalSteps ?? 0} intent={msg.intent!}
                                                 onOpen={onOpenProcedure ? () => onOpenProcedure(msg.title!) : undefined} />
                                             : <MiniMarkdown text={msg.content} onStepClick={onFocusSteps} />)}
+                                        {/* Recherche sur internet : les sources citées, comme chez Claude */}
+                                        {(msg.searches || []).some(s => s.sources.length > 0) && (
+                                            <div aria-label="Sources" className="flex flex-wrap gap-1.5 pt-1">
+                                                {(msg.searches || []).flatMap(s => s.sources).map((src, i) => (
+                                                    <a key={`${src.uri}-${i}`} href={src.uri} target="_blank" rel="noopener noreferrer" title={src.title}
+                                                        className="inline-flex max-w-[14rem] items-center gap-1 rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-xs text-neutral-800 hover:border-neutral-900">
+                                                        <span className="truncate">{src.domain || src.title}</span>
+                                                        <ArrowUpRight className="w-3 h-3 shrink-0 text-neutral-400" />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
                                         {msg.intent === 'patch' && msg.changes && msg.changes.length > 0 ? (
                                             <ChangeSummary changes={msg.changes} undone={msg.restored} disabled={loading} procedure={msg.targetTitle}
                                                 onShow={onFocusSteps}

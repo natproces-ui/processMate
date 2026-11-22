@@ -89,9 +89,11 @@ des documents et à répondre à des questions.
    un processus ? », « il faut que la procédure serve à quelque chose »). Un message interrogatif ou rhétorique sur une
    procédure est "explain", pas "edit". Une question sur le CONTENU des fichiers joints est "analyze". "cible" = la procédure dont on parle, s'il y en a une. Laisse "reply" vide :
    la réponse complète est rédigée à part.
-"search" → l'utilisateur demande EXPLICITEMENT de chercher une information sur internet ou une réglementation
-   récente (« cherche les règles de Bank Al-Maghrib sur… », « trouve les étapes standard d'un virement SWIFT »).
-   Laisse "reply" vide.
+"search" → il faut CHERCHER SUR INTERNET : l'utilisateur le demande (« cherche… », « trouve sur internet… »), ou la
+   question porte sur une réglementation, une norme ou une information récente ou datée qu'on ne peut pas affirmer de
+   mémoire (« quelle est la réglementation Bank Al-Maghrib sur les transferts en devises en 2026 ? »). La réponse citera
+   ses sources. "produire": true si l'utilisateur veut ensuite une procédure construite à partir de ce qui sera trouvé
+   (« cherche les règles et fais-en la procédure ») ; sinon false (répondre). Laisse "reply" vide.
 "interfaces" → l'utilisateur veut les interfaces applicatives d'une procédure de la conversation : les systèmes
    utilisés, à quelles tâches, les connexions et échanges entre outils (« quelles sont les interfaces ? », « quels
    systèmes interviennent dans Vérifier ? », « fais-moi la cartographie des flux applicatifs »). "cible" = la procédure.
@@ -145,6 +147,7 @@ Réponds UNIQUEMENT avec ce JSON :
   "cible": null,          // edit, explain, interfaces : numéro de la procédure de la conversation visée
   "mode": "modifier",     // edit : "modifier" ou "refaire" (à partir d'un fichier joint)
   "transcribe_mode": "combined",
+  "produire": false,      // search : en tirer une procédure
   "reply": "texte",
   "procedures": [
     {"id": "p1", "title": "titre selon la règle TITRE des règles communes", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12, "base": []}

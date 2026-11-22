@@ -2,8 +2,8 @@
 
 // Panneau de la conversation, à la manière de Claude : ce qu'elle a produit (« Sorties » : les procédures, leur état
 // et leurs versions) et ce qu'elle a utilisé (sources jointes). docs/conversation-serveur.md.
-import { FileText, History, Image as ImageIcon, Layers, Presentation, RotateCcw, Table2, Workflow, X } from 'lucide-react';
-import type { ConversationSource } from '@/lib/conversationsApi';
+import { FileText, Globe, History, Image as ImageIcon, Layers, Presentation, RotateCcw, Search, Table2, Workflow, X } from 'lucide-react';
+import type { ConversationSource, WebSearch } from '@/lib/conversationsApi';
 
 export interface ConversationOutput {
     key: string;
@@ -35,13 +35,15 @@ export function toSave(outputs: ConversationOutput[]): ConversationOutput[] {
         (!o.workflow_db_id || outputState(o).label.startsWith('Modifiée')));
 }
 
-export default function ConversationPanel({ outputs, activeKey, sources, references = [], canSave, versionsEnabled, onOpen, onRestore, onUpdate,
+export default function ConversationPanel({ outputs, activeKey, sources, references = [], searches = [], canSave, versionsEnabled, onOpen, onRestore, onUpdate,
     onVersions, onSaveAll, onClose }: {
     outputs: ConversationOutput[];
     activeKey?: string | null;
     sources: ConversationSource[];
     /** fichiers désignés comme modèles de style (forme, formulation), pas comme sources de contenu */
     references?: string[];
+    /** recherches sur internet faites dans la conversation */
+    searches?: WebSearch[];
     canSave: boolean;
     versionsEnabled: boolean;
     onOpen: (key: string) => void;
@@ -144,6 +146,35 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                             );
                         })}
                     </ul>
+                    {searches.length > 0 && (() => {
+                        const queries = Array.from(new Set(searches.flatMap(s => s.queries)));
+                        const seen = new Set<string>();
+                        const srcs = searches.flatMap(s => s.sources).filter(s => !seen.has(s.uri) && seen.add(s.uri));
+                        return (
+                            <>
+                                <p className="mt-3 text-[11px] font-semibold text-neutral-700">Recherche sur internet · {queries.length} requête{queries.length > 1 ? 's' : ''}</p>
+                                <ul className="mt-1 space-y-0.5">
+                                    {queries.map(q => (
+                                        <li key={q} className="flex items-center gap-2 py-1 text-sm text-neutral-800">
+                                            <Search className="w-3.5 h-3.5 shrink-0 text-neutral-500" />
+                                            <span className="min-w-0 flex-1 truncate" title={q}>{q}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                {srcs.length > 0 && <p className="mt-2 text-[11px] font-semibold text-neutral-700">Sources citées · {srcs.length}</p>}
+                                <ul className="mt-1 space-y-0.5">
+                                    {srcs.map(s => (
+                                        <li key={s.uri}>
+                                            <a href={s.uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-1 text-sm text-neutral-800 hover:underline">
+                                                <Globe className="w-3.5 h-3.5 shrink-0 text-neutral-500" />
+                                                <span className="min-w-0 flex-1 truncate" title={s.title}>{s.domain || s.title}</span>
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        );
+                    })()}
                 </section>
             </div>
         </aside>

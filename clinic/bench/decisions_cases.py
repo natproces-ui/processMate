@@ -158,6 +158,11 @@ CASES = [
     dict(id="q-reglementation", cat="questions",
          message="Quelle est la réglementation de Bank Al-Maghrib sur les transferts en devises en 2026 ?",
          attendu=["recherche", "repondre"]),
+    dict(id="q-recherche-procedure", cat="questions",
+         message="Cherche sur internet les règles de l'Office des changes pour la dotation voyages personnels et fais-en la procédure.",
+         attendu=["recherche"], nombre=1, note="Recherche puis procédure construite sur ce qui est trouvé"),
+    dict(id="q-recherche-explicite", cat="questions", message="Trouve sur internet ce que dit la circulaire LAB-FT de Bank Al-Maghrib.",
+         attendu=["recherche"]),
     dict(id="hello", cat="questions", message="Bonjour", attendu=["repondre"]),
     dict(id="merci", cat="questions", conv=UNE, message="Merci, c'est parfait.", attendu=["repondre"]),
 
