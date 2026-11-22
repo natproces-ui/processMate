@@ -67,9 +67,30 @@ class FromExistingTest(unittest.TestCase):
         self.assertEqual((plan.action, plan.replaces), ("generate", [1, 2]))
         self.assertEqual([(p["title"], p["base"]) for p in plan.procedures], [("Former", [1, 2]), ("Vérifier", [1, 2])])
         # une seule procédure nommée : la modification reste une modification
+        # titres longs : le premier mot suffit quand il ne désigne qu'une procédure
+        plan = apply_guardrails({"action": "edit"}, [], True, None, 3,
+                                ["Organiser la formation", "Former les intérimaires", "Vérifier la fin de formation"],
+                                "Le contrôle des émargements doit se faire dans Vérifier, pas dans Former")
+        self.assertEqual((plan.action, plan.replaces), ("generate", [2, 3]))
         plan = apply_guardrails({"action": "edit"}, [], True, None, 3, ["Former", "Vérifier", "Payer"],
                                 "Dans Former, l'étape 3 est faite par la RH")
         self.assertEqual(plan.action, "edit")
+
+    def test_unchanged_procedures_are_not_redone(self):
+        titles = ["Organiser la formation", "Former les intérimaires", "Vérifier la fin de formation"]
+        plan = apply_guardrails({"action": "generate", "remplace": [1, 2, 3], "procedures": [
+            {"id": "p1", "title": "Organiser la formation en alternance", "base": [1]},
+            {"id": "p2", "title": "Organiser la formation du plan", "base": [1]},
+            {"id": "p3", "title": "Former les intérimaires", "base": [2]},
+            {"id": "p4", "title": "Vérifier la fin de formation", "base": [3]}]},
+            [], True, None, 3, titles, "Alternance et Plan sont deux process à part : coupe Organiser en deux.")
+        self.assertEqual((plan.targets, plan.replaces), (["p1", "p2"], [1]))
+        # la même modification sur chaque procédure : toutes sont refaites
+        plan = apply_guardrails({"action": "generate", "remplace": [2, 3], "procedures": [
+            {"id": "p1", "title": "Former les intérimaires", "base": [2]},
+            {"id": "p2", "title": "Vérifier la fin de formation", "base": [3]}]},
+            [], True, None, 3, titles, "Ajoute une étape d'évaluation à la fin de chaque procédure")
+        self.assertEqual(len(plan.targets), 2)
 
     def test_new_procedure_from_text_goes_to_the_chat(self):
         plan = apply_guardrails({"action": "generate", "procedures": [{"id": "p1", "title": "Recycler", "base": []}],

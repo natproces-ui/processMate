@@ -22,7 +22,7 @@ from prompts.studio_planner_prompt import build_planner_prompt
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer"}
+ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer", "transcribe", "ask"}
 # Au-delà, on ne génère pas sans que l'utilisateur ait validé la sélection
 # Plafond technique (coût, durée) au-delà duquel on confirme ; en deçà, on fait ce qui est demandé
 MAX_AUTO_GENERATE = 20
@@ -84,17 +84,19 @@ def _norm(name: str) -> str:
 
 def mentioned_procedures(message: str, titles: List[str]) -> List[int]:
     """Numéros (1…n) des procédures de la conversation nommées dans le message : tous les mots
-    significatifs du titre (4 lettres et plus) y figurent."""
+    significatifs du titre (4 lettres et plus) y figurent, ou son premier mot quand aucun autre titre ne
+    commence par lui (« Former » pour « Former les intérimaires »)."""
     import unicodedata
 
     def words(text: str) -> List[str]:
         text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode().lower()
         return re.findall(r"[a-z0-9]+", text)
     said = set(words(message))
+    keys = [[w for w in words(t) if len(w) >= 4 and w not in {"procedure", "formacash", "etape"}] for t in titles]
+    firsts = [k[0] for k in keys if k]
     out = []
-    for n, title in enumerate(titles, 1):
-        key = [w for w in words(title) if len(w) >= 4 and w not in {"procedure", "formacash", "etape"}]
-        if key and all(w in said for w in key):
+    for n, key in enumerate(keys, 1):
+        if key and (all(w in said for w in key) or (key[0] in said and firsts.count(key[0]) == 1)):
             out.append(n)
     return out
 
@@ -170,9 +172,15 @@ def apply_guardrails(
         targets = [p["id"] for p in procedures]
         data = {**data, "remplace": data.get("remplace") or based}
         adjustments.append("modification de plusieurs procédures : traitée comme une opération sur l'ensemble")
+    if action == "ask" and not reply:
+        action = "answer"
     if action == "edit" and not has_workflow:
         action = "generate" if procedures else "answer"
         adjustments.append("edit sans procédure ouverte")
+    # Transcrire porte sur un fichier joint ; sans fichier, le chat recopie le texte donné
+    if action == "transcribe" and not filenames:
+        action = "edit"
+        adjustments.append("transcription sans fichier : confiée au chat")
     if action in ("generate", "propose", "merge") and not procedures:
         if not filenames:
             # sans fichier ni procédure existante dont partir : le chat rédige à partir du texte
@@ -202,6 +210,21 @@ def apply_guardrails(
             continue
         if 1 <= n <= conversation_count and n not in replaces:
             replaces.append(n)
+    # Une procédure rendue telle quelle (même titre, partie d'elle seule, non nommée dans la demande) alors que
+    # d'autres changent vraiment : elle reste comme elle est, on ne la refait pas
+    titles_n = {i: _norm(t) for i, t in enumerate(conversation_titles or [], 1)}
+    if action == "generate" and replaces and len(procedures) >= 2:
+        def unchanged(p):
+            b = p.get("base") or []
+            return len(b) == 1 and b[0] not in named and titles_n.get(b[0]) == _norm(p.get("title") or "")
+        same = [p for p in procedures if p["id"] in targets and unchanged(p)]
+        if same and len(same) < len([t for t in targets]):
+            drop = {p["id"] for p in same}
+            kept_n = {p["base"][0] for p in same}
+            targets = [t for t in targets if t not in drop]
+            procedures = [p for p in procedures if p["id"] not in drop]
+            replaces = [n for n in replaces if n not in kept_n]
+            adjustments.append(f"{len(same)} procédure(s) inchangée(s) non refaite(s)")
     if action == "remove" and not replaces:
         action = "answer"
         reply = reply or "Je ne vois pas quelle procédure retirer. Laquelle ?"

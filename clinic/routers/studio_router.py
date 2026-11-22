@@ -217,10 +217,9 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
         for n in p.get("base") or []:
             if existing and 1 <= n <= len(existing) and n not in base_files:
                 base_files[n] = _existing_as_source(existing[n - 1])
-    # une procédure de la conversation qu'on refait garde son nom (le rédacteur ne la rebaptise pas)
-    existing_titles = {(p.get("title") or "").strip().lower() for p in existing or []}
-    chosen = [{**p, "keep_title": True} if p.get("base") and p["title"].strip().lower() in existing_titles else p
-              for p in chosen]
+    # une procédure refaite à partir de la conversation porte le titre décidé par l'aiguillage : le même quand on la
+    # garde, le nouveau quand la demande le change (découpage, préfixe…) ; le rédacteur ne la rebaptise pas
+    chosen = [{**p, "keep_title": True} if p.get("base") else p for p in chosen]
     if base_files:
         files = list(files) + list(base_files.values())
         chosen = [{**p, "sources": [{"file": base_files[n]["filename"]} for n in p.get("base") or [] if n in base_files]
@@ -759,7 +758,12 @@ async def studio_turn(
                     async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
                                                   _loads(conversation_procedures, None), active_procedure, request):
                         yield ev
-                # answer : la réponse a déjà été envoyée
+                elif plan.action == "transcribe":  # copie fidèle des fichiers joints, décidée par l'aiguillage
+                    async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
+                                                      _loads(conversation_procedures, None), active_procedure, request,
+                                                      intent="transcribe"):
+                        yield ev
+                # answer, ask : la réponse (ou la question) a déjà été envoyée
             except GuestLimitError as e:
                 yield _sse({"type": "error", "message": str(e), "limit": True})
             except Exception as e:
@@ -815,11 +819,13 @@ def _reading_label(files: List[Dict[str, Any]]) -> str:
 
 
 async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw,
-                            procedures=None, active_procedure=None, request: Optional[Request] = None):
+                            procedures=None, active_procedure=None, request: Optional[Request] = None,
+                            intent: Optional[str] = None):
     """Modifications et conversation : logique existante du chat (patch, regen, explain…)."""
     from processor.chat_processor import ChatProcessor
     chat_files = [{"filename": f["filename"], "content": f["data"],
-                   "content_type": "application/pdf" if f["type"] == "pdf" else "image/*", "type": f["type"]} for f in files]
+                   "content_type": "application/pdf" if f["type"] == "pdf" else "image/*", "type": f["type"],
+                   **({"office": f["office"]} if f.get("office") else {})} for f in files]
     from manager import turn_progress
     queue: asyncio.Queue = asyncio.Queue()
     with routing_scope(TaskKind.MODIFICATION_PROCEDURE, source_kinds_of(files) if files else ["texte"]), \
@@ -829,6 +835,7 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
             message=message, files=chat_files, history=history, current_workflow=workflow,
             current_enrichments=_loads(enrichments_raw, None), current_procedure_metadata=_loads(metadata_raw, None),
             procedures=procedures if isinstance(procedures, list) else None, active_procedure=active_procedure,
+            intent=intent,
         ))
     work_started = think_done = False
     grace = None  # dernières pensées en cours de traduction : on les attend au plus 4 s

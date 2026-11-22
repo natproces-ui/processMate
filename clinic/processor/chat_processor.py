@@ -26,6 +26,7 @@ _WORK_LABELS = {
     "web_search": "Recherche d'informations sur le web",
 }
 from processor.intent_detector import detect_intent, IntentResult
+from processor.office_extract import EXTRACTED_TYPES
 from processor.img_processor import ImageProcessor
 from processor.explain_processor import ExplainProcessor
 from processor.multi_doc_processor import (
@@ -124,7 +125,9 @@ class ChatProcessor:
         current_procedure_metadata: Optional[Dict] = None,
         procedures: Optional[List[Dict]] = None,
         active_procedure: Optional[str] = None,
+        intent: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """`intent` : décision déjà prise par l'aiguillage (le classifieur n'est alors pas rappelé)."""
 
         files = _normalize_files(files)
         filenames = [f.get("filename", "") for f in files]
@@ -140,15 +143,19 @@ class ChatProcessor:
         # comme une génération ou une modification : en Approfondi, inutile de payer le modèle
         # le plus lourd pour classer une phrase.
         routing = current_routing()
-        with routing_scope(TaskKind.AIGUILLAGE, routing[1]) if routing else contextlib.nullcontext():
-            intent_result = await detect_intent(
-                message=message,
-                has_workflow=has_workflow,
-                filenames=filenames,
-                history=history,  # ← historique passé au classifier
-                procedures=[{"n": i + 1, "title": p.get("title") or "Procédure", "steps": len(p["workflow"]),
-                             "displayed": p["key"] == active_procedure} for i, p in enumerate(procs)] or None,
-            )
+        if intent:
+            intent_result = IntentResult(intent=intent, clarify_question=None, reference_files=[],
+                                         source_files=filenames, summary="")
+        else:
+            with routing_scope(TaskKind.AIGUILLAGE, routing[1]) if routing else contextlib.nullcontext():
+                intent_result = await detect_intent(
+                    message=message,
+                    has_workflow=has_workflow,
+                    filenames=filenames,
+                    history=history,  # ← historique passé au classifier
+                    procedures=[{"n": i + 1, "title": p.get("title") or "Procédure", "steps": len(p["workflow"]),
+                                 "displayed": p["key"] == active_procedure} for i, p in enumerate(procs)] or None,
+                )
 
         # Le message parle d'une autre procédure que celle affichée : on travaille sur elle,
         # et le navigateur l'affiche avant de la modifier
@@ -657,6 +664,9 @@ Message utilisateur : {message}
                 if f["type"] == "pdf":
                     b64 = base64.b64encode(raw).decode("utf-8")
                     parts.append({"inline_data": {"mime_type": "application/pdf", "data": b64}})
+                elif f["type"] in EXTRACTED_TYPES:  # Word, PowerPoint, Excel, texte : leur contenu extrait
+                    from processor.office_extract import extract_office, office_parts
+                    parts.extend(office_parts({**f, "office": f.get("office") or extract_office(raw, f["type"])}))
                 elif f["type"] == "image":
                     from PIL import Image
                     import io

@@ -99,6 +99,7 @@ async def decide(case: dict, files: list) -> dict:
     out["chemin"].append(f"aiguillage:{plan.action}")
     out["reponse"] = plan.reply or ""
     out["remplace"] = list(plan.replaces or [])
+    out["titres"] = [p.get("title") for p in plan.procedures if not plan.targets or p["id"] in plan.targets]
     if plan.action in ("generate", "propose", "merge"):
         out["nombre"] = len(plan.targets) if plan.action == "generate" and plan.targets else len(plan.procedures)
     if plan.action == "generate":
@@ -111,6 +112,10 @@ async def decide(case: dict, files: list) -> dict:
         out["decision"] = "retirer"
     elif plan.action == "structure":
         out["decision"] = "referentiel"
+    elif plan.action == "transcribe":
+        out["decision"] = "transcrire"
+    elif plan.action == "ask":
+        out["decision"] = "demander"
     elif plan.action == "answer":
         out["decision"] = "repondre"
     elif plan.action == "analyze" and files:
@@ -144,7 +149,12 @@ async def main():
     ap.add_argument("--only", nargs="*", help="préfixes d'identifiants")
     ap.add_argument("--save", help="fichier JSON des résultats")
     ap.add_argument("--compare", help="résultats précédents (JSON) à comparer")
+    ap.add_argument("--repeat", type=int, default=1, help="passages par situation (juste = juste à chaque passage)")
+    ap.add_argument("--sans-glossaire", action="store_true", help="aiguillage sans les règles communes (comparaison)")
     args = ap.parse_args()
+    if args.sans_glossaire:
+        import prompts.studio_planner_prompt as spp
+        spp.GLOSSAIRE = ""
 
     cases = [c for c in CASES if not args.only or any(c["id"].startswith(p) for p in args.only)]
     cache, results = {}, []
@@ -157,17 +167,22 @@ async def main():
             continue
         files = [cache.setdefault(str(p), load(p)) for p in paths]
         t = time.monotonic()
-        try:
-            got = await decide(case, files)
-            errors = judge(case, got)
-        except Exception as e:  # une situation en erreur ne bloque pas le banc
-            got, errors = {"decision": "erreur", "chemin": [], "reponse": str(e)[:200]}, [f"erreur : {e}"[:200]]
-        got["duree_s"] = round(time.monotonic() - t, 1)
+        runs = []
+        for _ in range(max(1, args.repeat)):
+            try:
+                got = await decide(case, files)
+                runs.append((got, judge(case, got)))
+            except Exception as e:  # une situation en erreur ne bloque pas le banc
+                runs.append(({"decision": "erreur", "chemin": [], "reponse": str(e)[:200]}, [f"erreur : {e}"[:200]]))
+        # le premier passage faux s'il y en a un (c'est lui qu'on veut voir)
+        got, errors = next((r for r in runs if r[1]), runs[0])
+        got["duree_s"] = round((time.monotonic() - t) / len(runs), 1)
+        got["passages_justes"] = f"{sum(not e for _, e in runs)}/{len(runs)}"
         ok = not errors
         results.append({"id": case["id"], "cat": case["cat"], "statut": "juste" if ok else "faux", "ecarts": errors,
                         "attendu": case["attendu"], **got})
         print(f"  {'✓' if ok else '✗'}  {case['id']:<28} {got['decision']:<17} {' → '.join(got['chemin']):<36} "
-              f"{got['duree_s']:>5} s  {'; '.join(errors)}")
+              f"{got['duree_s']:>5} s  {got['passages_justes'] if len(runs) > 1 else ''}  {'; '.join(errors)}")
         if not ok and got.get("reponse"):
             print(f"       « {got['reponse'][:160]} »")
 

@@ -93,4 +93,14 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
    Écarts : transcription demandée avec une pièce jointe → rédigée (0/3 : l'aiguillage ne connaît pas « transcrire ») ;
    « ajoute un préfixe à toutes les procédures » → question au lieu de le faire ; plan d'atténuation des risques → proposition de procédures.
 3. Branchement du glossaire, consigne par consigne, mesuré avant/après.
+   - **Aiguillage — fait le 22/11/2026.** Glossaire en tête de `studio_planner_prompt` (définition d'une procédure en double retirée),
+     deux actions ajoutées : `transcribe` (copie fidèle d'un fichier joint, exécutée par le chat sans qu'il reclasse la demande)
+     et `ask` (question ciblée). Garde-fous : une procédure rendue telle quelle n'est pas refaite ; un nom de procédure se
+     reconnaît à son premier mot ; une procédure refaite porte le titre décidé par l'aiguillage. La transcription lit
+     désormais Word, PowerPoint et Excel.
+     Banc (3 passages par situation, `bench/resultats_decisions_glossaire.json`) : **51/53** contre 48/53 ; transcrire 0/3 → 3/3,
+     opérations sur l'ensemble 8/8 sur 5 passages. Restent : le plan d'atténuation des risques (proposé comme procédures,
+     avec ou sans glossaire) et « préfixe sur toutes les procédures » (4/5 : une question de temps en temps).
+   - À suivre : rédaction (`extract_prompt`), transcription (`transcribe_prompt` : écrit « Back Office International » là où
+     la fiche dit « Gestionnaire des opérations – BOI »), modification (`revision_prompt`), relecture, classifieur du chat.
 4. Retrait des doublons et des consignes mortes (après confirmation).

@@ -9,6 +9,8 @@ l'action et rédige une courte réponse. L'exécution est faite par le code.
 import json
 from typing import Any, Dict, List, Optional
 
+from prompts.glossaire import GLOSSAIRE
+
 PLANNER_PROMPT = """Tu es l'assistant d'aiguillage du Studio ProcessMate, un outil de formalisation de procédures bancaires.
 
 On te donne le message de l'utilisateur, l'historique récent, les fichiers joints (contenu fourni),
@@ -18,14 +20,11 @@ tu décides de l'action et tu repères les procédures présentes dans les fichi
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. REPÉRER LES PROCÉDURES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Une procédure = un enchaînement d'étapes avec un objectif métier propre (ex : « Mise en place d'une MCNE en MAD »).
+- Définition d'une procédure : voir les RÈGLES MÉTIER COMMUNES ci-dessus (sous-procédures, circuits, titres).
 - Plusieurs photos ou pages qui se suivent (logigramme coupé, pages numérotées « 1/2, 2/2 », « suite », flux qui
   continue) forment UNE SEULE procédure. Ne les découpe pas.
-- Un manuel ou une présentation peut contenir plusieurs procédures distinctes : liste chacune.
-  Dans une présentation, chaque diapositive (ou groupe de diapositives qui se suivent) qui détaille SES PROPRES
-  étapes avec son propre objectif (ex : une phase « Former », une phase « Vérifier ») est une procédure distincte,
-  même si toutes les diapositives portent le même en-tête générique (« PARCOURS ACTUEL »). Une vue d'ensemble
-  ou un sommaire qui ne fait que nommer les phases n'est PAS une procédure. Ne réunis jamais un document
+- Un manuel ou une présentation peut contenir plusieurs procédures distinctes : liste chacune, même si toutes les
+  diapositives portent le même en-tête générique (« PARCOURS ACTUEL »). Ne réunis jamais un document
   entier en une seule procédure « Parcours … » quand il détaille plusieurs phases.
 - Ne liste QUE ce qui est réellement décrit dans le contenu. Un simple titre dans une table des matières
   ou une mention sans étapes n'est PAS une procédure.
@@ -74,6 +73,13 @@ des documents et à répondre à des questions.
    Laisse "procedures" vide et "reply" vide : la proposition sera rédigée à part.
 "remove" → l'utilisateur veut retirer une ou plusieurs procédures DE LA CONVERSATION (« enlève la 3 », « on n'a pas
    besoin de Valoriser »). Mets leurs numéros dans "remplace". Rien n'est détruit : elles sont archivées.
+"transcribe" → l'utilisateur veut une COPIE FIDÈLE d'un fichier joint, sans reformulation (« recopie tel quel »,
+   « transcris à l'identique », « reprends exactement les libellés ») : mode TRANSCRIRE des règles communes.
+   "reply" dit ce que tu recopies. Sans cette demande explicite, formaliser ("generate") reste la règle.
+"ask" → tu ne peux pas agir sans une précision, parce que la demande ou la source est réellement ambiguë et que le
+   choix change le résultat (ex. le fichier n'est pas une procédure : un plan de risques, un tableau de suivi ; la
+   demande ne dit pas sur quoi travailler). "reply" = UNE question ciblée : ce que tu as lu, pourquoi tu hésites, les
+   options possibles. Quand une lecture raisonnable existe, agis plutôt que demander.
 "answer" → une conversation qui n'a besoin ni des fichiers ni d'une génération (« merci », « que signifie MCNE ? »).
    "reply" contient la réponse.
 
@@ -104,13 +110,12 @@ nombre de procédures distinctes (pense aux variantes décrites séparément, ex
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 3. RÉPONDRE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"reply" : une ou deux phrases en français, naturelles, comme un collègue, qui disent ce que tu fais
+"reply" : une ou deux phrases qui disent ce que tu fais, selon LA RÉPONSE DANS LE CHAT des règles communes
 (« Je formalise les 6 procédures du support : Organiser (alternance et plan), Former, Vérifier, Payer et Valoriser. »).
-Pas de jargon d'interface (« cochez », « sélectionnées »), pas de formule toute faite.
 
 Réponds UNIQUEMENT avec ce JSON :
 {
-  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "answer",
+  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "answer",
   "reply": "texte",
   "procedures": [
     {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12, "base": []}
@@ -146,4 +151,4 @@ def build_planner_prompt(
         "proposition_de_referentiel_en_cours": referential_pending,
         "procedures_de_la_conversation": conversation_procedures or None,
     }
-    return PLANNER_PROMPT + "\n\nCONTEXTE :\n" + json.dumps(ctx, ensure_ascii=False, indent=2)
+    return GLOSSAIRE + "\n\n" + PLANNER_PROMPT + "\n\nCONTEXTE :\n" + json.dumps(ctx, ensure_ascii=False, indent=2)

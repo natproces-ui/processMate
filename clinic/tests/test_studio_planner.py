@@ -33,6 +33,18 @@ class GuardrailTests(unittest.TestCase):
         plan = apply_guardrails({"action": "generate", "procedures": procs, "targets": [p["id"] for p in procs]}, FILES, False)
         self.assertEqual((plan.action, len(plan.targets)), ("generate", 6))
 
+    def test_transcription_of_a_joined_file(self):
+        plan = apply_guardrails({"action": "transcribe", "reply": "Je recopie le logigramme tel quel."}, ["mcne.pdf"], False)
+        self.assertEqual(plan.action, "transcribe")
+        # sans fichier, le chat recopie le texte donné
+        self.assertEqual(apply_guardrails({"action": "transcribe"}, [], False).action, "edit")
+
+    def test_targeted_question(self):
+        plan = apply_guardrails({"action": "ask", "reply": "Ce fichier est un plan de risques : que voulez-vous en tirer ?"},
+                                ["plan.xlsx"], False)
+        self.assertEqual((plan.action, plan.procedures), ("ask", []))
+        self.assertEqual(apply_guardrails({"action": "ask", "reply": ""}, ["plan.xlsx"], False).action, "answer")
+
     def test_analyze_is_kept(self):
         plan = apply_guardrails({"action": "analyze", "procedures": []}, FILES, False)
         self.assertEqual(plan.action, "analyze")

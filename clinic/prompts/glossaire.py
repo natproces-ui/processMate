@@ -9,7 +9,7 @@ Chaque consigne ne garde alors que sa tâche et son format.
 
 Décisions de l'utilisateur du 22/11/2026 reportées (voir docs/consignes-ia.md, section 2).
 Exemples tirés de procédures réelles (procédures Opérations à l'international, MCNE, Forma Cash).
-Ne pas importer avant une mesure sur le banc d'essai.
+Branché dans : aiguillage du chat (prompts/studio_planner_prompt.py).
 """
 
 GLOSSAIRE_VERSION = "0.2"
