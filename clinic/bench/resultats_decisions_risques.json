@@ -1,0 +1,1351 @@
+{
+ "date": "2026-11-22 20:50",
+ "resultats": [
+  {
+   "id": "src-pptx-tout",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger",
+    "proposer"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 6,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise les 5 procédures du parcours Formacash : l'organisation (circuits Plan et Alternance), la formation, la vérification, le paiement et remboursement, ainsi que la valorisation.",
+   "titres": [
+    "Formation en alternance – Organisation",
+    "Formation plan – Organisation",
+    "Dispense et suivi des formations – Réalisation",
+    "Pièces justificatives de formation – Contrôle et classement",
+    "Coûts de formation – Paiement et remboursement",
+    "Acquis de formation – Valorisation"
+   ],
+   "decision": "rediger",
+   "duree_s": 4.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-pptx-6",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 6,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise les 6 procédures du support : Organisation de la formation en alternance, Organisation de la formation plan, Dispense et suivi de la formation, Vérification des dossiers de formation, Paiement et remboursement de la formation, et Valorisation des acquis de la formation.",
+   "titres": [
+    "Formation en alternance – Organisation",
+    "Formation plan – Organisation",
+    "Dispense et suivi de la formation",
+    "Vérification des pièces de formation",
+    "Paiement et remboursement de la formation",
+    "Valorisation des acquis de la formation"
+   ],
+   "decision": "rediger",
+   "duree_s": 3.2,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-fiche",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 1,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure de traitement de la modification de crédit documentaire à l'export.",
+   "titres": [
+    "Credoc Export – Modification"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.4,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-deux-fiches",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 2,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise les 2 procédures issues des documents : Credoc Export – Modification et Credoc Export – Réalisation.",
+   "titres": [
+    "Credoc Export – Modification",
+    "Credoc Export – Réalisation"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.8,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-pdf-logigramme",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 1,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure de mise en place de la MCNE en MAD à partir du document fourni.",
+   "titres": [
+    "MCNE en MAD – Mise en place"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.2,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-pdf-fiche",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 1,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure de gestion des chèques en devises à partir du document fourni.",
+   "titres": [
+    "Chèques en devise – Traitement"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-pdf-long",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger",
+    "proposer"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 6,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise les 6 procédures issues du mode opératoire : la commande, l'annulation de commande, la réception, la délivrance, le renvoi pour destruction des formules échues et la demande de création de modèle de lettres.",
+   "titres": [
+    "Commande de formules – Agence",
+    "Annulation de commande de formules – Agence",
+    "Réception de formules – Agence",
+    "Délivrance de formules – Agence",
+    "Renvoi pour destruction de formules échues – Agence",
+    "Création de modèle de lettres – Réseau"
+   ],
+   "decision": "rediger",
+   "duree_s": 5.5,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-pdf-incidents",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger",
+    "proposer"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 2,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise les 2 procédures issues du document : Régularisation des incidents de paiement et Régularisation des incidents de paiement sur compte clôturé.",
+   "titres": [
+    "Incidents de paiement – Régularisation",
+    "Incidents de paiement sur compte clôturé – Régularisation"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-image-page",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger",
+    "demander"
+   ],
+   "chemin": [
+    "aiguillage:ask"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Cette page présente un sommaire et des définitions (périmètre de gestion de formules) mais ne détaille pas le déroulé des étapes : s'agit-il d'un plan à partir duquel il faut formaliser plusieurs procédures distinctes (commande, annulation, réception, délivrance, renvoi, création), ou souhaitez-vous analyser ce document ?",
+   "titres": [],
+   "decision": "demander",
+   "duree_s": 2.2,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "src-manuscrit",
+   "cat": "sources",
+   "statut": "sautée"
+  },
+  {
+   "id": "src-sans-couloirs",
+   "cat": "sources",
+   "statut": "sautée"
+  },
+  {
+   "id": "src-salut",
+   "cat": "sources",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 1,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure de modification de crédit documentaire à l'export à partir du document fourni.",
+   "titres": [
+    "Credoc Export – Modification"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.5,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "chat-correction-avec-fiche",
+   "cat": "chat-source",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 1,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure de modification de crédit documentaire à l'export à partir du document fourni.",
+   "titres": [
+    "Credoc Export – Modification"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.2,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "chat-texte-complet",
+   "cat": "chat-source",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:generate"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure d'ouverture du compte étudiant à partir de votre description.",
+   "titres": [],
+   "decision": "rediger",
+   "duree_s": 1.1,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "chat-texte-dicte",
+   "cat": "chat-source",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:generate"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure de virement international à partir de vos consignes.",
+   "titres": [],
+   "decision": "rediger",
+   "duree_s": 1.0,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "chat-explication-puis-fiche",
+   "cat": "chat-source",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 1,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise la procédure de traitement des virements financiers et commerciaux à partir du document fourni.",
+   "titres": [
+    "Virements financiers et commerciaux – Traitement"
+   ],
+   "decision": "rediger",
+   "duree_s": 1.4,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "ask-vide",
+   "cat": "demander",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "demander"
+   ],
+   "chemin": [
+    "aiguillage:ask"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Vous n'avez joint aucun fichier et le message ne précise pas quelle procédure formaliser. Pouvez-vous me fournir le document ou décrire le sujet du processus ?",
+   "titres": [],
+   "decision": "demander",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "ask-sujet-seul",
+   "cat": "demander",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "demander",
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:ask"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Pour formaliser la gestion des chéquiers, pourriez-vous m'envoyer le document, le support ou la procédure source correspondante ?",
+   "titres": [],
+   "decision": "demander",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "ask-singulier-plusieurs",
+   "cat": "demander",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "proposer",
+    "demander",
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 5,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise les 5 procédures du support : Organisation de la formation en alternance, Organisation de la formation plan, Réalisation et suivi de la formation, Vérification et gestion des factures, Paiement et remboursement de la formation.",
+   "titres": [
+    "Organisation de la formation en alternance",
+    "Organisation de la formation plan",
+    "Réalisation et suivi de la formation",
+    "Vérification et gestion des factures de formation",
+    "Paiement et remboursement de la formation"
+   ],
+   "decision": "rediger",
+   "duree_s": 3.0,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "ask-tableur-risques",
+   "cat": "demander",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "demander",
+    "repondre_sources"
+   ],
+   "chemin": [
+    "aiguillage:ask"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Le fichier transmis est un plan d'action et d'atténuation des risques (plan d'atténuation RO) et non une description détaillée d'étapes de procédures. Souhaitez-vous que l'on formalise les procédures mentionnées dans ce plan à partir d'autres sources, ou préférez-vous que l'on analyse ce document sous un autre angle ?",
+   "titres": [],
+   "decision": "demander",
+   "duree_s": 0.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-combien",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "repondre_sources",
+    "proposer"
+   ],
+   "chemin": [
+    "aiguillage:analyze"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "repondre_sources",
+   "duree_s": 1.8,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-qui-valide",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "repondre_sources"
+   ],
+   "chemin": [
+    "aiguillage:analyze"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "repondre_sources",
+   "duree_s": 1.1,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-resume-source",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "repondre_sources"
+   ],
+   "chemin": [
+    "aiguillage:analyze"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "repondre_sources",
+   "duree_s": 0.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-expliquer",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "expliquer",
+    "repondre"
+   ],
+   "chemin": [
+    "aiguillage:explain",
+    "chat:explain"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "",
+   "titres": [],
+   "decision": "expliquer",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-pourquoi",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "expliquer",
+    "repondre"
+   ],
+   "chemin": [
+    "aiguillage:explain",
+    "chat:explain"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "",
+   "titres": [],
+   "decision": "expliquer",
+   "duree_s": 0.6,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-general",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "repondre"
+   ],
+   "chemin": [
+    "aiguillage:explain",
+    "chat:explain"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "repondre",
+   "duree_s": 0.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-reglementation",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "recherche",
+    "repondre"
+   ],
+   "chemin": [
+    "aiguillage:search"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "recherche",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-recherche-procedure",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "recherche"
+   ],
+   "chemin": [
+    "aiguillage:search"
+   ],
+   "nombre": 1,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "recherche",
+   "duree_s": 1.1,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "q-recherche-explicite",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "recherche"
+   ],
+   "chemin": [
+    "aiguillage:search"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "recherche",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "hello",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "repondre"
+   ],
+   "chemin": [
+    "aiguillage:answer"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Bonjour. Envoyez-moi vos supports ou documents de procédures pour que je puisse les formaliser.",
+   "titres": [],
+   "decision": "repondre",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "merci",
+   "cat": "questions",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "repondre"
+   ],
+   "chemin": [
+    "aiguillage:answer"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Ravi que cela vous convienne. N'hésitez pas si vous avez d'autres procédures à formaliser.",
+   "titres": [],
+   "decision": "repondre",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "tr-pdf",
+   "cat": "transcrire",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "transcrire"
+   ],
+   "chemin": [
+    "aiguillage:transcribe"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je transcris fidèlement la procédure à partir du document fourni.",
+   "titres": [
+    "MCNE en MAD – Mise en place"
+   ],
+   "decision": "transcrire",
+   "duree_s": 1.4,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "tr-fiche",
+   "cat": "transcrire",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "transcrire"
+   ],
+   "chemin": [
+    "aiguillage:transcribe"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je transcris fidèlement la fiche de procédure « Chèques en devise » à partir du document joint.",
+   "titres": [
+    "Chèques en devise"
+   ],
+   "decision": "transcrire",
+   "duree_s": 1.6,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "tr-image",
+   "cat": "transcrire",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "transcrire"
+   ],
+   "chemin": [
+    "aiguillage:transcribe"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je retranscris fidèlement le contenu du document joint, incluant le tableau des acronymes et la section sur le périmètre.",
+   "titres": [],
+   "decision": "transcrire",
+   "duree_s": 1.1,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-acteur",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "Je mets à jour l'étape 5 pour attribuer la validation au Superviseur – BOI.",
+   "titres": [
+    "Crédit documentaire à l'export – Modification"
+   ],
+   "decision": "modifier",
+   "duree_s": 0.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-ajout",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "J'ajoute le contrôle de la Direction conformité après la saisie.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.8,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-suppr-etape",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "Je supprime l'étape de rejet de la procédure.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-outil",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "Je mets à jour la procédure en remplaçant l'outil Docflow par Outlook.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-titre",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "Je renomme la procédure.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.6,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-implicite",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "Je mets à jour l'étape de validation dans la procédure Crédit documentaire à l'export – Modification pour indiquer que la validation est automatique dans TI+.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-fusion-acteurs",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "Je mets à jour les acteurs en remplaçant Responsable et Gestionnaire des opérations par Back office international.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-cible-2",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 3,
+   "reponse": "J'ajoute la relance de l'organisme en cas de facture manquante dans la procédure Vérifier la fin de formation.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-cible-affichee",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 2,
+   "reponse": "J'ajoute l'étape d'évaluation à chaud à la fin de la procédure \"Former les intérimaires\".",
+   "titres": [
+    "Former les intérimaires"
+   ],
+   "decision": "modifier",
+   "duree_s": 0.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "mod-nouvelle-version",
+   "cat": "modifier",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "refaire",
+    "operation"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:regen"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "Je mets à jour la procédure Crédit documentaire à l'export – Modification avec la nouvelle version du document.",
+   "titres": [
+    "Crédit documentaire à l'export – Modification"
+   ],
+   "decision": "refaire",
+   "duree_s": 1.3,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-decouper",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "operation"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 2,
+   "remplace": [
+    1
+   ],
+   "cible": null,
+   "reponse": "Je sépare la procédure d'organisation en deux procédures distinctes : l'une pour le circuit Alternance, l'autre pour le circuit Plan.",
+   "titres": [
+    "Formation en alternance – Organisation",
+    "Plan de formation – Organisation"
+   ],
+   "decision": "operation",
+   "duree_s": 1.0,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-deplacer",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "operation"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 2,
+   "remplace": [
+    2,
+    3
+   ],
+   "cible": null,
+   "reponse": "Je déplace l'étape de contrôle des émargements de la procédure Former vers la procédure Vérifier.",
+   "titres": [
+    "Former les intérimaires",
+    "Vérifier la fin de formation"
+   ],
+   "decision": "operation",
+   "duree_s": 1.1,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-extraire",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "operation"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 2,
+   "remplace": [
+    2
+   ],
+   "cible": null,
+   "reponse": "Je sépare la gestion des absences de la procédure \"Former les intérimaires\" pour en faire une procédure distincte, et je mets à jour les deux procédures.",
+   "titres": [
+    "Former les intérimaires",
+    "Gestion des absences en formation"
+   ],
+   "decision": "operation",
+   "duree_s": 1.1,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-fusion",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "fusionner",
+    "operation"
+   ],
+   "chemin": [
+    "aiguillage:merge"
+   ],
+   "nombre": 1,
+   "remplace": [
+    2,
+    3
+   ],
+   "cible": null,
+   "reponse": "Je fusionne Former et Vérifier en une seule procédure.",
+   "titres": [
+    "Formation des intérimaires – Contrôle et validation"
+   ],
+   "decision": "fusionner",
+   "duree_s": 0.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-retirer",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "retirer"
+   ],
+   "chemin": [
+    "aiguillage:remove"
+   ],
+   "nombre": null,
+   "remplace": [
+    3
+   ],
+   "cible": null,
+   "reponse": "Je retire la procédure Vérifier de la conversation.",
+   "titres": [],
+   "decision": "retirer",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-nouvelle-texte",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:generate"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 3,
+   "reponse": "Je formalise une nouvelle procédure pour le paiement de l'organisme.",
+   "titres": [],
+   "decision": "rediger",
+   "duree_s": 0.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-decouper-avec-fichier",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "operation"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 2,
+   "remplace": [
+    1
+   ],
+   "cible": null,
+   "reponse": "Je sépare la procédure Organiser en deux procédures distinctes : l'une dédiée au circuit Alternance, l'autre au circuit Plan.",
+   "titres": [
+    "Organisation de la formation en alternance",
+    "Organisation de la formation du plan"
+   ],
+   "decision": "operation",
+   "duree_s": 2.2,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "op-renommer-toutes",
+   "cat": "ensemble",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "operation",
+    "modifier"
+   ],
+   "chemin": [
+    "aiguillage:edit",
+    "chat:patch"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 3,
+   "reponse": "J'ajoute le préfixe « FormaCash – » aux titres des procédures de la conversation.",
+   "titres": [],
+   "decision": "modifier",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "prop-deux",
+   "cat": "proposition",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 2,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise les procédures sélectionnées : Organiser une formation en alternance et Vérifier la formation.",
+   "titres": [
+    "Organiser une formation en alternance",
+    "Vérifier la formation"
+   ],
+   "decision": "rediger",
+   "duree_s": 2.3,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "prop-toutes",
+   "cat": "proposition",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 6,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Je formalise l'ensemble des 6 procédures du parcours de formation Formacash.",
+   "titres": [
+    "Organiser une formation (circuit Plan)",
+    "Organiser une formation en alternance",
+    "Former l'intérimaire",
+    "Vérifier la formation",
+    "Payer l'organisme et se faire rembourser",
+    "Valoriser la formation"
+   ],
+   "decision": "rediger",
+   "duree_s": 2.9,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "prop-ajout",
+   "cat": "proposition",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "proposer",
+    "rediger"
+   ],
+   "chemin": [
+    "aiguillage:generate"
+   ],
+   "nombre": 7,
+   "remplace": [],
+   "cible": null,
+   "reponse": "J'ajoute la procédure d'inscription en formation interne en plus des six procédures du parcours.",
+   "titres": [
+    "Organiser une formation (circuit Plan)",
+    "Organiser une formation en alternance",
+    "Former l'intérimaire",
+    "Vérifier la formation",
+    "Payer l'organisme et se faire rembourser",
+    "Valoriser la formation",
+    "Inscription en formation interne"
+   ],
+   "decision": "rediger",
+   "duree_s": 3.4,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "int-procedure",
+   "cat": "interfaces",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "interfaces"
+   ],
+   "chemin": [
+    "aiguillage:interfaces"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "",
+   "titres": [],
+   "decision": "interfaces",
+   "duree_s": 0.7,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "int-cible",
+   "cat": "interfaces",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "interfaces"
+   ],
+   "chemin": [
+    "aiguillage:interfaces"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 3,
+   "reponse": "",
+   "titres": [],
+   "decision": "interfaces",
+   "duree_s": 0.6,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "int-flux",
+   "cat": "interfaces",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "interfaces"
+   ],
+   "chemin": [
+    "aiguillage:interfaces"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "",
+   "titres": [],
+   "decision": "interfaces",
+   "duree_s": 0.6,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "int-une-etape",
+   "cat": "interfaces",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "expliquer"
+   ],
+   "chemin": [
+    "aiguillage:explain",
+    "chat:explain"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": 1,
+   "reponse": "",
+   "titres": [],
+   "decision": "expliquer",
+   "duree_s": 0.6,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "int-sans-procedure",
+   "cat": "interfaces",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "repondre",
+    "demander"
+   ],
+   "chemin": [
+    "aiguillage:answer"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "Il n'y a pas encore de procédure dont repérer les interfaces : formalisons-la d'abord.",
+   "titres": [],
+   "decision": "repondre",
+   "duree_s": 0.8,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "ref-sources",
+   "cat": "referentiel",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "referentiel"
+   ],
+   "chemin": [
+    "aiguillage:structure"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "referentiel",
+   "duree_s": 1.6,
+   "passages_justes": "2/2"
+  },
+  {
+   "id": "ref-texte",
+   "cat": "referentiel",
+   "statut": "juste",
+   "ecarts": [],
+   "attendu": [
+    "referentiel"
+   ],
+   "chemin": [
+    "aiguillage:structure"
+   ],
+   "nombre": null,
+   "remplace": [],
+   "cible": null,
+   "reponse": "",
+   "titres": [],
+   "decision": "referentiel",
+   "duree_s": 1.7,
+   "passages_justes": "2/2"
+  }
+ ]
+}

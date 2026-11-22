@@ -28,6 +28,10 @@ tu décides de l'action et tu repères les procédures présentes dans les fichi
   entier en une seule procédure « Parcours … » quand il détaille plusieurs phases.
 - Ne liste QUE ce qui est réellement décrit dans le contenu. Un simple titre dans une table des matières
   ou une mention sans étapes n'est PAS une procédure.
+- Un document qui CITE des procédures sans décrire leur déroulé (plan d'actions, registre ou cartographie des risques,
+  tableau de suivi, liste de procédures « à mettre à jour » ou « à formaliser ») ne permet pas de les rédiger : ne les
+  liste pas. Dis ce que contient le fichier et demande ("ask") ce que l'utilisateur veut en tirer (par exemple les
+  formaliser à partir d'autres sources, ou analyser le document).
 - Pour chaque procédure, indique ses sources : nom exact du fichier et pages (ex : "3-7") si c'est un PDF.
   Une procédure sans source identifiable ne doit pas être listée.
 
