@@ -43,18 +43,7 @@ export const API_CONFIG = {
         transcribe: '/api/stt/transcribe',
         dictate: '/api/stt/dictate',
 
-        /* ---------------------- BPMN AI ---------------------- */
-        bpmnAiEnrichTable: '/api/bpmn-ai/enrich-table',
-        bpmnAiInfo: '/api/bpmn-ai/info',
 
-        /* ---------------------- IMG → BPMN ---------------------- */
-        imgToBpmnAnalyze: '/api/img-to-bpmn/analyze',
-        imgToBpmnImprove: '/api/img-to-bpmn/improve',
-        imgToBpmnVerify: '/api/img-to-bpmn/verify',
-        imgToBpmnBatchAnalyze: '/api/img-to-bpmn/batch-analyze',
-        imgToBpmnEnrichTask: '/api/img-to-bpmn/enrich-task',
-        imgToBpmnEnrichWorkflow: '/api/img-to-bpmn/enrich-workflow',
-        imgToBpmnInfo: '/api/img-to-bpmn/info',
 
         /* ---------------------- DOCUMENT GENERATION ---------------------- */  // 🆕 SECTION AJOUTÉE
         docGenerate: '/api/doc/generate',  // 🆕 ENDPOINT AJOUTÉ

@@ -4,11 +4,10 @@
 import React, { useState, useEffect } from 'react';
 import { saveAs } from 'file-saver';
 import * as XLSX from 'xlsx';
-import { Download, Search, Filter, ChevronDown, ChevronUp, Network, AlertTriangle, Plus, Trash2, Sparkles } from 'lucide-react';
+import { Download, Search, Filter, ChevronDown, ChevronUp, Network, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { generateBPMN, Table1Row } from '@/logic/bpmnGenerator';
 import BPMNViewer from '@/components/BPMNViewer';
 import { processDotToTable, TableRow } from '@/logic/dotTableProcessor';
-import { enrichTable, mergeAIEnrichments } from '@/logic/dotAIMerger';
 
 interface EditingCell {
     rowId: string;
@@ -35,8 +34,6 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
 
     const [processingWarnings, setProcessingWarnings] = useState<string[]>([]);
     const [showWarnings, setShowWarnings] = useState(false);
-    const [enrichingWithAI, setEnrichingWithAI] = useState(false);
-    const [aiEnrichmentStatus, setAiEnrichmentStatus] = useState<string>('');
 
     useEffect(() => {
         if (!dotSource) {
@@ -170,41 +167,6 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
         setRows([...rows, newRow]);
     };
 
-    // ✅ NOUVELLE FONCTION : Enrichissement IA sur demande
-    const handleEnrichWithAI = async () => {
-        if (rows.length === 0) {
-            setAiEnrichmentStatus('⚠️ Aucune donnée à enrichir');
-            setTimeout(() => setAiEnrichmentStatus(''), 3000);
-            return;
-        }
-
-        try {
-            setEnrichingWithAI(true);
-            setAiEnrichmentStatus('🤖 Enrichissement IA en cours...');
-
-            const aiResponse = await enrichTable(rows);
-
-            if (aiResponse.success && aiResponse.enrichments) {
-                const enrichedRows = mergeAIEnrichments(rows, aiResponse.enrichments);
-
-                setRows(enrichedRows);
-                setFilteredRows(enrichedRows);
-                setAiEnrichmentStatus(`✅ ${aiResponse.enrichments.length} lignes enrichies par IA`);
-
-                setTimeout(() => setAiEnrichmentStatus(''), 5000);
-            } else {
-                setAiEnrichmentStatus('⚠️ Enrichissement IA échoué');
-                setTimeout(() => setAiEnrichmentStatus(''), 5000);
-            }
-        } catch (aiError: any) {
-            console.error('Erreur enrichissement IA:', aiError);
-            setAiEnrichmentStatus(`❌ Erreur: ${aiError.message || 'Enrichissement impossible'}`);
-            setTimeout(() => setAiEnrichmentStatus(''), 5000);
-        } finally {
-            setEnrichingWithAI(false);
-        }
-    };
-
     const handleDeleteRow = (rowId: string) => {
         const newRows = rows.filter(r => r.id !== rowId);
         // Réindexer les IDs
@@ -273,13 +235,10 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
 
     const uniqueTypes = ['all', ...Array.from(new Set(rows.map(r => r.typeBpmn)))];
 
-    if (loading || enrichingWithAI) {
+    if (loading) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem', gap: '1rem' }}>
                 <div style={{ width: '3rem', height: '3rem', border: '3px solid #e5e7eb', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                {enrichingWithAI && (
-                    <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>🤖 Enrichissement par IA en cours...</div>
-                )}
             </div>
         );
     }
@@ -351,28 +310,6 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
                             >
                                 <Plus size={18} />
                                 Ajouter une ligne
-                            </button>
-
-                            {/* ✅ NOUVEAU BOUTON : Enrichir avec IA */}
-                            <button
-                                onClick={handleEnrichWithAI}
-                                disabled={enrichingWithAI || rows.length === 0}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    padding: '0.75rem 1.5rem',
-                                    backgroundColor: enrichingWithAI || rows.length === 0 ? '#9ca3af' : '#8b5cf6',
-                                    color: 'white',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    fontWeight: '500',
-                                    cursor: enrichingWithAI || rows.length === 0 ? 'not-allowed' : 'pointer',
-                                    fontSize: '0.875rem'
-                                }}
-                            >
-                                <Sparkles size={18} />
-                                {enrichingWithAI ? 'Enrichissement...' : '🤖 Enrichir avec IA'}
                             </button>
 
                             <button
@@ -489,12 +426,6 @@ export default function TableComponent({ dotSource }: TableComponentProps) {
                     {(searchTerm || filterType !== 'all') && (
                         <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                             {filteredRows.length} résultat{filteredRows.length > 1 ? 's' : ''} trouvé{filteredRows.length > 1 ? 's' : ''}
-                        </div>
-                    )}
-
-                    {aiEnrichmentStatus && (
-                        <div style={{ padding: '1rem', backgroundColor: aiEnrichmentStatus.startsWith('✅') ? '#d1fae5' : aiEnrichmentStatus.startsWith('❌') ? '#fee2e2' : '#fef3c7', borderLeft: `4px solid ${aiEnrichmentStatus.startsWith('✅') ? '#059669' : aiEnrichmentStatus.startsWith('❌') ? '#ef4444' : '#f59e0b'}`, color: aiEnrichmentStatus.startsWith('✅') ? '#065f46' : aiEnrichmentStatus.startsWith('❌') ? '#991b1b' : '#92400e', borderRadius: '0.25rem', fontSize: '0.875rem', fontWeight: '500' }}>
-                            {aiEnrichmentStatus}
                         </div>
                     )}
 

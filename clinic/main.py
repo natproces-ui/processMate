@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 from config import API_CONFIG, CORS_CONFIG, IS_PRODUCTION, FRONTEND_URL, GOOGLE_API_KEY
 from routers import (
-    parser, windev_flowchart, bpmn, bpmn_ai, img_to_bpmn,
+    parser, windev_flowchart, bpmn,
     dot_to_table, cobol_flowchart,
     doc_router, stt, interface_router, revision_router, chat_router,
     orchestration_router, irritants_router, orchestration_tasks_router,
@@ -119,8 +119,6 @@ app.include_router(parser.router)
 app.include_router(windev_flowchart.router)
 app.include_router(cobol_flowchart.router)
 app.include_router(bpmn.router)
-app.include_router(bpmn_ai.router)
-app.include_router(img_to_bpmn.router)
 app.include_router(dot_to_table.router)
 app.include_router(irritants_router.router)
 
@@ -186,8 +184,6 @@ async def health_check():
             "parser": "active",
             "flowchart_generator": "active",
             "bpmn_generator": "active",
-            "bpmn_ai_enricher": "active",
-            "img_to_table_converter": "active",
             "dot_to_table_converter": "active",
             "process_discovery": "active ✨",       # ← NOUVEAU
             "process_generation": "active ✨"        # ← NOUVEAU

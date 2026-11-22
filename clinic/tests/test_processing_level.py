@@ -141,7 +141,7 @@ class ProcessingLevelTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_changed_python_files_parse(self):
         clinic = Path(__file__).resolve().parents[1]
-        for relative in ["main.py", "manager/model_manager.py", "manager/processing_level.py", "routers/stt.py", "flowcharts/flowchart_generator.py", "flowcharts/bpmn_generator.py", "flowcharts/cobol_flowchart_generator.py", "routers/bpmn_ai.py", "routers/dot_to_table.py", "prompts/image_classifier.py", "sfd/generation.py"]:
+        for relative in ["main.py", "manager/model_manager.py", "manager/processing_level.py", "routers/stt.py", "flowcharts/flowchart_generator.py", "flowcharts/bpmn_generator.py", "flowcharts/cobol_flowchart_generator.py", "routers/dot_to_table.py", "prompts/image_classifier.py", "sfd/generation.py"]:
             ast.parse((clinic / relative).read_text(encoding="utf-8"))
 
 

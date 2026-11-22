@@ -39,9 +39,10 @@ Ordre de lecture : **2. Décisions**, puis 3 (glossaire), puis 1 (inventaire).
 | `discovery_prompt` | Repérer les procédures d'un document (ancien) | Utilisée par le Studio complet — **définition d'une procédure différente du chat** |
 | `discovery_code_prompt` | Repérer les procédures dans du code | Utilisée (Studio complet, code) |
 | `tool_screen_extraction_prompt` | Lire un écran d'application | Utilisée (outils) |
-| `interface_prompt` | Regrouper les interfaces par système | Route non appelée par l'interface — **probablement morte** |
-| `enhance_prompt`, `verify_prompt` | Améliorer / vérifier un logigramme lu depuis une image | Routes `img-to-bpmn` non appelées par l'interface — **probablement mortes** |
-| `SYSTEM_PROMPT` (`bpmn_ai`), `PROMPT_TEMPLATE` (`dot_to_table`) | Enrichir un tableau, convertir un graphe | Routes non appelées ou anciennes — **probablement mortes** |
+| `interface_prompt` | Regrouper les interfaces par système | Route non appelée par l'interface — **conservée** (décision du 22/11/2026) |
+| ~~`enhance_prompt`, `verify_prompt`~~ | Améliorer / vérifier un logigramme lu depuis une image | **Retirées le 22/11/2026** avec la route `img-to-bpmn` (aucun appel de l'interface) |
+| ~~`SYSTEM_PROMPT` (`bpmn_ai`)~~ | Enrichir le tableau du parcours « code source » | **Retirée le 22/11/2026** avec son bouton « Enrichir avec IA » (adresse figée `localhost:8002`, inopérant en production) |
+| `PROMPT_TEMPLATE` (`dot_to_table`) | Convertir le graphe du parcours « Partir du code source » en tableau | **Utilisée** (l'inventaire la disait morte à tort) : conservée |
 
 « Probablement morte » sera confirmé avant suppression (le projet a beaucoup de chemins parallèles).
 
