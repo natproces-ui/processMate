@@ -19,6 +19,7 @@ Décisions possibles (vocabulaire du banc, indépendant du code actuel) :
   referentiel    proposer un référentiel
   recherche      chercher une information externe
   demander       poser une question ciblée avant d'agir
+  interfaces     repérer les interfaces applicatives d'une procédure (systèmes, tâches, échanges)
 
 `attendu` : liste des décisions acceptables (la première est la meilleure).
 Contrôles facultatifs : `nombre` (procédures à rédiger), `remplace` (procédures de la conversation
@@ -219,6 +220,18 @@ CASES = [
     dict(id="prop-toutes", cat="proposition", files=[FORMACASH], proposal=6, message="Toutes.", attendu=["rediger"], nombre=6),
     dict(id="prop-ajout", cat="proposition", files=[FORMACASH], proposal=6,
          message="Il en manque une : l'inscription en formation interne.", attendu=["proposer", "rediger"]),
+
+    # ── Interfaces applicatives ──────────────────────────────────────────────────────────────────
+    dict(id="int-procedure", cat="interfaces", conv=UNE, message="Quelles sont les interfaces de cette procédure ?",
+         attendu=["interfaces"]),
+    dict(id="int-cible", cat="interfaces", conv=TROIS, active=1, message="Quels systèmes interviennent dans Vérifier la fin de formation ?",
+         attendu=["interfaces"], cible=3),
+    dict(id="int-flux", cat="interfaces", conv=UNE, message="Fais-moi la cartographie des flux entre les applications.",
+         attendu=["interfaces"]),
+    dict(id="int-une-etape", cat="interfaces", conv=UNE, message="Quel outil est utilisé à l'étape 4 ?",
+         attendu=["expliquer"], note="L'outil d'une seule étape : une explication, pas une cartographie"),
+    dict(id="int-sans-procedure", cat="interfaces", message="Quelles sont les interfaces ?",
+         attendu=["repondre", "demander"], note="Aucune procédure dont lire les outils"),
 
     # ── Référentiel ──────────────────────────────────────────────────────────────────────────────
     dict(id="ref-sources", cat="referentiel", files=[CREDOC_MODIF, CREDOC_REAL, VIREMENTS],

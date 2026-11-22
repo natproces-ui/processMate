@@ -92,13 +92,17 @@ des documents et à répondre à des questions.
 "search" → l'utilisateur demande EXPLICITEMENT de chercher une information sur internet ou une réglementation
    récente (« cherche les règles de Bank Al-Maghrib sur… », « trouve les étapes standard d'un virement SWIFT »).
    Laisse "reply" vide.
+"interfaces" → l'utilisateur veut les interfaces applicatives d'une procédure de la conversation : les systèmes
+   utilisés, à quelles tâches, les connexions et échanges entre outils (« quelles sont les interfaces ? », « quels
+   systèmes interviennent dans Vérifier ? », « fais-moi la cartographie des flux applicatifs »). "cible" = la procédure.
+   Laisse "reply" vide : la détection est faite à part. Une question sur l'outil d'UNE étape reste "explain".
 "answer" → un échange court qui n'a besoin ni des fichiers ni d'une génération (« merci », « bonjour », « d'accord »),
    ou l'annonce d'un document à venir (« je vais t'envoyer notre support ») : accuse réception. "reply" contient la
    réponse. Une vraie question appelle "explain".
 Créer une procédure à partir du seul texte du message ("generate" sans fichier) demande de quoi la rédiger : une
 description du processus, ou au moins un sujet précis (« fais la procédure de virement SWIFT »). Sinon "ask".
 
-PROCÉDURE VISÉE ("cible", pour "edit" et "explain") : le numéro de la procédure de la conversation dont parle le message —
+PROCÉDURE VISÉE ("cible", pour "edit", "explain" et "interfaces") : le numéro de la procédure de la conversation dont parle le message —
 celle qu'il nomme ou désigne (titre, sujet, acteur ou étape qui n'existe que dans elle), ou celle sur laquelle portait la
 discussion récente si le message en est la suite ; sinon celle marquée "affichee". Si une modification peut concerner
 plusieurs procédures sans qu'on puisse trancher → "ask", en citant leurs titres.
@@ -137,8 +141,8 @@ nombre de procédures distinctes (pense aux variantes décrites séparément, ex
 
 Réponds UNIQUEMENT avec ce JSON :
 {
-  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "explain" | "search" | "answer",
-  "cible": null,          // edit, explain : numéro de la procédure de la conversation visée
+  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "explain" | "search" | "interfaces" | "answer",
+  "cible": null,          // edit, explain, interfaces : numéro de la procédure de la conversation visée
   "mode": "modifier",     // edit : "modifier" ou "refaire" (à partir d'un fichier joint)
   "transcribe_mode": "combined",
   "reply": "texte",

@@ -23,7 +23,7 @@ from prompts.studio_planner_prompt import build_planner_prompt
 logger = logging.getLogger(__name__)
 
 ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer", "transcribe", "ask",
-           "explain", "search"}
+           "explain", "search", "interfaces"}
 # Ce que le chat exécute quand l'aiguillage lui confie le tour (le chat ne reclasse plus la demande)
 TRANSCRIBE_MODES = {"image_only", "text_only", "combined"}
 # Au-delà, on ne génère pas sans que l'utilisateur ait validé la sélection
@@ -250,6 +250,11 @@ def apply_guardrails(
             adjustments.append(f"{len(targets) - len(fresh)} procédure(s) déjà dans la conversation non régénérée(s)")
             targets = fresh
 
+    # Interfaces : il faut une procédure dont lire les outils
+    if action == "interfaces" and not conversation_count and not has_workflow:
+        action = "answer"
+        reply = reply or "Il n'y a pas encore de procédure dont repérer les interfaces : formalisons-la d'abord."
+        adjustments.append("interfaces sans procédure")
     # Une question alors que seuls des fichiers sont là (aucune procédure produite) porte sur ces fichiers
     if action == "explain" and filenames and not conversation_count and not has_workflow:
         action = "analyze"

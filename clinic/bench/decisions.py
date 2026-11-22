@@ -86,11 +86,13 @@ async def decide(case: dict, files: list) -> dict:
     if plan.action in ("generate", "propose", "merge"):
         out["nombre"] = len(plan.targets) if plan.action == "generate" and plan.targets else len(plan.procedures)
     simple = {"propose": "proposer", "merge": "fusionner", "remove": "retirer", "structure": "referentiel",
-              "transcribe": "transcrire", "ask": "demander", "answer": "repondre"}
+              "transcribe": "transcrire", "ask": "demander", "answer": "repondre", "interfaces": "interfaces"}
     if plan.action == "generate":
         out["decision"] = "operation" if plan.replaces else "rediger"
     elif plan.action in simple:
         out["decision"] = simple[plan.action]
+        if plan.action == "interfaces":
+            out["cible"] = plan.target or (conv.index(active) + 1 if active else None)
     elif plan.action == "analyze" and files:
         out["decision"] = "repondre_sources"
     elif plan.action in ("edit", "explain", "search", "analyze"):
@@ -117,7 +119,7 @@ def judge(case: dict, got: dict) -> list:
     if "remplace" in case and got["decision"] in ("operation", "retirer", "fusionner", "rediger") \
             and sorted(got["remplace"]) != sorted(case["remplace"]):
         errors.append(f"refait {got['remplace']} au lieu de {case['remplace']}")
-    if case.get("cible") and got["decision"] == "modifier" and got["cible"] != case["cible"]:
+    if case.get("cible") and got["decision"] in ("modifier", "interfaces") and got["cible"] != case["cible"]:
         errors.append(f"modifie la procédure {got['cible']} au lieu de {case['cible']}")
     return errors
 

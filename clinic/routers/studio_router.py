@@ -459,6 +459,50 @@ async def _stream_structure(sess: Dict[str, Any], files: List[Dict[str, Any]], m
                          f"{st['procedures']} procédure{'s' if st['procedures'] > 1 else ''}"})
 
 
+def _interfaces_text(title: str, interfaces: List[Dict[str, Any]]) -> str:
+    """Réponse du chat : un système par ligne, avec ses étapes ; le détail complet part à l'écran à part."""
+    if not interfaces:
+        return (f"Je ne vois aucun système applicatif dans « {title} » : aucune étape n'a d'outil renseigné ni "
+                "d'échange avec une application. Si certaines étapes passent par un logiciel, dites-moi lequel.")
+    n = len(interfaces)
+    lines = [f"« {title} » s'appuie sur **{n} système{'s' if n > 1 else ''}** :", ""]
+    unsure = []
+    for it in interfaces:
+        steps = [str(t.get("id_tache")) for t in it.get("taches_liees") or [] if t.get("id_tache")]
+        where = (f"étape{'s' if len(steps) > 1 else ''} {', '.join(steps)}") if steps else "sans étape précise"
+        flow = [v for v in (it.get("type_flux"), it.get("sens_flux")) if v and v != "Inconnu"]
+        desc = (it.get("description_fonctionnelle") or "").strip().rstrip(".")
+        line = f"- **{it.get('application_cible')}** ({where}) : {desc}" + (f" — {', '.join(flow).lower()}" if flow else "")
+        if it.get("niveau_confiance") in ("Suggérée", "Incertaine"):
+            line += " (déduit du libellé des étapes, à confirmer)"
+            unsure.append(it.get("application_cible"))
+        lines.append(line)
+    if any(it.get("flux_vers_CBS") == "Oui" for it in interfaces):
+        lines += ["", "Au moins un échange touche le système central (core banking)."]
+    return "\n".join(lines)
+
+
+async def _stream_interfaces(proc: Dict[str, Any]):
+    """Interfaces applicatives d'une procédure : les systèmes, leurs tâches et leurs échanges (consigne interface_prompt).
+    Une réponse dans le chat et le détail structuré pour l'écran (futur panneau ou bouton « Interfaces »)."""
+    from processor.interface_processor import InterfaceProcessor
+    title = proc.get("title") or "la procédure"
+    yield _sse({"type": "status", "id": "interfaces", "label": f"Je repère les interfaces de « {title} »", "state": "running"})
+    try:
+        with routing_scope(TaskKind.EXTRACTION, ["texte"]):
+            result = await InterfaceProcessor().detect_interfaces(proc.get("workflow") or [])
+    except Exception as e:
+        logger.warning(f"⚠️ Détection des interfaces indisponible : {e}")
+        yield _sse({"type": "message", "text": "Je n'ai pas pu repérer les interfaces. Pouvez-vous réessayer ?"})
+        yield _sse({"type": "status", "id": "interfaces", "label": "Détection interrompue", "state": "done"})
+        return
+    interfaces = result.get("interfaces") or []
+    yield _sse({"type": "message", "text": _interfaces_text(title, interfaces)})
+    yield _sse({"type": "interfaces", "procedure_key": proc.get("key"), "title": title, "interfaces": interfaces})
+    yield _sse({"type": "status", "id": "interfaces", "state": "done",
+                "label": f"Interfaces repérées · {len(interfaces)} système{'s' if len(interfaces) > 1 else ''}"})
+
+
 def _guest(request: Request, user: Optional[AuthUser]):
     """Clés de comptage d'un invité, ou None (utilisateur connecté, ou limites désactivées)."""
     if user is not None or not load_limits().enabled:
@@ -718,7 +762,7 @@ async def studio_turn(
                 elif read_label and plan.action != "edit":
                     yield _sse({"type": "status", "id": "think", "label": read_label, "state": "done"})
                 # edit : le chat remplace la ligne par ce qu'il va faire
-                if plan.reply and plan.action not in ("analyze", "explain", "search"):
+                if plan.reply and plan.action not in ("analyze", "explain", "search", "interfaces"):
                     yield _sse({"type": "message", "text": plan.reply})
 
                 if plan.procedures:
@@ -741,6 +785,14 @@ async def studio_turn(
                         yield ev
                 elif plan.action == "structure":
                     async for ev in _stream_structure(sess, to_plan, message, history_list):
+                        yield ev
+                elif plan.action == "interfaces":
+                    target = conv_procs[plan.target - 1] if plan.target else \
+                        next((p for p in conv_procs if p.get("key") == active_procedure), None)
+                    if target is None:  # procédure affichée hors conversation (ouverte depuis la bibliothèque)
+                        target = {"key": active_procedure, "title": (_loads(current_procedure_metadata, {}) or {}).get("title"),
+                                  "workflow": workflow or []}
+                    async for ev in _stream_interfaces(target):
                         yield ev
                 elif plan.action in ("edit", "transcribe", "explain", "search", "analyze"):
                     # le chat exécute ce que l'aiguillage a décidé ; une question sans source à lire = explication

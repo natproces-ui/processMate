@@ -61,6 +61,25 @@ class GuardrailTests(unittest.TestCase):
         # une modification quand des procédures existent mais qu'aucune n'est affichée
         self.assertEqual(apply_guardrails({"action": "edit", "cible": 1}, [], False, None, 2, ["A", "B"]).chat_intent, "patch")
 
+    def test_interfaces_of_a_procedure(self):
+        plan = apply_guardrails({"action": "interfaces", "cible": 2}, [], True, None, 3, ["A", "B", "C"])
+        self.assertEqual((plan.action, plan.target), ("interfaces", 2))
+        # sans procédure : rien à lire
+        self.assertEqual(apply_guardrails({"action": "interfaces"}, [], False).action, "answer")
+
+    def test_interfaces_reply_lists_one_system_per_line(self):
+        from routers.studio_router import _interfaces_text
+        text = _interfaces_text("CREDOC", [
+            {"application_cible": "TI+", "taches_liees": [{"id_tache": "2"}, {"id_tache": "4"}],
+             "description_fonctionnelle": "Saisie et validation", "type_flux": "Inconnu", "niveau_confiance": "Confirmée"},
+            {"application_cible": "Docflow", "taches_liees": [{"id_tache": "6"}], "description_fonctionnelle": "Rejet",
+             "niveau_confiance": "Suggérée"}])
+        self.assertIn("**2 systèmes**", text)
+        self.assertIn("**TI+** (étapes 2, 4)", text)
+        self.assertIn("à confirmer", text)
+        self.assertNotIn("Remarque", text)
+        self.assertIn("aucun système", _interfaces_text("X", []))
+
     def test_analyze_is_kept(self):
         plan = apply_guardrails({"action": "analyze", "procedures": []}, FILES, False)
         self.assertEqual(plan.action, "analyze")

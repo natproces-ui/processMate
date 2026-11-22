@@ -39,7 +39,7 @@ Ordre de lecture : **2. Décisions**, puis 3 (glossaire), puis 1 (inventaire).
 | `discovery_prompt` | Repérer les procédures d'un document (ancien) | Utilisée par le Studio complet — **définition d'une procédure différente du chat** |
 | `discovery_code_prompt` | Repérer les procédures dans du code | Utilisée (Studio complet, code) |
 | `tool_screen_extraction_prompt` | Lire un écran d'application | Utilisée (outils) |
-| `interface_prompt` | Regrouper les interfaces par système | Route non appelée par l'interface — **conservée** (décision du 22/11/2026) |
+| `interface_prompt` | Interfaces applicatives d'une procédure (systèmes, tâches, échanges entre outils) | **Utilisée** : action `interfaces` du chat (22/11/2026) |
 | ~~`enhance_prompt`, `verify_prompt`~~ | Améliorer / vérifier un logigramme lu depuis une image | **Retirées le 22/11/2026** avec la route `img-to-bpmn` (aucun appel de l'interface) |
 | ~~`SYSTEM_PROMPT` (`bpmn_ai`)~~ | Enrichir le tableau du parcours « code source » | **Retirée le 22/11/2026** avec son bouton « Enrichir avec IA » (adresse figée `localhost:8002`, inopérant en production) |
 | `PROMPT_TEMPLATE` (`dot_to_table`) | Convertir le graphe du parcours « Partir du code source » en tableau | **Utilisée** (l'inventaire la disait morte à tort) : conservée |
@@ -141,4 +141,9 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
      procédure visée, annonce d'un document à venir). Actions ajoutées : `explain`, `search`.
      Banc des décisions (3 passages) : 52/53, comme avant, avec un seul appel de décision par message au lieu de deux.
      Le classifieur ne sert plus qu'à la route `/api/chat/message`, qu'aucun écran n'appelle (à retirer sur décision).
+   - **Interfaces applicatives dans le cerveau — fait le 22/11/2026.** `interface_prompt` (systèmes utilisés, tâches liées,
+     échanges entre outils) est rebranché : action `interfaces` de l'aiguillage (« quelles sont les interfaces ? », « quels
+     systèmes dans Vérifier ? »), sur la procédure visée. Réponse dans le chat (un système par ligne, avec ses étapes ; « à
+     confirmer » quand il est seulement déduit des libellés), et le détail structuré en événement `interfaces` pour un futur
+     bouton ou panneau. Même circuit prévu pour les irritants et l'analyse réglementaire. Banc : 5/5 (3 passages).
 4. Retrait des doublons et des consignes mortes (après confirmation).
