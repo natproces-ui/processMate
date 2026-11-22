@@ -119,6 +119,18 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
      cite aussi dans sa liste d'acteurs (fiche incohérente). **À surveiller** : rédaction ~10 % plus lente (consigne plus longue) ;
      une rédaction a dépassé le délai de 180 s sans réponse du modèle, réussie au second essai (170 s).
      Banc des décisions refait avec le glossaire 0.3 : 52/53.
-   - À suivre : modification (`revision_prompt`), relecture (`studio_remarks_prompt`), classifieur du chat (`intent_prompt`,
-     à fondre dans l'aiguillage), découverte du Studio complet (`discovery_prompt`, définition d'une procédure).
+   - **Modification — faite le 22/11/2026.** Banc `bench/modification.py` (11 instructions réelles sur CREDOC, opérations
+     appliquées comme le fait l'écran) : 27/33 → 22/22. Les écarts étaient l'entité ou le profil collés dans l'acteur
+     (« Responsable de service – BOI », « … (profil de saisie) »). **Pas d'extrait du glossaire dans cette consigne** : mesuré,
+     il rendait certaines modifications 3 à 4 fois plus lentes (16 s → 60 s) sans rien corriger de plus ; les règles ciblées
+     (point 5 de la consigne) suffisent.
+   - **Relecture — faite.** Extrait du glossaire (acteur, outil, descriptions, réponse) ; ne propose plus de réunir ou renommer un
+     acteur nommé par la source ; un manque se signale simplement, une tâche manuelle peut ne pas avoir d'outil.
+   - **Découverte du Studio complet — faite.** Même définition d'une procédure que le chat (extrait du glossaire).
+     Mesure sur Forma Cash : 3-4 procédures avant, 6 après (comme le chat), deux fois de suite.
+     La première version de la définition (« un début, une fin, des transitions = une seule procédure ») faisait tomber la
+     découverte à 2-3 : corrigée en glossaire 0.4 (une phase détaillée à part est une procédure ; on ne regroupe que ce que la
+     source décrit ensemble comme un seul déroulé).
+   - `extrait(...)` dans `glossaire.py` : une consigne ne reçoit que les sections dont elle a besoin.
+   - À suivre : classifieur du chat (`intent_prompt`, à fondre dans l'aiguillage), puis retrait des doublons et des consignes mortes.
 4. Retrait des doublons et des consignes mortes (après confirmation).

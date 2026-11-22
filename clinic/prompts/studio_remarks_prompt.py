@@ -11,6 +11,9 @@ import json
 from typing import Any, Dict, List
 
 from processor.procedure_lint import lint_procedure
+from prompts.glossaire import extrait
+
+REGLES = extrait("ACTEUR", "OUTIL", "DESCRIPTIONS", "LA RÉPONSE")
 
 SUGGESTIONS_MARKER = "SUGGESTIONS:"
 
@@ -37,6 +40,10 @@ Règles de fond (impératives) :
 - N'affirme jamais un fait absent des données fournies. Dans le doute, n'en parle pas.
 - Convention de modélisation à respecter : quand un acteur externe déclenche le processus, sa tâche est placée AVANT
   l'événement de début, qui appartient au premier acteur interne. C'est normal : ne le présente jamais comme un problème.
+- Ne propose jamais de réunir, renommer ou retirer un acteur que la source nomme : c'est à l'utilisateur d'en décider.
+- Un manque (un outil, une description) se complète facilement : signale-le simplement, regroupé, sans en faire un
+  défaut ni demander d'inventer. Une tâche manuelle peut ne pas avoir d'outil.
+- Pas d'étiquettes (« Conseil : », « Remarque : », « À préciser »).
 - Si tout est solide, dis-le simplement en une ou deux phrases.
 
 Termine OBLIGATOIREMENT par une dernière ligne exactement de cette forme :
@@ -69,7 +76,7 @@ def build_remarks_prompt(procedures: List[Dict[str, Any]], user_message: str) ->
         "demande_utilisateur": user_message or None,
         "procedures": [_compact(p) for p in procedures],
     }
-    return REMARKS_PROMPT + "\n\nPROCÉDURES :\n" + json.dumps(payload, ensure_ascii=False)
+    return REGLES + "\n\n" + REMARKS_PROMPT + "\n\nPROCÉDURES :\n" + json.dumps(payload, ensure_ascii=False)
 
 
 def split_suggestions(text: str):

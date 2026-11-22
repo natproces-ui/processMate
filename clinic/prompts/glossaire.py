@@ -12,7 +12,7 @@ Exemples tirés de procédures réelles (procédures Opérations à l'internatio
 Branché dans : aiguillage du chat (prompts/studio_planner_prompt.py).
 """
 
-GLOSSAIRE_VERSION = "0.3"
+GLOSSAIRE_VERSION = "0.4"
 
 GLOSSAIRE = """RÈGLES MÉTIER COMMUNES (ProcessMate — procédures bancaires et d'entreprise)
 
@@ -42,13 +42,15 @@ PROCÉDURE
 - Une procédure = un enchaînement d'étapes avec un objectif métier propre, un début et une fin.
 - Ses étapes ne sont PAS des procédures. Une vue d'ensemble ou un sommaire qui nomme des phases n'en
   est pas une.
-- Une procédure peut regrouper des sous-procédures (phases) : s'il y a un seul début, une seule fin
-  et des transitions de l'une à l'autre, c'est UNE procédure dont les phases s'enchaînent. Des
-  circuits qui ont chacun leur début, leur fin et leur objectif, sans passage de l'un à l'autre,
-  sont des procédures distinctes. Quand on ne peut pas trancher, on propose un découpage et on le
-  dit, ou on demande.
-- Dans une présentation, une diapositive (ou une suite) qui détaille ses propres étapes avec son
-  propre objectif = une procédure. Une fiche procédure = en général une procédure (son titre le dit).
+- Une phase que la source détaille à part (sa diapositive, sa section, sa fiche, avec ses propres
+  étapes et son objectif) est une procédure distincte, même si les phases s'enchaînent dans un
+  parcours de bout en bout ; on ne réunit jamais tout un document en une seule procédure
+  « Parcours … » quand il détaille plusieurs phases. Des variantes décrites séparément (circuit
+  « Alternance », circuit « Plan ») sont aussi des procédures distinctes.
+- Une procédure regroupe des sous-procédures seulement quand la source les décrit ENSEMBLE comme un
+  seul déroulé (un seul logigramme, une seule fiche : un début, une fin, des transitions entre elles).
+- Quand on ne peut pas trancher, on propose un découpage et on le dit, ou on demande.
+- Une fiche procédure = en général une procédure (son titre le dit).
 - Titre : celui de la source quand elle en donne un (« Crédit documentaire à l'export –
   Modification ») ; sinon un titre court qui dit ce que la procédure accomplit (« Organiser une
   formation en alternance »), jamais un mot vague (« Formation »).
@@ -134,3 +136,17 @@ LA RÉPONSE DANS LE CHAT
   « Recommandation : », « À préciser ».
 - Pas de jargon technique ni d'interface ; la première personne pour dire ce que l'assistant fait.
 """
+
+
+def extrait(*sections: str) -> str:
+    """Seulement certaines sections du glossaire (titres en capitales, ex. "ACTEUR", "OUTIL") :
+    une consigne qui n'a besoin que de quelques règles ne paie pas la lecture de toutes."""
+    blocks, current = {}, None
+    for line in GLOSSAIRE.splitlines():
+        if line and line == line.upper() and not line.startswith(("-", " ")) and any(c.isalpha() for c in line):
+            current = line.strip()
+            blocks[current] = [line]
+        elif current:
+            blocks[current].append(line)
+    wanted = [b for title, b in blocks.items() if any(title.startswith(s) for s in sections)]
+    return "RÈGLES MÉTIER COMMUNES (extrait)\n\n" + "\n\n".join("\n".join(b).strip() for b in wanted)

@@ -4,6 +4,11 @@ Prompt pour la révision intelligente d'un workflow existant
 L'utilisateur donne une instruction en langage naturel → patch JSON des modifications
 """
 
+# Pas d'extrait du glossaire ici : mesuré (bench/modification.py), il rend certaines modifications 3 à 4 fois plus lentes
+# sans rien corriger de plus que les règles ciblées de la section « RÈGLES CRITIQUES » (point 5), qui en reprennent l'essentiel.
+REGLES = ""
+
+
 REVISION_SYSTEM_PROMPT = """Tu es un expert en modélisation de processus métier BPMN.
 Tu reçois un workflow existant (liste de Table1Row) et une instruction de modification en langage naturel.
 Tu dois retourner UNIQUEMENT un patch JSON décrivant les opérations à appliquer sur le workflow.
@@ -80,6 +85,13 @@ Tu dois retourner UNIQUEMENT un patch JSON décrivant les opérations à appliqu
    - type: "update" avec typeBpmn: "ExclusiveGateway" + condition + outputs avec labels Oui/Non
 
 5. **Acteur = swimlane** : Si l'utilisateur mentionne une swimlane, mappe vers le champ acteur.
+   Le nom donné par l'utilisateur suit les règles communes : « Superviseur – BOI » → acteur "Superviseur",
+   département "BOI". Le nom n'est jamais raccourci (« Responsable de service », pas « Responsable ») ; une précision
+   entre parenthèses est un profil, pas une partie du nom (« Gestionnaire des opérations – BOI (profil de saisie) » →
+   acteur "Gestionnaire des opérations", la précision va dans le libellé de l'étape). Ne change que les étapes visées ; un acteur n'est réuni avec un autre, renommé ou
+   retiré que si l'instruction le demande, et alors sur TOUTES ses étapes (même nom partout).
+   Un outil remplacé (« ce n'est plus Docflow, c'est Outlook ») est remplacé sur toutes les étapes où il figure.
+   Ne touche à rien d'autre que ce que demande l'instruction.
 
 6. **Plusieurs opérations** : Une instruction peut nécessiter plusieurs opérations.
    Exemple "ajouter entre 5 et 6" → [add, update(5 pour changer ses outputs)]
@@ -103,7 +115,7 @@ Tu dois retourner UNIQUEMENT un patch JSON décrivant les opérations à appliqu
     { "type": "...", ... },
     { "type": "...", ... }
   ],
-  "explanation": "Description courte et claire de ce qui a été modifié (1-2 phrases)"
+  "explanation": "Ce qui a été modifié, en 1-2 phrases directes : sans salutation ni étiquette (« Remarque : »…)"
 }
 
 JSON PUR sans markdown, sans ```json.

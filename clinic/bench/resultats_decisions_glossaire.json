@@ -1,5 +1,5 @@
 {
- "date": "2026-11-22 14:06",
+ "date": "2026-11-22 15:41",
  "resultats": [
   {
    "id": "src-pptx-tout",
@@ -13,19 +13,20 @@
    "chemin": [
     "aiguillage:generate"
    ],
-   "nombre": 5,
+   "nombre": 6,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les 5 procédures du parcours de formation Formacash : Organiser (circuits Plan et Alternance), Former, Vérifier, Payer et se faire rembourser, et Valoriser.",
+   "reponse": "Je formalise les 5 procédures du parcours Formacash : Organiser (avec ses circuits Alternance et Plan), Former, Vérifier, Payer et se faire rembourser, et Valoriser.",
    "titres": [
-    "Organiser une formation Formacash",
-    "Dispenser et suivre la formation Formacash",
-    "Vérifier les pièces et le coût des formations Formacash",
-    "Payer l'organisme et se faire rembourser par le financeur",
-    "Valoriser les acquis de la formation Formacash"
+    "Organiser une formation Formacash (Circuit Alternance)",
+    "Organiser une formation Formacash (Circuit Plan)",
+    "Former dans le cadre du parcours Formacash",
+    "Vérifier les pièces et les coûts de formation",
+    "Payer et se faire rembourser les formations Formacash",
+    "Valoriser les acquis du parcours Formacash"
    ],
    "decision": "rediger",
-   "duree_s": 4.4,
+   "duree_s": 10.8,
    "passages_justes": "2/2"
   },
   {
@@ -42,17 +43,17 @@
    "nombre": 6,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les 6 procédures du support : l'étape Organiser dédoublée en deux circuits distincts (Alternance et Plan), puis Former, Vérifier, Payer et se faire rembourser, et Valoriser.",
+   "reponse": "Je formalise les 6 procédures du support : Organiser - Circuit Alternance, Organiser - Circuit Plan, Dispenser la formation, Vérifier les pièces et les coûts, Payer et se faire rembourser, et Valoriser les acquis.",
    "titres": [
     "Organiser une formation en alternance",
-    "Organiser une formation du plan",
-    "Former",
-    "Vérifier",
+    "Organiser une formation selon le plan",
+    "Dispenser la formation et remonter les heures",
+    "Vérifier les pièces et les coûts",
     "Payer et se faire rembourser",
-    "Valoriser"
+    "Valoriser les acquis et gérer les carrières"
    ],
    "decision": "rediger",
-   "duree_s": 16.9,
+   "duree_s": 3.6,
    "passages_justes": "2/2"
   },
   {
@@ -69,12 +70,12 @@
    "nombre": 1,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise la procédure de modification de crédit documentaire à l'export à partir du document fourni.",
+   "reponse": "Je formalise la procédure de modification d'un crédit documentaire à l'export à partir du document fourni.",
    "titres": [
-    "Crédit Documentaire à l’Export – Modification"
+    "Crédit documentaire à l'export – Modification"
    ],
    "decision": "rediger",
-   "duree_s": 1.3,
+   "duree_s": 1.7,
    "passages_justes": "2/2"
   },
   {
@@ -91,13 +92,13 @@
    "nombre": 2,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les 2 procédures issues des documents transmis : Crédit Documentaire à l’Export – Modification et Crédit Documentaire à l’Export – Réalisation.",
+   "reponse": "Je formalise les 2 procédures issues des documents fournis : le crédit documentaire à l'export (modification) et la réalisation du crédit documentaire à l'export.",
    "titres": [
     "Crédit Documentaire à l’Export – Modification",
     "Crédit Documentaire à l’Export – Réalisation"
    ],
    "decision": "rediger",
-   "duree_s": 1.7,
+   "duree_s": 2.1,
    "passages_justes": "2/2"
   },
   {
@@ -114,9 +115,9 @@
    "nombre": 1,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise la procédure de mise en place d'une MCNE en MAD à partir du document fourni.",
+   "reponse": "Je formalise la procédure de mise en place de la MCNE en MAD à partir du document fourni.",
    "titres": [
-    "MCNE en MAD : Mise en place"
+    "MCNE en MAD – Mise en Place"
    ],
    "decision": "rediger",
    "duree_s": 1.2,
@@ -138,10 +139,10 @@
    "cible": null,
    "reponse": "Je formalise la procédure de traitement des chèques en devises à partir du document fourni.",
    "titres": [
-    "Traiter les chèques en devises"
+    "Chèques en devise"
    ],
    "decision": "rediger",
-   "duree_s": 1.2,
+   "duree_s": 1.5,
    "passages_justes": "2/2"
   },
   {
@@ -159,17 +160,17 @@
    "nombre": 6,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les 5 procédures de gestion des formulaires décrites dans le mode opératoire : la commande, l'annulation de commande, la réception, la délivrance et le renvoi pour destruction des formules, ainsi que la demande de création de modèle.",
+   "reponse": "Je formalise les 6 procédures issues du mode opératoire : Commander des formules, Annuler une commande de formules, Réceptionner des formules, Délivrer des formules, Renvoyer des formules échues pour destruction et Créer un modèle de lettres chèque ou lettres LCN.",
    "titres": [
-    "Commander un chéquier, un carnet LCN, une lettre chèque ou une lettre LCN",
-    "Annuler une commande de chéquier, carnet LCN, lettres chèque ou lettres LCN",
-    "Recevoir un chéquier, carnet LCN, lettres chèque ou lettres LCN",
-    "Délivrer un chéquier, carnet LCN, lettres chèque ou lettres LCN",
-    "Renvoyer pour destruction des chéquiers, carnets LCN, lettres chèque ou lettres LCN échus",
-    "Demander la création de modèle de lettres chèque ou lettres LCN"
+    "Commande de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Annulation de commande de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Réception de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Délivrance de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Renvoi pour destruction des chéquiers / carnets LCN / lettres chèque / lettres LCN échus",
+    "Demande de création de modèle de lettres chèque / lettres LCN"
    ],
    "decision": "rediger",
-   "duree_s": 4.1,
+   "duree_s": 4.3,
    "passages_justes": "2/2"
   },
   {
@@ -184,15 +185,16 @@
    "chemin": [
     "aiguillage:generate"
    ],
-   "nombre": 1,
+   "nombre": 2,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise la procédure de traitement des régularisations des incidents de paiement à partir du document fourni.",
+   "reponse": "Je formalise les 2 procédures issues du document : la régularisation d'un incident de paiement et la demande de régularisation d'un incident de paiement sur compte clôturé.",
    "titres": [
-    "Traitement de la régularisation d'un incident de paiement"
+    "Traitement de la régularisation d'un incident de paiement",
+    "Traitement d'une régularisation d'incident de paiement sur compte clôturé"
    ],
    "decision": "rediger",
-   "duree_s": 1.4,
+   "duree_s": 1.8,
    "passages_justes": "2/2"
   },
   {
@@ -210,17 +212,17 @@
    "nombre": 6,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les 6 procédures de gestion de formulaires décrites dans ce document : Commande, Annulation de commande, Réception, Délivrance, Renvoi pour destruction des chéquiers et Demande de création de modèle de lettres.",
+   "reponse": "Je formalise les 6 procédures du périmètre de gestion de formules : Commande de chéquier, Annulation de commande de chéquier, Réception de chéquier, Délivrance de chéquier, Renvoi pour destruction des chéquiers, et Demande de création de modèle de lettres chèque.",
    "titres": [
-    "Gestion de formulaires – Commande de chéquier, carnet LCN, lettres chèque ou lettres LCN",
-    "Gestion de formulaires – Annulation de commande de chéquier, carnet LCN, lettres chèque ou lettres LCN",
-    "Gestion de formulaires – Réception de chéquier, carnet LCN, lettres chèque ou lettres LCN",
-    "Gestion de formulaires – Délivrance de chéquier, carnet LCN, lettres chèque ou lettres LCN",
-    "Gestion de formulaires – Renvoi pour destruction des chéquiers, carnets LCN, lettres chèque ou lettres LCN échus",
-    "Gestion de formulaires – Demande de création de modèle de lettres chèque ou lettres LCN"
+    "Commande de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Annulation de commande de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Réception de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Délivrance de chéquier / carnet LCN / lettres chèque / lettres LCN",
+    "Renvoi pour destruction des chéquiers / carnets LCN / lettres chèque / lettres LCN échus",
+    "Demande de création de modèle de lettres chèque / lettres LCN"
    ],
    "decision": "rediger",
-   "duree_s": 2.6,
+   "duree_s": 2.7,
    "passages_justes": "2/2"
   },
   {
@@ -269,12 +271,12 @@
    "nombre": 1,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise la procédure de modification du crédit documentaire à l'export, en intégrant votre consigne sur la validation par le Superviseur – BOI.",
+   "reponse": "Je formalise la procédure de modification d'un crédit documentaire à l'export à partir du document fourni.",
    "titres": [
-    "Crédit Documentaire à l’Export – Modification"
+    "Crédit documentaire à l'export – Modification"
    ],
    "decision": "rediger",
-   "duree_s": 1.3,
+   "duree_s": 1.4,
    "passages_justes": "2/2"
   },
   {
@@ -291,9 +293,9 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Je génère la procédure d'ouverture de compte étudiant à partir de la description fournie.",
+   "reponse": "Je génère un nouveau processus d'ouverture de compte étudiant à partir des étapes que tu as décrites.",
    "decision": "rediger",
-   "duree_s": 0.7,
+   "duree_s": 0.6,
    "passages_justes": "2/2"
   },
   {
@@ -312,7 +314,7 @@
    "cible": null,
    "reponse": "Je génère un nouveau processus de virement international basé sur les étapes que tu m'as décrites.",
    "decision": "rediger",
-   "duree_s": 0.7,
+   "duree_s": 0.6,
    "passages_justes": "2/2"
   },
   {
@@ -329,12 +331,12 @@
    "nombre": 1,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise la procédure de traitement des virements financiers et commerciaux.",
+   "reponse": "Je formalise la procédure de traitement des virements financiers et commerciaux à partir du document fourni.",
    "titres": [
     "Traiter les virements financiers et commerciaux"
    ],
    "decision": "rediger",
-   "duree_s": 1.3,
+   "duree_s": 1.6,
    "passages_justes": "2/2"
   },
   {
@@ -351,9 +353,9 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "De quel type de procédure bancaire s'agit-il ? Pourriez-vous me donner plus de détails ou me joindre un document pour que je puisse la rédiger ?",
+   "reponse": "Pourriez-vous me préciser de quel type de processus bancaire il s'agit et me fournir plus de détails ou un document source pour que je puisse rédiger la procédure ?",
    "decision": "demander",
-   "duree_s": 0.8,
+   "duree_s": 0.7,
    "passages_justes": "2/2"
   },
   {
@@ -371,7 +373,7 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Je génère le processus de gestion des chéquiers.",
+   "reponse": "Je génère un nouveau processus de formalisation pour la gestion des chéquiers.",
    "decision": "rediger",
    "duree_s": 0.6,
    "passages_justes": "2/2"
@@ -392,16 +394,16 @@
    "nombre": 5,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les 5 procédures du parcours Formacash : Organiser (avec ses deux circuits Plan et Alternance), Former, Vérifier, Payer et se faire rembourser, et Valoriser.",
+   "reponse": "Je formalise les 5 procédures du parcours Formacash : Organiser (circuits Plan et Alternance), Former, Vérifier, Payer et se faire rembourser, et Valoriser.",
    "titres": [
     "Organiser une formation Formacash",
-    "Dispenser et suivre la formation",
-    "Vérifier les pièces et les coûts de formation",
-    "Payer l'organisme et se faire rembourser par le financeur",
-    "Valoriser les acquis de la formation"
+    "Dispenser et suivre la formation Formacash",
+    "Vérifier les pièces et les coûts de formation Formacash",
+    "Payer l'organisme et obtenir le remboursement Formacash",
+    "Valoriser les acquis de la formation Formacash"
    ],
    "decision": "rediger",
-   "duree_s": 2.8,
+   "duree_s": 3.4,
    "passages_justes": "2/2"
   },
   {
@@ -418,27 +420,19 @@
    "chemin": [
     "aiguillage:generate"
    ],
-   "nombre": 13,
+   "nombre": 5,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les procédures identifiées dans le plan d'atténuation des risques opérationnels aux opérations internationales.",
+   "reponse": "Je formalise les procédures identifiées dans le plan d'atténuation pour les opérations internationales, incluant la mise à jour des crédits documentaires, remises documentaires, cautions et financements.",
    "titres": [
-    "Mettre à jour la procédure CREDOC Import",
-    "Mettre à jour la procédure CREDOC Export",
-    "Mettre à jour la procédure Remdoc Import",
-    "Mettre à jour la procédure des Avances des droits de douane (ADD)",
-    "Formaliser la procédure de gestion des MCNE Devise",
-    "Mettre à jour la procédure MCNE Dirhams",
-    "Mettre à jour la procédure des préfinancements en devises",
-    "Mettre à jour la procédure des refinancements en devises",
-    "Formaliser le processus de refinancement en dirhams",
-    "Mettre à jour la procédure ATPA",
-    "Mettre à jour la procédure des obligations cautionnées",
-    "Formaliser le processus de gestion et suivi des échanges avec les correspondants",
-    "Mettre en place une procédure de gestion et d'archivage physique et numérique"
+    "Gestion et mise à jour des procédures CREDOC Import et Export",
+    "Traitement et suivi des Remises Documentaires Import",
+    "Gestion des Cautions et des Avances sur Droits de Douane",
+    "Gestion des Mobilisations de Créances et Préfinancements en Devises et Dirhams",
+    "Traitement des Admissions Temporaires pour Perfectionnement d'Actifs (ATPA)"
    ],
    "decision": "rediger",
-   "duree_s": 3.0,
+   "duree_s": 3.1,
    "passages_justes": "0/2"
   },
   {
@@ -456,10 +450,10 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Ce support décrit 5 phases principales qui composent le parcours de formation Formacash : 1. Organiser (avec deux circuits distincts : Plan et Alternance), 2. Former, 3. Vérifier, 4. Payer et se faire rembourser, et 5. Valoriser.",
+   "reponse": "",
    "titres": [],
    "decision": "repondre_sources",
-   "duree_s": 1.9,
+   "duree_s": 2.4,
    "passages_justes": "2/2"
   },
   {
@@ -477,11 +471,9 @@
    "remplace": [],
    "cible": null,
    "reponse": "",
-   "titres": [
-    "Crédit Documentaire à l’Export – Modification"
-   ],
+   "titres": [],
    "decision": "repondre_sources",
-   "duree_s": 1.1,
+   "duree_s": 1.4,
    "passages_justes": "2/2"
   },
   {
@@ -501,7 +493,7 @@
    "reponse": "",
    "titres": [],
    "decision": "repondre_sources",
-   "duree_s": 0.9,
+   "duree_s": 1.1,
    "passages_justes": "2/2"
   },
   {
@@ -520,10 +512,10 @@
    "nombre": null,
    "remplace": [],
    "cible": 1,
-   "reponse": "Je t'explique la procédure actuelle.",
+   "reponse": "Je vous explique le contenu de la procédure actuelle.",
    "titres": [],
    "decision": "expliquer",
-   "duree_s": 1.5,
+   "duree_s": 1.2,
    "passages_justes": "2/2"
   },
   {
@@ -545,7 +537,7 @@
    "reponse": "Je t'explique la raison de cette étape de validation dans le processus.",
    "titres": [],
    "decision": "expliquer",
-   "duree_s": 1.2,
+   "duree_s": 1.3,
    "passages_justes": "2/2"
   },
   {
@@ -564,7 +556,7 @@
    "cible": null,
    "reponse": "Je t'explique la différence entre une procédure et un processus.",
    "decision": "repondre",
-   "duree_s": 0.6,
+   "duree_s": 0.7,
    "passages_justes": "2/2"
   },
   {
@@ -584,7 +576,7 @@
    "cible": null,
    "reponse": "Je recherche les informations réglementaires de Bank Al-Maghrib sur les transferts en devises pour 2026.",
    "decision": "recherche",
-   "duree_s": 0.6,
+   "duree_s": 0.8,
    "passages_justes": "2/2"
   },
   {
@@ -601,9 +593,9 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Je vous salue et vous invite à me présenter un processus métier ou à me poser vos questions.",
+   "reponse": "Je vous salue et je vous écoute pour formaliser votre processus métier bancaire.",
    "decision": "repondre",
-   "duree_s": 0.7,
+   "duree_s": 0.8,
    "passages_justes": "2/2"
   },
   {
@@ -620,10 +612,10 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Je vous en prie. N'hésitez pas si vous avez besoin d'ajuster cette procédure ou d'en formaliser de nouvelles.",
+   "reponse": "Je vous en prie. N'hésitez pas si vous avez besoin d'ajuster cette procédure ou d'en formaliser d'autres.",
    "titres": [],
    "decision": "repondre",
-   "duree_s": 0.8,
+   "duree_s": 1.0,
    "passages_justes": "2/2"
   },
   {
@@ -640,12 +632,12 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Je transcris fidèlement la procédure \"MCNE en MAD : Mise en Place\" à partir du document fourni.",
+   "reponse": "Je retranscris à l'identique la procédure de mise en place de la MCNE en MAD selon le document fourni.",
    "titres": [
     "MCNE en MAD : Mise en Place"
    ],
    "decision": "transcrire",
-   "duree_s": 1.1,
+   "duree_s": 1.2,
    "passages_justes": "2/2"
   },
   {
@@ -662,12 +654,12 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Je transcris la procédure Chèques en devise à l'identique à partir du fichier fourni.",
+   "reponse": "Je transcris la fiche procédure \"Chèques en devise\" à l'identique.",
    "titres": [
     "Chèques en devise"
    ],
    "decision": "transcrire",
-   "duree_s": 1.1,
+   "duree_s": 1.2,
    "passages_justes": "2/2"
   },
   {
@@ -684,12 +676,10 @@
    "nombre": null,
    "remplace": [],
    "cible": null,
-   "reponse": "Je transcris fidèlement le contenu de la page 3 du document décrivant la gestion de formules.",
-   "titres": [
-    "Gestion de formules"
-   ],
+   "reponse": "Je transcris fidèlement le contenu de la page 3 du document.",
+   "titres": [],
    "decision": "transcrire",
-   "duree_s": 1.2,
+   "duree_s": 1.3,
    "passages_justes": "2/2"
   },
   {
@@ -712,7 +702,7 @@
     "Crédit documentaire à l'export – Modification"
    ],
    "decision": "modifier",
-   "duree_s": 1.8,
+   "duree_s": 1.6,
    "passages_justes": "2/2"
   },
   {
@@ -731,9 +721,11 @@
    "remplace": [],
    "cible": 1,
    "reponse": "J'ajoute une étape de contrôle par la Direction conformité après la saisie pour les montants dépassant le seuil.",
-   "titres": [],
+   "titres": [
+    "Crédit documentaire à l'export – Modification"
+   ],
    "decision": "modifier",
-   "duree_s": 1.4,
+   "duree_s": 1.6,
    "passages_justes": "2/2"
   },
   {
@@ -752,9 +744,11 @@
    "remplace": [],
    "cible": 1,
    "reponse": "Je supprime l'étape de rejet du workflow existant.",
-   "titres": [],
+   "titres": [
+    "Crédit documentaire à l'export – Modification"
+   ],
    "decision": "modifier",
-   "duree_s": 1.4,
+   "duree_s": 1.6,
    "passages_justes": "2/2"
   },
   {
@@ -777,7 +771,7 @@
     "Crédit documentaire à l'export – Modification"
    ],
    "decision": "modifier",
-   "duree_s": 1.6,
+   "duree_s": 1.7,
    "passages_justes": "2/2"
   },
   {
@@ -795,12 +789,12 @@
    "nombre": null,
    "remplace": [],
    "cible": 1,
-   "reponse": "Je renomme la procédure par « Modification d'un crédit documentaire export ».",
+   "reponse": "Je renomme la procédure en « Modification d'un crédit documentaire export ».",
    "titres": [
     "Modification d'un crédit documentaire export"
    ],
    "decision": "modifier",
-   "duree_s": 1.4,
+   "duree_s": 1.5,
    "passages_justes": "2/2"
   },
   {
@@ -818,7 +812,7 @@
    "nombre": null,
    "remplace": [],
    "cible": 1,
-   "reponse": "Je modifie l'étape de validation du responsable pour indiquer qu'elle est automatique dans TI+.",
+   "reponse": "Je modifie l'étape de validation pour préciser qu'elle est automatique dans TI+.",
    "titres": [
     "Crédit documentaire à l'export – Modification"
    ],
@@ -841,7 +835,7 @@
    "nombre": null,
    "remplace": [],
    "cible": 1,
-   "reponse": "Je fusionne le Responsable et le Gestionnaire des opérations en une seule entité « Back office international » dans le workflow.",
+   "reponse": "Je réunis le responsable et le gestionnaire des opérations sous l'entité « Back office international ».",
    "titres": [
     "Crédit documentaire à l'export – Modification"
    ],
@@ -864,12 +858,12 @@
    "nombre": null,
    "remplace": [],
    "cible": 3,
-   "reponse": "J'ajoute une étape de relance de l'organisme dans la procédure de vérification de fin de formation.",
+   "reponse": "J'ajoute une étape de relance de l'organisme si la facture manque dans la procédure de vérification de fin de formation.",
    "titres": [
     "Vérifier la fin de formation"
    ],
    "decision": "modifier",
-   "duree_s": 1.4,
+   "duree_s": 1.6,
    "passages_justes": "2/2"
   },
   {
@@ -888,11 +882,9 @@
    "remplace": [],
    "cible": 2,
    "reponse": "J'ajoute une étape d'évaluation à chaud à la fin de la procédure.",
-   "titres": [
-    "Former les intérimaires"
-   ],
+   "titres": [],
    "decision": "modifier",
-   "duree_s": 1.5,
+   "duree_s": 1.4,
    "passages_justes": "2/2"
   },
   {
@@ -911,12 +903,12 @@
    "nombre": null,
    "remplace": [],
    "cible": 1,
-   "reponse": "Je mets à jour la procédure en me basant sur le fichier de modification joint.",
+   "reponse": "Je mets à jour la procédure en me basant sur le fichier de modification fourni.",
    "titres": [
     "Crédit documentaire à l'export – Modification"
    ],
    "decision": "refaire",
-   "duree_s": 2.1,
+   "duree_s": 2.0,
    "passages_justes": "2/2"
   },
   {
@@ -935,10 +927,10 @@
     1
    ],
    "cible": null,
-   "reponse": "Je sépare la procédure Organiser en deux circuits distincts : Organiser une formation en alternance et Organiser une formation via le plan de développement.",
+   "reponse": "Je découpe la procédure \"Organiser la formation\" en deux procédures distinctes : \"Organiser la formation en alternance\" et \"Organiser la formation selon le plan\".",
    "titres": [
-    "Organiser une formation en alternance",
-    "Organiser une formation via le plan"
+    "Organiser la formation en alternance",
+    "Organiser la formation selon le plan"
    ],
    "decision": "operation",
    "duree_s": 1.1,
@@ -961,7 +953,7 @@
     3
    ],
    "cible": null,
-   "reponse": "Je déplace l'étape de contrôle des émargements de la procédure Former vers la procédure Vérifier.",
+   "reponse": "Je déplace l'étape de contrôle des émargements de la procédure Former vers Vérifier.",
    "titres": [
     "Former les intérimaires",
     "Vérifier la fin de formation"
@@ -986,13 +978,13 @@
     2
    ],
    "cible": null,
-   "reponse": "Je sépare la gestion des absences de la procédure \"Former les intérimaires\" pour en faire une procédure distincte, et je mets à jour les deux procédures.",
+   "reponse": "Je sépare la gestion des absences pour créer une procédure distincte, et je mets à jour la procédure Former les intérimaires.",
    "titres": [
     "Former les intérimaires",
     "Gérer les absences en formation"
    ],
    "decision": "operation",
-   "duree_s": 0.9,
+   "duree_s": 1.0,
    "passages_justes": "2/2"
   },
   {
@@ -1013,12 +1005,12 @@
     3
    ],
    "cible": null,
-   "reponse": "Je fusionne les procédures \"Former les intérimaires\" et \"Vérifier la fin de formation\" en une seule procédure.",
+   "reponse": "Je fusionne les procédures Former les intérimaires et Vérifier la fin de formation en une seule procédure.",
    "titres": [
-    "Former et vérifier la formation des intérimaires"
+    "Former et vérifier la fin de formation"
    ],
    "decision": "fusionner",
-   "duree_s": 0.8,
+   "duree_s": 0.9,
    "passages_justes": "2/2"
   },
   {
@@ -1040,7 +1032,7 @@
    "reponse": "Je retire la procédure Vérifier de la conversation.",
    "titres": [],
    "decision": "retirer",
-   "duree_s": 0.6,
+   "duree_s": 0.7,
    "passages_justes": "2/2"
   },
   {
@@ -1058,7 +1050,7 @@
    "nombre": null,
    "remplace": [],
    "cible": 3,
-   "reponse": "Je crée une nouvelle procédure pour le paiement de l'organisme avec les étapes indiquées.",
+   "reponse": "Je crée un nouveau processus pour le paiement de l'organisme avec les étapes indiquées.",
    "titres": [],
    "decision": "rediger",
    "duree_s": 1.4,
@@ -1080,13 +1072,13 @@
     1
    ],
    "cible": null,
-   "reponse": "Je sépare la procédure \"Organiser la formation\" en deux : le circuit Alternance d'un côté et le circuit Plan de l'autre.",
+   "reponse": "Je sépare la procédure d'organisation en deux circuits distincts : l'organisation d'une formation en alternance et l'organisation d'une formation dans le cadre du plan.",
    "titres": [
     "Organiser une formation en alternance",
-    "Organiser une formation selon le plan"
+    "Organiser une formation dans le cadre du plan"
    ],
    "decision": "operation",
-   "duree_s": 2.0,
+   "duree_s": 3.0,
    "passages_justes": "2/2"
   },
   {
@@ -1115,7 +1107,7 @@
     "FormaCash – Vérifier la fin de formation"
    ],
    "decision": "operation",
-   "duree_s": 1.1,
+   "duree_s": 1.0,
    "passages_justes": "2/2"
   },
   {
@@ -1138,7 +1130,7 @@
     "Vérifier la formation"
    ],
    "decision": "rediger",
-   "duree_s": 2.1,
+   "duree_s": 2.0,
    "passages_justes": "2/2"
   },
   {
@@ -1155,7 +1147,7 @@
    "nombre": 6,
    "remplace": [],
    "cible": null,
-   "reponse": "Je formalise les 6 procédures du parcours Formacash : Organiser une formation (circuit Plan), Organiser une formation en alternance, Former l'intérimaire, Vérifier la formation, Payer l'organisme et se faire rembourser, et Valoriser la formation.",
+   "reponse": "Je formalise les 6 procédures du parcours : Organiser une formation (circuit Plan), Organiser une formation en alternance, Former l'intérimaire, Vérifier la formation, Payer l'organisme et se faire rembourser, et Valoriser la formation.",
    "titres": [
     "Organiser une formation (circuit Plan)",
     "Organiser une formation en alternance",
@@ -1165,7 +1157,7 @@
     "Valoriser la formation"
    ],
    "decision": "rediger",
-   "duree_s": 2.9,
+   "duree_s": 3.4,
    "passages_justes": "2/2"
   },
   {
@@ -1183,7 +1175,7 @@
    "nombre": 7,
    "remplace": [],
    "cible": null,
-   "reponse": "J'ajoute la procédure d'inscription en formation interne à la liste des parcours.",
+   "reponse": "J'ajoute la procédure d'inscription en formation interne pour compléter les sept processus du parcours.",
    "titres": [
     "Organiser une formation (circuit Plan)",
     "Organiser une formation en alternance",
@@ -1191,10 +1183,10 @@
     "Vérifier la formation",
     "Payer l'organisme et se faire rembourser",
     "Valoriser la formation",
-    "Inscrire l'intérimaire en formation interne"
+    "Inscrire en formation interne"
    ],
    "decision": "rediger",
-   "duree_s": 3.0,
+   "duree_s": 2.9,
    "passages_justes": "2/2"
   },
   {
@@ -1214,7 +1206,7 @@
    "reponse": "",
    "titres": [],
    "decision": "referentiel",
-   "duree_s": 1.3,
+   "duree_s": 1.7,
    "passages_justes": "2/2"
   },
   {
@@ -1234,7 +1226,7 @@
    "reponse": "",
    "titres": [],
    "decision": "referentiel",
-   "duree_s": 1.5,
+   "duree_s": 2.2,
    "passages_justes": "2/2"
   }
  ]

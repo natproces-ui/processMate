@@ -3,6 +3,12 @@ Prompt de découverte — phase légère d'analyse
 Objectif : identifier les processus présents, pas les extraire
 """
 
+from prompts.glossaire import extrait
+
+
+# Même définition d'une procédure que le chat (glossaire) : le même support donne le même découpage partout
+_DEFINITION = extrait("PROCÉDURE", "RÉFÉRENTIEL")
+
 _DISCOVERY_BASE = """Tu es un expert en analyse de documents bancaires et procédures métier.
 
 🎯 OBJECTIF : Analyser ce(s) document(s) et identifier les processus métier présents.
@@ -13,7 +19,7 @@ Ne génère PAS de BPMN. Ne fais PAS d'extraction détaillée. Identifie et list
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. Parcourir TOUT le contenu fourni (texte, diagrammes, tableaux, schémas)
-2. Identifier chaque processus ou procédure distincte
+2. Identifier chaque procédure distincte, selon la définition commune ci-dessous
 3. Pour chaque processus : donner un titre clair + description courte
 4. Estimer le nombre d'étapes approximatif
 5. Indiquer depuis quel(s) fichier(s) il provient
@@ -96,7 +102,9 @@ Règles découlant de ces instructions :
 
     return f"""Fichiers fournis :
 {files_context}
-{instructions_section}{_DISCOVERY_BASE}"""
+{instructions_section}{_DEFINITION}
+
+{_DISCOVERY_BASE}"""
 
 
 def get_chat_correction_prompt(
