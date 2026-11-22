@@ -57,8 +57,12 @@ des documents et à répondre à des questions.
    Donne le titre dans "merged_title" et les procédures à fusionner dans "targets" (toutes si rien n'est précisé).
    ⚠️ Une fusion demandée dans un message PRÉCÉDENT ne s'applique jamais aux demandes suivantes.
    ⚠️ « Génère tout », « toutes », « les deux » = "generate" (une procédure distincte par cible), JAMAIS "merge".
-"edit" → une procédure est déjà ouverte et le message demande de modifier SON CONTENU, la compléter ou la corriger
-   à partir des fichiers (« ajoute ces étapes à la procédure », « corrige… »). JAMAIS pour créer une nouvelle
+"edit" → le message demande une modification CONCRÈTE et identifiable du contenu d'UNE procédure (ajouter, retirer,
+   renommer une étape, changer un acteur, un outil, une connexion, reformuler les étapes : « l'étape 5 doit pointer
+   vers 8 », « les étapes doivent être à l'infinitif », « le responsable ne valide pas, c'est automatique »).
+   "cible" = numéro de la procédure de la conversation concernée (voir plus bas).
+   "mode" = "refaire" quand un fichier joint doit servir à la réécrire (« mets-la à jour avec cette nouvelle version »,
+   « refais-la dans le style de ce document ») ; sinon "modifier". JAMAIS pour créer une nouvelle
    procédure, en découper une, en réunir ou en retirer (voir plus bas).
 "analyze" → l'utilisateur demande une analyse ou pose une question sur le CONTENU des fichiers (« analyse ce
    document », « quels outils sont utilisés pour l'étape Organiser ? », « quels sont les risques ? »,
@@ -80,8 +84,26 @@ des documents et à répondre à des questions.
    choix change le résultat (ex. le fichier n'est pas une procédure : un plan de risques, un tableau de suivi ; la
    demande ne dit pas sur quoi travailler). "reply" = UNE question ciblée : ce que tu as lu, pourquoi tu hésites, les
    options possibles. Quand une lecture raisonnable existe, agis plutôt que demander.
-"answer" → une conversation qui n'a besoin ni des fichiers ni d'une génération (« merci », « que signifie MCNE ? »).
-   "reply" contient la réponse.
+"explain" → une question, une explication, une opinion ou une réflexion SANS action concrète, sur une procédure DE LA
+   CONVERSATION ou une question générale (« ça sert à quoi cette étape ? », « qui valide dans cette procédure ? », « explique-moi le flux », « c'est quoi la différence entre une procédure et
+   un processus ? », « il faut que la procédure serve à quelque chose »). Un message interrogatif ou rhétorique sur une
+   procédure est "explain", pas "edit". Une question sur le CONTENU des fichiers joints est "analyze". "cible" = la procédure dont on parle, s'il y en a une. Laisse "reply" vide :
+   la réponse complète est rédigée à part.
+"search" → l'utilisateur demande EXPLICITEMENT de chercher une information sur internet ou une réglementation
+   récente (« cherche les règles de Bank Al-Maghrib sur… », « trouve les étapes standard d'un virement SWIFT »).
+   Laisse "reply" vide.
+"answer" → un échange court qui n'a besoin ni des fichiers ni d'une génération (« merci », « bonjour », « d'accord »),
+   ou l'annonce d'un document à venir (« je vais t'envoyer notre support ») : accuse réception. "reply" contient la
+   réponse. Une vraie question appelle "explain".
+Créer une procédure à partir du seul texte du message ("generate" sans fichier) demande de quoi la rédiger : une
+description du processus, ou au moins un sujet précis (« fais la procédure de virement SWIFT »). Sinon "ask".
+
+PROCÉDURE VISÉE ("cible", pour "edit" et "explain") : le numéro de la procédure de la conversation dont parle le message —
+celle qu'il nomme ou désigne (titre, sujet, acteur ou étape qui n'existe que dans elle), ou celle sur laquelle portait la
+discussion récente si le message en est la suite ; sinon celle marquée "affichee". Si une modification peut concerner
+plusieurs procédures sans qu'on puisse trancher → "ask", en citant leurs titres.
+Pour "transcribe" : "transcribe_mode" = "image_only" (seulement le schéma, le texte est ignoré), "text_only" (seulement
+les étapes écrites) ou "combined" (par défaut).
 
 Une réponse écrite à une proposition (« oui », « vas-y », « seulement la 2 », « pas la dernière ») vaut une
 sélection : réutilise les identifiants de la proposition précédente.
@@ -115,7 +137,10 @@ nombre de procédures distinctes (pense aux variantes décrites séparément, ex
 
 Réponds UNIQUEMENT avec ce JSON :
 {
-  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "answer",
+  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "explain" | "search" | "answer",
+  "cible": null,          // edit, explain : numéro de la procédure de la conversation visée
+  "mode": "modifier",     // edit : "modifier" ou "refaire" (à partir d'un fichier joint)
+  "transcribe_mode": "combined",
   "reply": "texte",
   "procedures": [
     {"id": "p1", "title": "titre précis", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12, "base": []}

@@ -641,7 +641,8 @@ async def studio_turn(
     # Procédures déjà produites dans la conversation : l'aiguillage raisonne sur tout l'ensemble
     conv_procs = [p for p in (_loads(conversation_procedures, None) or []) if isinstance(p, dict) and p.get("key")]
     conv_summary = [{"n": i + 1, "titre": p.get("title") or "Procédure", "nb_etapes": len(p.get("workflow") or []),
-                     "etapes": _steps_summary(p)} for i, p in enumerate(conv_procs)]
+                     "affichee": p.get("key") == active_procedure, "etapes": _steps_summary(p)}
+                    for i, p in enumerate(conv_procs)]
     has_workflow = bool(workflow)
     conv = await _owned_conversation(session_id, user)
     plan_files = new_files
@@ -695,16 +696,8 @@ async def studio_turn(
                                                   False, None, message, sess.get("references")):
                             yield ev
                     return
-                if not sess["files"] and not sess.get("proposal") and not sess.get("referentiel") and not conv_procs:
-                    # Ni sources ni proposition en cours : le chat existant (modifier, expliquer, générer depuis un texte…).
-                    # Avec des sources déjà jointes (ex. relance après une erreur), on passe par leur analyse :
-                    # sinon le chat rédigeait une procédure sans avoir lu le fichier.
-                    # l'étape « think » est terminée par _delegate_to_chat (avec ce qui a été compris)
-                    async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
-                                                      _loads(conversation_procedures, None), active_procedure, request):
-                        yield ev
-                    return
-
+                # Un seul cerveau : l'aiguillage décide de tout ; quand il confie le tour au chat, il lui dit quoi faire
+                # (modifier, refaire, expliquer, rédiger depuis le texte, transcrire, chercher) et sur quelle procédure
                 n = len(sess["files"])
                 # Toutes les sources de la conversation, à chaque message : une question sur leur contenu, une
                 # relance ou une nouvelle extraction en ont besoin, même après une première proposition
@@ -725,7 +718,7 @@ async def studio_turn(
                 elif read_label and plan.action != "edit":
                     yield _sse({"type": "status", "id": "think", "label": read_label, "state": "done"})
                 # edit : le chat remplace la ligne par ce qu'il va faire
-                if plan.reply and plan.action != "analyze":
+                if plan.reply and plan.action not in ("analyze", "explain", "search"):
                     yield _sse({"type": "message", "text": plan.reply})
 
                 if plan.procedures:
@@ -743,25 +736,21 @@ async def studio_turn(
                         yield ev
                 elif plan.action == "remove":
                     yield _archived_event(replaced)
-                elif plan.action == "analyze":
-                    if to_plan:
-                        async for ev in _stream_analysis(request, to_plan, message, history_list):
-                            yield ev
-                    else:  # rien à lire : le chat répond (procédure ouverte, conversation)
-                        async for ev in _delegate_to_chat(message, [], history_list, workflow, current_enrichments, current_procedure_metadata,
-                                                          _loads(conversation_procedures, None), active_procedure, request):
-                            yield ev
+                elif plan.action == "analyze" and to_plan:
+                    async for ev in _stream_analysis(request, to_plan, message, history_list):
+                        yield ev
                 elif plan.action == "structure":
                     async for ev in _stream_structure(sess, to_plan, message, history_list):
                         yield ev
-                elif plan.action == "edit":
-                    async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
-                                                  _loads(conversation_procedures, None), active_procedure, request):
-                        yield ev
-                elif plan.action == "transcribe":  # copie fidèle des fichiers joints, décidée par l'aiguillage
-                    async for ev in _delegate_to_chat(message, sess["files"], history_list, workflow, current_enrichments, current_procedure_metadata,
-                                                      _loads(conversation_procedures, None), active_procedure, request,
-                                                      intent="transcribe"):
+                elif plan.action in ("edit", "transcribe", "explain", "search", "analyze"):
+                    # le chat exécute ce que l'aiguillage a décidé ; une question sans source à lire = explication
+                    intent = plan.chat_intent or ("transcribe" if plan.action == "transcribe" else "explain")
+                    target_key = conv_procs[plan.target - 1].get("key") if plan.target else None
+                    chat_files = [] if intent == "explain" else sess["files"]
+                    async for ev in _delegate_to_chat(message, chat_files, history_list, workflow, current_enrichments,
+                                                      current_procedure_metadata, _loads(conversation_procedures, None),
+                                                      active_procedure, request, intent=intent, target_key=target_key,
+                                                      transcribe_mode=plan.transcribe_mode):
                         yield ev
                 # answer, ask : la réponse (ou la question) a déjà été envoyée
             except GuestLimitError as e:
@@ -820,7 +809,8 @@ def _reading_label(files: List[Dict[str, Any]]) -> str:
 
 async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw,
                             procedures=None, active_procedure=None, request: Optional[Request] = None,
-                            intent: Optional[str] = None):
+                            intent: Optional[str] = None, target_key: Optional[str] = None,
+                            transcribe_mode: str = "combined"):
     """Modifications et conversation : logique existante du chat (patch, regen, explain…)."""
     from processor.chat_processor import ChatProcessor
     chat_files = [{"filename": f["filename"], "content": f["data"],
@@ -835,7 +825,7 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
             message=message, files=chat_files, history=history, current_workflow=workflow,
             current_enrichments=_loads(enrichments_raw, None), current_procedure_metadata=_loads(metadata_raw, None),
             procedures=procedures if isinstance(procedures, list) else None, active_procedure=active_procedure,
-            intent=intent,
+            intent=intent, target_key=target_key, transcribe_mode=transcribe_mode,
         ))
     work_started = think_done = False
     grace = None  # dernières pensées en cours de traduction : on les attend au plus 4 s

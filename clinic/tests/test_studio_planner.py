@@ -45,6 +45,22 @@ class GuardrailTests(unittest.TestCase):
         self.assertEqual((plan.action, plan.procedures), ("ask", []))
         self.assertEqual(apply_guardrails({"action": "ask", "reply": ""}, ["plan.xlsx"], False).action, "answer")
 
+    def test_chat_work_is_decided_once(self):
+        # le chat exécute ce que l'aiguillage décide, sur la procédure désignée
+        plan = apply_guardrails({"action": "edit", "cible": 2, "mode": "modifier"}, [], True, None, 3, ["A", "B", "C"])
+        self.assertEqual((plan.action, plan.chat_intent, plan.target), ("edit", "patch", 2))
+        plan = apply_guardrails({"action": "edit", "cible": 1, "mode": "refaire"}, ["v2.docx"], True, None, 1, ["A"])
+        self.assertEqual(plan.chat_intent, "regen")
+        self.assertEqual(apply_guardrails({"action": "explain", "cible": 9}, [], True, None, 1, ["A"]).target, None)
+        self.assertEqual(apply_guardrails({"action": "search"}, [], False).chat_intent, "web_search")
+        # rédiger depuis le seul texte : le chat rédige
+        plan = apply_guardrails({"action": "generate", "procedures": []}, [], False)
+        self.assertEqual((plan.action, plan.chat_intent), ("edit", "generate"))
+        # une question avec seulement des fichiers : analyse des fichiers
+        self.assertEqual(apply_guardrails({"action": "explain"}, ["fiche.docx"], False).action, "analyze")
+        # une modification quand des procédures existent mais qu'aucune n'est affichée
+        self.assertEqual(apply_guardrails({"action": "edit", "cible": 1}, [], False, None, 2, ["A", "B"]).chat_intent, "patch")
+
     def test_analyze_is_kept(self):
         plan = apply_guardrails({"action": "analyze", "procedures": []}, FILES, False)
         self.assertEqual(plan.action, "analyze")

@@ -62,8 +62,8 @@ def load(path: Path) -> dict:
 
 
 async def decide(case: dict, files: list) -> dict:
-    """Même enchaînement que studio_turn (agent outillé désactivé)."""
-    from processor.intent_detector import detect_intent
+    """Même enchaînement que studio_turn (agent outillé désactivé) : l'aiguillage décide de tout, y compris de ce que
+    le chat exécute quand il lui confie le tour (le chat ne reclasse plus la demande)."""
     from processor.studio_planner import plan_turn
     from routers.studio_router import _steps_summary
 
@@ -76,25 +76,8 @@ async def decide(case: dict, files: list) -> dict:
         proposal = [{"id": f"p{i}", "title": t, "sources": [f["filename"] for f in files]}
                     for i, t in enumerate(FORMACASH_PROPOSAL[:case["proposal"]], 1)]
     out = {"chemin": [], "nombre": None, "remplace": [], "cible": None, "reponse": ""}
-
-    async def chat(chat_files):
-        procs = conv if len(conv) >= 2 else []
-        intent = await detect_intent(
-            message=case["message"], has_workflow=bool(workflow) or bool(procs), filenames=[f["filename"] for f in chat_files],
-            history=history, procedures=[{"n": i + 1, "title": p["title"], "steps": len(p["workflow"]),
-                                          "displayed": p is active} for i, p in enumerate(procs)] or None)
-        out["chemin"].append(f"chat:{intent.intent}")
-        out["decision"] = CHAT_INTENTS.get(intent.intent, intent.intent)
-        if out["decision"] == "expliquer" and not (workflow or procs):
-            out["decision"] = "repondre"  # sans procédure, « expliquer » est la réponse de conversation
-        out["cible"] = intent.target_procedure or (conv.index(active) + 1 if active else None)
-        out["reponse"] = intent.clarify_question or intent.summary or ""
-
-    if not files and not proposal and not conv:
-        await chat([])
-        return out
-    summary = [{"n": i + 1, "titre": p["title"], "nb_etapes": len(p["workflow"]), "etapes": _steps_summary(p)}
-               for i, p in enumerate(conv)]
+    summary = [{"n": i + 1, "titre": p["title"], "nb_etapes": len(p["workflow"]), "affichee": p is active,
+                "etapes": _steps_summary(p)} for i, p in enumerate(conv)]
     plan = await asyncio.to_thread(plan_turn, case["message"], files, bool(workflow), history, proposal, False, summary)
     out["chemin"].append(f"aiguillage:{plan.action}")
     out["reponse"] = plan.reply or ""
@@ -102,26 +85,21 @@ async def decide(case: dict, files: list) -> dict:
     out["titres"] = [p.get("title") for p in plan.procedures if not plan.targets or p["id"] in plan.targets]
     if plan.action in ("generate", "propose", "merge"):
         out["nombre"] = len(plan.targets) if plan.action == "generate" and plan.targets else len(plan.procedures)
+    simple = {"propose": "proposer", "merge": "fusionner", "remove": "retirer", "structure": "referentiel",
+              "transcribe": "transcrire", "ask": "demander", "answer": "repondre"}
     if plan.action == "generate":
         out["decision"] = "operation" if plan.replaces else "rediger"
-    elif plan.action == "propose":
-        out["decision"] = "proposer"
-    elif plan.action == "merge":
-        out["decision"] = "fusionner"
-    elif plan.action == "remove":
-        out["decision"] = "retirer"
-    elif plan.action == "structure":
-        out["decision"] = "referentiel"
-    elif plan.action == "transcribe":
-        out["decision"] = "transcrire"
-    elif plan.action == "ask":
-        out["decision"] = "demander"
-    elif plan.action == "answer":
-        out["decision"] = "repondre"
+    elif plan.action in simple:
+        out["decision"] = simple[plan.action]
     elif plan.action == "analyze" and files:
         out["decision"] = "repondre_sources"
-    elif plan.action in ("analyze", "edit"):
-        await chat(files if plan.action == "edit" else [])
+    elif plan.action in ("edit", "explain", "search", "analyze"):
+        intent = plan.chat_intent or "explain"
+        out["chemin"].append(f"chat:{intent}")
+        out["decision"] = CHAT_INTENTS.get(intent, intent)
+        if out["decision"] == "expliquer" and not conv:
+            out["decision"] = "repondre"  # sans procédure, « expliquer » est la réponse de conversation
+        out["cible"] = plan.target or (conv.index(active) + 1 if active else None)
     else:
         out["decision"] = plan.action
     return out

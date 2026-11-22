@@ -126,8 +126,11 @@ class ChatProcessor:
         procedures: Optional[List[Dict]] = None,
         active_procedure: Optional[str] = None,
         intent: Optional[str] = None,
+        target_key: Optional[str] = None,
+        transcribe_mode: str = "combined",
     ) -> Dict[str, Any]:
-        """`intent` : décision déjà prise par l'aiguillage (le classifieur n'est alors pas rappelé)."""
+        """`intent` : décision déjà prise par l'aiguillage (le classifieur n'est alors pas rappelé) ;
+        `target_key` : la procédure de la conversation visée."""
 
         files = _normalize_files(files)
         filenames = [f.get("filename", "") for f in files]
@@ -144,8 +147,10 @@ class ChatProcessor:
         # le plus lourd pour classer une phrase.
         routing = current_routing()
         if intent:
+            target = next((i + 1 for i, p in enumerate(procs) if p["key"] == target_key), None) if target_key else None
             intent_result = IntentResult(intent=intent, clarify_question=None, reference_files=[],
-                                         source_files=filenames, summary="")
+                                         source_files=filenames, summary="", transcribe_mode=transcribe_mode,
+                                         target_procedure=target)
         else:
             with routing_scope(TaskKind.AIGUILLAGE, routing[1]) if routing else contextlib.nullcontext():
                 intent_result = await detect_intent(

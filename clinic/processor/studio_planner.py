@@ -22,7 +22,10 @@ from prompts.studio_planner_prompt import build_planner_prompt
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer", "transcribe", "ask"}
+ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer", "transcribe", "ask",
+           "explain", "search"}
+# Ce que le chat exécute quand l'aiguillage lui confie le tour (le chat ne reclasse plus la demande)
+TRANSCRIBE_MODES = {"image_only", "text_only", "combined"}
 # Au-delà, on ne génère pas sans que l'utilisateur ait validé la sélection
 # Plafond technique (coût, durée) au-delà duquel on confirme ; en deçà, on fait ce qui est demandé
 MAX_AUTO_GENERATE = 20
@@ -39,12 +42,18 @@ class StudioPlan:
     adjustments: List[str] = field(default_factory=list)  # corrections appliquées par les garde-fous
     # Procédures DE LA CONVERSATION (numéros 1…n) que ce tour remplace (découpage, fusion, refonte) ou retire
     replaces: List[int] = field(default_factory=list)
+    # Tour confié au chat : ce qu'il fait (patch, regen, explain, generate, transcribe, web_search) et sur quelle
+    # procédure de la conversation (numéro 1…n) ; décidé ici, une seule fois
+    chat_intent: Optional[str] = None
+    target: Optional[int] = None
+    transcribe_mode: str = "combined"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "action": self.action, "reply": self.reply, "procedures": self.procedures,
             "targets": self.targets, "merged_title": self.merged_title, "references": self.references, "adjustments": self.adjustments,
-            "replaces": self.replaces,
+            "replaces": self.replaces, "chat_intent": self.chat_intent, "target": self.target,
+            "transcribe_mode": self.transcribe_mode,
         }
 
 
@@ -112,6 +121,7 @@ def apply_guardrails(
 ) -> StudioPlan:
     adjustments: List[str] = []
     conversation_count = max(conversation_count, len(conversation_titles or []))
+    chat_intent: Optional[str] = None
     action = data.get("action") if data.get("action") in ACTIONS else "answer"
     reply = (data.get("reply") or "").strip()
 
@@ -174,17 +184,17 @@ def apply_guardrails(
         adjustments.append("modification de plusieurs procédures : traitée comme une opération sur l'ensemble")
     if action == "ask" and not reply:
         action = "answer"
-    if action == "edit" and not has_workflow:
+    if action == "edit" and not has_workflow and not conversation_count:
         action = "generate" if procedures else "answer"
         adjustments.append("edit sans procédure ouverte")
     # Transcrire porte sur un fichier joint ; sans fichier, le chat recopie le texte donné
     if action == "transcribe" and not filenames:
-        action = "edit"
+        action, chat_intent = "edit", "transcribe"
         adjustments.append("transcription sans fichier : confiée au chat")
     if action in ("generate", "propose", "merge") and not procedures:
         if not filenames:
             # sans fichier ni procédure existante dont partir : le chat rédige à partir du texte
-            action = "edit"
+            action, chat_intent = "edit", "generate"
             adjustments.append("création à partir du texte : confiée au chat")
         else:
             action = "answer"
@@ -240,6 +250,25 @@ def apply_guardrails(
             adjustments.append(f"{len(targets) - len(fresh)} procédure(s) déjà dans la conversation non régénérée(s)")
             targets = fresh
 
+    # Une question alors que seuls des fichiers sont là (aucune procédure produite) porte sur ces fichiers
+    if action == "explain" and filenames and not conversation_count and not has_workflow:
+        action = "analyze"
+        adjustments.append("question sur les fichiers joints : analyse")
+    # Ce que le chat exécute, et sur quelle procédure de la conversation
+    if action == "edit" and not chat_intent:
+        chat_intent = "regen" if data.get("mode") == "refaire" and filenames else "patch"
+    elif action == "explain":
+        chat_intent = "explain"
+    elif action == "search":
+        chat_intent = "web_search"
+    target = None
+    try:
+        n = int(data.get("cible")) if data.get("cible") is not None else None
+        target = n if n and 1 <= n <= conversation_count else None
+    except (TypeError, ValueError):
+        pass
+    mode = data.get("transcribe_mode") if data.get("transcribe_mode") in TRANSCRIBE_MODES else "combined"
+
     if adjustments:
         logger.info(f"🧭 Aiguillage corrigé : {adjustments}")
     return StudioPlan(
@@ -248,6 +277,9 @@ def apply_guardrails(
         references=references,
         adjustments=adjustments,
         replaces=replaces,
+        chat_intent=chat_intent,
+        target=target,
+        transcribe_mode=mode,
     )
 
 

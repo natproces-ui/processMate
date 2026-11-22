@@ -15,7 +15,7 @@ Ordre de lecture : **2. Décisions**, puis 3 (glossaire), puis 1 (inventaire).
 | Consigne | Rôle | Statut |
 |---|---|---|
 | `studio_planner_prompt` | Aiguillage : comprendre la demande, choisir l'action | Utilisée |
-| `intent_prompt` | Second aiguillage (ancien), appelé ensuite par le chat | Utilisée — **à fusionner dans l'aiguillage** |
+| `intent_prompt` | Second aiguillage (ancien) | **Fondu dans l'aiguillage le 22/11/2026** ; ne sert plus qu'à `/api/chat/message` (aucun écran) |
 | `extract_prompt` (611 lignes) | Rédiger une procédure : étapes, acteurs, outils, décisions, descriptions, métadonnées | Utilisée |
 | `logic_swimlane`, `logic_no_lanes`, `logic_manuscript`, `logic_document`, `logic_document_image` | Lire une source selon son type (logigramme à couloirs, sans couloirs, manuscrit, document, document + image) | Utilisées |
 | `pdf_classifier`, `image_classifier` | Choisir le mode de lecture d'une source | Utilisées |
@@ -133,5 +133,12 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
      découverte à 2-3 : corrigée en glossaire 0.4 (une phase détaillée à part est une procédure ; on ne regroupe que ce que la
      source décrit ensemble comme un seul déroulé).
    - `extrait(...)` dans `glossaire.py` : une consigne ne reçoit que les sections dont elle a besoin.
-   - À suivre : classifieur du chat (`intent_prompt`, à fondre dans l'aiguillage), puis retrait des doublons et des consignes mortes.
+   - **Cerveau unique — fait le 22/11/2026.** Tout message du chat passe par l'aiguillage, qui décide aussi de ce que le chat
+     exécute quand il lui confie le tour : modifier (`patch`), refaire à partir d'un fichier (`regen`), expliquer, rédiger depuis
+     le texte, transcrire, chercher sur internet — et sur quelle procédure de la conversation (« cible », transmise par sa clé).
+     Le classifieur du chat (`intent_detector` / `intent_prompt`) n'est plus appelé par le chat ; ce qu'il savait est passé dans
+     la consigne d'aiguillage (question ou réflexion ≠ modification, refaire à partir d'un fichier, recherche explicite,
+     procédure visée, annonce d'un document à venir). Actions ajoutées : `explain`, `search`.
+     Banc des décisions (3 passages) : 52/53, comme avant, avec un seul appel de décision par message au lieu de deux.
+     Le classifieur ne sert plus qu'à la route `/api/chat/message`, qu'aucun écran n'appelle (à retirer sur décision).
 4. Retrait des doublons et des consignes mortes (après confirmation).
