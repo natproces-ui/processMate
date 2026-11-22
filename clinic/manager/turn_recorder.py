@@ -67,7 +67,7 @@ class TurnRecorder:
                 {"id": ev.get("id"), "title": ev.get("title"), "status": "generating"})
         elif t == "procedure_ready":
             self._set_generation(ev.get("id"), title=ev.get("title"), status="ready",
-                                 steps=len(ev.get("workflow") or []))
+                                 steps=len(ev.get("workflow") or []), duree_s=ev.get("duree_s"))
             self.generated.append({"id": ev.get("id"), "title": ev.get("title"), "workflow": ev.get("workflow") or [],
                                    "enrichments": ev.get("enrichments") or {},
                                    "procedureMetadata": ev.get("procedureMetadata") or {}})
@@ -80,7 +80,8 @@ class TurnRecorder:
                 if g.get("id") == ev.get("id"):
                     g["procedureMetadata"] = {**(g.get("procedureMetadata") or {}), "open_points": ev.get("points") or []}
         elif t == "procedure_error":
-            self._set_generation(ev.get("id"), status="error", error=ev.get("message"))
+            self._set_generation(ev.get("id"), status="error", error=ev.get("message"), duree_s=ev.get("duree_s"),
+                                 cause=ev.get("cause"))
         elif t == "remarks_delta":
             self.payload["remarks"] = self.payload.get("remarks", "") + (ev.get("text") or "")
         elif t == "suggestions":
@@ -110,6 +111,8 @@ class TurnRecorder:
 
     def _chat_result(self, data: Dict[str, Any]) -> None:
         self.chat_data = data  # le serveur applique lui-même la modification (conversation_procedures)
+        if data.get("duree_s") is not None:
+            self.payload["duree_chat_s"] = data["duree_s"]  # suivi des durées en production
         intent = data.get("intent") or "generate"
         self.payload["intent"] = intent
         if intent == "clarify":

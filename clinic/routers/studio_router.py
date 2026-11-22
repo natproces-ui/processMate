@@ -41,7 +41,7 @@ from manager.auth import AuthUser, get_optional_user
 from manager.turn_recorder import TurnRecorder
 from manager.model_manager import interactions_scope
 from manager.guest_limits import GuestLimitError, check_files, client_ip, consume, guest_keys, load_limits
-from manager.model_routing import TaskKind, routing_scope, scrub_model_names, source_kinds_of
+from manager.model_routing import TaskKind, routing_scope, scrub_model_names, source_kinds_of, user_error
 from manager.processing_level import ProcessingLevel, get_processing_level, processing_level_scope
 from models.discovery_models import ProcessCard, SourceReference, SourceType
 from processor import studio_agent
@@ -265,14 +265,18 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
             try:
                 card = _card(proc, files)
                 src = [f for f in src_pool if f["file_id"] in {s.file_id for s in card.sources}] or src_pool
+                started = time.monotonic()
                 with routing_scope(TaskKind.GENERATION_PROCEDURE, source_kinds_of(src)):
                     result = await processor.generate_process(selected_card=card, src_files=src, ref_files=ref_files,
                                                               instructions=instructions, on_progress=on_progress)
+                durations[proc["id"]] = round(time.monotonic() - started, 1)
                 queue.put_nowait(("done", proc, result, None))
             except Exception as e:
                 logger.error(f"❌ Génération Studio « {proc.get('title')} » : {e}", exc_info=True)
+                durations[proc["id"]] = round(time.monotonic() - started, 1) if "started" in locals() else None
                 queue.put_nowait(("done", proc, None, e))
 
+    durations: Dict[str, Optional[float]] = {}  # durée de rédaction de chaque procédure (suivi en production)
     tasks = [asyncio.create_task(run(p, ins)) for p, ins in jobs]
     ready: List[Dict[str, Any]] = []
     stopped = False
@@ -294,9 +298,10 @@ async def _generate(request: Request, files: List[Dict[str, Any]], procedures: L
                             "procedureMetadata": result.get("procedureMetadata") or {}}
                     ready.append({**done, "id": proc["id"]})
                     yield _sse({"type": "procedure_ready", "id": proc["id"], **done,
-                                "enrichments": result.get("enrichments") or {}})
+                                "enrichments": result.get("enrichments") or {}, "duree_s": durations.get(proc["id"])})
                 else:
-                    yield _sse({"type": "procedure_error", "id": proc["id"], "title": proc["title"], "message": scrub_model_names(str(error))[:300]})
+                    yield _sse({"type": "procedure_error", "id": proc["id"], "title": proc["title"], "message": user_error(str(error)),
+                                "duree_s": durations.get(proc["id"]), "cause": str(error)[:160]})
             if await request.is_disconnected():
                 logger.info("⏹️ Génération Studio interrompue par l'utilisateur")
                 stopped = True
@@ -914,7 +919,7 @@ async def studio_turn(
                 yield _sse({"type": "error", "message": str(e), "limit": True})
             except Exception as e:
                 logger.error(f"❌ Tour Studio : {e}", exc_info=True)
-                yield _sse({"type": "error", "message": scrub_model_names(str(e))[:300]})
+                yield _sse({"type": "error", "message": user_error(str(e))})
             finally:
                 yield _sse({"type": "done"})
 
@@ -985,6 +990,7 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
             intent=intent, target_key=target_key, transcribe_mode=transcribe_mode,
         ))
     work_started = think_done = False
+    chat_started = time.monotonic()
     grace = None  # dernières pensées en cours de traduction : on les attend au plus 4 s
     while not task.done() or not queue.empty() or turn_progress.pending(sink):
         if task.done() and queue.empty():
@@ -1001,6 +1007,8 @@ async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, 
             think_done = True
         yield _sse(ev)
     result = task.result()
+    if isinstance(result, dict):
+        result["duree_s"] = round(time.monotonic() - chat_started, 1)  # suivi des durées en production
     if work_started:
         yield _sse({"type": "status", "id": "work", "label": _work_done_label(result), "state": "done"})
     yield _sse({"type": "chat_result", "result": result})
@@ -1069,7 +1077,7 @@ async def studio_generate(request: Request, body: GenerateRequest,
                     yield ev
             except Exception as e:
                 logger.error(f"❌ Génération Studio : {e}", exc_info=True)
-                yield _sse({"type": "error", "message": scrub_model_names(str(e))[:300]})
+                yield _sse({"type": "error", "message": user_error(str(e))})
             finally:
                 yield _sse({"type": "done"})
 

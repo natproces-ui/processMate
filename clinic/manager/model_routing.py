@@ -153,6 +153,22 @@ def source_kinds_of(files: Iterable[dict]) -> List[str]:
 _MODEL_NAME = re.compile(r"(models/)?\b(gemini|gemma|imagen|lyria|veo)[-\w.]*", re.I)
 
 
+def user_error(text: str) -> str:
+    """Erreur du service d'IA, dite à l'utilisateur en français (jamais le message technique brut)."""
+    raw = text or ""
+    low = raw.lower()
+    if "prepayment" in low or "credits are depleted" in low or ("402" in low and "resource_exhausted" in low) or "billing" in low:
+        return ("Le service d'IA est indisponible : le crédit du compte est épuisé. "
+                "Prévenez l'administrateur de ProcessMate ; votre travail est conservé.")
+    if "429" in low or "resource_exhausted" in low or "quota" in low or "rate limit" in low:
+        return "Le service d'IA est très sollicité en ce moment. Réessayez dans une minute ; votre travail est conservé."
+    if "api key" in low or "permission_denied" in low or "unauthenticated" in low:
+        return "Le service d'IA refuse l'accès (clé non valide). Prévenez l'administrateur de ProcessMate."
+    if "503" in low or "unavailable" in low or "overloaded" in low:
+        return "Le service d'IA est momentanément indisponible. Réessayez dans un instant."
+    return scrub_model_names(raw)[:300]
+
+
 def scrub_model_names(text: str) -> str:
     """Retire les identifiants de modèles d'un texte destiné à l'utilisateur (erreurs, messages)."""
     return _MODEL_NAME.sub("le service d'IA", text or "")

@@ -91,3 +91,13 @@ class NoModelNameLeakTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UserErrorTest(unittest.TestCase):
+    def test_service_errors_are_said_in_french(self):
+        from manager.model_routing import user_error
+        credit = user_error("402 RESOURCE_EXHAUSTED. {'error': {'code': 402, 'message': 'Your prepayment credits are depleted.'}}")
+        self.assertIn("crédit du compte est épuisé", credit)
+        self.assertNotIn("prepayment", credit)
+        self.assertIn("très sollicité", user_error("429 RESOURCE_EXHAUSTED quota exceeded"))
+        self.assertIn("ne répond plus", user_error("Le modèle ne répond plus depuis 180 s"))
