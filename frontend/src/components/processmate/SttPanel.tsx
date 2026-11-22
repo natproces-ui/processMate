@@ -116,6 +116,9 @@ const NO_ENRICHMENTS = new Map<string, TaskEnrichment>();
 const PROTECTED_META = new Set(['nom', 'ref', 'title', 'category', 'status', 'lifecycle_stages', 'raci', 'remarks',
     'validation', 'circuit', 'created_from', 'cible', 'has_unsaved_changes', 'last_modified_at']);
 
+/** Largeur minimale du panneau de la procédure à côté du chat (en dessous, l'en-tête s'empile) */
+const PROC_MIN_PX = 480;
+
 export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage, initialDraft, initialFiles }: Props) {
     const autoSend = useMemo(() => (initialMessage?.trim() || initialFiles?.length
         ? { id: 1, text: initialMessage || '', files: initialFiles } : undefined), [initialMessage, initialFiles]);
@@ -220,9 +223,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const togglePalette = () => { setPaletteOpen(o => { saveLayout({ paletteOpen: !o }); return !o; }); };
     const startChatResize = (e: React.MouseEvent) => {
         e.preventDefault();
-        const startX = e.clientX, startW = chatWidth;
+        // la procédure garde toujours au moins 480 px : la largeur du chat est bornée par la place disponible
+        const row = (e.currentTarget as HTMLElement).closest('aside')?.parentElement;
+        const maxW = Math.max(320, Math.min(960, (row?.clientWidth ?? 1440) - PROC_MIN_PX));
+        const startX = e.clientX, startW = Math.min(chatWidth, maxW);
         let width = startW;
-        const onMove = (ev: MouseEvent) => { width = Math.min(960, Math.max(320, startW + ev.clientX - startX)); setChatWidth(width); };
+        const onMove = (ev: MouseEvent) => { width = Math.min(maxW, Math.max(320, startW + ev.clientX - startX)); setChatWidth(width); };
         const onUp = () => {
             saveLayout({ chatWidth: width });
             document.removeEventListener('mousemove', onMove);
@@ -1322,7 +1328,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 <aside aria-label="Conversation" hidden={!chatOpen && !chatFull} style={{ ['--chat-w' as string]: `${chatWidth}px` } as React.CSSProperties}
                     className={chatFull
                         ? 'relative flex-1 min-h-0 min-w-0 bg-white'
-                        : `relative flex-1 lg:flex-none lg:shrink-0 lg:w-[var(--chat-w)] min-h-0 lg:border-r border-neutral-200 bg-white ${mobileView === 'proc' ? 'hidden lg:block' : ''}`}>
+                        : `relative flex-1 lg:flex-none lg:shrink-0 lg:w-[min(var(--chat-w),calc(100%_-_30rem))] lg:min-w-[20rem] min-h-0 lg:border-r border-neutral-200 bg-white ${mobileView === 'proc' ? 'hidden lg:block' : ''}`}>
                     {!chatFirstEmpty && !procOpen && (
                         <button type="button" onClick={() => toggleProc(true)} title="Afficher la procédure"
                             className="absolute right-4 top-14 z-20 flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-100">
