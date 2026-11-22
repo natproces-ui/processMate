@@ -22,7 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import {
     ArrowUp, ArrowDown, Paperclip, X, FileText, Image as ImageIcon,
     Loader2, PenLine, Plus, ChevronDown, ChevronUp,
-    Sparkles, HelpCircle, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2, Save
+    Sparkles, HelpCircle, Code, Mic, Square, CheckCircle2, AlertCircle, CircleStop, PanelLeftClose, Copy, Check, RotateCcw, Pencil, ArrowUpRight, Workflow, Presentation, FolderOpen, Undo2, Save, Download
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -170,6 +170,8 @@ interface ChatInterfaceProps {
     procedureStates?: Record<string, { title: string; steps: number; label: string; tone: string }>;
     /** « Tout enregistrer » : les procédures d'un message (ou de la conversation) rangées au même endroit */
     onSaveAll?: (keys: string[]) => void;
+    /** « Tout télécharger » : fiche Word, logigramme et tableau de chaque procédure du message (archive .zip) */
+    onDownloadAll?: (keys: string[]) => void;
     /** 'sidebar' : colonne pleine hauteur, composeur en bas (Studio) */
     variant?: 'inline' | 'sidebar';
     /** Masquer l’assistant (mode colonne) */
@@ -254,6 +256,7 @@ export default function ChatInterface({
     onSelectProcedure,
     procedureStates,
     onSaveAll,
+    onDownloadAll,
     variant = 'inline',
     onCollapse,
     onFilesSent,
@@ -1250,14 +1253,27 @@ export default function ChatInterface({
                                             </ul>
                                         )}
                                         {(() => {
-                                            const keys = (msg.generations || []).filter(g => g.status === 'ready' && procedureStates?.[g.key]
-                                                && ['Brouillon', 'Modifiée depuis l’enregistrement'].includes(procedureStates[g.key].label)).map(g => g.key);
-                                            return onSaveAll && keys.length > 1 && !msg.streaming ? (
-                                                <button type="button" onClick={() => onSaveAll(keys)}
-                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:border-neutral-900">
-                                                    <Save className="w-3.5 h-3.5" />Tout enregistrer · {keys.length}
-                                                </button>
-                                            ) : null;
+                                            const ready = (msg.generations || []).filter(g => g.status === 'ready' && procedureStates?.[g.key]
+                                                && procedureStates[g.key].label !== 'Remplacée').map(g => g.key);
+                                            const toSave = ready.filter(k => ['Brouillon', 'Modifiée depuis l’enregistrement'].includes(procedureStates![k].label));
+                                            if (msg.streaming || ready.length < 2 || (!onSaveAll && !onDownloadAll)) return null;
+                                            return (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {onSaveAll && toSave.length > 1 && (
+                                                        <button type="button" onClick={() => onSaveAll(toSave)}
+                                                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:border-neutral-900">
+                                                            <Save className="w-3.5 h-3.5" />Tout enregistrer · {toSave.length}
+                                                        </button>
+                                                    )}
+                                                    {onDownloadAll && (
+                                                        <button type="button" onClick={() => onDownloadAll(ready)}
+                                                            title="Fiche Word, logigramme et tableau Excel de chaque procédure, dans une archive .zip"
+                                                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:border-neutral-900">
+                                                            <Download className="w-3.5 h-3.5" />Tout télécharger · {ready.length}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
                                         })()}
                                         {/* Relecture : texte naturel (comme une réponse), étapes cliquables */}
                                         {msg.remarks && (

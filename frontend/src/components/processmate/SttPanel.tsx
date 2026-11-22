@@ -28,11 +28,12 @@ import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
     PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes, History,
-    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers, Trash2,
+    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers, Trash2, Undo2, Redo2,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type ConversationSource, type StoredProcedure, type WebSearch } from '@/lib/conversationsApi';
 import ConversationPanel, { outputState, toSave, type ConversationOutput } from '@/components/processmate/ConversationPanel';
+import { exportAll, exportOne, type ExportableProcedure, type ExportKind } from '@/lib/procedureExport';
 import ConversationVersionsModal from '@/components/processmate/ConversationVersionsModal';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
@@ -435,21 +436,35 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         a.href = url; a.download = `${name}.${ext}`; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
-    const downloadDiagram = async (kind: 'bpmn' | 'svg') => {
-        const ed = activeEditor();
-        const content = kind === 'bpmn' ? await ed?.saveXml() : await ed?.saveSvg();
-        if (!content) { showError('Ouvrez la vue BPMN pour télécharger le logigramme.'); setView('bpmn'); return; }
-        downloadBlob(content, kind === 'bpmn' ? 'application/xml' : 'image/svg+xml', kind);
+    // ── Téléchargements : depuis la procédure elle-même (n'importe quel onglet, toujours le logigramme métier) ──
+    const [exporting, setExporting] = useState<string | null>(null);
+    /** Une procédure de la conversation telle qu'elle s'exporte (métadonnées de la fiche, saisies comprises) */
+    const exportableOf = (inst: ProcessInstance | null, idx?: number): ExportableProcedure => inst ? {
+        title: inst.title, workflow: inst.data, enrichments: inst.enrichments, bpmnXml: inst.bpmnXml,
+        metadata: { ...(inst.initialMeta || {}), ...(exportEditsRef.current[idx ?? instances.indexOf(inst)] ?? {}) },
+    } : { title: processTitle, workflow: data, enrichments, bpmnXml, metadata: { ...(initialMeta || {}), ...(exportEditsRef.current[activeTab] ?? {}) } };
+    const runExport = async (inst: ProcessInstance | null, kind: ExportKind, idx?: number, itView = false) => {
+        if (exporting) return;
+        setExporting(kind);
+        try {
+            const p = exportableOf(inst, idx);
+            await exportOne(itView ? { ...p, title: `${p.title} – vue IT`, bpmnXml: generateBPMNOutillage(p.workflow, p.title) } : p, kind);
+        } catch (err: any) { showError(err?.message || 'Téléchargement impossible'); }
+        finally { setExporting(null); }
     };
-    const downloadTable = () => {
-        const cols: [string, (r: Table1Row) => string][] = [
-            ['N°', r => r.id], ['Étape', r => r.étape], ['Type', r => r.typeBpmn], ['Département', r => r.département || ''],
-            ['Acteur', r => r.acteur || ''], ['Outil', r => r.outil || ''], ['Condition', r => r.condition || ''],
-            ['Suite', r => (r.outputs || []).map(o => o.label ? `${o.targetId} (${o.label})` : o.targetId).join(', ')],
-        ];
-        const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-        const csv = [cols.map(c => esc(c[0])).join(';'), ...activeData.map(r => cols.map(c => esc(c[1](r))).join(';'))].join('\r\n');
-        downloadBlob('\ufeff' + csv, 'text/csv;charset=utf-8', 'csv'); // BOM : accents corrects dans Excel
+    const runExportAll = async (keys?: string[]) => {
+        if (exporting) return;
+        const list = instances.map((inst, i) => ({ inst, i }))
+            .filter(({ inst }) => !inst.archived && inst.status === 'ready' && inst.data.length > 0 && (!keys || keys.includes(inst.process_id)));
+        if (list.length === 0) return;
+        setExporting('all');
+        try {
+            const res = await exportAll(list.map(({ inst, i }) => exportableOf(inst, i)), document.title.split('·')[0].trim() || 'Procédures',
+                (done, total, title) => { if (title) showSuccess(`Préparation ${done + 1}/${total} : ${title}`); });
+            if (res.failed.length) showError(`Non téléchargée${res.failed.length > 1 ? 's' : ''} : ${res.failed.join(', ')}`);
+            else showSuccess(`${res.ok} procédure${res.ok > 1 ? 's' : ''} téléchargée${res.ok > 1 ? 's' : ''} : fiche Word, logigramme et tableau de chacune`);
+        } catch (err: any) { showError(err?.message || 'Téléchargement impossible'); }
+        finally { setExporting(null); }
     };
 
     const activeTitle = instances.length > 0 && activeInst ? activeInst.title : processTitle;
@@ -1147,6 +1162,42 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         setProceduresOwner(conversationIdRef.current);
     }, [toInstance]);
 
+    // ── ↶ ↷ : reculer / avancer dans les versions de la procédure affichée ──
+    // « position » = version dont l'état est affiché ; « sommet » = la plus récente avant de reculer.
+    // Chaque pas rétablit une version côté serveur (nouvelle version : l'historique reste entier).
+    // Tout autre changement (chat, correction à la main) repart du nouvel état : on ne peut plus avancer.
+    const [nav, setNav] = useState<Record<string, { pos: number; top: number; seen: number }>>({});
+    const [navBusy, setNavBusy] = useState(false);
+    const navKey = instances.length > 0 ? activeInst?.process_id : undefined;
+    const navVersion = instances.length > 0 ? activeInst?.version : undefined;
+    useEffect(() => {
+        if (!navKey || !navVersion) return;
+        setNav(prev => (prev[navKey]?.seen === navVersion ? prev : { ...prev, [navKey]: { pos: navVersion, top: navVersion, seen: navVersion } }));
+    }, [navKey, navVersion]);
+    const historyNav = navKey && serverModeRef.current && conversationIdRef.current && nav[navKey]
+        ? { canUndo: nav[navKey].pos > 1, canRedo: nav[navKey].pos < nav[navKey].top } : null;
+    const stepVersion = async (dir: -1 | 1) => {
+        const id = conversationIdRef.current;
+        const key = navKey;
+        if (!id || !key || !nav[key] || navBusy) return;
+        const target = nav[key].pos + dir;
+        if (target < 1 || target > nav[key].top) return;
+        setNavBusy(true);
+        try {
+            await flushServerEdits();  // une correction en attente devient d'abord une version
+            const proc = await conversationsApi.restoreProcedureVersion(id, key, target);
+            const inst = instancesRef.current.find(i => i.process_id === key);
+            const fresh = toInstance(proc, inst);
+            serverContentRef.current[key] = contentOf(fresh);
+            diagramStaleRef.current.delete(key);
+            setNav(prev => ({ ...prev, [key]: { pos: target, top: prev[key].top, seen: proc.version ?? target } }));
+            setInstances(prev => prev.map(x => x.process_id === key ? fresh : x));
+            const idx = instancesRef.current.findIndex(i => i.process_id === key);
+            if (idx >= 0 && fresh.bpmnXml) editorRefs.current[idx]?.importXml(fresh.bpmnXml);
+        } catch (err: any) { showError(err?.message || 'Retour impossible'); }
+        finally { setNavBusy(false); }
+    };
+
     /** Corrections à la main : envoyées procédure par procédure, à partir de leur version (le serveur refuse si elle a changé) */
     const flushServerEdits = useCallback(async () => {
         const id = conversationIdRef.current;
@@ -1422,6 +1473,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onSourcesChange={handleSourcesChange}
                         procedureStates={procedureStates}
                         onSaveAll={canSave ? keys => { void startSaveAll(keys); } : undefined}
+                        onDownloadAll={exportAllowed ? keys => { void runExportAll(keys); } : undefined}
                         onArchiveProcedures={archiveProcedures}
                         /* page d'accueil : « Nouvelle conversation » est déjà dans la barre latérale */
                         showNewConversation={!chatFirst}
@@ -1466,6 +1518,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             onUpdate={key => { const idx = instances.findIndex(i => i.process_id === key); if (idx >= 0) { setActiveTab(idx); setPendingSaveKey(key); } }}
                             onVersions={key => setConvVersionsKey(key)}
                             onSaveAll={() => { void startSaveAll(); }}
+                            canDownload={exportAllowed}
+                            downloading={!!exporting}
+                            onDownloadAll={() => { void runExportAll(); }}
                             onClose={() => setConvPanelOpen(false)} />
                     )}
                     {guestMode && (
@@ -1536,6 +1591,16 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 </p>
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2">
+                                {historyNav && (
+                                    <div className="flex items-center">
+                                        <button type="button" onClick={() => void stepVersion(-1)} disabled={!historyNav.canUndo || navBusy}
+                                            title="Revenir à l’état précédent" aria-label="Revenir à l’état précédent"
+                                            className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-30"><Undo2 className="w-4 h-4" /></button>
+                                        <button type="button" onClick={() => void stepVersion(1)} disabled={!historyNav.canRedo || navBusy}
+                                            title="Rétablir l’état suivant" aria-label="Rétablir l’état suivant"
+                                            className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-30"><Redo2 className="w-4 h-4" /></button>
+                                    </div>
+                                )}
                                 {canSave && <button type="button" onClick={() => {
                                     const inst = instances.length > 0 ? activeInst : null;
                                     if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
@@ -1546,18 +1611,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>}
                                 {(() => {
-                                    const canDownload = exportAllowed && activeData.length > 0;
                                     const more = [
                                         // la fiche Word a son onglet « Fiche & export » : pas de doublon ici
-                                        ...(canDownload ? [
-                                            { label: 'Logigramme (.bpmn)', icon: <Workflow />, onSelect: () => void downloadDiagram('bpmn'), heading: 'Télécharger' },
-                                            { label: 'Image du logigramme (.svg)', icon: <Workflow />, onSelect: () => void downloadDiagram('svg') },
-                                            { label: 'Tableau (Excel, .csv)', icon: <Table2 />, onSelect: downloadTable },
-                                        ] : []),
-                                        ...(serverModeRef.current && conversationIdRef.current && activeInst?.version
-                                            ? [{ label: 'Dans la conversation', icon: <History />, onSelect: () => setConvVersionsKey(activeInst.process_id), heading: 'Versions' }] : []),
+                                        // chaque vue a son propre bouton de téléchargement ; les versions se parcourent avec ↶ ↷
                                         ...(VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id
-                                            ? [{ label: 'Au référentiel', icon: <History />, onSelect: () => setVersionsOpen(true), heading: 'Versions' }] : []),
+                                            ? [{ label: 'Historique au référentiel', icon: <History />, onSelect: () => setVersionsOpen(true) }] : []),
                                         ...(activeData.length > 0 ? [{ label: 'Vider la procédure…', icon: <Trash2 />, danger: true, onSelect: () => {
                                             if (!window.confirm('Vider la procédure ? Toutes ses étapes sont retirées (une version reste dans l’historique de la conversation).')) return;
                                             if (instances.length > 0) updateActiveData([]); else setData([]);
@@ -1669,6 +1727,14 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             </div>
                         ) : view === 'table' ? (
                             <>
+                                {exportAllowed && activeData.length > 0 && (
+                                    <div className="flex justify-end">
+                                        <button type="button" onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'xlsx', activeTab)} disabled={!!exporting}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40">
+                                            {exporting === 'xlsx' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Télécharger (Excel)
+                                        </button>
+                                    </div>
+                                )}
                                 <Table
                                     data={activeData} enrichments={activeEnrichments}
                                     processTitle={activeTitle} hideTitle
@@ -1711,13 +1777,23 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             <Minimize2 className="w-4 h-4 text-slate-600" />
                                         </button>
                                     )}
+                                    <div className={`absolute top-3 z-10 ${editorFullscreen ? 'right-14' : 'right-3'} flex items-center gap-1.5`}>
+                                    {exportAllowed && activeData.length > 0 && (
+                                        <button type="button" disabled={!!exporting}
+                                            onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'png', activeTab, viewMode === 'outillage')}
+                                            title={viewMode === 'outillage' ? 'Image de la Vue IT (PNG), à coller dans un document' : 'Image du logigramme (PNG), à coller dans un document ou une présentation'}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-100 disabled:opacity-40">
+                                            {exporting === 'png' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Télécharger l’image
+                                        </button>
+                                    )}
                                     {viewMode === 'metier' && (
                                         <button type="button" onClick={togglePalette} aria-pressed={paletteOpen}
                                             title={paletteOpen ? 'Masquer la palette d’outils' : 'Ajouter des tâches, décisions et flux sur le logigramme'}
-                                            className={`absolute top-3 z-10 ${editorFullscreen ? 'right-14' : 'right-3'} inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${paletteOpen ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100'}`}>
+                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${paletteOpen ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100'}`}>
                                             <Shapes className="w-3.5 h-3.5" />Palette d’outils
                                         </button>
                                     )}
+                                    </div>
                                     <div className="absolute bottom-3 right-3 z-10 flex items-center rounded-lg border border-neutral-300 bg-white shadow-sm overflow-hidden">
                                         <button type="button" title="Dézoomer" aria-label="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomOut className="w-4 h-4 text-neutral-900" /></button>
                                         <button type="button" title="Zoomer" aria-label="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomIn className="w-4 h-4 text-neutral-900" /></button>

@@ -2,8 +2,9 @@
 
 // Panneau de la conversation, à la manière de Claude : ce qu'elle a produit (« Sorties » : les procédures, leur état
 // et leurs versions) et ce qu'elle a utilisé (sources jointes). docs/conversation-serveur.md.
-import { FileText, Globe, History, Image as ImageIcon, Layers, Presentation, RotateCcw, Search, Table2, Workflow, X } from 'lucide-react';
+import { Download, FileText, Globe, History, Image as ImageIcon, Layers, Loader2, Presentation, RotateCcw, Search, Table2, Workflow, X } from 'lucide-react';
 import type { ConversationSource, WebSearch } from '@/lib/conversationsApi';
+
 
 export interface ConversationOutput {
     key: string;
@@ -36,7 +37,7 @@ export function toSave(outputs: ConversationOutput[]): ConversationOutput[] {
 }
 
 export default function ConversationPanel({ outputs, activeKey, sources, references = [], searches = [], citations = {}, canSave, versionsEnabled, onOpen, onRestore, onUpdate,
-    onVersions, onSaveAll, onClose }: {
+    onVersions, onSaveAll, canDownload = false, downloading = false, onDownloadAll, onClose }: {
     outputs: ConversationOutput[];
     activeKey?: string | null;
     sources: ConversationSource[];
@@ -53,6 +54,9 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
     onUpdate: (key: string) => void;
     onVersions: (key: string) => void;
     onSaveAll: () => void;
+    canDownload?: boolean;
+    downloading?: boolean;
+    onDownloadAll?: () => void;
     onClose: () => void;
 }) {
     const pending = toSave(outputs);
@@ -70,7 +74,16 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                 <section className="px-4 py-3">
                     <div className="flex items-baseline justify-between">
                         <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Sorties</h3>
-                        {active.length > 0 && <span className="text-[11px] text-neutral-500">{saved}/{active.length} enregistrée{saved > 1 ? 's' : ''}</span>}
+                        <span className="flex items-center gap-2">
+                            {active.length > 0 && <span className="text-[11px] text-neutral-500">{saved}/{active.length} enregistrée{saved > 1 ? 's' : ''}</span>}
+                            {canDownload && onDownloadAll && active.some(o => o.status === 'ready' && o.steps > 0) && (
+                                <button type="button" onClick={onDownloadAll} disabled={downloading} aria-label="Tout télécharger"
+                                    title="Tout télécharger : pour chaque procédure, sa fiche Word, son logigramme et son tableau Excel (une archive .zip)"
+                                    className="p-1 rounded-md text-neutral-700 hover:bg-neutral-100 disabled:opacity-40">
+                                    {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                </button>
+                            )}
+                        </span>
                     </div>
                     {active.length === 0 && <p className="mt-2 text-xs text-neutral-500">Aucune procédure pour l’instant.</p>}
                     <ul className="mt-2 space-y-1">
