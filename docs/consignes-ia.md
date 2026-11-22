@@ -88,6 +88,9 @@ Brouillon dans `clinic/prompts/glossaire.py` (non branché). Il sera injecté da
 ## 4. Suite
 
 1. ~~Décisions sur C1 à C10~~ (faites le 22/11/2026).
-2. Banc d'essai des décisions (étape 0 du cerveau unique).
+2. ~~Banc d'essai des décisions~~ (fait le 22/11/2026) : `clinic/bench/decisions.py`, 55 situations dans `bench/decisions_cases.py`.
+   Mesure de départ (`bench/resultats_decisions_avant.json`) : **48/53 justes**, 2 sautées (manuscrit, logigramme sans couloirs : fichiers à déposer dans `bench-sources/`).
+   Écarts : transcription demandée avec une pièce jointe → rédigée (0/3 : l'aiguillage ne connaît pas « transcrire ») ;
+   « ajoute un préfixe à toutes les procédures » → question au lieu de le faire ; plan d'atténuation des risques → proposition de procédures.
 3. Branchement du glossaire, consigne par consigne, mesuré avant/après.
 4. Retrait des doublons et des consignes mortes (après confirmation).
