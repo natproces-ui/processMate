@@ -17,11 +17,9 @@ import type { Table1Row } from '@/logic/types';
 import { ProcessMetadata, TaskEnrichment, DEFAULT_PROCESS_METADATA, DEFAULT_ENRICHMENTS, mergeProcedureMetadata, mergeEnrichments } from '@/logic/bpmnTypes';
 import type { BpmnEditorHandle } from '@/components/new-way/BpmnEditor';
 import Table from '@/components/ProcessTable';
-import RevisionPanel from '@/components/RevisionPanel';
 import DocumentExportPanel from '@/components/DocumentExportPanel';
 import type { ProcessCard } from '@/components/MultiDocUpload';
 import ProcessDiscoveryPanel from '@/components/ProcessDiscoveryPanel';
-import SttToolbar from './SttToolbar';
 import ChatInterface, { type GeneratedProcedure } from '@/components/ChatInterface';
 import SaveTargetModal, { type SaveChoice } from '@/components/processmate/SaveTargetModal';
 import { saveTargetsApi } from '@/lib/saveTargetsApi';
@@ -30,7 +28,7 @@ import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
     PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes, History,
-    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers,
+    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers, Trash2,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type ConversationSource, type StoredProcedure, type WebSearch } from '@/lib/conversationsApi';
@@ -648,7 +646,15 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         showSuccess(`${selectedIds.length} processus généré${selectedIds.length > 1 ? 's' : ''}`);
     };
 
-    const handleGenerateBPMN = useCallback(async () => {
+    /** Procédures dont le tableau a été modifié à la main depuis le dernier logigramme : régénéré à l'affichage */
+    const diagramStaleRef = useRef<Set<string>>(new Set());
+    const diagramKey = instances.length > 0 ? (activeInst?.process_id ?? 'seule') : 'seule';
+    const editTable = useCallback((rows: Table1Row[]) => {
+        diagramStaleRef.current.add(instances.length > 0 ? (instancesRef.current[activeTab]?.process_id ?? 'seule') : 'seule');
+        if (instances.length > 0) updateActiveData(rows); else setData(rows);
+    }, [instances.length, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleGenerateBPMN = useCallback(async (silent = false) => {
         if (instances.length > 0 && activeInst) {
             const xml = generateBPMNSimple(activeInst.data, activeInst.title);
             setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst));
@@ -658,8 +664,41 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
             setBpmnXml(xml);
             if (editorRef.current) await editorRef.current.importXml(xml);
         }
-        showSuccess('Diagramme BPMN généré !');
+        diagramStaleRef.current.delete(instances.length > 0 ? (activeInst?.process_id ?? 'seule') : 'seule');
+        if (!silent) showSuccess('Logigramme mis à jour');
     }, [activeInst, activeTab, instances, data, processTitle]);
+    useEffect(() => {
+        if (view !== 'bpmn' || viewMode !== 'metier' || activeData.length === 0) return;
+        if (!activeBpmnXml || diagramStaleRef.current.has(diagramKey)) void handleGenerateBPMN(true);
+    }, [view, viewMode, diagramKey, activeBpmnXml, activeData.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** Onglets : la Vue IT est le logigramme vu par les applicatifs (même diagramme, autres libellés) */
+    const pendingItRef = useRef(false);
+    /** Avant d'afficher le logigramme : régénéré s'il manque ou si le tableau a changé à la main (il s'ouvre à jour) */
+    const freshDiagram = useCallback(() => {
+        if (activeData.length === 0 || (activeBpmnXml && !diagramStaleRef.current.has(diagramKey))) return;
+        const title = instances.length > 0 ? (activeInst?.title ?? '') : processTitle;
+        const xml = generateBPMNSimple(activeData, title);
+        if (instances.length > 0) setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst));
+        else setBpmnXml(xml);
+        diagramStaleRef.current.delete(diagramKey);
+    }, [activeData, activeBpmnXml, diagramKey, instances.length, activeInst, processTitle, activeTab]);
+    const selectView = useCallback(async (id: 'table' | 'bpmn' | 'it' | 'fiche') => {
+        if (id === 'bpmn' || id === 'it') freshDiagram();
+        if (id === 'it') {
+            if (view === 'bpmn' && viewMode === 'metier') { await toggleViewMode(); return; }
+            pendingItRef.current = true;
+            setView('bpmn');
+            return;
+        }
+        if (viewMode === 'outillage') await toggleViewMode();  // on quitte la Vue IT : retour au logigramme métier
+        setView(id);
+    }, [view, viewMode, toggleViewMode, freshDiagram]);
+    useEffect(() => {  // Vue IT demandée depuis un autre onglet : dès que le logigramme est prêt
+        if (!pendingItRef.current || view !== 'bpmn' || viewMode !== 'metier' || !activeBpmnXml) return;
+        const t = setTimeout(() => { if (modelerRef.current) { pendingItRef.current = false; void toggleViewMode(); } }, 400);
+        return () => clearTimeout(t);
+    }, [view, viewMode, activeBpmnXml, toggleViewMode]);
 
     const handleSave = useCallback(async (nom: string, category: string, taxonomyId?: string,
         target?: { procedureId: string; titre: string }) => {
@@ -1506,31 +1545,30 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white rounded-lg text-xs font-medium hover:bg-neutral-700 disabled:opacity-50 transition-colors">
                                     <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
                                 </button>}
-                                {activeInst?.workflow_db_id && currentActorId && (
-                                    <button type="button" onClick={() => setSubmitModalOpen(true)} disabled={submitting}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
-                                        {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                                        Soumettre
-                                    </button>
-                                )}
-                                {exportAllowed && activeData.length > 0 && (
-                                    <RowMenu label="Télécharger la procédure" align="right"
-                                        triggerClassName="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100"
-                                        trigger={<Download className="w-4 h-4" />}
-                                        items={[
-                                            { label: 'Logigramme BPMN (.bpmn)', icon: <Workflow />, onSelect: () => void downloadDiagram('bpmn') },
-                                            { label: 'Image du logigramme (.svg)', icon: <Workflow />, onSelect: () => void downloadDiagram('svg') },
-                                            { label: 'Tableau (.csv, Excel)', icon: <Table2 />, onSelect: downloadTable },
-                                            { label: 'Fiche Word (.docx)…', icon: <FileText />, onSelect: () => setView('fiche'), separatorBefore: true },
-                                        ]} />
-                                )}
                                 {(() => {
+                                    const canDownload = exportAllowed && activeData.length > 0;
                                     const more = [
+                                        ...(canDownload ? [
+                                            { label: 'Télécharger le logigramme (.bpmn)', icon: <Workflow />, onSelect: () => void downloadDiagram('bpmn') },
+                                            { label: 'Télécharger l’image du logigramme (.svg)', icon: <Workflow />, onSelect: () => void downloadDiagram('svg') },
+                                            { label: 'Télécharger le tableau (.csv, Excel)', icon: <Table2 />, onSelect: downloadTable },
+                                            { label: 'Fiche Word (.docx)…', icon: <FileText />, onSelect: () => setView('fiche') },
+                                        ] : []),
                                         ...(serverModeRef.current && conversationIdRef.current && activeInst?.version
                                             ? [{ label: 'Versions dans cette conversation', icon: <History />, onSelect: () => setConvVersionsKey(activeInst.process_id) }] : []),
                                         ...(VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id
                                             ? [{ label: 'Historique des versions', icon: <History />, onSelect: () => setVersionsOpen(true) }] : []),
+                                        ...(activeData.length > 0 ? [{ label: 'Vider la procédure…', icon: <Trash2 />, danger: true, onSelect: () => {
+                                            if (!window.confirm('Vider la procédure ? Toutes ses étapes sont retirées (une version reste dans l’historique de la conversation).')) return;
+                                            if (instances.length > 0) updateActiveData([]); else setData([]);
+                                        } }] : []),
                                     ];
+                                    // séparateurs entre les familles (télécharger · versions · vider)
+                                    more.forEach((it, k) => {
+                                        const prev = more[k - 1];
+                                        if (prev && ((prev.label.startsWith('Télécharger') || prev.label.startsWith('Fiche')) && !(it.label.startsWith('Télécharger') || it.label.startsWith('Fiche'))
+                                            || it.label.startsWith('Vider'))) (it as { separatorBefore?: boolean }).separatorBefore = true;
+                                    });
                                     return more.length > 0 && <RowMenu label="Autres actions" align="right" triggerClassName="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100" items={more} />;
                                 })()}
                                 {instances.length > 0 && !workflowId && (
@@ -1559,54 +1597,28 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             <div role="tablist" aria-label="Vue de la procédure" className="flex gap-1">
                                 {([
                                     { id: 'table' as const, label: 'Tableau', icon: Table2 },
-                                    { id: 'bpmn' as const, label: 'BPMN', icon: Workflow },
+                                    { id: 'bpmn' as const, label: 'Logigramme', icon: Workflow },
+                                    { id: 'it' as const, label: 'Vue IT', icon: Wrench },
                                     { id: 'fiche' as const, label: 'Fiche & export', icon: FileText },
-                                ]).filter(v => exportAllowed || v.id !== 'fiche').map(v => (
-                                    <button key={v.id} type="button" role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)}
-                                        className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${view === v.id ? 'border-neutral-900 text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
-                                        <v.icon className="w-3.5 h-3.5" />{v.label}
-                                    </button>
-                                ))}
+                                ]).filter(v => exportAllowed || v.id !== 'fiche').map(v => {
+                                    const selected = v.id === 'it' ? view === 'bpmn' && viewMode === 'outillage'
+                                        : v.id === 'bpmn' ? view === 'bpmn' && viewMode === 'metier' : view === v.id;
+                                    return (
+                                        <button key={v.id} type="button" role="tab" aria-selected={selected} onClick={() => selectView(v.id)}
+                                            title={v.id === 'it' ? 'Le logigramme vu par les applicatifs utilisés à chaque étape' : undefined}
+                                            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${selected ? 'border-neutral-900 text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
+                                            <v.icon className="w-3.5 h-3.5" />{v.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <div className="pb-1.5">
-                                <SttToolbar
-                                    bare
-                                    dataLength={activeData.length}
-                                    bpmnXml={activeBpmnXml ?? ''}
-                                    isEditingBpmn={!!activeBpmnXml}
-                                    revisionOpen={revisionOpen}
-                                    revisionCount={revisionCount}
-                                    showGenerate={!(view === 'bpmn' && activeBpmnXml)}
-                                    onGenerateBPMN={async () => { await handleGenerateBPMN(); setView('bpmn'); }}
-                                    onDownloadBPMN={exportAllowed ? handleDownloadBPMN : () => showError('Export réservé aux comptes : créez un compte gratuit pour télécharger.')}
-                                    onResetToDefault={() => { setInstances([]); setData(defaultData); setBpmnXml(null); setPhase('upload'); resetCodeSource(); }}
-                                    onClearTable={() => { if (instances.length > 0) updateActiveData([]); else setData([]); }}
-                                    onToggleRevision={() => setRevisionOpen(o => !o)}
-                                    onNewProcedure={addProcedureTab}
-                                    extraControls={view === 'bpmn' && activeBpmnXml ? (
-                                        <>
-                                            {viewMode === 'outillage' && (
-                                                <button type="button" onClick={toggleViewMode} title="Revenir à la vue métier"
-                                                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700">
-                                                    <Wrench className="w-3.5 h-3.5" />Vue IT active
-                                                </button>
-                                            )}
-                                            <button type="button" onClick={togglePalette} aria-pressed={paletteOpen}
-                                                title={paletteOpen ? 'Masquer les outils de dessin' : 'Afficher les outils de dessin'}
-                                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${paletteOpen ? 'bg-neutral-100 text-neutral-900 border-neutral-900' : 'bg-white text-neutral-900 border-neutral-300 hover:bg-neutral-100'}`}>
-                                                <Shapes className="w-4 h-4" />Outils
-                                            </button>
-                                        </>
-                                    ) : undefined}
-                                    extraMenu={view === 'bpmn' && activeBpmnXml ? (
-                                        <>
-                                            <DiagramMenuAction icon={<RotateCw className="w-4 h-4" />} label="Mettre à jour le tableau depuis le diagramme"
-                                                disabled={viewMode === 'outillage'} onClick={handleSyncClick} />
-                                            <DiagramMenuAction icon={<Wrench className="w-4 h-4" />} label={viewMode === 'outillage' ? 'Revenir à la vue métier' : 'Vue IT (applicatifs)'} onClick={toggleViewMode} />
-                                        </>
-                                    ) : undefined}
-                                />
-                            </div>
+                            {view === 'bpmn' && viewMode === 'metier' && activeBpmnXml && (
+                                <button type="button" onClick={togglePalette} aria-pressed={paletteOpen} aria-label="Palette de dessin"
+                                    title={paletteOpen ? 'Masquer la palette de dessin' : 'Afficher la palette de dessin (ajouter des formes au logigramme)'}
+                                    className={`mb-1 p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 ${paletteOpen ? 'bg-neutral-100' : ''}`}>
+                                    <Shapes className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -1647,16 +1659,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 <ProcessDiscoveryPanel processingLevel={processingLevel} sessionId={sessionId} cards={cards} onCardsUpdated={setCards} onGenerate={handleGenerate} generating={generating} />
                             </div>
                         )}
-                        {revisionOpen && phase === 'editing' && (
-                            <div className="shrink-0">
-                                <RevisionPanel
-                                    processingLevel={processingLevel}
-                                    workflow={activeData}
-                                    onWorkflowChange={instances.length > 0 ? updateActiveData : (d) => { setData(d); setRevisionCount(c => c + 1); }}
-                                    onSuccess={showSuccess} onError={showError}
-                                />
-                            </div>
-                        )}
+
 
                         {activeInst?.status === 'generating' && activeInst.data.length > 0 ? (
                             <>
@@ -1673,7 +1676,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 <Table
                                     data={activeData} enrichments={activeEnrichments}
                                     processTitle={activeTitle} hideTitle
-                                    onDataChange={instances.length > 0 ? updateActiveData : setData}
+                                    onDataChange={editTable}
                                     onEnrichmentsChange={instances.length > 0 ? updateActiveEnrichments : setEnrichments}
                                     onShowSuccess={showSuccess}
                                     highlightedRowIds={tableHighlightIds}
@@ -1729,11 +1732,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             ) : (
                                 <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center text-slate-500 bg-white border border-dashed border-slate-300 rounded-xl p-8">
                                     <Workflow className="w-8 h-8 text-slate-300" />
-                                    <p className="text-sm">Le diagramme n&apos;est pas encore généré.</p>
-                                    <button type="button" onClick={handleGenerateBPMN} disabled={activeData.length === 0}
-                                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40">
-                                        Générer le BPMN
-                                    </button>
+                                    <p className="text-sm">{activeData.length === 0 ? 'Aucune étape pour l’instant.' : 'Préparation du logigramme…'}</p>
+                                    {activeData.length === 0 && <p className="text-xs">Ajoutez des étapes dans le tableau ou demandez-les au chat.</p>}
                                 </div>
                             )
                         ) : (
