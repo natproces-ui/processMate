@@ -23,6 +23,8 @@ export interface MenuItem {
     onSelect: () => void;
     danger?: boolean;
     separatorBefore?: boolean;
+    /** petit titre de section affiché avant l'élément (« Télécharger », « Versions ») */
+    heading?: string;
 }
 
 /** Bouton « ⋯ » et son menu. Se ferme au clic extérieur, avec Échap, ou après un choix. */
@@ -53,11 +55,12 @@ export function RowMenu({ items, label, className = '', align = 'right', trigger
                     {items.map((it, i) => (
                         <div key={i}>
                             {it.separatorBefore && <div className="my-1 h-px bg-neutral-200" />}
+                            {it.heading && <p className="px-2.5 pb-0.5 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">{it.heading}</p>}
                             <button type="button" role="menuitem"
                                 onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); it.onSelect(); }}
                                 className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm hover:bg-neutral-100 ${it.danger ? 'text-red-600' : 'text-neutral-900'}`}>
                                 {it.icon && <span className="shrink-0 [&>svg]:w-4 [&>svg]:h-4">{it.icon}</span>}
-                                {it.label}
+                                <span className="whitespace-nowrap">{it.label}</span>
                             </button>
                         </div>
                     ))}

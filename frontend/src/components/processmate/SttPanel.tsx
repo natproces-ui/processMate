@@ -1548,26 +1548,28 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 {(() => {
                                     const canDownload = exportAllowed && activeData.length > 0;
                                     const more = [
+                                        // la fiche Word a son onglet « Fiche & export » : pas de doublon ici
                                         ...(canDownload ? [
-                                            { label: 'Télécharger le logigramme (.bpmn)', icon: <Workflow />, onSelect: () => void downloadDiagram('bpmn') },
-                                            { label: 'Télécharger l’image du logigramme (.svg)', icon: <Workflow />, onSelect: () => void downloadDiagram('svg') },
-                                            { label: 'Télécharger le tableau (.csv, Excel)', icon: <Table2 />, onSelect: downloadTable },
-                                            { label: 'Fiche Word (.docx)…', icon: <FileText />, onSelect: () => setView('fiche') },
+                                            { label: 'Logigramme (.bpmn)', icon: <Workflow />, onSelect: () => void downloadDiagram('bpmn'), heading: 'Télécharger' },
+                                            { label: 'Image du logigramme (.svg)', icon: <Workflow />, onSelect: () => void downloadDiagram('svg') },
+                                            { label: 'Tableau (Excel, .csv)', icon: <Table2 />, onSelect: downloadTable },
                                         ] : []),
                                         ...(serverModeRef.current && conversationIdRef.current && activeInst?.version
-                                            ? [{ label: 'Versions dans cette conversation', icon: <History />, onSelect: () => setConvVersionsKey(activeInst.process_id) }] : []),
+                                            ? [{ label: 'Dans la conversation', icon: <History />, onSelect: () => setConvVersionsKey(activeInst.process_id), heading: 'Versions' }] : []),
                                         ...(VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id
-                                            ? [{ label: 'Historique des versions', icon: <History />, onSelect: () => setVersionsOpen(true) }] : []),
+                                            ? [{ label: 'Au référentiel', icon: <History />, onSelect: () => setVersionsOpen(true), heading: 'Versions' }] : []),
                                         ...(activeData.length > 0 ? [{ label: 'Vider la procédure…', icon: <Trash2 />, danger: true, onSelect: () => {
                                             if (!window.confirm('Vider la procédure ? Toutes ses étapes sont retirées (une version reste dans l’historique de la conversation).')) return;
                                             if (instances.length > 0) updateActiveData([]); else setData([]);
                                         } }] : []),
                                     ];
-                                    // séparateurs entre les familles (télécharger · versions · vider)
+                                    // une famille par section : un seul titre « Versions », un séparateur avant chaque famille
+                                    let seenHeading = '';
                                     more.forEach((it, k) => {
-                                        const prev = more[k - 1];
-                                        if (prev && ((prev.label.startsWith('Télécharger') || prev.label.startsWith('Fiche')) && !(it.label.startsWith('Télécharger') || it.label.startsWith('Fiche'))
-                                            || it.label.startsWith('Vider'))) (it as { separatorBefore?: boolean }).separatorBefore = true;
+                                        const m = it as { heading?: string; separatorBefore?: boolean; label: string };
+                                        if (m.heading && m.heading === seenHeading) m.heading = undefined;
+                                        if (m.heading) seenHeading = m.heading;
+                                        if (k > 0 && (m.heading || m.label.startsWith('Vider'))) m.separatorBefore = true;
                                     });
                                     return more.length > 0 && <RowMenu label="Autres actions" align="right" triggerClassName="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100" items={more} />;
                                 })()}
@@ -1612,13 +1614,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     );
                                 })}
                             </div>
-                            {view === 'bpmn' && viewMode === 'metier' && activeBpmnXml && (
-                                <button type="button" onClick={togglePalette} aria-pressed={paletteOpen} aria-label="Palette de dessin"
-                                    title={paletteOpen ? 'Masquer la palette de dessin' : 'Afficher la palette de dessin (ajouter des formes au logigramme)'}
-                                    className={`mb-1 p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 ${paletteOpen ? 'bg-neutral-100' : ''}`}>
-                                    <Shapes className="w-4 h-4" />
-                                </button>
-                            )}
+
                         </div>
                     </div>
 
@@ -1713,6 +1709,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                         <button type="button" title="Quitter le plein écran" onClick={() => setEditorFullscreen(false)}
                                             className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-white border border-slate-200 shadow-sm hover:bg-slate-50">
                                             <Minimize2 className="w-4 h-4 text-slate-600" />
+                                        </button>
+                                    )}
+                                    {viewMode === 'metier' && (
+                                        <button type="button" onClick={togglePalette} aria-pressed={paletteOpen}
+                                            title={paletteOpen ? 'Masquer la palette d’outils' : 'Ajouter des tâches, décisions et flux sur le logigramme'}
+                                            className={`absolute top-3 z-10 ${editorFullscreen ? 'right-14' : 'right-3'} inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${paletteOpen ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100'}`}>
+                                            <Shapes className="w-3.5 h-3.5" />Palette d’outils
                                         </button>
                                     )}
                                     <div className="absolute bottom-3 right-3 z-10 flex items-center rounded-lg border border-neutral-300 bg-white shadow-sm overflow-hidden">
