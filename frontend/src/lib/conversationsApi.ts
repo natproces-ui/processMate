@@ -41,6 +41,14 @@ export interface StoredProcedure {
     procedureMetadata?: Record<string, unknown> | null;
     bpmnXml?: string | null;
     workflow_db_id?: string | null;
+    /** côté serveur (docs/conversation-serveur.md) : version courante et version enregistrée dans le référentiel */
+    version?: number;
+    saved_version?: number | null;
+}
+
+/** Une correction à la main partait d'une version dépassée : le serveur renvoie la version à jour */
+export class ProcedureConflict extends Error {
+    constructor(message: string, public procedure: StoredProcedure) { super(message); }
 }
 
 export interface ConversationSource {
@@ -81,9 +89,33 @@ export const conversationsApi = {
         call<{ conversation: ConversationSummary }>('', { method: 'POST', body: JSON.stringify(body) }).then(r => r.conversation),
     get: (id: string) =>
         call<{ conversation: ConversationSummary; messages: StoredMessage[]; sources: ConversationSource[];
-            procedures?: StoredProcedure[]; active_procedure?: string | null }>(`/${id}`),
+            procedures?: StoredProcedure[]; active_procedure?: string | null; procedures_serveur?: boolean }>(`/${id}`),
     saveProcedures: (id: string, procedures: StoredProcedure[], active: string | null) =>
         call<{ success: boolean }>(`/${id}/procedures`, { method: 'PUT', body: JSON.stringify({ procedures, active }) }),
+    /** Correction à la main d'une procédure de la conversation, à partir de la version `base_version` */
+    editProcedure: async (id: string, key: string, body: { base_version: number; title: string; workflow: unknown[];
+        enrichments: Record<string, unknown>; procedureMetadata?: Record<string, unknown> | null; bpmnXml?: string | null }) => {
+        const res = await fetch(`${base()}/${id}/procedures/${encodeURIComponent(key)}`, {
+            method: 'PUT', body: JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 409 && data?.detail?.procedure) throw new ProcedureConflict(data.detail.message, data.detail.procedure);
+        if (!res.ok) throw new Error(typeof data?.detail === 'string' ? data.detail : `Erreur ${res.status}`);
+        return data.procedure as StoredProcedure;
+    },
+    archiveProcedure: (id: string, key: string, archived: boolean) =>
+        call<{ procedures: StoredProcedure[] }>(`/${id}/procedures/${encodeURIComponent(key)}/archive`,
+            { method: 'POST', body: JSON.stringify({ archived }) }).then(r => r.procedures),
+    procedureSaved: (id: string, key: string, workflowDbId: string, version?: number) =>
+        call<{ procedure: StoredProcedure }>(`/${id}/procedures/${encodeURIComponent(key)}/saved`,
+            { method: 'POST', body: JSON.stringify({ workflow_db_id: workflowDbId, version: version ?? null }) }).then(r => r.procedure),
+    procedureVersions: (id: string, key: string) =>
+        call<{ versions: { version: number; title: string; origine: string; resume: string | null; created_at: string;
+            courante: boolean; enregistree: boolean }[] }>(`/${id}/procedures/${encodeURIComponent(key)}/versions`).then(r => r.versions),
+    restoreProcedureVersion: (id: string, key: string, version: number) =>
+        call<{ procedure: StoredProcedure }>(`/${id}/procedures/${encodeURIComponent(key)}/versions/${version}/restore`,
+            { method: 'POST' }).then(r => r.procedure),
     latestForProcedure: (procedureId: string) =>
         call<{ conversation: ConversationSummary | null }>(`/latest?procedure_id=${encodeURIComponent(procedureId)}`).then(r => r.conversation),
     update: (id: string, body: { title?: string; archived?: boolean; link_procedure_id?: string; project_id?: string | null; pinned?: boolean }) =>

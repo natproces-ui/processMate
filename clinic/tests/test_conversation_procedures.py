@@ -72,6 +72,11 @@ class StoreTest(unittest.TestCase):
         self.assertEqual([(v["version"], v["origine"], v["courante"]) for v in hist],
                          [(2, "modification", True), (1, "generation", False)])
 
+    def test_same_content_again_is_not_a_new_version(self):
+        cp.create("c1", "m1:p1", self.content())
+        self.assertEqual(cp.create("c1", "m1:p1", self.content(), "generation", "msg-1")["version"], 1)
+        self.assertEqual(cp.create("c1", "m1:p1", self.content(wf=WF[:2]), "generation")["version"], 2)
+
     def test_conflict_when_procedure_moved_on(self):
         cp.create("c1", "k", self.content())
         cp.add_version(cp.get("c1", "k"), self.content(wf=WF[:3]), "modification")

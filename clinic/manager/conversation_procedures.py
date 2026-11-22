@@ -142,6 +142,9 @@ def create(conversation_id: str, key: str, content: Dict[str, Any], origine: str
     """Nouvelle procédure de la conversation, avec sa version 1. Une clé déjà présente reçoit une nouvelle version."""
     existing = get(conversation_id, key)
     if existing:
+        cur = _version(existing["id"], existing.get("current_version") or 1) or {}
+        if (cur.get("workflow_json") or []) == (content.get("workflow") or []) and                 (cur.get("enrichments_json") or {}) == (content.get("enrichments") or {}):
+            return _exchange(existing, cur)  # déjà là, à l'identique (recopiée par l'écran) : pas de nouvelle version
         return add_version(existing, content, origine, message_id, resume, author_id)
     rows = _rows(conversation_id)
     if len(rows) >= MAX_PROCEDURES:

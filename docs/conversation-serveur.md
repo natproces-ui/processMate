@@ -1,6 +1,6 @@
 # Le serveur, vérité de la conversation — plan à valider
 
-État au 22/11/2026. Rien n'est codé. Ce document décrit l'étape qui précède le panneau à la Claude
+État au 22/11/2026 : **lots A à D codés et testés**, en attente de l'application du script SQL en production (voir § 5). Ce document décrit l'étape qui précède le panneau à la Claude
 (« Sorties », « Utilisés dans cette conversation », « Progression ») et l'enregistrement de plusieurs procédures.
 
 ---
@@ -112,3 +112,20 @@ Les invités gardent le fonctionnement actuel (rien n'est enregistré pour eux).
 1. **Le script SQL** des deux tables est à appliquer en base de production (comme les précédents : je l'écris, tu l'appliques, ou je l'applique par le `.env` avec ton accord).
 2. **Durée de vie des versions** : tout garder (proposé — une procédure de 40 étapes pèse quelques dizaines de Ko), ou ne garder que les 50 dernières par procédure.
 3. **Les invités** restent sans historique côté serveur (proposé).
+
+---
+
+## 5. Réalisé (22/11/2026)
+
+| Lot | Fait | Vérifié |
+|---|---|---|
+| A | `database/conversation_procedures_schema.sql`, `manager/conversation_procedures.py`, `manager/workflow_operations.py`, points d'accès dans `routers/conversations_router.py` | 14 tests (base simulée) : versions, conflit, corrections regroupées, restauration, archivage, lien au référentiel |
+| B | fin de tour (`manager/turn_procedures.py`, `_record` du routeur) : réponse, versions, liste envoyée à l'écran (`conversation_procedures`) avant « done » ; l'aiguillage lit la base ; `/generate` a son propre contexte | tests : génération + archivage, modification appliquée par le serveur, création et réécriture par le chat |
+| C | l'écran envoie l'id de son message, adopte la liste du serveur en fin de tour, envoie les corrections à la main procédure par procédure (jamais pendant une réponse, et juste avant un message), affiche la version à jour en cas de conflit, archive / rétablit et note la version enregistrée côté serveur | parcours navigateur : ouverture (0 écriture), tour, Rétablir, correction à la main (versions 1 puis 2), conflit ; anciens parcours (archives, enregistrement, accueil) inchangés |
+| D | reprise d'une conversation d'avant à sa première ouverture (`ensure_seeded`) ; l'écran d'avant reste servi : seules les vraies différences deviennent des versions | tests |
+
+**Mise en service** : le mode « le serveur fait foi » s'active tout seul quand les tables existent. Tant que le script n'est pas appliqué,
+tout fonctionne comme avant. Pour couper : `CONVERSATION_PROCEDURES_SERVEUR=false` (backend).
+
+**Limite connue** : un déplacement des formes sur le diagramme sans changement d'étape n'est pas une correction envoyée au serveur
+(comme avant, la mise en page est gardée à l'écran ; elle est envoyée avec la prochaine correction de contenu).

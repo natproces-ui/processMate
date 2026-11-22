@@ -33,7 +33,7 @@ import {
     PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
-import { CONVERSATIONS_ENABLED, conversationsApi, type StoredProcedure } from '@/lib/conversationsApi';
+import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type StoredProcedure } from '@/lib/conversationsApi';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
 import CircuitBar from '@/components/shared/CircuitBar';
@@ -76,6 +76,9 @@ interface ProcessInstance {
     status: 'generating' | 'ready' | 'error'; workflow_db_id?: string;
     /** remplacée ou retirée par le chat : hors de la liste, gardée et rétablissable */
     archived?: boolean;
+    /** côté serveur : version courante, et version enregistrée dans le référentiel */
+    version?: number;
+    saved_version?: number | null;
 }
 
 interface Props {
@@ -151,6 +154,14 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [versionsOpen, setVersionsOpen] = useState(false);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
+    /** Côté serveur : la version enregistrée dans le référentiel (« modifiée depuis l'enregistrement » ensuite) */
+    const markSaved = (inst: ProcessInstance | null, procedureId: string) => {
+        const id = conversationIdRef.current;
+        if (!id || !inst || !serverModeRef.current) return;
+        conversationsApi.procedureSaved(id, inst.process_id, procedureId, inst.version)
+            .then(p => setInstances(prev => prev.map(x => x.process_id === inst.process_id ? { ...x, saved_version: p.saved_version ?? x.saved_version } : x)))
+            .catch(() => { /* le lien reste dans le référentiel */ });
+    };
     const linkConversation = (procedureId: string) => {
         const id = conversationIdRef.current;
         if (id) conversationsApi.update(id, { link_procedure_id: procedureId }).catch(() => { /* lien facultatif */ });
@@ -683,6 +694,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 }
                 await orchestrationApi.saveWorkflowData(targetId, saveRows as unknown[], enrichObj, { ...generated, ...exportEdits, ...(openPoints.length ? { open_points: openPoints } : {}), recent_ai_changes: null }, currentXml);
                 linkConversation(targetId);
+                markSaved(inst, targetId);
                 if (inst) setInstances(prev => prev.map((i, idx) => idx === activeTab ? {
                     ...i, ...(target ? { workflow_db_id: target.procedureId, title: target.titre } : {}),
                     initialMeta: { ...i.initialMeta, ...generated, ...exportEdits, recent_ai_changes: null },
@@ -697,6 +709,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 const fullMeta = { ...(activeInitialMeta ?? {}), ...(exportEditsRef.current[activeTab] ?? {}), nom, category };
                 await orchestrationApi.saveWorkflowData(newId, saveRows as unknown[], enrichObj, fullMeta, currentXml);
                 linkConversation(newId);
+                markSaved(inst, newId);
                 if (inst) setInstances(prev => prev.map((i, idx) => idx === activeTab ? { ...i, workflow_db_id: newId, title: nom } : i));
                 invalidate();
             }
@@ -962,14 +975,54 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     /** Conversation à laquelle appartiennent les procédures affichées (rien n'est enregistré ailleurs) */
     const [proceduresOwner, setProceduresOwner] = useState<string | null>(null);
     const singleKeyRef = useRef<string>(crypto.randomUUID());
-    const restoreProcedures = useCallback((procs: StoredProcedure[], active: string | null) => {
-        const list: ProcessInstance[] = procs.map(p => ({
-            process_id: p.key, title: p.title || 'Procédure', data: (p.workflow || []) as Table1Row[],
+
+    // ── Le serveur fait foi (docs/conversation-serveur.md) ──
+    /** vrai quand le serveur garde les procédures de la conversation et leurs versions */
+    const serverModeRef = useRef(false);
+    /** contenu de chaque procédure tel que le serveur le connaît : ce qui en diffère est une correction à la main */
+    const serverContentRef = useRef<Record<string, string>>({});
+    const serverArchivedRef = useRef<Record<string, boolean>>({});
+    const contentOf = (i: ProcessInstance) => JSON.stringify([i.title, i.data, Object.fromEntries(i.enrichments), i.initialMeta ?? null]);
+    const toInstance = useCallback((p: StoredProcedure, local?: ProcessInstance): ProcessInstance => {
+        const rows = (p.workflow || []) as Table1Row[];
+        // le diagramme affiché est gardé tant que les étapes n'ont pas changé (mise en page manuelle conservée)
+        const sameRows = local && JSON.stringify(local.data) === JSON.stringify(rows);
+        return {
+            process_id: p.key, title: p.title || 'Procédure', data: rows,
             enrichments: new Map(Object.entries(p.enrichments || {})) as Map<string, TaskEnrichment>,
-            bpmnXml: p.bpmnXml || safeGenerateBpmn((p.workflow || []) as Table1Row[], p.title || 'Procédure'),
-            metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: p.procedureMetadata || { nom: p.title },
+            bpmnXml: (sameRows && local?.bpmnXml) || p.bpmnXml || safeGenerateBpmn(rows, p.title || 'Procédure'),
+            metadata: local?.metadata ?? { ...DEFAULT_PROCESS_METADATA }, initialMeta: p.procedureMetadata || { nom: p.title },
             status: 'ready', workflow_db_id: p.workflow_db_id || undefined, archived: !!p.archived,
-        }));
+            version: p.version, saved_version: p.saved_version ?? null,
+        };
+    }, [safeGenerateBpmn]);
+    const rememberServer = (list: ProcessInstance[]) => {
+        serverContentRef.current = Object.fromEntries(list.map(i => [i.process_id, contentOf(i)]));
+        serverArchivedRef.current = Object.fromEntries(list.map(i => [i.process_id, !!i.archived]));
+    };
+    /** Fin d'un tour : les procédures telles que le serveur les garde remplacent celles de l'écran */
+    const applyServerProcedures = useCallback((procs: StoredProcedure[]) => {
+        serverModeRef.current = true;
+        const prev = instancesRef.current;
+        const activeKey = prev[activeTab]?.process_id;
+        const list = procs.map(p => toInstance(p, prev.find(i => i.process_id === p.key)));
+        // une génération en erreur ou un brouillon vide ne sont pas côté serveur : ils restent affichés
+        const localOnly = prev.filter(i => !procs.some(p => p.key === i.process_id) && (i.status === 'error' || i.data.length === 0));
+        const next = [...list, ...localOnly];
+        rememberServer(list);
+        setInstances(next);
+        if (next.length > 0) {
+            setHasProcedure(true);
+            const idx = next.findIndex(i => i.process_id === activeKey && !i.archived);
+            const last = next.map(i => !i.archived).lastIndexOf(true);
+            setActiveTab(idx >= 0 ? idx : Math.max(0, last));
+        }
+    }, [activeTab, toInstance]);
+
+    const restoreProcedures = useCallback((procs: StoredProcedure[], active: string | null, serverMode?: boolean) => {
+        const list: ProcessInstance[] = procs.map(p => toInstance(p));
+        serverModeRef.current = !!serverMode;
+        if (serverMode) rememberServer(list);
         draftKeyRef.current = null;
         setInstances(list);
         const idx = list.findIndex(i => i.process_id === active && !i.archived);
@@ -977,12 +1030,57 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         setActiveTab(idx >= 0 ? idx : Math.max(0, lastActive));
         setHasProcedure(true); setPhase('editing'); setUploadOpen(false);
         setProceduresOwner(conversationIdRef.current);
-    }, [safeGenerateBpmn]);
+    }, [toInstance]);
+
+    /** Corrections à la main : envoyées procédure par procédure, à partir de leur version (le serveur refuse si elle a changé) */
+    const flushServerEdits = useCallback(async () => {
+        const id = conversationIdRef.current;
+        if (!id || !serverModeRef.current || guestMode) return;
+        for (const i of instancesRef.current) {
+            if (i.status !== 'ready' || i.data.length === 0) continue;
+            const known = serverArchivedRef.current[i.process_id];
+            if (known !== undefined && !!i.archived !== known) {
+                try {
+                    await conversationsApi.archiveProcedure(id, i.process_id, !!i.archived);
+                    serverArchivedRef.current[i.process_id] = !!i.archived;
+                } catch { /* nouvel essai à la prochaine modification */ }
+            }
+            const content = contentOf(i);
+            if (serverContentRef.current[i.process_id] === content) continue;
+            try {
+                const saved = await conversationsApi.editProcedure(id, i.process_id, {
+                    base_version: i.version ?? 1, title: i.title, workflow: i.data, enrichments: Object.fromEntries(i.enrichments),
+                    procedureMetadata: i.initialMeta ?? null, bpmnXml: i.bpmnXml,
+                });
+                serverContentRef.current[i.process_id] = content;
+                serverArchivedRef.current[i.process_id] = !!i.archived;
+                setInstances(prev => prev.map(x => x.process_id === i.process_id ? { ...x, version: saved.version, saved_version: saved.saved_version ?? x.saved_version } : x));
+            } catch (err) {
+                if (err instanceof ProcedureConflict) {
+                    // la procédure a changé ailleurs (autre onglet, message du chat) : on affiche la version à jour
+                    const fresh = toInstance(err.procedure, i);
+                    serverContentRef.current[i.process_id] = contentOf(fresh);
+                    setInstances(prev => prev.map(x => x.process_id === i.process_id ? fresh : x));
+                    showError(err.message);
+                }
+            }
+        }
+    }, [guestMode, toInstance]);
     // Enregistrement (silencieux, 1,5 s après la dernière modification)
     useEffect(() => {
         if (guestMode || workflowId || !CONVERSATIONS_ENABLED) return;
         const id = conversationIdRef.current;
         if (!id || id !== proceduresOwner) return;
+        // pendant une réponse, le serveur écrit lui-même ; la liste à jour arrive à la fin du tour
+        if (chatActivity.busy) return;
+        if (serverModeRef.current) {
+            const pending = instances.some(i => i.status === 'ready' && i.data.length > 0 && (
+                serverContentRef.current[i.process_id] !== contentOf(i)
+                || (serverArchivedRef.current[i.process_id] !== undefined && serverArchivedRef.current[i.process_id] !== !!i.archived)));
+            if (!pending) return;
+            const t = setTimeout(() => { flushServerEdits(); }, 1500);
+            return () => clearTimeout(t);
+        }
         const toStored = (key: string, title: string, rows: Table1Row[], enr: Map<string, TaskEnrichment>, meta: Record<string, unknown> | null | undefined, xml: string | null, dbId?: string, archived?: boolean): StoredProcedure => ({
             key, title, workflow: rows, enrichments: Object.fromEntries(enr), procedureMetadata: meta ?? null, bpmnXml: xml, workflow_db_id: dbId ?? null,
             ...(archived ? { archived: true } : {}),
@@ -997,7 +1095,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         const active = instances.length > 0 ? instances[activeTab]?.process_id ?? null : singleKeyRef.current;
         const t = setTimeout(() => { conversationsApi.saveProcedures(id, list, active).catch(() => { /* gardé à l'écran ; nouvel essai à la prochaine modification */ }); }, 1500);
         return () => clearTimeout(t);
-    }, [guestMode, workflowId, proceduresOwner, instances, activeTab, hasProcedure, data, processTitle, enrichments, initialMeta, bpmnXml]);
+    }, [guestMode, workflowId, proceduresOwner, instances, activeTab, hasProcedure, data, processTitle, enrichments, initialMeta, bpmnXml,
+        chatActivity.busy, flushServerEdits]);
 
     // ── Lot 5 : points de restauration du chat ──
     const takeSnapshot = useCallback((procedureKey?: string) => {
@@ -1203,6 +1302,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             conversationIdRef.current = id;
                         }}
                         onRestoreProcedures={restoreProcedures}
+                        onServerProcedures={applyServerProcedures}
+                        onBeforeSend={flushServerEdits}
                         onArchiveProcedures={archiveProcedures}
                         /* page d'accueil : « Nouvelle conversation » est déjà dans la barre latérale */
                         showNewConversation={!chatFirst}

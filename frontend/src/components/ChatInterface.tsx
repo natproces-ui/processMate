@@ -180,7 +180,11 @@ interface ChatInterfaceProps {
     /** Conversation courante (null = pas encore enregistrée) */
     onConversationChange?: (conversationId: string | null) => void;
     /** Conversation rouverte avec ses procédures enregistrées : le panneau les reprend telles quelles */
-    onRestoreProcedures?: (procedures: StoredProcedure[], active: string | null) => void;
+    onRestoreProcedures?: (procedures: StoredProcedure[], active: string | null, serverMode?: boolean) => void;
+    /** Fin d'un tour : les procédures de la conversation telles que le serveur les garde (il fait foi) */
+    onServerProcedures?: (procedures: StoredProcedure[]) => void;
+    /** Juste avant d'envoyer un message : les corrections à la main en attente partent d'abord */
+    onBeforeSend?: () => Promise<void>;
     /** procédures de la conversation remplacées ou retirées par le chat (true), ou rétablies (false) */
     onArchiveProcedures?: (keys: string[], archived: boolean) => void;
     /** Rouvrir les onglets des procédures générées en rechargeant une conversation */
@@ -248,6 +252,8 @@ export default function ChatInterface({
     procedureId,
     onConversationChange,
     onRestoreProcedures,
+    onServerProcedures,
+    onBeforeSend,
     restoreGenerated = true,
     syncUrl = false,
     projectId,
@@ -466,7 +472,7 @@ export default function ChatInterface({
             setSources(data.sources);
             setConversation(id);
             // après setConversation : les procédures reprises appartiennent à cette conversation
-            if (saved) onRestoreProcedures!(saved, data.active_procedure ?? null);
+            if (saved) onRestoreProcedures!(saved, data.active_procedure ?? null, !!data.procedures_serveur);
         } catch (err: unknown) {
             if (syncUrl) writeConversationParam(null);
             onError(`Conversation introuvable : ${err instanceof Error ? err.message : ''}`.trim());
@@ -725,6 +731,10 @@ export default function ChatInterface({
                 onArchiveProcedures?.(ev.keys || [], true);
                 updateMsg(msgId, m => ({ ...m, archived: [...(m.archived || []), { keys: ev.keys || [], titles: ev.titles || [], by: ev.by || [] }] }));
                 break;
+            case 'conversation_procedures':
+                // le serveur a écrit les procédures et leurs versions : l'écran reprend sa liste
+                onServerProcedures?.(ev.procedures || []);
+                break;
             case 'referential_proposal':
                 updateMsg(msgId, m => ({ ...m, referentiel: ev.proposal }));
                 break;
@@ -855,6 +865,8 @@ export default function ChatInterface({
         const files = override ? override.files : attachedFiles.map(f => f.file);
         if (!text.trim() && files.length === 0) return;
         if (!sessionId || loading) return;
+        // corrections à la main en attente : enregistrées avant que le chat ne travaille sur la procédure
+        try { await onBeforeSend?.(); } catch { /* le tour part quand même */ }
 
         setMessages(prev => [...prev, {
             id: crypto.randomUUID(), role: 'user', content: text.trim(), files,
@@ -895,6 +907,11 @@ export default function ChatInterface({
         if (!override) setAttachedFiles([]);
 
         const msgId = newAssistantMessage();
+        if (persistent && (conversationIdRef.current || sid !== sessionId)) {
+            // le serveur écrit les procédures du tour sous les clés de ce message (« <msgId>:p1 »)
+            form.append('client_message_id', msgId);
+            form.append('server_procedures', '1');
+        }
         await streamEvents(API_CONFIG.getFullUrl(API_CONFIG.endpoints.studioTurn),
             { method: 'POST', headers: processingLevelHeaders(processingLevel), body: form }, msgId);
         if (persistent && conversationIdRef.current && files.length > 0) refreshSources(conversationIdRef.current);
@@ -914,7 +931,8 @@ export default function ChatInterface({
         await streamEvents(API_CONFIG.getFullUrl(API_CONFIG.endpoints.studioGenerate), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...processingLevelHeaders(processingLevel) },
-            body: JSON.stringify({ session_id: sessionId, procedure_ids: source.selected, merge }),
+            body: JSON.stringify({ session_id: sessionId, procedure_ids: source.selected, merge,
+                client_message_id: msgId, server_procedures: persistent && !!conversationIdRef.current }),
         }, msgId);
     };
 
