@@ -663,7 +663,8 @@ def _record(gen, conv: Optional[Dict[str, Any]], sess: Dict[str, Any], ix: Optio
                     try:
                         procs = await asyncio.to_thread(save, False)
                         if procs is not None:
-                            yield _sse({"type": "conversation_procedures", "procedures": procs})
+                            yield _sse({"type": "conversation_procedures", "procedures": procs,
+                                        "references": sess.get("references") or []})
                     except Exception as e:
                         logger.error(f"❌ Réponse non enregistrée dans la conversation {conv['id']} : {e}")
                 yield chunk

@@ -158,7 +158,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [convPanelOpen, setConvPanelOpen] = useState(false);
     const [convVersionsKey, setConvVersionsKey] = useState<string | null>(null);
     const [pendingSaveKey, setPendingSaveKey] = useState<string | null>(null);
-    const [chatSources, setChatSources] = useState<ConversationSource[]>([]);
+    const [chatSources, setChatSources] = useState<{ sources: ConversationSource[]; references: string[] }>({ sources: [], references: [] });
+    const handleSourcesChange = useCallback((sources: ConversationSource[], references: string[]) => setChatSources({ sources, references }), []);
     // Conversation enregistrée en cours : une procédure enregistrée y est rattachée
     const conversationIdRef = useRef<string | null>(null);
     /** Côté serveur : la version enregistrée dans le référentiel (« modifiée depuis l'enregistrement » ensuite) */
@@ -1372,7 +1373,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         onRestoreProcedures={restoreProcedures}
                         onServerProcedures={applyServerProcedures}
                         onBeforeSend={flushServerEdits}
-                        onSourcesChange={setChatSources}
+                        onSourcesChange={handleSourcesChange}
                         procedureStates={procedureStates}
                         onSaveAll={canSave ? keys => { void startSaveAll(keys); } : undefined}
                         onArchiveProcedures={archiveProcedures}
@@ -1405,7 +1406,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             outputs={instances.map(i => ({ key: i.process_id, title: i.title, steps: i.data.length, status: i.status,
                                 archived: i.archived, version: i.version, saved_version: i.saved_version, workflow_db_id: i.workflow_db_id }))}
                             activeKey={activeInst?.process_id}
-                            sources={chatSources}
+                            sources={chatSources.sources}
+                            references={chatSources.references}
                             canSave={canSave}
                             versionsEnabled={serverModeRef.current && !!conversationIdRef.current}
                             onOpen={key => { const idx = instances.findIndex(i => i.process_id === key); if (idx >= 0) setActiveTab(idx); }}

@@ -188,7 +188,7 @@ interface ChatInterfaceProps {
     /** Fin d'un tour : les procédures de la conversation telles que le serveur les garde (il fait foi) */
     onServerProcedures?: (procedures: StoredProcedure[]) => void;
     /** Sources de la conversation (panneau « Cette conversation ») */
-    onSourcesChange?: (sources: ConversationSource[]) => void;
+    onSourcesChange?: (sources: ConversationSource[], references: string[]) => void;
     /** Juste avant d'envoyer un message : les corrections à la main en attente partent d'abord */
     onBeforeSend?: () => Promise<void>;
     /** procédures de la conversation remplacées ou retirées par le chat (true), ou rétablies (false) */
@@ -299,7 +299,9 @@ export default function ChatInterface({
     const [conversationId, setConversationIdState] = useState<string | null>(null);
     const conversationIdRef = useRef<string | null>(null);
     const [sources, setSources] = useState<ConversationSource[]>([]);
-    useEffect(() => { onSourcesChange?.(sources); }, [sources, onSourcesChange]);
+    /** fichiers désignés comme modèles de style par l'aiguillage */
+    const [references, setReferences] = useState<string[]>([]);
+    useEffect(() => { onSourcesChange?.(sources, references); }, [sources, references, onSourcesChange]);
     const [sourcesOpen, setSourcesOpen] = useState(false);
     const sourcesRef = useRef<HTMLDivElement>(null);
     // la liste des sources se ferme au clic ailleurs ou avec Échap
@@ -480,6 +482,7 @@ export default function ChatInterface({
             const saved = restoreGenerated && onRestoreProcedures && data.procedures?.length ? data.procedures : null;
             showStored(data.messages, false, !!saved);
             setSources(data.sources);
+            setReferences(data.references || []);
             setConversation(id);
             // après setConversation : les procédures reprises appartiennent à cette conversation
             if (saved) onRestoreProcedures!(saved, data.active_procedure ?? null, !!data.procedures_serveur);
@@ -744,6 +747,7 @@ export default function ChatInterface({
             case 'conversation_procedures':
                 // le serveur a écrit les procédures et leurs versions : l'écran reprend sa liste
                 onServerProcedures?.(ev.procedures || []);
+                if (Array.isArray(ev.references)) setReferences(ev.references);
                 break;
             case 'referential_proposal':
                 updateMsg(msgId, m => ({ ...m, referentiel: ev.proposal }));

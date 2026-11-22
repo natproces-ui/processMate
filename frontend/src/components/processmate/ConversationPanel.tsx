@@ -35,11 +35,13 @@ export function toSave(outputs: ConversationOutput[]): ConversationOutput[] {
         (!o.workflow_db_id || outputState(o).label.startsWith('Modifiée')));
 }
 
-export default function ConversationPanel({ outputs, activeKey, sources, canSave, versionsEnabled, onOpen, onRestore, onUpdate,
+export default function ConversationPanel({ outputs, activeKey, sources, references = [], canSave, versionsEnabled, onOpen, onRestore, onUpdate,
     onVersions, onSaveAll, onClose }: {
     outputs: ConversationOutput[];
     activeKey?: string | null;
     sources: ConversationSource[];
+    /** fichiers désignés comme modèles de style (forme, formulation), pas comme sources de contenu */
+    references?: string[];
     canSave: boolean;
     versionsEnabled: boolean;
     onOpen: (key: string) => void;
@@ -133,6 +135,10 @@ export default function ConversationPanel({ outputs, activeKey, sources, canSave
                                 <li key={s.id} className="flex items-center gap-2 py-1 text-sm text-neutral-800">
                                     <Icon className="w-3.5 h-3.5 shrink-0 text-neutral-500" />
                                     <span className="min-w-0 flex-1 truncate" title={s.filename}>{s.filename}</span>
+                                    {references.includes(s.filename) && (
+                                        <span title="Utilisé comme modèle de style, pas comme source de contenu"
+                                            className="shrink-0 rounded-full bg-neutral-100 px-1.5 text-[10px] font-semibold text-neutral-700">modèle</span>
+                                    )}
                                     <span className="shrink-0 text-[10px] uppercase text-neutral-400">{s.type}</span>
                                 </li>
                             );

@@ -136,6 +136,8 @@ async def get_conversation(conversation_id: str, user: AuthUser = Depends(requir
         "conversation": _public(conv),
         "messages": [{k: m.get(k) for k in ("id", "role", "content", "payload", "created_at")} for m in msgs],
         "sources": [_public_source(s) for s in srcs],
+        # fichiers désignés comme modèles de style (contexte utilisé, pas des sources de contenu)
+        "references": (conv.get("state") or {}).get("references") or [],
         **procedures,
     }
 

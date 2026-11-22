@@ -129,3 +129,22 @@ tout fonctionne comme avant. Pour couper : `CONVERSATION_PROCEDURES_SERVEUR=fals
 
 **Limite connue** : un déplacement des formes sur le diagramme sans changement d'étape n'est pas une correction envoyée au serveur
 (comme avant, la mise en page est gardée à l'écran ; elle est envoyée avec la prochaine correction de contenu).
+
+## 6. Panneau « Cette conversation » (22/11/2026)
+
+- **Sorties** : les procédures de la conversation avec leur état (brouillon, enregistrée, modifiée depuis l'enregistrement,
+  remplacée), leur version, « Mettre à jour le référentiel », « Versions », « Rétablir », et « Tout enregistrer ».
+- **Versions** d'une procédure : ce qui a changé à chaque message ou correction, comparaison avec l'état affiché,
+  retour à une version (qui en crée une nouvelle).
+- **Cartes des messages** : titre et étapes retenus par le serveur, état de chaque procédure, « Tout enregistrer » sous une
+  génération de plusieurs procédures.
+- **Tout enregistrer** : les procédures déjà enregistrées puis modifiées sont mises à jour à leur place ; les nouvelles sont
+  rangées au même endroit (fenêtre « Enregistrer » en mode plusieurs procédures : un emplacement, chacune sous son nom).
+- **Utilisés dans cette conversation** : sources jointes, et les fichiers désignés comme **modèles** de style.
+
+Vérifié dans le navigateur (serveur simulé) : états, versions et retour, Tout enregistrer (mise à jour + création + version
+enregistrée notée), cartes, fichier modèle ; parcours précédents inchangés.
+
+**Constat** : l'action « recherche » du chat (`web_search`) ne cherche pas sur internet : elle rédige une procédure à partir des
+connaissances du modèle, sans source. Aucune « recherche » n'est donc listée dans le panneau. Une vraie recherche (avec sources
+citées) est une décision à prendre.

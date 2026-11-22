@@ -95,7 +95,8 @@ export const conversationsApi = {
         call<{ conversation: ConversationSummary }>('', { method: 'POST', body: JSON.stringify(body) }).then(r => r.conversation),
     get: (id: string) =>
         call<{ conversation: ConversationSummary; messages: StoredMessage[]; sources: ConversationSource[];
-            procedures?: StoredProcedure[]; active_procedure?: string | null; procedures_serveur?: boolean }>(`/${id}`),
+            procedures?: StoredProcedure[]; active_procedure?: string | null; procedures_serveur?: boolean;
+            references?: string[] }>(`/${id}`),
     saveProcedures: (id: string, procedures: StoredProcedure[], active: string | null) =>
         call<{ success: boolean }>(`/${id}/procedures`, { method: 'PUT', body: JSON.stringify({ procedures, active }) }),
     /** Correction à la main d'une procédure de la conversation, à partir de la version `base_version` */
