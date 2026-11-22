@@ -238,6 +238,19 @@ CASES = [
     dict(id="int-sans-procedure", cat="interfaces", message="Quelles sont les interfaces ?",
          attendu=["repondre", "demander"], note="Aucune procédure dont lire les outils"),
 
+    # ── Analyses d'une procédure ─────────────────────────────────────────────────────────────────
+    dict(id="an-irritants", cat="analyses", conv=UNE, message="Quels sont les irritants de cette procédure ?", attendu=["analyse:irritants"]),
+    dict(id="an-coince", cat="analyses", conv=TROIS, active=1, message="Où ça coince dans Vérifier la fin de formation ?",
+         attendu=["analyse:irritants"], cible=3),
+    dict(id="an-ameliorer", cat="analyses", conv=UNE, message="Comment on pourrait améliorer ce processus ?", attendu=["analyse:ameliorations"]),
+    dict(id="an-automatiser", cat="analyses", conv=UNE, message="Qu'est-ce qu'on peut automatiser là-dedans ?", attendu=["analyse:ameliorations"]),
+    dict(id="an-conforme", cat="analyses", conv=UNE, message="Est-ce que cette procédure est conforme à la réglementation ?",
+         attendu=["analyse:reglementaire"]),
+    dict(id="an-obligations", cat="analyses", conv=UNE, message="Fais l'analyse réglementaire de cette procédure.", attendu=["analyse:reglementaire"]),
+    dict(id="an-modifier", cat="analyses", conv=UNE, message="Ajoute un contrôle de conformité après la saisie.", attendu=["modifier"],
+         note="Une demande de modification n'est pas une analyse"),
+    dict(id="an-sans-procedure", cat="analyses", message="Quels sont les irritants ?", attendu=["repondre", "demander"]),
+
     # ── Référentiel ──────────────────────────────────────────────────────────────────────────────
     dict(id="ref-sources", cat="referentiel", files=[CREDOC_MODIF, CREDOC_REAL, VIREMENTS],
          message="Propose-moi un référentiel pour ranger ces procédures.", attendu=["referentiel"]),

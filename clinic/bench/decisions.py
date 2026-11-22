@@ -92,9 +92,12 @@ async def decide(case: dict, files: list) -> dict:
         out["nombre"] = 1 if plan.search_produce else None
     elif plan.action == "generate":
         out["decision"] = "operation" if plan.replaces else "rediger"
+    elif plan.action == "analyse":
+        out["decision"] = f"analyse:{plan.analysis}"
+        out["cible"] = plan.target or (conv.index(active) + 1 if active else None)
     elif plan.action in simple:
         out["decision"] = simple[plan.action]
-        if plan.action == "interfaces":
+        if plan.action in ("interfaces", "analyse"):
             out["cible"] = plan.target or (conv.index(active) + 1 if active else None)
     elif plan.action == "analyze" and files:
         out["decision"] = "repondre_sources"
@@ -124,7 +127,7 @@ def judge(case: dict, got: dict) -> list:
     if "remplace" in case and got["decision"] in ("operation", "retirer", "fusionner", "rediger") \
             and sorted(got["remplace"]) != sorted(case["remplace"]):
         errors.append(f"refait {got['remplace']} au lieu de {case['remplace']}")
-    if case.get("cible") and got["decision"] in ("modifier", "interfaces") and got["cible"] != case["cible"]:
+    if case.get("cible") and (got["decision"] in ("modifier", "interfaces") or got["decision"].startswith("analyse"))             and got["cible"] != case["cible"]:
         errors.append(f"modifie la procédure {got['cible']} au lieu de {case['cible']}")
     return errors
 

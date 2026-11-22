@@ -73,6 +73,30 @@ class GuardrailTests(unittest.TestCase):
         # une modification quand des procédures existent mais qu'aucune n'est affichée
         self.assertEqual(apply_guardrails({"action": "edit", "cible": 1}, [], False, None, 2, ["A", "B"]).chat_intent, "patch")
 
+    def test_procedure_analyses(self):
+        plan = apply_guardrails({"action": "analyse", "analyse": "irritants", "cible": 2}, [], True, None, 2, ["A", "B"])
+        self.assertEqual((plan.action, plan.analysis, plan.target), ("analyse", "irritants", 2))
+        self.assertEqual(apply_guardrails({"action": "analyse", "analyse": "?"}, [], True, None, 1, ["A"]).analysis, "ameliorations")
+        self.assertEqual(apply_guardrails({"action": "analyse", "analyse": "reglementaire"}, [], False).action, "answer")
+
+    def test_analysis_text_cites_real_steps_only(self):
+        from processor import procedure_analysis as pa
+        proc = {"title": "Credoc", "workflow": [{"id": "1", "étape": "Recevoir"}, {"id": "2", "étape": "Valider"}]}
+        els = [{"titre": "Double saisie", "categorie": "Rupture d'information", "niveau": "Élevé", "etapes": ["2", "9"],
+                "constat": "La demande est ressaisie.", "pistes": [{"titre": "Interfacer", "description": "Lire le SWIFT."}]}]
+        pa._valid_steps(els, proc)
+        self.assertEqual(els[0]["etapes"], ["2"])
+        text = pa.render("irritants", "Credoc", els)
+        self.assertIn("**Double saisie** (étape 2)", text)
+        self.assertNotIn("Remarque", text)
+        reg = pa.render("reglementaire", "Credoc", [
+            {"exigence": "Déclaration à l'Office des changes", "statut": "absente", "etapes": [], "constat": "Aucune étape.",
+             "action": "Ajouter la déclaration.", "source": {"domain": "oc.gov.ma"}},
+            {"exigence": "Contrôle LAB-FT", "statut": "couverte", "etapes": ["2"], "constat": "Fait au visa.", "action": ""}])
+        self.assertIn("1 couverte, 0 partielle, 1 absente", reg)
+        self.assertLess(reg.index("Déclaration"), reg.index("LAB-FT"))  # les absentes d'abord
+        self.assertIn("Source : oc.gov.ma", reg)
+
     def test_interfaces_of_a_procedure(self):
         plan = apply_guardrails({"action": "interfaces", "cible": 2}, [], True, None, 3, ["A", "B", "C"])
         self.assertEqual((plan.action, plan.target), ("interfaces", 2))

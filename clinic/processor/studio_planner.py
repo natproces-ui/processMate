@@ -23,7 +23,8 @@ from prompts.studio_planner_prompt import build_planner_prompt
 logger = logging.getLogger(__name__)
 
 ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer", "transcribe", "ask",
-           "explain", "search", "interfaces"}
+           "explain", "search", "interfaces", "analyse"}
+ANALYSES = {"irritants", "ameliorations", "reglementaire"}
 # Ce que le chat exécute quand l'aiguillage lui confie le tour (le chat ne reclasse plus la demande)
 TRANSCRIBE_MODES = {"image_only", "text_only", "combined"}
 # Au-delà, on ne génère pas sans que l'utilisateur ait validé la sélection
@@ -48,6 +49,8 @@ class StudioPlan:
     target: Optional[int] = None
     # recherche sur internet : en tirer une procédure (sinon : répondre avec les sources)
     search_produce: bool = False
+    # analyse d'une procédure : irritants, ameliorations, reglementaire
+    analysis: Optional[str] = None
     transcribe_mode: str = "combined"
 
     def to_dict(self) -> Dict[str, Any]:
@@ -260,6 +263,15 @@ def apply_guardrails(
             adjustments.append(f"{len(targets) - len(fresh)} procédure(s) déjà dans la conversation non régénérée(s)")
             targets = fresh
 
+    # Analyse d'une procédure : un type connu, et une procédure à analyser
+    analysis = data.get("analyse") if data.get("analyse") in ANALYSES else None
+    if action == "analyse" and not analysis:
+        analysis = "ameliorations"
+        adjustments.append("analyse sans type : pistes d'amélioration")
+    if action == "analyse" and not conversation_count and not has_workflow:
+        action, analysis = "answer", None
+        reply = reply or "Il n'y a pas encore de procédure à analyser : formalisons-la d'abord, ou joignez-la."
+        adjustments.append("analyse sans procédure")
     # Interfaces : il faut une procédure dont lire les outils
     if action == "interfaces" and not conversation_count and not has_workflow:
         action = "answer"
@@ -295,6 +307,7 @@ def apply_guardrails(
         chat_intent=chat_intent,
         target=target,
         search_produce=bool(action == "search" and data.get("produire")),
+        analysis=analysis if action == "analyse" else None,
         transcribe_mode=mode,
     )
 

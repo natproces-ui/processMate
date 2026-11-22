@@ -504,6 +504,44 @@ async def _stream_interfaces(proc: Dict[str, Any]):
                 "label": f"Interfaces repérées · {len(interfaces)} système{'s' if len(interfaces) > 1 else ''}"})
 
 
+async def _stream_procedure_analysis(proc: Dict[str, Any], kind: str, message: str, history: List[Dict[str, str]]):
+    """Irritants, pistes d'amélioration ou analyse réglementaire d'une procédure (processor/procedure_analysis.py).
+    Le réglementaire commence par une vraie recherche sur internet ; ses sources accompagnent la réponse."""
+    from processor import procedure_analysis as pa
+    title = proc.get("title") or "la procédure"
+    found = None
+    if kind == "reglementaire":
+        from processor import web_search
+        yield _sse({"type": "status", "id": "search", "label": "Je cherche les textes applicables sur internet", "state": "running"})
+        try:
+            found = await asyncio.to_thread(web_search.search, pa.regulatory_question(proc, message), history)
+            n = len(found["sources"])
+            yield _sse({"type": "web_search", "queries": found["queries"], "sources": found["sources"]})
+            yield _sse({"type": "status", "id": "search", "state": "done",
+                        "label": f"Recherche sur internet · {n} source{'s' if n > 1 else ''}" if n else "Recherche sur internet · aucune source"})
+        except Exception as e:
+            logger.warning(f"⚠️ Recherche réglementaire impossible : {str(e)[:200]}")
+            yield _sse({"type": "status", "id": "search", "label": "Recherche interrompue", "state": "done"})
+            yield _sse({"type": "message", "text": "La recherche des textes applicables n'a pas abouti. Pouvez-vous réessayer ?"})
+            return
+    label = {"irritants": "Je repère les irritants", "ameliorations": "Je cherche des pistes d'amélioration",
+             "reglementaire": "Je compare la procédure aux exigences trouvées"}[kind]
+    yield _sse({"type": "status", "id": "analyse", "label": f"{label} de « {title} »", "state": "running"})
+    try:
+        with routing_scope(TaskKind.RELECTURE_CRITIQUE, ["texte"]):
+            result = await asyncio.to_thread(pa.analyse, kind, proc, message, found)
+    except Exception as e:
+        logger.warning(f"⚠️ Analyse {kind} indisponible : {str(e)[:200]}")
+        yield _sse({"type": "message", "text": "Je n'ai pas pu terminer l'analyse. Pouvez-vous réessayer ?"})
+        yield _sse({"type": "status", "id": "analyse", "label": "Analyse interrompue", "state": "done"})
+        return
+    n = len(result["elements"])
+    yield _sse({"type": "message", "text": result["text"]})
+    yield _sse({"type": "analysis", "kind": kind, "titre": result["titre"], "procedure_key": proc.get("key"), "title": title,
+                "elements": result["elements"]})
+    yield _sse({"type": "status", "id": "analyse", "state": "done", "label": f"{result['titre']} · {n} élément{'s' if n > 1 else ''}"})
+
+
 def _guest(request: Request, user: Optional[AuthUser]):
     """Clés de comptage d'un invité, ou None (utilisateur connecté, ou limites désactivées)."""
     if user is not None or not load_limits().enabled:
@@ -802,7 +840,7 @@ async def studio_turn(
                 elif read_label and plan.action != "edit":
                     yield _sse({"type": "status", "id": "think", "label": read_label, "state": "done"})
                 # edit : le chat remplace la ligne par ce qu'il va faire
-                if plan.reply and plan.action not in ("analyze", "explain", "search", "interfaces"):
+                if plan.reply and plan.action not in ("analyze", "explain", "search", "interfaces", "analyse"):
                     yield _sse({"type": "message", "text": plan.reply})
 
                 if plan.procedures:
@@ -826,13 +864,15 @@ async def studio_turn(
                 elif plan.action == "structure":
                     async for ev in _stream_structure(sess, to_plan, message, history_list):
                         yield ev
-                elif plan.action == "interfaces":
+                elif plan.action in ("interfaces", "analyse"):
                     target = conv_procs[plan.target - 1] if plan.target else \
                         next((p for p in conv_procs if p.get("key") == active_procedure), None)
                     if target is None:  # procédure affichée hors conversation (ouverte depuis la bibliothèque)
                         target = {"key": active_procedure, "title": (_loads(current_procedure_metadata, {}) or {}).get("title"),
-                                  "workflow": workflow or []}
-                    async for ev in _stream_interfaces(target):
+                                  "workflow": workflow or [], "enrichments": _loads(current_enrichments, {}) or {}}
+                    stream_fn = _stream_interfaces(target) if plan.action == "interfaces" else \
+                        _stream_procedure_analysis(target, plan.analysis or "ameliorations", message, history_list)
+                    async for ev in stream_fn:
                         yield ev
                 elif plan.action == "search":
                     # vraie recherche sur internet : réponse avec ses sources, ou matière d'une procédure

@@ -98,6 +98,15 @@ des documents et à répondre à des questions.
    mémoire (« quelle est la réglementation Bank Al-Maghrib sur les transferts en devises en 2026 ? »). La réponse citera
    ses sources. "produire": true si l'utilisateur veut ensuite une procédure construite à partir de ce qui sera trouvé
    (« cherche les règles et fais-en la procédure ») ; sinon false (répondre). Laisse "reply" vide.
+"analyse" → l'utilisateur veut une ANALYSE d'une procédure de la conversation. "analyse" précise laquelle :
+   - "irritants" : ce qui gêne, bloque, ralentit, les ruptures d'information, ressaisies, attentes (« quels sont les
+     irritants ? », « où ça coince ? », « qu'est-ce qui ralentit ce processus ? ») ;
+   - "ameliorations" : comment l'améliorer, l'optimiser, l'automatiser, la simplifier, même sans problème visible
+     (« comment améliorer cette procédure ? », « que peut-on automatiser ? », « optimise-la », « détecte les améliorations ») ;
+   - "reglementaire" : sa conformité à la réglementation, les exigences qui s'y appliquent (« est-elle conforme ? »,
+     « analyse réglementaire », « quelles obligations Bank Al-Maghrib s'appliquent ? ») — une recherche sur internet sera faite.
+   "cible" = la procédure. Laisse "reply" vide. Une demande de MODIFIER la procédure reste "edit" ; une question générale sur
+   la réglementation, sans procédure à comparer, reste "search".
 "interfaces" → l'utilisateur veut les interfaces applicatives d'une procédure de la conversation : les systèmes
    utilisés, à quelles tâches, les connexions et échanges entre outils (« quelles sont les interfaces ? », « quels
    systèmes interviennent dans Vérifier ? », « fais-moi la cartographie des flux applicatifs »). "cible" = la procédure.
@@ -108,7 +117,7 @@ des documents et à répondre à des questions.
 Créer une procédure à partir du seul texte du message ("generate" sans fichier) demande de quoi la rédiger : une
 description du processus, ou au moins un sujet précis (« fais la procédure de virement SWIFT »). Sinon "ask".
 
-PROCÉDURE VISÉE ("cible", pour "edit", "explain" et "interfaces") : le numéro de la procédure de la conversation dont parle le message —
+PROCÉDURE VISÉE ("cible", pour "edit", "explain", "interfaces" et "analyse") : le numéro de la procédure de la conversation dont parle le message —
 celle qu'il nomme ou désigne (titre, sujet, acteur ou étape qui n'existe que dans elle), ou celle sur laquelle portait la
 discussion récente si le message en est la suite ; sinon celle marquée "affichee". Si une modification peut concerner
 plusieurs procédures sans qu'on puisse trancher → "ask", en citant leurs titres.
@@ -147,7 +156,8 @@ nombre de procédures distinctes (pense aux variantes décrites séparément, ex
 
 Réponds UNIQUEMENT avec ce JSON :
 {
-  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "explain" | "search" | "interfaces" | "answer",
+  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "explain" | "search" | "interfaces" | "analyse" | "answer",
+  "analyse": null,        // analyse : "irritants" | "ameliorations" | "reglementaire"
   "cible": null,          // edit, explain, interfaces : numéro de la procédure de la conversation visée
   "mode": "modifier",     // edit : "modifier" ou "refaire" (à partir d'un fichier joint)
   "transcribe_mode": "combined",

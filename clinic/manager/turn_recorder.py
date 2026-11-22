@@ -85,6 +85,10 @@ class TurnRecorder:
             self.payload["remarks"] = self.payload.get("remarks", "") + (ev.get("text") or "")
         elif t == "suggestions":
             self.payload["suggestions"] = ev.get("items") or []
+        elif t == "analysis":
+            # analyse d'une procédure (irritants, améliorations, réglementaire) : éléments structurés gardés avec le message
+            self.payload.setdefault("analyses", []).append(
+                {k: ev.get(k) for k in ("kind", "titre", "procedure_key", "title", "elements")})
         elif t == "web_search":
             # recherche sur internet : requêtes et sources, affichées avec la réponse et dans le panneau
             self.payload.setdefault("searches", []).append({"queries": ev.get("queries") or [], "sources": ev.get("sources") or []})
