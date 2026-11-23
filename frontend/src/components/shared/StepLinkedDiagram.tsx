@@ -31,8 +31,24 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
     onSelectRef.current = onSelect;
     const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
 
+    /** À la largeur du cadre, depuis le haut : un logigramme haut, mis en entier dans le cadre, devient
+     *  illisible ; on descend à la molette (Ctrl + molette pour zoomer). */
+    const fitWidth = () => {
+        const canvas = viewerRef.current?.get('canvas');
+        const el = host.current;
+        if (!canvas || !el) return;
+        try {
+            const box = el.getBoundingClientRect();
+            if (box.width < 40 || box.height < 40) return;
+            const inner = canvas.viewbox().inner;
+            if (!inner?.width) return;
+            const zoom = Math.min(1, (box.width - 40) / inner.width);
+            canvas.viewbox({ x: inner.x - 20 / zoom, y: inner.y - 20 / zoom, width: box.width / zoom, height: box.height / zoom });
+        } catch { /* cadre sans taille */ }
+    };
+
     useImperativeHandle(ref, () => ({
-        fit: () => viewerRef.current?.get('canvas').zoom('fit-viewport', 'auto'),
+        fit: fitWidth,
         zoomIn: () => { const c = viewerRef.current?.get('canvas'); if (c) c.zoom(c.zoom() * 1.2); },
         zoomOut: () => { const c = viewerRef.current?.get('canvas'); if (c) c.zoom(c.zoom() / 1.2); },
     }));
@@ -50,7 +66,7 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
                 viewerRef.current = viewer;
                 await viewer.importXML(xml);
                 if (cancelled) return;
-                viewer.get('canvas').zoom('fit-viewport', 'auto');
+                fitWidth();
                 viewer.get('eventBus').on('element.click', (e: any) => {
                     const el = e.element;
                     onSelectRef.current?.(isStepShape(el) ? stepIdOf(el.id) : null);

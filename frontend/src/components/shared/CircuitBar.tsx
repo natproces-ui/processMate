@@ -71,8 +71,8 @@ export default function CircuitBar({ procedureId, onSave, refreshKey = 0 }: {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 {ctx.campagne && (
                     <span className="inline-flex items-center gap-1 font-medium text-slate-800">
-                        <Megaphone className="w-3.5 h-3.5 text-amber-600" />{ctx.campagne.title}
-                        {ctx.campagne.echeance && <span className="font-normal text-slate-500">, échéance {new Date(ctx.campagne.echeance).toLocaleDateString('fr-FR')}</span>}
+                        <Megaphone className="w-3.5 h-3.5 text-petrole" />
+                        <span>{ctx.campagne.title}{ctx.campagne.echeance && <span className="font-normal text-slate-500">, échéance le {new Date(ctx.campagne.echeance).toLocaleDateString('fr-FR')}</span>}</span>
                     </span>
                 )}
                 <span>R : {names(ctx.raci.R)}</span>

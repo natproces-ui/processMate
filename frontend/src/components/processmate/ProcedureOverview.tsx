@@ -38,7 +38,6 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
         if (selected) cardRefs.current[selected]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }, [selected]);
 
-    const steps = rows.filter(r => !isEvent(r.typeBpmn));
     const actors = new Set(rows.map(r => r.acteur).filter(Boolean)).size;
 
     return (
@@ -57,7 +56,7 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
             <section aria-label="Détail des étapes" className="flex min-h-[320px] flex-[2] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:min-w-[380px] lg:max-w-[560px]">
                 <div className="flex items-baseline justify-between border-b border-neutral-200 px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-neutral-900">Détail des étapes</h3>
-                    <span className="text-[11px] text-neutral-500">{steps.length} étape{steps.length > 1 ? 's' : ''}, {actors} acteur{actors > 1 ? 's' : ''}</span>
+                    <span className="text-[11px] text-neutral-500">{rows.length} étape{rows.length > 1 ? 's' : ''}, {actors} acteur{actors > 1 ? 's' : ''}</span>
                 </div>
                 <ol className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
                     {rows.map(r => {
