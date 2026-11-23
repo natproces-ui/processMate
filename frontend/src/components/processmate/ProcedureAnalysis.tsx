@@ -4,7 +4,7 @@
 // le logigramme à droite, où les étapes concernées sont signalées. Cliquer une défaillance montre ses étapes ;
 // cliquer une étape du logigramme ne garde que les défaillances qui la touchent. Les pistes se retiennent ou s'écartent
 // sur place (atelier de conception de la cible).
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { AlertCircle, Check, Loader2, Scan, X, ZoomIn, ZoomOut } from 'lucide-react';
 import type { Table1Row } from '@/logic/types';
 import StepLinkedDiagram, { type StepLinkedDiagramHandle } from '@/components/shared/StepLinkedDiagram';
@@ -35,12 +35,17 @@ function splitDescription(d = '') {
     return { constat: constat.trim(), effet: effet?.trim(), note: rest.join(' ').trim() };
 }
 
-export default function ProcedureAnalysis({ procedureId, xml, rows }: { procedureId: string; xml: string; rows: Table1Row[] }) {
+export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }: {
+    procedureId: string; xml: string; rows: Table1Row[];
+    /** zoom et légende tenus par la barre de commandes : rien n'est posé sur le dessin */
+    diagramRef?: RefObject<StepLinkedDiagramHandle | null>;
+}) {
     const [items, setItems] = useState<Irritant[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [activeIrr, setActiveIrr] = useState<string | null>(null);
     const [stepFilter, setStepFilter] = useState<string | null>(null);
-    const diagram = useRef<StepLinkedDiagramHandle>(null);
+    const ownDiagram = useRef<StepLinkedDiagramHandle>(null);
+    const diagram = diagramRef ?? ownDiagram;
     const cardRefs = useRef<Record<string, HTMLElement | null>>({});
 
     useEffect(() => {
@@ -180,14 +185,14 @@ export default function ProcedureAnalysis({ procedureId, xml, rows }: { procedur
             {/* Logigramme : étapes concernées signalées */}
             <div className="relative min-h-[360px] flex-[3] overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected} markedIds={marked} onSelect={onDiagramSelect} />
-                <div className="absolute left-3 top-3 rounded-lg border border-neutral-200 bg-white/95 px-2 py-1 text-[11px] text-neutral-700 shadow-sm">
+                {!diagramRef && <div className="absolute left-3 top-3 rounded-lg border border-neutral-200 bg-white/95 px-2 py-1 text-[11px] text-neutral-700 shadow-sm">
                     <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm border-2 border-amber-500 align-middle" />étape touchée par une défaillance
-                </div>
-                <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
+                </div>}
+                {!diagramRef && <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
                     <button type="button" aria-label="Dézoomer" onClick={() => diagram.current?.zoomOut()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomOut className="h-4 w-4" /></button>
                     <button type="button" aria-label="Zoomer" onClick={() => diagram.current?.zoomIn()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomIn className="h-4 w-4" /></button>
                     <button type="button" aria-label="Ajuster" onClick={() => diagram.current?.fit()} className="p-1.5 hover:bg-neutral-100"><Scan className="h-4 w-4" /></button>
-                </div>
+                </div>}
             </div>
         </div>
     );

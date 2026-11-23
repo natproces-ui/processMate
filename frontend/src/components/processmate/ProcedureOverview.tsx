@@ -2,7 +2,7 @@
 
 // Vue d'ensemble : le logigramme et le détail de chaque étape affichés ensemble, reliés dans les deux sens.
 // Cliquer une forme du logigramme amène son étape dans le détail ; cliquer une étape la montre sur le logigramme.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Diamond, Play, Scan, Square, ZoomIn, ZoomOut, Circle } from 'lucide-react';
 import type { Table1Row } from '@/logic/types';
 import type { TaskEnrichment } from '@/logic/bpmnTypes';
@@ -20,13 +20,16 @@ function TypeIcon({ type }: { type: string }) {
     return <Square className={cls} aria-label="Tâche" />;
 }
 
-export default function ProcedureOverview({ xml, rows, enrichments }: {
+export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }: {
     xml: string;
+    /** zoom piloté de l'extérieur (barre de commandes) : les boutons sur le dessin disparaissent */
+    diagramRef?: RefObject<StepLinkedDiagramHandle | null>;
     rows: Table1Row[];
     enrichments: Map<string, TaskEnrichment>;
 }) {
     const [selected, setSelected] = useState<string | null>(null);
-    const diagram = useRef<StepLinkedDiagramHandle>(null);
+    const ownDiagram = useRef<StepLinkedDiagramHandle>(null);
+    const diagram = diagramRef ?? ownDiagram;
     const cardRefs = useRef<Record<string, HTMLLIElement | null>>({});
     const byId = useMemo(() => new Map(rows.map(r => [r.id, r])), [rows]);
 
@@ -43,11 +46,11 @@ export default function ProcedureOverview({ xml, rows, enrichments }: {
             {/* Logigramme */}
             <div className="relative min-h-[360px] flex-[3] overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected ? [selected] : []} onSelect={setSelected} />
-                <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
+                {!diagramRef && <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
                     <button type="button" aria-label="Dézoomer" onClick={() => diagram.current?.zoomOut()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomOut className="h-4 w-4" /></button>
                     <button type="button" aria-label="Zoomer" onClick={() => diagram.current?.zoomIn()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomIn className="h-4 w-4" /></button>
                     <button type="button" aria-label="Ajuster" onClick={() => diagram.current?.fit()} className="p-1.5 hover:bg-neutral-100"><Scan className="h-4 w-4" /></button>
-                </div>
+                </div>}
             </div>
 
             {/* Détail des étapes */}

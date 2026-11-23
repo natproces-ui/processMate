@@ -37,6 +37,7 @@ import { exportAll, exportOne, type ExportableProcedure, type ExportKind } from 
 import ConversationVersionsModal from '@/components/processmate/ConversationVersionsModal';
 import ProcedureOverview from '@/components/processmate/ProcedureOverview';
 import ProcedureAnalysis from '@/components/processmate/ProcedureAnalysis';
+import type { StepLinkedDiagramHandle } from '@/components/shared/StepLinkedDiagram';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
 import CircuitBar from '@/components/shared/CircuitBar';
@@ -376,7 +377,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     });
                 }
                 const xml = savedBpmnXml || generateBPMNSimple(workflow, title);
-                setInstances([{ process_id: proc.id, title, category: proc.category, data: workflow, enrichments: enrichMap, bpmnXml: xml, metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: proc.metadata || { nom: title }, status: 'ready', workflow_db_id: proc.id }]);
+                setInstances([{ process_id: proc.id, title, category: proc.taxonomy_id && proc.category === 'Non classé' ? undefined : proc.category, data: workflow, enrichments: enrichMap, bpmnXml: xml, metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: proc.metadata || { nom: title }, status: 'ready', workflow_db_id: proc.id }]);
                 setActiveTab(0); setPhase('editing'); setUploadOpen(false);
                 showSuccess(`Procédure "${title}" chargée`);
             })
@@ -1202,6 +1203,55 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         finally { setNavBusy(false); }
     };
 
+    // ── Barre de commandes de la vue (comme le ruban d'Outlook) : les actions de ce qui est affiché, au même endroit,
+    // jamais posées sur le contenu. Les flèches ↶ ↷ restent à droite, quelle que soit la vue.
+    const linkedDiagram = useRef<StepLinkedDiagramHandle>(null);
+    const onDiagram = view === 'bpmn';
+    const zoom = (k: 'in' | 'out' | 'fit') => {
+        if (onDiagram) { const e = activeEditor(); if (k === 'in') e?.zoomIn(); else if (k === 'out') e?.zoomOut(); else e?.zoomFit(); }
+        else { const d = linkedDiagram.current; if (k === 'in') d?.zoomIn(); else if (k === 'out') d?.zoomOut(); else d?.fit(); }
+    };
+    const canExport = exportAllowed && activeData.length > 0 && activeInst?.status !== 'generating';
+    const cmd = 'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40';
+    const sep = <span aria-hidden className="mx-1 h-4 w-px bg-neutral-200" />;
+    const hasDiagram = !!activeBpmnXml && activeData.length > 0 && (view === 'bpmn' || view === 'ensemble' || (view === 'analyse' && !!analysisId));
+    const viewCommands: React.ReactNode[] = [];
+    if (view === 'table' && canExport) viewCommands.push(
+        <button key="xlsx" type="button" className={cmd} disabled={!!exporting} onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'xlsx', activeTab)}
+            title="Le tableau des étapes au format Excel">
+            {exporting === 'xlsx' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Excel</button>);
+    if (onDiagram && canExport) viewCommands.push(
+        <button key="png" type="button" className={cmd} disabled={!!exporting}
+            onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'png', activeTab, viewMode === 'outillage')}
+            title={viewMode === 'outillage' ? 'Image de la Vue IT (PNG), à coller dans un document' : 'Image du logigramme (PNG), à coller dans un document ou une présentation'}>
+            {exporting === 'png' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Image</button>);
+    if (onDiagram && viewMode === 'metier' && activeBpmnXml) viewCommands.push(
+        <button key="palette" type="button" onClick={togglePalette} aria-pressed={paletteOpen}
+            title={paletteOpen ? 'Masquer la palette d’outils' : 'Ajouter des tâches, décisions et flux sur le logigramme'}
+            className={`${cmd} ${paletteOpen ? '!bg-neutral-900 !text-white' : ''}`}><Shapes className="w-3.5 h-3.5" />Palette d’outils</button>);
+    if (hasDiagram) viewCommands.push(
+        <span key="zoom" className="inline-flex items-center">
+            <button type="button" className={cmd} onClick={() => zoom('out')} title="Dézoomer" aria-label="Dézoomer"><ZoomOut className="w-4 h-4" /></button>
+            <button type="button" className={cmd} onClick={() => zoom('in')} title="Zoomer" aria-label="Zoomer"><ZoomIn className="w-4 h-4" /></button>
+            <button type="button" className={cmd} onClick={() => zoom('fit')} title="Ajuster à la largeur"><Scan className="w-3.5 h-3.5" />Ajuster</button>
+        </span>);
+    if (view === 'analyse' && hasDiagram) viewCommands.push(
+        <span key="legende" className="inline-flex items-center gap-1.5 px-2 text-[11px] text-neutral-600">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm border-2 border-amber-500" />étape touchée par une défaillance</span>);
+    const commandBar = viewCommands.length > 0 || historyNav ? (
+        <div role="toolbar" aria-label="Commandes de la vue" className="-mx-1 mt-1 flex min-h-[34px] flex-wrap items-center border-t border-neutral-200 pt-1">
+            {viewCommands.map((c, i) => <span key={i} className="inline-flex items-center">{i > 0 && sep}{c}</span>)}
+            {historyNav && (
+                <span className="ml-auto inline-flex items-center">
+                    <button type="button" onClick={() => void stepVersion(-1)} disabled={!historyNav.canUndo || navBusy}
+                        title="Revenir à l’état précédent" aria-label="Revenir à l’état précédent" className={cmd}><Undo2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => void stepVersion(1)} disabled={!historyNav.canRedo || navBusy}
+                        title="Rétablir l’état suivant" aria-label="Rétablir l’état suivant" className={cmd}><Redo2 className="w-4 h-4" /></button>
+                </span>
+            )}
+        </div>
+    ) : null;
+
     /** Corrections à la main : envoyées procédure par procédure, à partir de leur version (le serveur refuse si elle a changé) */
     const flushServerEdits = useCallback(async () => {
         const id = conversationIdRef.current;
@@ -1595,16 +1645,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 </p>
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2">
-                                {historyNav && (
-                                    <div className="flex items-center">
-                                        <button type="button" onClick={() => void stepVersion(-1)} disabled={!historyNav.canUndo || navBusy}
-                                            title="Revenir à l’état précédent" aria-label="Revenir à l’état précédent"
-                                            className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-30"><Undo2 className="w-4 h-4" /></button>
-                                        <button type="button" onClick={() => void stepVersion(1)} disabled={!historyNav.canRedo || navBusy}
-                                            title="Rétablir l’état suivant" aria-label="Rétablir l’état suivant"
-                                            className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100 disabled:opacity-30"><Redo2 className="w-4 h-4" /></button>
-                                    </div>
-                                )}
                                 {canSave && <button type="button" onClick={() => {
                                     const inst = instances.length > 0 ? activeInst : null;
                                     if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
@@ -1682,6 +1722,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             </div>
 
                         </div>
+                        {commandBar}
                     </div>
 
                     {error && <div className="fixed top-16 right-6 z-50 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><AlertCircle className="w-4 h-4 flex-shrink-0" /><span>{error}</span></div>}
@@ -1735,22 +1776,14 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             </div>
                         ) : view === 'ensemble' ? (
                             activeData.length > 0 && activeBpmnXml
-                                ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} />
+                                ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} diagramRef={linkedDiagram} />
                                 : <p className="text-sm text-neutral-500">{activeData.length === 0 ? 'Aucune étape pour l’instant.' : 'Préparation du logigramme…'}</p>
                         ) : view === 'analyse' && analysisId ? (
                             activeData.length > 0 && activeBpmnXml
-                                ? <ProcedureAnalysis procedureId={analysisId} xml={activeBpmnXml} rows={activeData} />
+                                ? <ProcedureAnalysis procedureId={analysisId} xml={activeBpmnXml} rows={activeData} diagramRef={linkedDiagram} />
                                 : <p className="text-sm text-neutral-500">Préparation du logigramme…</p>
                         ) : view === 'table' ? (
                             <>
-                                {exportAllowed && activeData.length > 0 && (
-                                    <div className="flex justify-end">
-                                        <button type="button" onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'xlsx', activeTab)} disabled={!!exporting}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40">
-                                            {exporting === 'xlsx' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Télécharger (Excel)
-                                        </button>
-                                    </div>
-                                )}
                                 <Table
                                     data={activeData} enrichments={activeEnrichments}
                                     processTitle={activeTitle} hideTitle
@@ -1793,33 +1826,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             <Minimize2 className="w-4 h-4 text-slate-600" />
                                         </button>
                                     )}
-                                    <div className={`absolute top-3 z-10 ${editorFullscreen ? 'right-14' : 'right-3'} flex items-center gap-1.5`}>
-                                    {exportAllowed && activeData.length > 0 && (
-                                        <button type="button" disabled={!!exporting}
-                                            onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'png', activeTab, viewMode === 'outillage')}
-                                            title={viewMode === 'outillage' ? 'Image de la Vue IT (PNG), à coller dans un document' : 'Image du logigramme (PNG), à coller dans un document ou une présentation'}
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-100 disabled:opacity-40">
-                                            {exporting === 'png' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Télécharger l’image
-                                        </button>
-                                    )}
-                                    {viewMode === 'metier' && (
-                                        <button type="button" onClick={togglePalette} aria-pressed={paletteOpen}
-                                            title={paletteOpen ? 'Masquer la palette d’outils' : 'Ajouter des tâches, décisions et flux sur le logigramme'}
-                                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium shadow-sm ${paletteOpen ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100'}`}>
-                                            <Shapes className="w-3.5 h-3.5" />Palette d’outils
-                                        </button>
-                                    )}
-                                    </div>
-                                    <div className="absolute bottom-3 right-3 z-10 flex items-center rounded-lg border border-neutral-300 bg-white shadow-sm overflow-hidden">
-                                        <button type="button" title="Dézoomer" aria-label="Dézoomer" onClick={() => activeEditor()?.zoomOut()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomOut className="w-4 h-4 text-neutral-900" /></button>
-                                        <button type="button" title="Zoomer" aria-label="Zoomer" onClick={() => activeEditor()?.zoomIn()} className="p-1.5 hover:bg-neutral-100 border-r border-neutral-300"><ZoomIn className="w-4 h-4 text-neutral-900" /></button>
-                                        <button type="button" title="Ajuster à la largeur" aria-label="Ajuster à la largeur" onClick={() => activeEditor()?.zoomFit()} className="p-1.5 hover:bg-neutral-100"><Scan className="w-4 h-4 text-neutral-900" /></button>
-                                    </div>
                                     <div className="flex flex-1 min-h-0">
                                         <div className="flex-1 min-w-0">
                                             {instances.length > 0
-                                                ? <BpmnEditor ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} paletteOpen={paletteOpen} />
-                                                : <BpmnEditor ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} paletteOpen={paletteOpen} />
+                                                ? <BpmnEditor key={`proc-${activeInst?.process_id ?? activeTab}`} ref={el => { editorRefs.current[activeTab] = el; }} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setInstances(prev => prev.map((inst, i) => i === activeTab ? { ...inst, bpmnXml: xml } : inst)); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} paletteOpen={paletteOpen} />
+                                                : <BpmnEditor key="single" ref={editorRef} initialXml={activeBpmnXml} onChange={xml => { if (viewMode === 'metier') setBpmnXml(xml); }} onError={showError} onReady={() => { }} onModelerReady={m => { modelerRef.current = m; }} highlightStepIds={Array.from(recentAiChangedStepIds)} onStepHover={(id, rect) => setHoveredStep(id && rect ? { id, rect } : null)} paletteOpen={paletteOpen} />
                                             }
                                         </div>
                                     </div>
