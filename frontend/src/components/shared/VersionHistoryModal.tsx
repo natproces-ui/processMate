@@ -75,8 +75,8 @@ export default function VersionHistoryModal({ procedureId, currentWorkflow, onCl
                             <li key={v.id}>
                                 <button type="button" onClick={() => select(v)}
                                     className={`w-full text-left px-4 py-2.5 border-b border-slate-50 hover:bg-slate-50 ${selected?.id === v.id ? 'bg-blue-50' : ''}`}>
-                                    <span className="block text-sm font-medium text-slate-800">Version {v.version} · {SOURCE_LABEL[v.source]}</span>
-                                    <span className="block text-[11px] text-slate-400">{new Date(v.created_at).toLocaleString('fr-FR')} · {v.steps} étapes</span>
+                                    <span className="block text-sm font-medium text-slate-800">Version {v.version}, {SOURCE_LABEL[v.source]}</span>
+                                    <span className="block text-[11px] text-slate-400">{new Date(v.created_at).toLocaleString('fr-FR')}, {v.steps} étapes</span>
                                 </button>
                             </li>
                         ))}

@@ -354,7 +354,7 @@ function ForceGraph({ irritants, procedures }: Props) {
                     <span className="text-gray-600 font-medium">Procédure</span>
                 </div>
                 <div className="text-gray-400 mt-0.5">Taille ∝ nombre d'irritants</div>
-                <div className="text-gray-400">Drag pour déplacer · Scroll pour zoomer</div>
+                <div className="text-gray-400">Glisser pour déplacer, molette pour zoomer</div>
             </div>
         </div>
     );
@@ -371,7 +371,7 @@ export default function IrritantsDashboard({ irritants, procedures }: Props) {
                 <div className="px-5 py-4 border-b border-gray-100">
                     <h3 className="text-sm font-bold text-gray-800">Matrice Catégories × Procédures</h3>
                     <p className="text-xs text-gray-400 mt-0.5">
-                        Nombre d'irritants par croisement — point coloré = criticité dominante
+                        Nombre d'irritants par croisement. La couleur du point indique la criticité dominante.
                     </p>
                 </div>
                 <div className="p-5">
@@ -384,7 +384,7 @@ export default function IrritantsDashboard({ irritants, procedures }: Props) {
                 <div className="px-5 py-4 border-b border-gray-100">
                     <h3 className="text-sm font-bold text-gray-800">Graphe de relations</h3>
                     <p className="text-xs text-gray-400 mt-0.5">
-                        Catégories reliées aux procédures concernées — épaisseur du lien ∝ nombre d'irritants
+                        Catégories reliées aux procédures concernées. Plus le lien est épais, plus il y a d'irritants.
                     </p>
                 </div>
                 <div className="p-4">

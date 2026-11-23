@@ -21,7 +21,7 @@ export interface StepLinkedDiagramHandle {
 const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
     xml: string;
     selectedIds?: string[];
-    /** étapes signalées (ex. concernées par un irritant), en plus de la sélection */
+    /** étapes en défaillance : badge « ! » ambre, visible même quand l'étape est sélectionnée */
     markedIds?: string[];
     onSelect?: (stepId: string | null) => void;
 }>(({ xml, selectedIds = [], markedIds = [], onSelect }, ref) => {
@@ -72,13 +72,22 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
         const canvas = viewer.get('canvas');
         const registry = viewer.get('elementRegistry');
         const steps = registry.filter(isStepShape);
+        const overlays = viewer.get('overlays');
+        overlays.remove({ type: 'pm-defaillance' });
         let first: any = null;
         for (const el of steps) {
             const id = stepIdOf(el.id);
             canvas.removeMarker(el.id, 'pm-step-selected');
             canvas.removeMarker(el.id, 'pm-step-marked');
-            if (selectedIds.includes(id)) { canvas.addMarker(el.id, 'pm-step-selected'); first = first || el; }
-            else if (markedIds.includes(id)) canvas.addMarker(el.id, 'pm-step-marked');
+            const selected = selectedIds.includes(id);
+            if (selected) { canvas.addMarker(el.id, 'pm-step-selected'); first = first || el; }
+            if (markedIds.includes(id)) {
+                if (!selected) canvas.addMarker(el.id, 'pm-step-marked');
+                overlays.add(el.id, 'pm-defaillance', {
+                    position: { top: -9, right: 9 },
+                    html: '<span title="Défaillance relevée" style="display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9px;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif">!</span>',
+                });
+            }
         }
         if (first) {
             // ne bouge la vue que si l'étape n'est pas déjà visible
@@ -98,10 +107,10 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
             <style>{`
                 .djs-element.pm-step-selected .djs-visual > rect,
                 .djs-element.pm-step-selected .djs-visual > circle,
-                .djs-element.pm-step-selected .djs-visual > polygon { stroke: #171717 !important; stroke-width: 4px !important; fill: #fef9c3 !important; }
+                .djs-element.pm-step-selected .djs-visual > polygon { stroke: #0B6E80 !important; stroke-width: 4px !important; fill: #E4F2F4 !important; }
                 .djs-element.pm-step-marked .djs-visual > rect,
                 .djs-element.pm-step-marked .djs-visual > circle,
-                .djs-element.pm-step-marked .djs-visual > polygon { stroke: #f59e0b !important; stroke-width: 3px !important; }
+                .djs-element.pm-step-marked .djs-visual > polygon { stroke: #B45309 !important; stroke-width: 2.5px !important; }
             `}</style>
         </div>
     );

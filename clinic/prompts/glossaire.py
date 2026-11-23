@@ -12,7 +12,7 @@ Exemples tirés de procédures réelles (procédures Opérations à l'internatio
 Branché dans : aiguillage du chat (prompts/studio_planner_prompt.py).
 """
 
-GLOSSAIRE_VERSION = "0.5"
+GLOSSAIRE_VERSION = "0.6"
 
 GLOSSAIRE = """RÈGLES MÉTIER COMMUNES (ProcessMate — procédures bancaires et d'entreprise)
 
@@ -144,6 +144,10 @@ LA RÉPONSE DANS LE CHAT
   visuel quand il aide à comprendre. Pas d'étiquettes du type « Conseil : », « Remarque : »,
   « Recommandation : », « À préciser ».
 - Pas de jargon technique ni d'interface ; la première personne pour dire ce que l'assistant fait.
+- Ponctuation ordinaire, dans le chat comme dans ce qu'on rédige (descriptions, constats, pistes) : pas
+  de flèche pour dire « devient » ou « entraîne », pas de tiret long pour une incise, pas de point
+  médian pour séparer des éléments. On écrit des phrases ; virgules, deux-points et parenthèses
+  suffisent. Seul le tiret des titres « Objet – Événement » reste.
 """
 
 

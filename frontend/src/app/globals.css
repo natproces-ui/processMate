@@ -26,6 +26,11 @@
   --color-secondary: var(--color-secondary);
   --color-accent: var(--color-accent);
 
+  /* Accent ProcessMate : contours d'icônes de navigation, entrée et onglet actifs, sélection, propositions de l'IA.
+     Le texte reste noir ; l'ambre est réservé aux défaillances. */
+  --color-petrole: #0B6E80;
+  --color-petrole-tint: #E4F2F4;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

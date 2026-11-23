@@ -204,22 +204,22 @@ export default function GuidePanel() {
             </p>
             <div className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-current" />Formaliser — module BPMN Studio
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />Formaliser : module BPMN Studio
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-current" />Piloter — module Orchestration
+                <span className="w-1.5 h-1.5 rounded-full bg-current" />Piloter : module Orchestration
               </span>
             </div>
           </header>
 
           {/* Vue d'ensemble */}
-          <Section id="guide-overview" kicker="01 — Panorama" title="Deux métiers, un seul atelier"
+          <Section id="guide-overview" kicker="01. Panorama" title="Deux métiers, un seul atelier"
             dek="ProcessMate répond à deux besoins qui se suivent naturellement : faire émerger un processus à partir de ce qui existe déjà, puis le faire vivre dans le temps.">
             <p className="text-sm text-gray-700 max-w-2xl">
-              ProcessMate existe pour <strong>accélérer la formalisation</strong> de vos procédures métier. On part de ce qui existe déjà dans l&apos;entreprise — un code applicatif legacy, un enregistrement vocal, un document, une prise de notes, une image — et l&apos;IA fait remonter le chemin classique de l&apos;état actuel (<strong>AS-IS</strong>) vers l&apos;état cible formalisé (<strong>TO-BE</strong>), avec un vrai gain de temps et d&apos;efficacité, et un suivi complet du travail et de son historique.
+              ProcessMate existe pour <strong>accélérer la formalisation</strong> de vos procédures métier. On part de ce qui existe déjà dans l&apos;entreprise (un code applicatif legacy, un enregistrement vocal, un document, une prise de notes, une image) et l&apos;IA fait remonter le chemin classique de l&apos;état actuel (<strong>AS-IS</strong>) vers l&apos;état cible formalisé (<strong>TO-BE</strong>), avec un vrai gain de temps et d&apos;efficacité, et un suivi complet du travail et de son historique.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Une fois formalisée, une procédure est prête à rejoindre vos outils métier existants (MEGA, ARIS, etc.) via ses exports — BPMN, Word. Rien n&apos;oblige pour autant à en sortir : ProcessMate héberge tout aussi bien vos procédures dans la durée, avec ses propres campagnes, son suivi de tâches et son Analyse IA.
+              Une fois formalisée, une procédure est prête à rejoindre vos outils métier existants (MEGA, ARIS, etc.) via ses exports : BPMN, Word. Rien n&apos;oblige pour autant à en sortir : ProcessMate héberge tout aussi bien vos procédures dans la durée, avec ses propres campagnes, son suivi de tâches et son Analyse IA.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
               <strong>Formaliser</strong> et <strong>Piloter</strong> sont les deux métiers qui portent cette promesse. Formaliser s&apos;appuie sur l&apos;IA pour extraire un organigramme de processus (BPMN) éditable des sources collectées, puis au besoin une spécification fonctionnelle détaillée.
@@ -235,7 +235,7 @@ export default function GuidePanel() {
                 <dt className="font-semibold text-gray-900 whitespace-nowrap">Procédure</dt>
                 <dd className="text-gray-600">Un processus formalisé et enregistré : diagramme, tableau d&apos;étapes, règles de gestion, métadonnées.</dd>
                 <dt className="font-semibold text-gray-900 whitespace-nowrap">Tâche</dt>
-                <dd className="text-gray-600">Une action assignée à quelqu&apos;un sur une procédure — relire, valider, corriger, informer.</dd>
+                <dd className="text-gray-600">Une action assignée à quelqu&apos;un sur une procédure : relire, valider, corriger, informer.</dd>
                 <dt className="font-semibold text-gray-900 whitespace-nowrap">Campagne</dt>
                 <dd className="text-gray-600">Un regroupement de procédures dans un même projet, avec son propre cycle de vie.</dd>
                 <dt className="font-semibold text-gray-900 whitespace-nowrap">Artefact</dt>
@@ -249,18 +249,18 @@ export default function GuidePanel() {
           </Section>
 
           {/* Naviguer */}
-          <Section id="guide-nav" kicker="02 — Prise en main" title="Se connecter et naviguer"
+          <Section id="guide-nav" kicker="02. Prise en main" title="Se connecter et naviguer"
             dek="Un point d'entrée unique, une barre latérale qui fait tout le reste.">
             <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 max-w-2xl">
               <li>Depuis la page d&apos;accueil, cliquez sur <Kbd>Mon espace</Kbd> (déjà connecté) ou <Kbd>Démarrer maintenant</Kbd>. Les deux mènent au même atelier.</li>
-              <li>La barre latérale gauche donne accès aux deux métiers de ProcessMate : <strong>Orchestration</strong> (le pilotage, ouvert par défaut) et <strong>BPMN Studio</strong> (la formalisation). Deux raccourcis complémentaires y figurent aussi — ils ouvrent en plein écran des outils autonomes dont les capacités clés sont par ailleurs déjà intégrées dans ProcessMate même (code legacy dans le Studio, spécifications dans l&apos;écran dédié).</li>
-              <li>La barre latérale est la même partout, chat compris : <Kbd>Accueil</Kbd> (page d&apos;arrivée, adaptée à votre rôle), <Kbd>Nouvelle conversation</Kbd>, puis pour l&apos;organisation <Kbd>Référentiel</Kbd>, <Kbd>Mon espace de travail</Kbd>, <Kbd>À faire</Kbd>, <Kbd>Campagnes</Kbd>, <Kbd>Analyse</Kbd>, et sous <Kbd>Plus</Kbd> : <Kbd>Spécifications</Kbd>, <Kbd>Tableau de bord</Kbd>, <Kbd>Studio complet</Kbd>. Les administrateurs y trouvent aussi <Kbd>Équipe</Kbd> et <Kbd>Paramètres</Kbd>.</li>
+              <li>La barre latérale gauche donne accès aux deux métiers de ProcessMate : <strong>Orchestration</strong> (le pilotage, ouvert par défaut) et <strong>BPMN Studio</strong> (la formalisation). Deux raccourcis complémentaires y figurent aussi : ils ouvrent en plein écran des outils autonomes dont les capacités clés sont par ailleurs déjà intégrées dans ProcessMate même (code legacy dans le Studio, spécifications dans l&apos;écran dédié).</li>
+              <li>La barre latérale est la même partout, chat compris. En haut, <Kbd>Nouvelle conversation</Kbd> et <Kbd>Rechercher</Kbd>. Sous « Mon travail », <Kbd>Accueil</Kbd> (page d&apos;arrivée, adaptée à votre rôle), <Kbd>À faire</Kbd> et <Kbd>Projets</Kbd>. Sous le nom de l&apos;organisation, <Kbd>Référentiel</Kbd>, <Kbd>Campagnes</Kbd>, <Kbd>Analyse</Kbd>, <Kbd>Espace de travail</Kbd>, et sous <Kbd>Plus</Kbd> : <Kbd>Spécifications</Kbd>, <Kbd>Tableau de bord</Kbd>, <Kbd>Studio complet</Kbd>. Les administrateurs y trouvent aussi <Kbd>Équipe</Kbd> et <Kbd>Paramètres</Kbd>.</li>
             </ol>
             <p className="text-sm text-gray-700 max-w-2xl">Retenez simplement : <strong>tout part de là</strong>. Les sections qui suivent décrivent ce que vous trouverez derrière chaque écran.</p>
           </Section>
 
           {/* Formaliser */}
-          <Section id="guide-formaliser" kicker="03 — Module Formaliser (BPMN Studio)" title="Transformer un document en processus"
+          <Section id="guide-formaliser" kicker="03. Module Formaliser (BPMN Studio)" title="Transformer un document en processus"
             dek="Le studio de formalisation prend un ou plusieurs documents en entrée et en fait ressortir un organigramme éditable, prêt à être enregistré comme procédure.">
             <p className="text-sm text-gray-700 max-w-2xl">
               Ce n&apos;est pas qu&apos;un outil de dictée vocale : c&apos;est un véritable atelier de formalisation, qui accepte quatre types de sources en entrée.
@@ -269,7 +269,7 @@ export default function GuidePanel() {
             <SubHeading>Quatre façons d&apos;alimenter le studio</SubHeading>
             <Flow steps={[
               { icon: FileText, title: 'Documents', desc: 'Dépôt multiple de PDF, images ou notes numérisées.' },
-              { icon: Code2, title: 'Code legacy', desc: 'Applications historiques — COBOL, WinDev, ABAP… — retravaillées en organigramme.' },
+              { icon: Code2, title: 'Code legacy', desc: 'Applications historiques (COBOL, WinDev, ABAP…) retravaillées en organigramme.' },
               { icon: MessageSquare, title: 'Assistant / chat', desc: 'Décrire ou coller ses notes à l’assistant, jusqu’à 3 PDF ou images joints.' },
               { icon: Mic, title: 'Dictée vocale', desc: 'Transcription puis extraction automatique des étapes.' },
             ]} />
@@ -282,16 +282,16 @@ export default function GuidePanel() {
               { icon: Waypoints, title: 'Organigramme', desc: 'Le tableau est converti automatiquement en diagramme BPMN.' },
             ]} />
             <p className="text-xs text-gray-500 max-w-2xl">
-              Précision utile : l&apos;IA ne dessine pas le diagramme directement — elle structure d&apos;abord les étapes en tableau, converti ensuite en BPMN de façon systématique. Le tableau et le diagramme restent donc toujours synchronisés.
+              Précision utile : l&apos;IA ne dessine pas le diagramme directement : elle structure d&apos;abord les étapes en tableau, converti ensuite en BPMN de façon systématique. Le tableau et le diagramme restent donc toujours synchronisés.
             </p>
 
             <SubHeading>Éditer, discuter, corriger</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">Une fois l&apos;organigramme généré, quatre outils permettent de l&apos;affiner :</p>
             <ul className="space-y-2 text-sm text-gray-700 max-w-2xl">
-              <li className="flex gap-2"><Table2 className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Le tableau</strong> — chaque étape (type BPMN, département, acteur, condition, sorties, applicatif) est modifiable et réordonnable par glisser-déposer.</span></li>
-              <li className="flex gap-2"><Waypoints className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Le diagramme</strong> — l&apos;organigramme est éditable à même le canevas graphique, avec une palette de composants BPMN.</span></li>
-              <li className="flex gap-2"><MessageSquare className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>L&apos;assistant ProcessMate</strong> — pour générer, régénérer entièrement, ou corriger ponctuellement en langage naturel.</span></li>
-              <li className="flex gap-2"><PencilLine className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>La révision</strong> — une instruction unique en langage libre (« Ajoute une étape de validation entre 3 et 4 »), avec historique annulable.</span></li>
+              <li className="flex gap-2"><Table2 className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Le tableau</strong> : chaque étape (type BPMN, département, acteur, condition, sorties, applicatif) est modifiable et réordonnable par glisser-déposer.</span></li>
+              <li className="flex gap-2"><Waypoints className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Le diagramme</strong> : l&apos;organigramme est éditable à même le canevas graphique, avec une palette de composants BPMN.</span></li>
+              <li className="flex gap-2"><MessageSquare className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>L&apos;assistant ProcessMate</strong> : pour générer, régénérer entièrement, ou corriger ponctuellement en langage naturel.</span></li>
+              <li className="flex gap-2"><PencilLine className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>La révision</strong> : une instruction unique en langage libre (« Ajoute une étape de validation entre 3 et 4 »), avec historique annulable.</span></li>
             </ul>
 
             <Callout tone="warn" label="Ne pas confondre">
@@ -300,10 +300,10 @@ export default function GuidePanel() {
 
             <SubHeading>Enregistrer, soumettre, exporter</SubHeading>
             <ul className="space-y-2 text-sm text-gray-700 max-w-2xl">
-              <li className="flex gap-2"><Save className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Enregistrer</Kbd> — sauvegarde la procédure. Pour une nouvelle procédure, une fenêtre demande nom, catégorie et taxonomie avant l&apos;ajout à la bibliothèque.</span></li>
-              <li className="flex gap-2"><Send className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Soumettre</Kbd> — envoie la procédure pour vérification : un sélecteur de destinataire s&apos;ouvre et crée automatiquement une tâche de relecture, notifiée par e-mail.</span></li>
-              <li className="flex gap-2"><Download className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Télécharger</Kbd> — exporte le diagramme brut au format .bpmn.</span></li>
-              <li className="flex gap-2"><FileOutput className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Générer la procédure Word</Kbd> — produit le document final destiné à être partagé ou archivé.</span></li>
+              <li className="flex gap-2"><Save className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Enregistrer</Kbd> : sauvegarde la procédure. Pour une nouvelle procédure, une fenêtre demande nom, catégorie et taxonomie avant l&apos;ajout à la bibliothèque.</span></li>
+              <li className="flex gap-2"><Send className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Soumettre</Kbd> : envoie la procédure pour vérification : un sélecteur de destinataire s&apos;ouvre et crée automatiquement une tâche de relecture, notifiée par e-mail.</span></li>
+              <li className="flex gap-2"><Download className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Télécharger</Kbd> : exporte le diagramme brut au format .bpmn.</span></li>
+              <li className="flex gap-2"><FileOutput className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><Kbd>Générer la procédure Word</Kbd> : produit le document final destiné à être partagé ou archivé.</span></li>
             </ul>
 
             <Callout tone="fix" label="Précision">
@@ -312,12 +312,12 @@ export default function GuidePanel() {
           </Section>
 
           {/* Analyse */}
-          <Section id="guide-analyse" kicker="04 — Module Analyse" title="Diagnostiquer et analyser l'existant"
-            dek="Un seul écran, quatre loupes différentes sur vos procédures déjà formalisées — pour prioriser ce qui mérite d'être amélioré.">
+          <Section id="guide-analyse" kicker="04. Module Analyse" title="Diagnostiquer et analyser l'existant"
+            dek="Un seul écran, quatre loupes différentes sur vos procédures déjà formalisées : pour prioriser ce qui mérite d'être amélioré.">
 
             <SubHeading><TriangleAlert className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Irritants</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Les irritants sont les points de friction d&apos;une procédure — ce qui ralentit, coûte cher ou fait courir un risque. Le bouton <Kbd>Détecter les irritants avec l&apos;IA</Kbd> les fait remonter automatiquement à partir de l&apos;organigramme déjà généré ; on peut aussi en créer manuellement.
+              Les irritants sont les points de friction d&apos;une procédure : ce qui ralentit, coûte cher ou fait courir un risque. Le bouton <Kbd>Détecter les irritants avec l&apos;IA</Kbd> les fait remonter automatiquement à partir de l&apos;organigramme déjà généré ; on peut aussi en créer manuellement.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
               Chaque irritant se qualifie par une criticité (<strong>Majeur</strong>, <strong>Moyen</strong>, <strong>Mineur</strong>), un statut (<strong>ASIS</strong>, <strong>En cours</strong>, <strong>TOBE</strong>, <strong>Résolu</strong>) et une catégorie. Depuis la fiche d&apos;un irritant, on rouvre directement la procédure dans le Studio pour corriger le point relevé.
@@ -330,12 +330,12 @@ export default function GuidePanel() {
 
             <SubHeading><Server className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Cartographie applicative</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Vue d&apos;ensemble des applicatifs utilisés à travers toutes les procédures — qui utilise quoi, et où. Un clic sur une procédure l&apos;ouvre directement dans le Studio.
+              Vue d&apos;ensemble des applicatifs utilisés à travers toutes les procédures : qui utilise quoi, et où. Un clic sur une procédure l&apos;ouvre directement dans le Studio.
             </p>
 
             <SubHeading><Sparkles className="inline w-4 h-4 text-blue-500 mr-1.5 -mt-0.5" />Analyse IA</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
-              À ne pas confondre avec Formaliser : ici on ne crée pas une procédure, on <strong>vérifie une procédure existante</strong> face à un nouveau document — une circulaire, une réglementation, un rapport d&apos;audit. C&apos;est aussi ici que se traite l&apos;<strong>impact réglementaire</strong> : ce n&apos;est pas un écran à part, mais l&apos;une des intentions que l&apos;IA sait identifier.
+              À ne pas confondre avec Formaliser : ici on ne crée pas une procédure, on <strong>vérifie une procédure existante</strong> face à un nouveau document : une circulaire, une réglementation, un rapport d&apos;audit. C&apos;est aussi ici que se traite l&apos;<strong>impact réglementaire</strong> : ce n&apos;est pas un écran à part, mais l&apos;une des intentions que l&apos;IA sait identifier.
             </p>
             <Flow steps={[
               { icon: LayoutGrid, title: 'Session', desc: 'Attacher des procédures, déposer les documents sources et une instruction.' },
@@ -344,26 +344,26 @@ export default function GuidePanel() {
               { icon: CheckCircle2, title: 'Décision', desc: 'Conserver ou rejeter, puis créer des tâches ou appliquer directement.' },
             ]} />
             <p className="text-sm text-gray-700 max-w-2xl">
-              Le résultat se consulte en quatre onglets — <strong>Impacts identifiés</strong>, <strong>Modifications proposées</strong>, <strong>Journal</strong>, <strong>Questions</strong> — et se referme par <Kbd>Créer les tâches</Kbd> (assigner, avec notification automatique par e-mail à chaque destinataire) ou <Kbd>Appliquer les modifications</Kbd> (intégrer immédiatement).
+              Le résultat se consulte en quatre onglets (<strong>Impacts identifiés</strong>, <strong>Modifications proposées</strong>, <strong>Journal</strong>, <strong>Questions</strong>) et se referme par <Kbd>Créer les tâches</Kbd> (assigner, avec notification automatique par e-mail à chaque destinataire) ou <Kbd>Appliquer les modifications</Kbd> (intégrer immédiatement).
             </p>
           </Section>
 
           {/* Piloter */}
-          <Section id="guide-piloter" kicker="05 — Module Piloter (Orchestration)" title="Piloter et gérer les processus"
+          <Section id="guide-piloter" kicker="05. Module Piloter (Orchestration)" title="Piloter et gérer les processus"
             dek="Une fois formalisée, une procédure devient vivante : on l'assigne, on la suit, on la fait évoluer.">
 
             <SubHeading>Les procédures</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">Chaque procédure s&apos;édite dans cinq sections indépendantes, chacune avec son propre bouton « Éditer » :</p>
             <ul className="list-disc list-inside space-y-1.5 text-sm text-gray-700 max-w-2xl">
-              <li><strong>Caractéristiques</strong> — objet, périmètre, informations générales.</li>
-              <li><strong>Qualité</strong> — règles de gestion.</li>
-              <li><strong>Diagramme</strong> — le BPMN, avec le même éditeur que dans Formaliser, et l&apos;export Word.</li>
-              <li><strong>Descriptions</strong> — le descriptif détaillé de chaque étape.</li>
-              <li><strong>Applicatifs</strong> — l&apos;applicatif associé à chaque étape, et les écrans qu&apos;elle utilise.</li>
+              <li><strong>Caractéristiques</strong> : objet, périmètre, informations générales.</li>
+              <li><strong>Qualité</strong> : règles de gestion.</li>
+              <li><strong>Diagramme</strong> : le BPMN, avec le même éditeur que dans Formaliser, et l&apos;export Word.</li>
+              <li><strong>Descriptions</strong> : le descriptif détaillé de chaque étape.</li>
+              <li><strong>Applicatifs</strong> : l&apos;applicatif associé à chaque étape, et les écrans qu&apos;elle utilise.</li>
             </ul>
             <p className="text-sm text-gray-700 max-w-2xl">Un chat IA est intégré à l&apos;éditeur de procédure : les mêmes corrections que dans Formaliser peuvent s&apos;y faire à la conversation.</p>
             <p className="text-sm text-gray-700 max-w-2xl">
-              Depuis le <Kbd>Référentiel</Kbd> (vue <Kbd>Liste</Kbd>), chaque procédure ouvre aussi sa <strong>matrice RACI</strong> : pour chaque étape, on assigne à chaque personne un rôle — <strong>R</strong>esponsable, <strong>A</strong>pprobateur, <strong>C</strong>onsulté ou <strong>I</strong>nformé. C&apos;est ce même rôle qui qualifie ensuite les tâches liées à l&apos;étape.
+              Depuis le <Kbd>Référentiel</Kbd> (vue <Kbd>Liste</Kbd>), chaque procédure ouvre aussi sa <strong>matrice RACI</strong> : pour chaque étape, on assigne à chaque personne un rôle : <strong>R</strong>esponsable, <strong>A</strong>pprobateur, <strong>C</strong>onsulté ou <strong>I</strong>nformé. C&apos;est ce même rôle qui qualifie ensuite les tâches liées à l&apos;étape.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
               Le <Kbd>Référentiel</Kbd> s&apos;affiche aussi en <strong>Carte</strong> : la même structure, organisée comme le paysage BIAN, pour situer vos procédures dans le métier bancaire standard. Depuis un service de la carte, on peut créer directement une nouvelle procédure rattachée à ce point du référentiel, ou naviguer vers une procédure déjà liée.
@@ -398,7 +398,7 @@ export default function GuidePanel() {
               Une tâche naît de plusieurs façons : en soumettant une procédure depuis Formaliser, manuellement depuis l&apos;éditeur de procédure, à partir d&apos;un point relevé par une Révision IA, ou à partir d&apos;une modification proposée par une Analyse IA.
             </p>
             <p className="text-sm text-gray-700 max-w-2xl">
-              L&apos;écran <Kbd>Suivi des tâches</Kbd> centralise tout : un tableau filtrable, des compteurs (ouvertes, en retard, soumises, bloquées, modifications demandées, validées) et une liste « Attention » qui remonte ce qui mérite un coup d&apos;œil. Ouvrir une tâche affiche son détail complet — commentaires, historique, actions de changement de statut — et, si elle vient d&apos;une Analyse IA, un bouton pour appliquer directement la modification à la procédure.
+              L&apos;écran <Kbd>Suivi des tâches</Kbd> centralise tout : un tableau filtrable, des compteurs (ouvertes, en retard, soumises, bloquées, modifications demandées, validées) et une liste « Attention » qui remonte ce qui mérite un coup d&apos;œil. Ouvrir une tâche affiche son détail complet (commentaires, historique, actions de changement de statut) et, si elle vient d&apos;une Analyse IA, un bouton pour appliquer directement la modification à la procédure.
             </p>
 
             <SubHeading>L&apos;espace de travail</SubHeading>
@@ -406,8 +406,8 @@ export default function GuidePanel() {
               C&apos;est le poste de pilotage personnel : une arborescence de « Mes procédures » regroupées par campagne active, un panneau central selon le contexte (backlog, détail d&apos;une tâche, campagne ou éditeur de procédure), et un tiroir latéral droit qui s&apos;ouvre depuis une tâche pour deux outils IA :
             </p>
             <ul className="space-y-2 text-sm text-gray-700 max-w-2xl">
-              <li className="flex gap-2"><Sparkles className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Révision IA</strong> — un audit complet de la procédure, des points scorés à marquer « Noté » ou « Ignoré », ou à transformer en tâche.</span></li>
-              <li className="flex gap-2"><FileText className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Corrections PDF</strong> — déposez un PDF annoté (surlignages, remarques manuscrites) : l&apos;IA en extrait les remarques, à marquer « Traité » ou « Ignoré » une par une.</span></li>
+              <li className="flex gap-2"><Sparkles className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Révision IA</strong> : un audit complet de la procédure, des points scorés à marquer « Noté » ou « Ignoré », ou à transformer en tâche.</span></li>
+              <li className="flex gap-2"><FileText className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Corrections PDF</strong> : déposez un PDF annoté (surlignages, remarques manuscrites) : l&apos;IA en extrait les remarques, à marquer « Traité » ou « Ignoré » une par une.</span></li>
             </ul>
 
             <SubHeading>Les campagnes</SubHeading>
@@ -415,18 +415,18 @@ export default function GuidePanel() {
               Une campagne regroupe plusieurs procédures dans un même projet. Son cycle de vie se pilote avec <Kbd>Lancer</Kbd>, <Kbd>Pause</Kbd>, <Kbd>Reprendre</Kbd>, <Kbd>Bloquer</Kbd>, <Kbd>Clôturer</Kbd> et <Kbd>Synchroniser</Kbd>.
             </p>
             <ul className="space-y-2 text-sm text-gray-700 max-w-2xl">
-              <li className="flex gap-2"><FolderOpen className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Assigner des procédures</strong> — depuis une campagne, <Kbd>Ajouter des procédures</Kbd> ouvre un sélecteur de taxonomie hiérarchique (thème, catégorie, sous-catégorie) pour rattacher en une fois tout un périmètre.</span></li>
-              <li className="flex gap-2"><Download className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Générer un rapport</strong> — le bouton <Kbd>Rapport</Kbd> produit et télécharge un document Word récapitulant l&apos;avancement du projet : procédures, statuts, jalons.</span></li>
+              <li className="flex gap-2"><FolderOpen className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Assigner des procédures</strong> : depuis une campagne, <Kbd>Ajouter des procédures</Kbd> ouvre un sélecteur de taxonomie hiérarchique (thème, catégorie, sous-catégorie) pour rattacher en une fois tout un périmètre.</span></li>
+              <li className="flex gap-2"><Download className="w-4 h-4 mt-0.5 text-blue-500 shrink-0" /><span><strong>Générer un rapport</strong> : le bouton <Kbd>Rapport</Kbd> produit et télécharge un document Word récapitulant l&apos;avancement du projet : procédures, statuts, jalons.</span></li>
             </ul>
 
             <SubHeading>Les spécifications</SubHeading>
             <p className="text-sm text-gray-700 max-w-2xl">
-              L&apos;écran <Kbd>Spécifications</Kbd> génère un document de spécification fonctionnelle détaillée à partir d&apos;un périmètre de procédures déjà formalisées — un thème, une catégorie, une sous-catégorie ou une sélection précise. On peut préciser des instructions libres, joindre des sources complémentaires (PDF, image, Excel) ou des URLs, puis laisser l&apos;IA rédiger le document ; il reste ensuite modifiable en conversation avant export.
+              L&apos;écran <Kbd>Spécifications</Kbd> génère un document de spécification fonctionnelle détaillée à partir d&apos;un périmètre de procédures déjà formalisées : un thème, une catégorie, une sous-catégorie ou une sélection précise. On peut préciser des instructions libres, joindre des sources complémentaires (PDF, image, Excel) ou des URLs, puis laisser l&apos;IA rédiger le document ; il reste ensuite modifiable en conversation avant export.
             </p>
           </Section>
 
           {/* Rôles */}
-          <Section id="guide-roles" kicker="06 — Accès" title="Qui peut faire quoi"
+          <Section id="guide-roles" kicker="06. Accès" title="Qui peut faire quoi"
             dek="Tout le monde voit les mêmes écrans ; les différences se jouent à l'intérieur des panneaux.">
             <DataTable
               head={['Rôle', 'Ce qu’il change concrètement']}
@@ -439,12 +439,12 @@ export default function GuidePanel() {
               ]}
             />
             <Callout tone="note" label="Nuance">
-              L&apos;Espace de travail personnel affiche par défaut uniquement vos propres tâches, sauf pour les administrateurs qui y voient l&apos;ensemble — cette bascule ne s&apos;applique qu&apos;aux administrateurs, contrairement aux autres écrans où les propriétaires de processus bénéficient d&apos;un accès équivalent.
+              L&apos;Espace de travail personnel affiche par défaut uniquement vos propres tâches, sauf pour les administrateurs qui y voient l&apos;ensemble : cette bascule ne s&apos;applique qu&apos;aux administrateurs, contrairement aux autres écrans où les propriétaires de processus bénéficient d&apos;un accès équivalent.
             </Callout>
           </Section>
 
           {/* Aide-mémoire */}
-          <Section id="guide-memo" kicker="07 — Référence rapide" title="Aide-mémoire"
+          <Section id="guide-memo" kicker="07. Référence rapide" title="Aide-mémoire"
             dek="Le chemin le plus court pour les besoins les plus courants.">
             <div className="grid sm:grid-cols-2 gap-3">
               <Cheat q="Formaliser un nouveau processus" path={['BPMN Studio', 'déposer / dicter', 'générer', 'enregistrer', 'soumettre']} />
@@ -466,7 +466,7 @@ export default function GuidePanel() {
 
           <footer className="pt-4 border-t border-gray-200 text-xs text-gray-400 flex items-center gap-1.5">
             <Megaphone className="w-3.5 h-3.5" />
-            Guide interne ProcessMate — reflète l&apos;usage réel de l&apos;application.
+            Guide interne ProcessMate : reflète l&apos;usage réel de l&apos;application.
           </footer>
         </div>
       </div>

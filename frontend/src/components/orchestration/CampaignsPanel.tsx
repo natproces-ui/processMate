@@ -937,7 +937,7 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
                 {c.end_date && (
                   <div className={`flex items-center gap-1 mt-1 text-xs ${overdue ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
                     <Clock className="w-3 h-3" />
-                    {overdue ? 'En retard · ' : ''}{new Date(c.end_date).toLocaleDateString('fr-FR')}
+                    {overdue ? 'En retard, ' : ''}{new Date(c.end_date).toLocaleDateString('fr-FR')}
                   </div>
                 )}
               </button>

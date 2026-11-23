@@ -250,7 +250,7 @@ export function IrritantCard({ irritant, procedures, onUpdated, onDeleted, numer
                                 </span>
                                 {local.etape_liee && (
                                     <span className="text-xs text-gray-400 italic truncate max-w-[200px]">
-                                        → {local.etape_liee}
+                                        Étapes : {local.etape_liee}
                                     </span>
                                 )}
                                 {pistesTotal > 0 && (

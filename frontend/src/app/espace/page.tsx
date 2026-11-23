@@ -98,7 +98,7 @@ function Espace() {
                                         </span>
                                         {t.echeance && (
                                             <span className={`shrink-0 text-xs ${t.en_retard ? 'font-semibold text-red-700' : 'text-neutral-500'}`}>
-                                                {t.en_retard ? 'En retard · ' : ''}{fmtDate(t.echeance)}
+                                                {t.en_retard ? 'En retard, ' : ''}{fmtDate(t.echeance)}
                                             </span>
                                         )}
                                     </Link>
@@ -148,7 +148,7 @@ function Espace() {
                                         <div className="flex items-baseline justify-between gap-2 text-sm">
                                             <span className="min-w-0 truncate font-medium text-neutral-900">{c.titre}</span>
                                             <span className={`shrink-0 text-xs ${c.en_retard ? 'font-semibold text-red-700' : 'text-neutral-500'}`}>
-                                                {c.statut === 'draft' ? 'Brouillon' : `${c.faites}/${c.total}`}{c.echeance ? ` · ${c.en_retard ? 'échéance dépassée' : fmtDate(c.echeance)}` : ''}
+                                                {c.statut === 'draft' ? 'Brouillon' : `${c.faites}/${c.total}`}{c.echeance ? `, ${c.en_retard ? 'échéance dépassée' : fmtDate(c.echeance)}` : ''}
                                             </span>
                                         </div>
                                         <div className="mt-1 h-1.5 rounded-full bg-neutral-100" role="progressbar" aria-valuenow={c.avancement} aria-valuemin={0} aria-valuemax={100} aria-label={`Avancement de ${c.titre}`}>
@@ -250,8 +250,8 @@ function Referential({ initial }: { initial: ReferentialState }) {
                     </p>
                 ) : (
                     <p className="mt-1 text-sm text-neutral-700">
-                        {plural(state.themes, 'thème', 'thèmes')} · {plural(state.categories, 'catégorie', 'catégories')} · {plural(state.sous_categories, 'sous-catégorie', 'sous-catégories')}
-                        {' · '}{plural(state.procedures, 'procédure', 'procédures')}{state.procedures ? `, dont ${state.procedures_redigees} rédigée${state.procedures_redigees > 1 ? 's' : ''}` : ''}
+                        {plural(state.themes, 'thème', 'thèmes')}, {plural(state.categories, 'catégorie', 'catégories')}, {plural(state.sous_categories, 'sous-catégorie', 'sous-catégories')}
+                        {', '}{plural(state.procedures, 'procédure', 'procédures')}{state.procedures ? `, dont ${state.procedures_redigees} rédigée${state.procedures_redigees > 1 ? 's' : ''}` : ''}
                     </p>
                 )}
                 {state.origine === 'defaut' && (

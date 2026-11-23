@@ -96,7 +96,7 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                                         <Workflow className="w-4 h-4 mt-0.5 shrink-0 text-neutral-900" />
                                         <span className="min-w-0 flex-1">
                                             <span className="block text-sm font-medium text-neutral-900 truncate" title={o.title}>{o.title}</span>
-                                            <span className="block text-[11px] text-neutral-500">{o.steps} étape{o.steps > 1 ? 's' : ''}{o.version ? ` · version ${o.version}` : ''}</span>
+                                            <span className="block text-[11px] text-neutral-500">{o.steps} étape{o.steps > 1 ? 's' : ''}{o.version ? `, version ${o.version}` : ''}</span>
                                         </span>
                                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.tone}`}>{st.label}</span>
                                     </button>
@@ -121,7 +121,7 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                     {canSave && pending.length > 1 && (
                         <button type="button" onClick={onSaveAll}
                             className="mt-3 w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white hover:bg-neutral-700">
-                            Tout enregistrer · {pending.length}
+                            Tout enregistrer ({pending.length})
                         </button>
                     )}
                     {archived.length > 0 && (
@@ -143,7 +143,7 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                 </section>
                 <section className="px-4 py-3 border-t border-neutral-100">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Utilisés dans cette conversation</h3>
-                    <p className="mt-2 text-[11px] font-semibold text-neutral-700">Sources jointes{sources.length ? ` · ${sources.length}` : ''}</p>
+                    <p className="mt-2 text-[11px] font-semibold text-neutral-700">Sources jointes{sources.length ? ` (${sources.length})` : ''}</p>
                     {sources.length === 0 && <p className="mt-1 text-xs text-neutral-500">Aucune source jointe.</p>}
                     <ul className="mt-1 space-y-0.5">
                         {sources.map(s => {
@@ -171,7 +171,7 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                         const srcs = searches.flatMap(s => s.sources).filter(s => !seen.has(s.uri) && seen.add(s.uri));
                         return (
                             <>
-                                <p className="mt-3 text-[11px] font-semibold text-neutral-700">Recherche sur internet · {queries.length} requête{queries.length > 1 ? 's' : ''}</p>
+                                <p className="mt-3 text-[11px] font-semibold text-neutral-700">Recherche sur internet ({queries.length} requête{queries.length > 1 ? 's' : ''})</p>
                                 <ul className="mt-1 space-y-0.5">
                                     {queries.map(q => (
                                         <li key={q} className="flex items-center gap-2 py-1 text-sm text-neutral-800">
@@ -180,7 +180,7 @@ export default function ConversationPanel({ outputs, activeKey, sources, referen
                                         </li>
                                     ))}
                                 </ul>
-                                {srcs.length > 0 && <p className="mt-2 text-[11px] font-semibold text-neutral-700">Sources citées · {srcs.length}</p>}
+                                {srcs.length > 0 && <p className="mt-2 text-[11px] font-semibold text-neutral-700">Sources citées ({srcs.length})</p>}
                                 <ul className="mt-1 space-y-0.5">
                                     {srcs.map(s => (
                                         <li key={s.uri}>

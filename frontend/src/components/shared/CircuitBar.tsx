@@ -64,7 +64,7 @@ export default function CircuitBar({ procedureId, onSave, refreshKey = 0 }: {
         soumettre: 'Enregistrer et soumettre', transmettre: 'Transmettre au valideur', renvoyer: 'Renvoyer au rédacteur',
         valider: 'Valider cette version', renvoyer_a: 'Renvoyer pour correction',
     };
-    const names = (list: { nom: string | null }[]) => list.map(p => p.nom || '—').join(', ') || '—';
+    const names = (list: { nom: string | null }[]) => list.map(p => p.nom || 'sans nom').join(', ') || 'à désigner';
 
     return (
         <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-2 text-xs text-slate-600">
@@ -72,7 +72,7 @@ export default function CircuitBar({ procedureId, onSave, refreshKey = 0 }: {
                 {ctx.campagne && (
                     <span className="inline-flex items-center gap-1 font-medium text-slate-800">
                         <Megaphone className="w-3.5 h-3.5 text-amber-600" />{ctx.campagne.title}
-                        {ctx.campagne.echeance && <span className="font-normal text-slate-500">· échéance {new Date(ctx.campagne.echeance).toLocaleDateString('fr-FR')}</span>}
+                        {ctx.campagne.echeance && <span className="font-normal text-slate-500">, échéance {new Date(ctx.campagne.echeance).toLocaleDateString('fr-FR')}</span>}
                     </span>
                 )}
                 <span>R : {names(ctx.raci.R)}</span>

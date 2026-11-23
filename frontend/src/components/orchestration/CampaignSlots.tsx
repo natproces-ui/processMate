@@ -43,7 +43,7 @@ function DuplicatesNote({ items }: { items: Duplicate[] }) {
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             <p className="flex items-center gap-1.5 font-semibold"><AlertTriangle className="w-3.5 h-3.5" /> Doublons probables</p>
             <ul className="mt-1 list-disc pl-5">
-                {items.map((d, i) => <li key={i}>{d.titre}{d.reference ? ` (${d.reference})` : ''} — déjà dans {d.ou === 'campagne' ? 'la campagne' : 'le référentiel'}</li>)}
+                {items.map((d, i) => <li key={i}>{d.titre}{d.reference ? ` (${d.reference})` : ''}, déjà dans {d.ou === 'campagne' ? 'la campagne' : 'le référentiel'}</li>)}
             </ul>
         </div>
     );
@@ -206,23 +206,23 @@ function RaciDialog({ people, initial, count, onClose, onApply }: {
         } catch (e) { setError(e instanceof Error ? e.message : 'RACI refusé'); setBusy(false); }
     };
     return (
-        <Modal title={`RACI — ${count} procédure${count > 1 ? 's' : ''}`} onClose={onClose} footer={<>
+        <Modal title={`RACI de ${count} procédure${count > 1 ? 's' : ''}`} onClose={onClose} footer={<>
             <button type="button" onClick={onClose} className={`${btn} text-slate-600 hover:bg-slate-50`}>Annuler</button>
             <button type="button" disabled={busy || touched.size === 0} onClick={() => void apply()} className={`${btn} bg-slate-900 text-white hover:bg-slate-700`}>
                 {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Appliquer
             </button>
         </>}>
             {count > 1 && <p className="text-xs text-slate-500">Seuls les rôles que vous modifiez changent sur les procédures sélectionnées.</p>}
-            {multi('R', 'R — formalise (au moins une personne)')}
-            <label className="mt-3 block text-xs font-medium text-slate-700">A — valide (une seule personne)
+            {multi('R', 'R : formalise (au moins une personne)')}
+            <label className="mt-3 block text-xs font-medium text-slate-700">A : valide (une seule personne)
                 <select value={raci.A || ''} onChange={e => set('A', e.target.value || null)}
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
                     <option value="">—</option>
                     {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
             </label>
-            {multi('C', 'C — relit')}
-            {multi('I', 'I — est informé')}
+            {multi('C', 'C : relit')}
+            {multi('I', 'I : est informé')}
             {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
         </Modal>
     );
@@ -382,7 +382,7 @@ export default function CampaignSlots({ campaignId, campaignStatus, canManage, o
                                                 : <span className="font-medium text-slate-900">{s.procedure_nom}</span>}
                                             {s.procedure_id && <Link2 className="w-3 h-3 text-slate-400" aria-label="Reliée au référentiel" />}
                                         </div>
-                                        <p className="text-[11px] text-slate-400">{[s.procedure_ref, SLOT_ORIGIN_LABELS[s.origine]].filter(Boolean).join(' · ')}</p>
+                                        <p className="text-[11px] text-slate-400">{[s.procedure_ref, SLOT_ORIGIN_LABELS[s.origine]].filter(Boolean).join(', ')}</p>
                                     </td>
                                     <td className="px-3 py-2 text-xs text-slate-600">{(s.equipe_id && teamName.get(s.equipe_id)) || '—'}</td>
                                     <td className="px-3 py-2 text-xs text-slate-600">{who(s.raci.R)}</td>

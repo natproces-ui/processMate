@@ -38,7 +38,7 @@ export function openPointsAsText(title: string, points: OpenPoint[], rows: Table
     const open = points.filter(p => p.statut === 'ouvert');
     const byActor = new Map<string, OpenPoint[]>();
     open.forEach(p => { const k = p.acteur || 'À répartir'; byActor.set(k, [...(byActor.get(k) || []), p]); });
-    const lines = [`Procédure « ${title} » — ${open.length} point${open.length > 1 ? 's' : ''} à confirmer`, ''];
+    const lines = [`Procédure « ${title} » : ${open.length} point${open.length > 1 ? 's' : ''} à confirmer`, ''];
     byActor.forEach((list, actor) => {
         lines.push(`${actor} :`);
         list.forEach(p => {
@@ -120,7 +120,7 @@ export default function OpenPointsPanel({ title, points, rows, onChange, onFocus
             <div className="px-4 py-2.5 border-b border-slate-100 flex flex-wrap items-center gap-2">
                 <CircleHelp className="w-4 h-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-slate-800">Points ouverts</h3>
-                <span className="text-xs text-slate-400">{openCount} à confirmer{points.length > openCount ? ` · ${points.length - openCount} traités` : ''}</span>
+                <span className="text-xs text-slate-400">{openCount} à confirmer{points.length > openCount ? `, ${points.length - openCount} traités` : ''}</span>
                 <div className="ml-auto flex items-center gap-1">
                     {points.length > openCount && (
                         <button type="button" onClick={() => setShowClosed(s => !s)} className="px-2 py-1 rounded-lg text-xs text-slate-500 hover:bg-slate-100">
@@ -144,19 +144,19 @@ export default function OpenPointsPanel({ title, points, rows, onChange, onFocus
                                 <div className="flex items-start gap-2">
                                     <div className="min-w-0 flex-1">
                                         <p className={p.statut === 'ouvert' ? 'text-slate-800' : 'text-slate-400 line-through'}>{p.question}</p>
-                                        <p className="mt-0.5 flex flex-wrap gap-x-2 text-[11px] text-slate-400">
+                                        <p className="mt-0.5 flex flex-wrap gap-x-3 text-[11px] text-slate-500">
                                             <span>{ORIGIN_LABEL[p.origine] || p.origine}</span>
-                                            {p.type && <span>· {p.type}</span>}
-                                            {p.acteur && <span>· à demander à {p.acteur}</span>}
+                                            {p.type && <span>{p.type}</span>}
+                                            {p.acteur && <span>à demander à {p.acteur}</span>}
                                             {step && onFocusStep && (
-                                                <button type="button" onClick={() => onFocusStep(step.id)} className="text-blue-600 hover:underline">· étape « {step.étape} »</button>
+                                                <button type="button" onClick={() => onFocusStep(step.id)} className="text-blue-600 hover:underline">étape « {step.étape} »</button>
                                             )}
-                                            {p.statut !== 'ouvert' && <span>· {STATUS_LABEL[p.statut]}</span>}
+                                            {p.statut !== 'ouvert' && <span>{STATUS_LABEL[p.statut]}</span>}
                                         </p>
                                         {p.source && <p className="mt-0.5 text-[11px] italic text-slate-400">« {p.source} »</p>}
                                         {p.reponse && <p className="mt-1 text-xs text-emerald-700">Réponse{p.repondu_par_nom ? ` de ${p.repondu_par_nom}` : ''} : {p.reponse}</p>}
                                         {p.statut === 'ouvert' && !!p.destinataires?.length && (
-                                            <p className="mt-0.5 text-[11px] text-blue-600">Adressé à {p.destinataires.map(id => nameOf(id) || 'une personne').join(', ')} — en attente de réponse</p>
+                                            <p className="mt-0.5 text-[11px] text-blue-600">Adressé à {p.destinataires.map(id => nameOf(id) || 'une personne').join(', ')}, en attente de réponse</p>
                                         )}
                                     </div>
                                     {procedureId && p.statut === 'ouvert' && (
@@ -168,7 +168,7 @@ export default function OpenPointsPanel({ title, points, rows, onChange, onFocus
                                                 {targets?.people.map(u => <option key={u.id} value={`u:${u.id}`}>{u.name}</option>)}
                                             </select>
                                         ) : (
-                                            <button type="button" onClick={() => void openAddress(p.id)} title={p.destinataires?.length ? 'Adressé — adresser à quelqu’un d’autre' : 'Adresser à une personne ou une équipe'}
+                                            <button type="button" onClick={() => void openAddress(p.id)} title={p.destinataires?.length ? 'Déjà adressé. L’adresser à quelqu’un d’autre' : 'Adresser à une personne ou une équipe'}
                                                 className={`p-1.5 rounded-lg hover:bg-blue-50 ${p.destinataires?.length ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600'}`}><UserPlus className="w-4 h-4" /></button>
                                         )
                                     )}

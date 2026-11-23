@@ -281,7 +281,7 @@ export default function TaxonomyTree() {
     setMigrateMsg('');
     try {
       const res = await taxonomyApi.migrate();
-      setMigrateMsg(`✓ Migration réussie — ${res.procedures_linked} procédures liées`);
+      setMigrateMsg(`Migration réussie : ${res.procedures_linked} procédures liées`);
       load();
     } catch (e: unknown) {
       setMigrateMsg(`✗ ${e instanceof Error ? e.message : 'Erreur migration'}`);
@@ -301,7 +301,7 @@ export default function TaxonomyTree() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Taxonomie des processus</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Thème → Catégorie → Sous-catégorie → Procédures</p>
+          <p className="text-sm text-gray-500 mt-0.5">Thèmes, catégories, sous-catégories et procédures</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={load} title="Actualiser"

@@ -28,10 +28,14 @@ function stepsOf(irr: Irritant, rows: Table1Row[]): string[] {
 
 const axisOf = (irr: Irritant) => irr.findings?.[0]?.categorie || irr.categorie || 'Sans axe';
 
-/** « … → conséquence » : le constat d'un côté, ce qu'il entraîne de l'autre */
+/** Le constat, ce qu'il entraîne (paragraphe « Conséquence : … », ou ancien format « constat → conséquence »)
+ *  et la note de source */
 function splitDescription(d = '') {
-    const [body, ...rest] = d.split('\n\n');
-    const [constat, effet] = body.split(' → ');
+    const parts = d.split('\n\n');
+    let [constat, effet] = parts[0].split(' \u2192 ');
+    let rest = parts.slice(1);
+    const cons = rest.find(p => /^Conséquence\s*:/.test(p));
+    if (cons) { effet = cons.replace(/^Conséquence\s*:\s*/, ''); rest = rest.filter(p => p !== cons); }
     return { constat: constat.trim(), effet: effet?.trim(), note: rest.join(' ').trim() };
 }
 
@@ -100,11 +104,11 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
                 <div className="border-b border-neutral-200 px-4 py-2.5">
                     <div className="flex items-baseline justify-between gap-2">
                         <h3 className="text-sm font-semibold text-neutral-900">Analyse vers la cible</h3>
-                        {items && <span className="text-[11px] text-neutral-500">{all.length} défaillance{all.length > 1 ? 's' : ''} · {majeurs} majeure{majeurs > 1 ? 's' : ''} · {retenues} piste{retenues > 1 ? 's' : ''} retenue{retenues > 1 ? 's' : ''} sur {pistes.length}</span>}
+                        {items && <span className="text-[11px] text-neutral-500">{all.length} défaillance{all.length > 1 ? 's' : ''}, dont {majeurs} majeure{majeurs > 1 ? 's' : ''}. {retenues} piste{retenues > 1 ? 's' : ''} retenue{retenues > 1 ? 's' : ''} sur {pistes.length}.</span>}
                     </div>
                     {filterRow && (
-                        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-neutral-900">
-                            <span className="min-w-0 truncate">Étape {filterRow.id} · {filterRow.étape} — {visible.length} défaillance{visible.length > 1 ? 's' : ''}</span>
+                        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-petrole-tint px-2.5 py-1.5 text-xs text-neutral-900">
+                            <span className="min-w-0 truncate">Étape {filterRow.id}, « {filterRow.étape} » : {visible.length} défaillance{visible.length > 1 ? 's' : ''}</span>
                             <button type="button" onClick={() => setStepFilter(null)} className="shrink-0 font-medium underline">Tout afficher</button>
                         </div>
                     )}
@@ -132,15 +136,15 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
                                     const ps = (irr.findings || []).flatMap(f => f.pistes || []);
                                     return (
                                         <li key={irr.id} ref={el => { cardRefs.current[irr.id] = el; }}
-                                            className={`rounded-lg border px-3 py-2 ${active ? 'border-neutral-900 bg-amber-50' : 'border-neutral-200'}`}>
+                                            className={`rounded-lg border px-3 py-2 ${active ? 'border-petrole bg-petrole-tint' : 'border-neutral-200'}`}>
                                             <button type="button" onClick={() => setActiveIrr(active ? null : irr.id)} aria-pressed={active} className="w-full text-left">
                                                 <span className="flex items-start justify-between gap-2">
                                                     <span className="text-sm font-medium text-neutral-900">{irr.titre}</span>
                                                     {irr.criticite && (
-                                                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${irr.criticite === 'Majeur' ? 'bg-neutral-900 text-white' : 'border border-neutral-300 text-neutral-700'}`}>{irr.criticite}</span>
+                                                        <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${irr.criticite === 'Majeur' ? 'bg-amber-700 text-white' : 'border border-neutral-300 text-neutral-700'}`}>{irr.criticite}</span>
                                                     )}
                                                 </span>
-                                                {d.effet && <span className="mt-0.5 block text-xs font-medium text-neutral-800">→ {d.effet}</span>}
+                                                {d.effet && <span className="mt-0.5 block text-xs font-medium text-neutral-800">{d.effet}</span>}
                                                 <span className={`mt-1 block text-xs leading-relaxed text-neutral-600 ${active ? '' : 'line-clamp-2'}`}>{d.constat}</span>
                                             </button>
                                             {steps.length > 0 && (
@@ -164,7 +168,7 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
                                                             <span className="flex shrink-0 gap-0.5">
                                                                 <button type="button" onClick={() => void setPiste(p, 'retenue')} aria-pressed={p.statut === 'retenue'}
                                                                     title={p.statut === 'retenue' ? 'Remettre en proposition' : 'Retenir pour la cible'}
-                                                                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${p.statut === 'retenue' ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}>Retenir</button>
+                                                                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${p.statut === 'retenue' ? 'bg-petrole text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}>Retenir</button>
                                                                 <button type="button" onClick={() => void setPiste(p, 'rejetée')} aria-pressed={p.statut === 'rejetée'}
                                                                     title={p.statut === 'rejetée' ? 'Remettre en proposition' : 'Écarter'} aria-label="Écarter"
                                                                     className={`rounded p-0.5 ${p.statut === 'rejetée' ? 'bg-neutral-200 text-neutral-900' : 'text-neutral-500 hover:bg-neutral-100'}`}><X className="h-3 w-3" /></button>
@@ -186,7 +190,7 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
             <div className="relative min-h-[360px] flex-[3] overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected} markedIds={marked} onSelect={onDiagramSelect} />
                 {!diagramRef && <div className="absolute left-3 top-3 rounded-lg border border-neutral-200 bg-white/95 px-2 py-1 text-[11px] text-neutral-700 shadow-sm">
-                    <span className="mr-1 inline-block h-2.5 w-2.5 rounded-sm border-2 border-amber-500 align-middle" />étape touchée par une défaillance
+                    <span className="mr-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-700 align-middle text-[9px] font-bold text-white">!</span>étape touchée par une défaillance
                 </div>}
                 {!diagramRef && <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
                     <button type="button" aria-label="Dézoomer" onClick={() => diagram.current?.zoomOut()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomOut className="h-4 w-4" /></button>

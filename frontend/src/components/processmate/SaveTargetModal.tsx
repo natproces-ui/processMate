@@ -318,7 +318,7 @@ export default function SaveTargetModal({ open, titre, bulk, onClose, onConfirm 
                 <div className="border-t border-neutral-200 px-5 py-3 space-y-2">
                     {sel?.type === 'item' && (
                         <p className="text-sm text-neutral-700">
-                            Mettre à jour <span className="font-medium text-neutral-900">« {sel.item.titre} »</span>{sel.folder.campaignId ? <> · {sel.folder.label}</> : null}.{' '}
+                            Mettre à jour <span className="font-medium text-neutral-900">« {sel.item.titre} »</span>{sel.folder.campaignId ? <> ({sel.folder.label})</> : null}.{' '}
                             <span className="text-neutral-500">{sel.item.procedureId
                                 ? 'Son contenu est remplacé ; la version précédente reste dans l’historique.'
                                 : 'La procédure est créée dans le référentiel, à sa place dans la campagne.'}</span>
@@ -330,11 +330,11 @@ export default function SaveTargetModal({ open, titre, bulk, onClose, onConfirm 
                                 {bulk ? (tree?.creation === 'directe' ? `${bulk.length} nouvelle${bulk.length > 1 ? 's' : ''} procédure${bulk.length > 1 ? 's' : ''}` : `Proposer ${bulk.length} procédure${bulk.length > 1 ? 's' : ''}`)
                                     : (tree?.creation === 'directe' ? 'Nouvelle procédure' : 'Proposer une procédure')}
                                 {selPlace ? <> dans <span className="font-medium text-neutral-900">{selPlace}</span></> : null}
-                                {tree?.creation === 'proposition' && <span className="text-neutral-500"> — le pilote {bulk ? 'les' : 'la'} valide avant {bulk ? 'qu’elles entrent' : 'qu’elle entre'} au référentiel.</span>}
+                                {tree?.creation === 'proposition' && <span className="text-neutral-500">. Le pilote {bulk ? 'les' : 'la'} valide avant {bulk ? 'qu’elles entrent' : 'qu’elle entre'} au référentiel.</span>}
                             </p>
                             {bulk ? (
-                                <ul className="max-h-28 overflow-y-auto rounded-lg bg-neutral-50 px-3 py-2 text-sm text-neutral-800">
-                                    {bulk.map(t => <li key={t} className="truncate">· {t}</li>)}
+                                <ul className="max-h-28 list-disc overflow-y-auto rounded-lg bg-neutral-50 py-2 pl-7 pr-3 text-sm text-neutral-800">
+                                    {bulk.map(t => <li key={t} className="truncate">{t}</li>)}
                                 </ul>
                             ) : (
                                 <input value={newTitle} onChange={e => setNewTitle(e.target.value)} aria-label="Nom de la procédure"

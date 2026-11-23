@@ -24,7 +24,7 @@ const FIELDS: [keyof Table1Row, string][] = [
 
 const short = (v: unknown) => {
     const s = String(v ?? '').trim();
-    return s ? (s.length > 40 ? `${s.slice(0, 40)}…` : s) : '—';
+    return s ? (s.length > 40 ? `${s.slice(0, 40)}…` : s) : 'vide';
 };
 
 /** Différences entre deux versions d'une procédure, étape par étape. */
@@ -37,7 +37,7 @@ export function diffWorkflows(before: Table1Row[], after: Table1Row[]): StepChan
         if (!old) { changes.push({ kind: 'added', id: r.id, label: r.étape }); continue; }
         const details: string[] = [];
         for (const [k, name] of FIELDS) {
-            if (String(old[k] ?? '') !== String(r[k] ?? '')) details.push(`${name} : ${short(old[k])} → ${short(r[k])}`);
+            if (String(old[k] ?? '') !== String(r[k] ?? '')) details.push(`${name} : « ${short(old[k])} » devient « ${short(r[k])} »`);
         }
         const links = (x: Table1Row) => (x.outputs || []).map(o => `${o.targetId}:${o.label || ''}`).sort().join('|');
         if (links(old) !== links(r)) details.push('enchaînement modifié');
@@ -68,7 +68,7 @@ export default function ChangeSummary({ changes, onShow, onUndo, undone, disable
         count('added') && `${count('added')} ajoutée${count('added') > 1 ? 's' : ''}`,
         count('modified') && `${count('modified')} modifiée${count('modified') > 1 ? 's' : ''}`,
         count('removed') && `${count('removed')} supprimée${count('removed') > 1 ? 's' : ''}`,
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean).join(', ');
     const visibleIds = changes.filter(c => c.kind !== 'removed').map(c => c.id);
 
     return (
@@ -80,7 +80,7 @@ export default function ChangeSummary({ changes, onShow, onUndo, undone, disable
                     <PenLine className="w-4 h-4 shrink-0" />
                     <span>{undone ? 'Modifications annulées' : changeTitle(changes)}</span>
                 </button>
-                <span className="text-xs text-neutral-500">{procedure && <span className="font-medium text-neutral-900">{procedure} · </span>}{parts}</span>
+                <span className="text-xs text-neutral-500">{procedure && <span className="font-medium text-neutral-900">{procedure} : </span>}{parts}</span>
                 <span className="ml-auto flex items-center gap-1">
                     {onShow && visibleIds.length > 0 && !undone && (
                         <button type="button" onClick={() => onShow(visibleIds)}
@@ -108,7 +108,7 @@ export default function ChangeSummary({ changes, onShow, onUndo, undone, disable
                                     <span className={c.kind === 'removed' ? 'line-through text-neutral-500' : ''}>{c.label || c.id}</span>
                                 )}
                                 {c.details && c.details.length > 0 && (
-                                    <span className="block text-xs text-neutral-500">{c.details.join(' · ')}</span>
+                                    <span className="block text-xs text-neutral-500">{c.details.join(' ; ')}</span>
                                 )}
                             </span>
                         </li>

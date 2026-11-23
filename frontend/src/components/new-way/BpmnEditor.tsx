@@ -1028,9 +1028,9 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                 .djs-element.ai-changed-highlight .djs-visual > rect,
                 .djs-element.ai-changed-highlight .djs-visual > circle,
                 .djs-element.ai-changed-highlight .djs-visual > polygon {
-                    stroke: #f59e0b !important;
+                    stroke: #0B6E80 !important;
                     stroke-width: 3px !important;
-                    filter: drop-shadow(0 0 3px rgba(245, 158, 11, 0.5));
+                    stroke-dasharray: 7 4 !important;
                 }
             `}</style>
         </div>

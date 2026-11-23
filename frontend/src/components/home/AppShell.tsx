@@ -46,10 +46,9 @@ export interface AppShellProps {
 /** Navigation de l'organisation (membres) : la même partout, chat compris */
 const ORG_NAV = [
     { tab: 'procedures', label: 'Référentiel', icon: FileText },
-    { tab: 'workspace', label: 'Mon espace de travail', icon: PenLine },
-    { tab: 'taches', label: 'À faire', icon: CheckSquare },
     { tab: 'campagnes', label: 'Campagnes', icon: Megaphone },
     { tab: 'analyser', label: 'Analyse', icon: BarChart3 },
+    { tab: 'workspace', label: 'Espace de travail', icon: PenLine },
 ];
 const MORE_NAV = [
     { href: '/orchestration?tab=specifications', key: 'tab:specifications', label: 'Spécifications', icon: BookOpen },
@@ -183,12 +182,19 @@ export default function AppShell({
                     className="hidden md:inline-flex p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-200"><PanelLeftClose className="w-4 h-4" /></button>
             </div>
             <div className="px-2 space-y-0.5">
-                {user && member && <NavLink href="/espace" icon={<Home />} label="Accueil" active={activeNav === 'espace'} />}
                 <NavButton onClick={newConv} icon={<SquarePen />} label="Nouvelle conversation" />
                 {persistent && <NavButton onClick={() => setSearchOpen(true)} icon={<Search />} label="Rechercher" hint="Ctrl K" />}
-                {persistent && <NavLink href="/projets" icon={<FolderKanban />} label="Projets" active={activeNav === 'projets'} />}
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto px-2 pt-4 space-y-5">
+                {((user && member) || persistent) && (
+                    <section aria-label="Mon travail" className="space-y-0.5">
+                        <p className={sectionLabel}>Mon travail</p>
+                        {user && member && <NavLink href="/espace" icon={<Home />} label="Accueil" active={activeNav === 'espace'} />}
+                        {user && member && <NavLink href="/orchestration?tab=taches" icon={<CheckSquare />} label="À faire" active={activeNav === 'tab:taches'}
+                            badge={todo ? { count: todo.ouvertes, late: todo.en_retard } : undefined} />}
+                        {persistent && <NavLink href="/projets" icon={<FolderKanban />} label="Projets" active={activeNav === 'projets'} />}
+                    </section>
+                )}
                 {user && member && (
                     <section aria-label="Espace de l'organisation" className="space-y-0.5">
                         <p className={`${sectionLabel} truncate`} title={access?.organisation?.nom ?? undefined}>
@@ -196,8 +202,7 @@ export default function AppShell({
                         </p>
                         {ORG_NAV.map(n => (
                             <NavLink key={n.tab} href={`/orchestration?tab=${n.tab}`} icon={<n.icon />} label={n.label}
-                                active={activeNav === `tab:${n.tab}`}
-                                badge={n.tab === 'taches' && todo ? { count: todo.ouvertes, late: todo.en_retard } : undefined} />
+                                active={activeNav === `tab:${n.tab}`} />
                         ))}
                         {access?.is_admin && <NavLink href="/admin" icon={<Users />} label="Équipe" active={activeNav === 'equipe'} />}
                         <button type="button" onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen} className={itemCls}>
@@ -261,9 +266,9 @@ export default function AppShell({
                 )}
             </div>
             <div className="shrink-0 border-t border-neutral-200 p-2 space-y-0.5">
-                <NavLink href="/decouvrir" icon={<Compass />} label="Découvrir ProcessMate" />
+                {!user && <NavLink href="/decouvrir" icon={<Compass />} label="Découvrir ProcessMate" />}
                 <NavLink href="/guide" icon={<BookOpen />} label="Guide" />
-                <NavLink href="/blog" icon={<Newspaper />} label="Blog" />
+                {!user && <NavLink href="/blog" icon={<Newspaper />} label="Blog" />}
             </div>
         </nav>
     );
@@ -278,6 +283,7 @@ export default function AppShell({
             {user && member && <>
                 <div className="my-2 h-px w-8 bg-neutral-200" />
                 <RailLink label="Accueil" href="/espace"><Home /></RailLink>
+                <RailLink label="À faire" href="/orchestration?tab=taches"><CheckSquare /></RailLink>
                 {ORG_NAV.map(n => <RailLink key={n.tab} label={n.label} href={`/orchestration?tab=${n.tab}`}><n.icon /></RailLink>)}
             </>}
         </nav>
@@ -334,7 +340,7 @@ export default function AppShell({
     );
 }
 
-const itemCls = 'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-neutral-900 hover:bg-neutral-200/70 [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0';
+const itemCls = 'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-neutral-900 hover:bg-neutral-200/70 [&_svg]:w-4 [&_svg]:h-4 [&_svg]:shrink-0 [&_svg]:text-petrole';
 
 function NavButton({ onClick, icon, label, hint }: { onClick: () => void; icon: React.ReactNode; label: string; hint?: string }) {
     return (
@@ -347,7 +353,7 @@ function NavButton({ onClick, icon, label, hint }: { onClick: () => void; icon: 
 
 function NavLink({ href, icon, label, badge, active }: { href: string; icon: React.ReactNode; label: string; badge?: { count: number; late: number }; active?: boolean }) {
     return (
-        <Link href={href} className={`${itemCls} ${active ? 'bg-neutral-200' : ''}`} aria-current={active ? 'page' : undefined}>
+        <Link href={href} className={`${itemCls} ${active ? 'bg-petrole-tint font-semibold hover:bg-petrole-tint' : ''}`} aria-current={active ? 'page' : undefined}>
             {icon}<span className="truncate">{label}</span>
             {badge && badge.count > 0 && (
                 <span aria-label={`${badge.count} tâche(s) à faire${badge.late ? `, dont ${badge.late} en retard` : ''}`}
@@ -362,13 +368,13 @@ function NavLink({ href, icon, label, badge, active }: { href: string; icon: Rea
 function RailButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
     return (
         <button type="button" onClick={onClick} aria-label={label} title={label}
-            className="p-2 rounded-lg text-neutral-900 hover:bg-neutral-200 [&_svg]:w-5 [&_svg]:h-5">{children}</button>
+            className="p-2 rounded-lg text-petrole hover:bg-neutral-200 [&_svg]:w-5 [&_svg]:h-5">{children}</button>
     );
 }
 
 function RailLink({ label, href, children }: { label: string; href: string; children: React.ReactNode }) {
     return (
         <Link href={href} aria-label={label} title={label}
-            className="p-2 rounded-lg text-neutral-900 hover:bg-neutral-200 [&_svg]:w-5 [&_svg]:h-5">{children}</Link>
+            className="p-2 rounded-lg text-petrole hover:bg-neutral-200 [&_svg]:w-5 [&_svg]:h-5">{children}</Link>
     );
 }

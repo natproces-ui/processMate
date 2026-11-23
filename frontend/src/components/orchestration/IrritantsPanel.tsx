@@ -345,7 +345,7 @@ export default function IrritantsPanel({ procedures: propProcedures, onInstruire
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Irritants</h2>
                     <p className="text-sm text-gray-400 mt-0.5">
-                        {procedures.length} procédure{procedures.length > 1 ? 's' : ''} · {analysees} analysée{analysees > 1 ? 's' : ''}
+                        {procedures.length} procédure{procedures.length > 1 ? 's' : ''}, dont {analysees} analysée{analysees > 1 ? 's' : ''}
                     </p>
                 </div>
                 <div className="flex gap-2">

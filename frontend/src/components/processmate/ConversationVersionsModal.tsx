@@ -65,7 +65,7 @@ export default function ConversationVersionsModal({ conversationId, procedureKey
             <div className="bg-white w-full max-w-3xl max-h-[85vh] rounded-xl shadow-xl flex flex-col overflow-hidden">
                 <div className="px-5 py-3 border-b border-neutral-200 flex items-center gap-2">
                     <History className="w-4 h-4 text-neutral-900" />
-                    <h3 className="font-semibold text-neutral-900 truncate">Versions · {title}</h3>
+                    <h3 className="font-semibold text-neutral-900 truncate">Versions de « {title} »</h3>
                     <button type="button" onClick={onClose} aria-label="Fermer" className="ml-auto p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="flex-1 min-h-0 flex flex-col sm:flex-row">
@@ -76,7 +76,7 @@ export default function ConversationVersionsModal({ conversationId, procedureKey
                                 <button type="button" onClick={() => select(v)}
                                     className={`w-full text-left px-4 py-2.5 border-b border-neutral-50 hover:bg-neutral-50 ${selected?.version === v.version ? 'bg-neutral-100' : ''}`}>
                                     <span className="flex items-center gap-1.5 text-sm font-medium text-neutral-900">
-                                        Version {v.version} · {ORIGINE[v.origine] || v.origine}
+                                        Version {v.version}, {ORIGINE[v.origine] || v.origine}
                                         {v.courante && <span className="rounded-full bg-neutral-900 px-1.5 text-[10px] font-semibold text-white">affichée</span>}
                                         {v.enregistree && <span className="rounded-full bg-emerald-50 px-1.5 text-[10px] font-semibold text-emerald-700">enregistrée</span>}
                                     </span>

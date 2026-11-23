@@ -148,7 +148,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [editorFullscreen, setEditorFullscreen] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
-    const [view, setView] = useState<'ensemble' | 'analyse' | 'table' | 'bpmn' | 'fiche'>('bpmn');
+    const [view, setView] = useState<'ensemble' | 'analyse' | 'table' | 'bpmn' | 'fiche'>('ensemble');
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatActivity, setChatActivity] = useState({ messages: 0, busy: false });
@@ -365,7 +365,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         workflow_db_id: proc.id,
                     }]);
                     setActiveTab(0); setPhase('upload'); setUploadOpen(true);
-                    showSuccess(`Procédure "${title}" — workflow vide, prête à être complétée`);
+                    showSuccess(`Procédure « ${title} » ouverte : aucune étape pour l’instant`);
                     setLoadingWorkflow(false);
                     return;
                 }
@@ -537,7 +537,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
 
     const handleSyncClick = useCallback(() => {
         const parsed = runParser();
-        if (!parsed) { showError('Diagramme non chargé — impossible de synchroniser.'); return; }
+        if (!parsed) { showError('Le logigramme n’est pas chargé : synchronisation impossible.'); return; }
         if (parsed.rows.length === 0) { showError(parsed.warnings[0] || 'Rien à synchroniser depuis le diagramme.'); return; }
         setSyncPreview(parsed);
     }, [runParser]);
@@ -657,7 +657,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 setInstances(prev => prev.map((inst, idx) => idx === i ? { ...inst, title: d.title || inst.title, data: d.workflow || [], enrichments: enrichMap, bpmnXml: xml, initialMeta: d.procedureMetadata || { nom: d.title }, status: 'ready', workflow_db_id: d.workflow_db_id || undefined } : inst));
             } catch (err: any) {
                 setInstances(prev => prev.map((inst, idx) => idx === i ? { ...inst, status: 'error' } : inst));
-                showError(`Erreur : ${cards.find(c => c.process_id === pid)?.title} — ${err.message}`);
+                showError(`Erreur sur « ${cards.find(c => c.process_id === pid)?.title} » : ${err.message}`);
             }
         }
         setGenerating(false);
@@ -743,7 +743,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 saveRows = parsed.rows;
                 saveEnrichments = parsed.enrichments;
                 if (parsed.warnings.length > 0) {
-                    showError(`Synchronisation diagramme→tableau : ${parsed.warnings[0]}${parsed.warnings.length > 1 ? ` (+${parsed.warnings.length - 1} autre(s))` : ''}`);
+                    showError(`Synchronisation du logigramme vers le tableau : ${parsed.warnings[0]}${parsed.warnings.length > 1 ? ` (+${parsed.warnings.length - 1} autre(s))` : ''}`);
                 }
                 applySyncResult(parsed);
             }
@@ -1212,7 +1212,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         else { const d = linkedDiagram.current; if (k === 'in') d?.zoomIn(); else if (k === 'out') d?.zoomOut(); else d?.fit(); }
     };
     const canExport = exportAllowed && activeData.length > 0 && activeInst?.status !== 'generating';
-    const cmd = 'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40';
+    const cmd = 'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40 [&_svg]:text-neutral-600';
     const sep = <span aria-hidden className="mx-1 h-4 w-px bg-neutral-200" />;
     const hasDiagram = !!activeBpmnXml && activeData.length > 0 && (view === 'bpmn' || view === 'ensemble' || (view === 'analyse' && !!analysisId));
     const viewCommands: React.ReactNode[] = [];
@@ -1237,7 +1237,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         </span>);
     if (view === 'analyse' && hasDiagram) viewCommands.push(
         <span key="legende" className="inline-flex items-center gap-1.5 px-2 text-[11px] text-neutral-600">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm border-2 border-amber-500" />étape touchée par une défaillance</span>);
+            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-700 text-[9px] font-bold text-white">!</span>étape touchée par une défaillance</span>);
     const commandBar = viewCommands.length > 0 || historyNav ? (
         <div role="toolbar" aria-label="Commandes de la vue" className="-mx-1 mt-1 flex min-h-[34px] flex-wrap items-center border-t border-neutral-200 pt-1">
             {viewCommands.map((c, i) => <span key={i} className="inline-flex items-center">{i > 0 && sep}{c}</span>)}
@@ -1401,7 +1401,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         cancelledRef.current = true;
         mediaRecorder?.stop();
         setRecording(false);
-        showSuccess('Enregistrement annulé — tableau inchangé');
+        showSuccess('Enregistrement annulé, le tableau n’a pas changé');
     };
 
     useEffect(() => {
@@ -1417,7 +1417,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                 <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-4">
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
                         <Code className="w-4 h-4 text-violet-500" />
-                        Code source — Analyse et flowchart
+                        Analyse du code source
                         <button type="button" onClick={() => setCodeSourceOpen(false)} aria-label="Fermer le code source" className="ml-auto text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
                     </div>
                     <p className="text-xs text-slate-500">
@@ -1641,7 +1641,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     </h1>
                                 )}
                                 <p className="text-xs text-neutral-500 truncate">
-                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? ` · ${activeInst.category}` : ''}{activeCount > 1 ? ` · ${activeCount} procédures dans la conversation` : ''}
+                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? `, ${activeInst.category}` : ''}{activeCount > 1 ? `, ${activeCount} procédures dans la conversation` : ''}
                                 </p>
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -1705,7 +1705,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     { id: 'bpmn' as const, label: 'Logigramme', icon: Workflow },
                                     { id: 'it' as const, label: 'Vue IT', icon: Wrench },
                                     { id: 'fiche' as const, label: 'Fiche & export', icon: FileText },
-                                    { id: 'analyse' as const, label: 'Analyse', icon: Target },
+                                    { id: 'analyse' as const, label: 'Irritants et pistes', icon: Target },
                                 ]).filter(v => (exportAllowed || v.id !== 'fiche') && (v.id !== 'analyse' || !!analysisId)).map(v => {
                                     const selected = v.id === 'it' ? view === 'bpmn' && viewMode === 'outillage'
                                         : v.id === 'bpmn' ? view === 'bpmn' && viewMode === 'metier' : view === v.id;
@@ -1714,8 +1714,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             title={v.id === 'it' ? 'Le logigramme vu par les applicatifs utilisés à chaque étape'
                                                 : v.id === 'ensemble' ? 'Le logigramme et le détail de chaque étape côte à côte (plein écran conseillé)'
                                                 : v.id === 'analyse' ? 'Les défaillances par axe de transformation et les pistes, reliées aux étapes du logigramme' : undefined}
-                                            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${selected ? 'border-neutral-900 text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
-                                            <v.icon className="w-3.5 h-3.5" />{v.label}
+                                            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${selected ? 'border-petrole text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
+                                            <v.icon className="w-3.5 h-3.5 text-petrole" />{v.label}
                                         </button>
                                     );
                                 })}
@@ -1813,10 +1813,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     {guideOpen && (
                                         <div className="px-4 pb-3 border-t border-slate-100">
                                             <ul className="text-xs text-slate-600 space-y-1 mt-2.5">
-                                                <li><strong>StartEvent / EndEvent</strong> — Début et fin du processus</li>
-                                                <li><strong>Task</strong> — Action réalisée par un acteur</li>
-                                                <li><strong>ExclusiveGateway</strong> — Décision (Oui/Non)</li>
-                                                <li><strong>Acteur</strong> — Définit les swimlanes</li>
+                                                <li><strong>StartEvent / EndEvent</strong> : début et fin du processus</li>
+                                                <li><strong>Task</strong> : action réalisée par un acteur</li>
+                                                <li><strong>ExclusiveGateway</strong> : décision (oui ou non)</li>
+                                                <li><strong>Acteur</strong> : définit les couloirs du logigramme</li>
                                             </ul>
                                         </div>
                                     )}
@@ -1919,7 +1919,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             <p className="text-sm text-slate-700">
                                 {syncPreview.rows.length} étape(s) détectée(s) dans le diagramme
                                 {syncPreview.newRowIds.size > 0 && (
-                                    <> — dont <strong>{syncPreview.newRowIds.size} nouvelle(s)</strong> (créée(s) directement sur le canevas)</>
+                                    <>, dont <strong>{syncPreview.newRowIds.size} nouvelle(s)</strong> (créée(s) directement sur le canevas)</>
                                 )}.
                             </p>
                             {syncPreview.warnings.length > 0 && (

@@ -277,7 +277,7 @@ export default function NotificationBell({ actorId }: Props) {
                                 onClick={() => { router.push('/orchestration?tab=taches'); setOpen(false); }}
                                 className="text-xs text-blue-600 hover:underline font-medium"
                             >
-                                Voir toutes les tâches →
+                                Voir toutes les tâches
                             </button>
                         </div>
                     )}

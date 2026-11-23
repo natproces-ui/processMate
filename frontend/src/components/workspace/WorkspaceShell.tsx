@@ -240,9 +240,8 @@ function CampaignDrilldown({
             {CAMPAIGN_STATUS_LABELS[campaign.status]}
           </span>
           <div className="flex items-center gap-3 text-[11px] text-gray-500">
-            <span>{procCount} procédures</span>
-            <span>·</span>
-            <span className="font-semibold text-gray-700">{stats.progress_pct}%</span>
+            <span>{procCount} procédures,</span>
+            <span className="font-semibold text-gray-700">{stats.progress_pct} %</span>
             <span className="text-gray-400">({stats.done} formalisée{stats.done !== 1 ? 's' : ''})</span>
           </div>
           <div className="h-1.5 flex-1 min-w-[80px] bg-gray-100 rounded-full overflow-hidden">
@@ -618,7 +617,7 @@ function RevisionTool({
           </button>
         </div>
         <p className="text-[11px] text-gray-700 leading-relaxed">{localSession.resume}</p>
-        <p className="text-[10px] text-gray-400 mt-1.5">{pending} point(s) en attente · {localSession.points.length} total</p>
+        <p className="text-[10px] text-gray-400 mt-1.5">{pending} point(s) en attente sur {localSession.points.length}</p>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {localSession.points.length === 0 ? (
@@ -733,7 +732,7 @@ function CorrectionsTool({
       <div>
         <p className="font-semibold text-gray-800 text-sm">Corrections depuis un PDF annoté</p>
         <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-          Uploadez le PDF retourné avec annotations — l&apos;IA détecte les surlignements, manuscrits, ratures
+          Déposez le PDF retourné avec ses annotations : l&apos;IA repère les surlignements, les ajouts manuscrits et les ratures
         </p>
       </div>
       <button type="button" onClick={() => inputRef.current?.click()}
@@ -760,7 +759,7 @@ function CorrectionsTool({
           </button>
         </div>
         {session.synthese && <p className="text-[11px] text-gray-700 leading-relaxed">{session.synthese}</p>}
-        <p className="text-[10px] text-gray-400 mt-1">{pending} en attente · {remarks.filter(r => r.status === 'treated').length} traitée(s)</p>
+        <p className="text-[10px] text-gray-400 mt-1">{pending} en attente, {remarks.filter(r => r.status === 'treated').length} traitée(s)</p>
         <input ref={inputRef} type="file" accept="application/pdf" className="hidden"
           title="Sélectionner un autre PDF annoté"
           onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
@@ -937,7 +936,7 @@ function ProcedureSelector({ onSelect, onClose }: { onSelect: (p: Procedure) => 
                   ))}
                   {isLeaf && !hasTaxoMatch && currentNode && !search.trim() && procedures.length > 0 && (
                     <p className="text-[11px] text-gray-400 italic px-1 mb-2">
-                      Aucune procédure liée à cette catégorie — toutes les procédures affichées
+                      Aucune procédure liée à cette catégorie : toutes les procédures sont affichées
                     </p>
                   )}
                   {(currentNode ? displayedProcedures : globalSearchResults).map(p => (
@@ -948,7 +947,7 @@ function ProcedureSelector({ onSelect, onClose }: { onSelect: (p: Procedure) => 
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800 truncate">{p.nom}</p>
-                        <p className="text-[10px] text-gray-400">{[p.ref, p.status, p.category].filter(Boolean).join(' · ')}</p>
+                        <p className="text-[10px] text-gray-400">{[p.ref, p.status, p.category].filter(Boolean).join(', ')}</p>
                       </div>
                     </button>
                   ))}
@@ -1032,7 +1031,7 @@ function CreateTaskModal({
         <div className="p-5 space-y-3">
           {sourcePoint && (
             <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-[11px] text-blue-700">
-              Point de révision : <strong>{sourcePoint.section}</strong> — {sourcePoint.type}
+              Point de révision : <strong>{sourcePoint.section}</strong> ({sourcePoint.type})
             </div>
           )}
           <div>
@@ -1260,7 +1259,7 @@ function TaskCard({ task, onOpenTask, currentUserId, now }: { task: EnrichedTask
           <p className="text-[10px] text-gray-300 truncate">{task.campaign_name}</p>
         )}
         {currentUserId && task.assigned_to !== currentUserId && task.assigned_to_name && (
-          <p className="text-[10px] text-indigo-400 truncate">→ {task.assigned_to_name}</p>
+          <p className="text-[10px] text-indigo-400 truncate">Pour {task.assigned_to_name}</p>
         )}
       </div>
       {task.due_date && (
@@ -1324,7 +1323,7 @@ function BacklogView({
           <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
           <span className="text-xs text-red-700 font-medium flex-1">
             {overdueCount > 0 && <span>{overdueCount} en retard</span>}
-            {overdueCount > 0 && urgentCount > 0 && <span> · </span>}
+            {overdueCount > 0 && urgentCount > 0 && <span>, </span>}
             {urgentCount > 0 && <span>{urgentCount} urgente(s)</span>}
           </span>
         </div>
@@ -1367,7 +1366,7 @@ function BacklogView({
                   className="flex items-center gap-1.5 px-1 mb-2 w-full text-left">
                   {showSupervised ? <ChevronDown className="w-3 h-3 text-gray-400" /> : <ChevronRight className="w-3 h-3 text-gray-400" />}
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex-1">
-                    Suivi — tâches assignées ({supervisedTasks.length})
+                    Tâches assignées à suivre ({supervisedTasks.length})
                   </p>
                 </button>
                 {showSupervised && (
@@ -1557,7 +1556,7 @@ function DeadlinePanel({ tasks, onOpenTask }: { tasks: EnrichedTask[]; onOpenTas
                   <div className={`flex items-center gap-1 mt-1 text-[10px] font-bold ${isOverdue ? 'text-red-700' : 'text-orange-700'}`}>
                     <Clock className="w-2.5 h-2.5" />
                     {new Date(t.due_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
-                    {isOverdue && ' — En retard'}
+                    {isOverdue && ', en retard'}
                   </div>
                 )}
               </button>
@@ -1732,8 +1731,8 @@ function ActivityFeed() {
                   {EVENT_TYPE_LABELS[event.event_type] ?? event.event_type}
                   {event.from_status && event.to_status && (
                     <span className="text-gray-400 font-normal">
-                      {' — '}{TASK_STATUS_LABELS[event.from_status as ProcedureTaskStatus] || event.from_status}
-                      {' → '}{TASK_STATUS_LABELS[event.to_status as ProcedureTaskStatus] || event.to_status}
+                      {' : '}{TASK_STATUS_LABELS[event.from_status as ProcedureTaskStatus] || event.from_status}
+                      {' devient '}{TASK_STATUS_LABELS[event.to_status as ProcedureTaskStatus] || event.to_status}
                     </span>
                   )}
                 </p>

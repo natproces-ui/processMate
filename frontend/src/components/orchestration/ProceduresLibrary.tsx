@@ -516,7 +516,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                     <div>
                         <h1 className="text-lg font-semibold text-neutral-900">{title || 'Référentiel'}</h1>
                         <p className="text-xs text-neutral-500">
-                            {procedures.length} procédure{procedures.length !== 1 ? 's' : ''} · {tree.length} thème{tree.length !== 1 ? 's' : ''}
+                            {procedures.length} procédure{procedures.length !== 1 ? 's' : ''}, {tree.length} thème{tree.length !== 1 ? 's' : ''}
                             {emptyCount > 0 && (
                                 <label className="ml-3 inline-flex cursor-pointer items-center gap-1.5 text-neutral-700">
                                     <input type="checkbox" className="accent-neutral-900" checked={showEmpty} onChange={e => toggleEmpty(e.target.checked)} />
@@ -574,7 +574,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                 <FileText className="w-4 h-4 text-neutral-400 shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">{proc.nom}</p>
-                                    <p className="text-[11px] text-gray-400 truncate">{[proc.ref, proc.category].filter(Boolean).join(' · ')}</p>
+                                    <p className="text-[11px] text-gray-400 truncate">{[proc.ref, proc.category].filter(Boolean).join(', ')}</p>
                                 </div>
                                 <button type="button" title="Actions"
                                     onClick={e => { e.stopPropagation(); openMenu(e, { kind: 'procedure', id: proc.id, name: proc.nom }); }}
@@ -819,7 +819,7 @@ function CampaignPickerModal({ procedureId, procedureName, onDone, onCancel }: {
                                         <Megaphone className="w-4 h-4 text-orange-400 shrink-0" />
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-medium text-gray-800 truncate">{c.title}</p>
-                                            <p className="text-[11px] text-gray-400">{c.stats.total} proc. · {c.stats.progress_pct}%</p>
+                                            <p className="text-[11px] text-gray-400">{c.stats.total} procédures, {c.stats.progress_pct} %</p>
                                         </div>
                                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${sc?.bg} ${sc?.text}`}>
                                             {CAMPAIGN_STATUS_LABELS[c.status]}
