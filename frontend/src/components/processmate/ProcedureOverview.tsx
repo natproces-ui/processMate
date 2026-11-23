@@ -55,7 +55,7 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
             {/* Détail des étapes */}
             <section aria-label="Détail des étapes" className="flex min-h-[320px] flex-[2] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:min-w-[380px] lg:max-w-[560px]">
                 <div className="flex items-baseline justify-between border-b border-neutral-200 px-4 py-2.5">
-                    <h3 className="text-sm font-semibold text-neutral-900">Détail des étapes</h3>
+                    <h3 className="text-sm font-semibold text-petrole">Détail des étapes</h3>
                     <span className="text-[11px] text-neutral-500">{rows.length} étape{rows.length > 1 ? 's' : ''}, {actors} acteur{actors > 1 ? 's' : ''}</span>
                 </div>
                 <ol className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
@@ -69,9 +69,9 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
                         return (
                             <li key={r.id} ref={el => { cardRefs.current[r.id] = el; }}>
                                 <button type="button" onClick={() => setSelected(active ? null : r.id)} aria-pressed={active}
-                                    className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${active ? 'border-petrole bg-petrole-tint' : 'border-neutral-200 hover:bg-neutral-50'} ${isEvent(r.typeBpmn) ? 'opacity-80' : ''}`}>
+                                    className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${active ? 'border-petrole bg-petrole-tint' : 'border-petrole/25 hover:bg-petrole-tint/50'} ${isEvent(r.typeBpmn) ? 'opacity-80' : ''}`}>
                                     <span className="flex items-start gap-2">
-                                        <span className="mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-neutral-900 px-1 text-[10px] font-bold text-white">{r.id}</span>
+                                        <span className="mt-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded bg-petrole px-1 text-[10px] font-bold text-white">{r.id}</span>
                                         <span className="min-w-0 flex-1">
                                             <span className="flex items-center gap-1.5 text-sm font-medium text-neutral-900">
                                                 <TypeIcon type={r.typeBpmn} />

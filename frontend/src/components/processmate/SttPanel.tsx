@@ -1625,7 +1625,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 {activeCount > 1 ? (
                                     /* plusieurs procédures dans la conversation : on en change depuis le titre */
                                     <RowMenu label="Changer de procédure" align="left" className="min-w-0 max-w-full"
-                                        triggerClassName="-mx-1.5 flex max-w-full items-center gap-1 rounded-lg px-1.5 text-neutral-900 hover:bg-neutral-100"
+                                        triggerClassName="-mx-1.5 flex max-w-full items-center gap-1 rounded-lg px-1.5 text-petrole hover:bg-petrole-tint"
                                         trigger={<>
                                             <span className="text-base font-semibold truncate" title={activeTitle || 'Nouvelle procédure'}>{activeTitle || 'Nouvelle procédure'}</span>
                                             <ChevronDown className="w-4 h-4 shrink-0" />
@@ -1636,7 +1636,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             onSelect: () => setActiveTab(i),
                                         }))} />
                                 ) : (
-                                    <h1 className="text-base font-semibold text-neutral-900 truncate" title={activeTitle || 'Nouvelle procédure'}>
+                                    <h1 className="text-base font-semibold text-petrole truncate" title={activeTitle || 'Nouvelle procédure'}>
                                         {activeTitle || 'Nouvelle procédure'}
                                     </h1>
                                 )}
