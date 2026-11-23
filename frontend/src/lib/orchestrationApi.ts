@@ -392,11 +392,13 @@ export const orchestrationApi = {
     fetchJSON<{ success: boolean; categories: string[] }>('/api/orchestration/categories'),
 
   // ── Irritants ──
-  listIrritants: (filters?: { categorie?: string; criticite?: string; statut?: string }) => {
+  listIrritants: (filters?: { categorie?: string; criticite?: string; statut?: string; procedure_id?: string; with_findings?: boolean }) => {
     const params = new URLSearchParams();
     if (filters?.categorie) params.set('categorie', filters.categorie);
     if (filters?.criticite) params.set('criticite', filters.criticite);
     if (filters?.statut) params.set('statut', filters.statut);
+    if (filters?.procedure_id) params.set('procedure_id', filters.procedure_id);
+    if (filters?.with_findings) params.set('with_findings', 'true');
     return fetchJSON<{ success: boolean; irritants: any[]; total: number }>(`/api/irritants?${params}`);
   },
 
@@ -415,6 +417,9 @@ export const orchestrationApi = {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
+
+  updatePiste: (id: string, body: { titre?: string; description?: string; statut?: string }) =>
+    fetchJSON<{ success: boolean }>(`/api/irritants/pistes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
 
   deleteIrritant: (id: string) =>
     fetchJSON<{ success: boolean }>(`/api/irritants/${id}`, { method: 'DELETE' }),

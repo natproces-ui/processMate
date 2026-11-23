@@ -6,7 +6,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
-const NOT_STEPS = new Set(['bpmn:SequenceFlow', 'bpmn:Lane', 'bpmn:Participant', 'bpmn:Process', 'bpmn:Collaboration', 'label']);
+// seules les formes du parcours sont des étapes (pas les outils associés, couloirs, flèches)
+const isStepShape = (el: any) => /Task|Event|Gateway|SubProcess/.test(el?.type || '') && String(el.id).includes('_') && !/^Tool/.test(String(el.id));
 
 /** « UserTask_3 » → « 3 » (convention des logigrammes générés : type_numéro) */
 export const stepIdOf = (elementId: string) => elementId.slice(elementId.indexOf('_') + 1);
@@ -52,7 +53,7 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
                 viewer.get('canvas').zoom('fit-viewport', 'auto');
                 viewer.get('eventBus').on('element.click', (e: any) => {
                     const el = e.element;
-                    onSelectRef.current?.(el && !NOT_STEPS.has(el.type) && el.id.includes('_') ? stepIdOf(el.id) : null);
+                    onSelectRef.current?.(isStepShape(el) ? stepIdOf(el.id) : null);
                 });
                 setState('ready');
             } catch {
@@ -70,7 +71,7 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
         if (state !== 'ready' || !viewer) return;
         const canvas = viewer.get('canvas');
         const registry = viewer.get('elementRegistry');
-        const steps = registry.filter((el: any) => !NOT_STEPS.has(el.type) && el.id.includes('_'));
+        const steps = registry.filter(isStepShape);
         let first: any = null;
         for (const el of steps) {
             const id = stepIdOf(el.id);

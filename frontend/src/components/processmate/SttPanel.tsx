@@ -28,7 +28,7 @@ import {
     AlertCircle, CheckCircle, Info, ChevronDown, ChevronUp,
     X, Download, Save, Loader2, Plus, ArrowLeft, Send, Code, RotateCw, Wrench,
     PanelLeftOpen, Table2, Workflow, FileText, ZoomIn, ZoomOut, Scan, Minimize2, MoreHorizontal, Shapes, History,
-    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers, Trash2, Undo2, Redo2, Columns2,
+    PanelLeftClose, PanelRightClose, PanelRightOpen, Expand, Shrink, Layers, Trash2, Undo2, Redo2, Columns2, Target,
 } from 'lucide-react';
 import { API_CONFIG } from '@/lib/api-config';
 import { CONVERSATIONS_ENABLED, conversationsApi, ProcedureConflict, type ConversationSource, type StoredProcedure, type WebSearch } from '@/lib/conversationsApi';
@@ -36,6 +36,7 @@ import ConversationPanel, { outputState, toSave, type ConversationOutput } from 
 import { exportAll, exportOne, type ExportableProcedure, type ExportKind } from '@/lib/procedureExport';
 import ConversationVersionsModal from '@/components/processmate/ConversationVersionsModal';
 import ProcedureOverview from '@/components/processmate/ProcedureOverview';
+import ProcedureAnalysis from '@/components/processmate/ProcedureAnalysis';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
 import CircuitBar from '@/components/shared/CircuitBar';
@@ -146,7 +147,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [editorFullscreen, setEditorFullscreen] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
-    const [view, setView] = useState<'ensemble' | 'table' | 'bpmn' | 'fiche'>('bpmn');
+    const [view, setView] = useState<'ensemble' | 'analyse' | 'table' | 'bpmn' | 'fiche'>('bpmn');
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatActivity, setChatActivity] = useState({ messages: 0, busy: false });
@@ -699,8 +700,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         else setBpmnXml(xml);
         diagramStaleRef.current.delete(diagramKey);
     }, [activeData, activeBpmnXml, diagramKey, instances.length, activeInst, processTitle, activeTab]);
-    const selectView = useCallback(async (id: 'ensemble' | 'table' | 'bpmn' | 'it' | 'fiche') => {
-        if (id === 'bpmn' || id === 'it' || id === 'ensemble') freshDiagram();
+    const selectView = useCallback(async (id: 'ensemble' | 'analyse' | 'table' | 'bpmn' | 'it' | 'fiche') => {
+        if (id === 'bpmn' || id === 'it' || id === 'ensemble' || id === 'analyse') freshDiagram();
         if (id === 'it') {
             if (view === 'bpmn' && viewMode === 'metier') { await toggleViewMode(); return; }
             pendingItRef.current = true;
@@ -1170,6 +1171,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [nav, setNav] = useState<Record<string, { pos: number; top: number; seen: number }>>({});
     const [navBusy, setNavBusy] = useState(false);
     const navKey = instances.length > 0 ? activeInst?.process_id : undefined;
+    // l'analyse porte sur une procédure du référentiel (ses défaillances y sont rattachées)
+    const analysisId = instances.length > 0 ? activeInst?.workflow_db_id : undefined;
     const navVersion = instances.length > 0 ? activeInst?.version : undefined;
     useEffect(() => {
         if (!navKey || !navVersion) return;
@@ -1662,13 +1665,15 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     { id: 'bpmn' as const, label: 'Logigramme', icon: Workflow },
                                     { id: 'it' as const, label: 'Vue IT', icon: Wrench },
                                     { id: 'fiche' as const, label: 'Fiche & export', icon: FileText },
-                                ]).filter(v => exportAllowed || v.id !== 'fiche').map(v => {
+                                    { id: 'analyse' as const, label: 'Analyse', icon: Target },
+                                ]).filter(v => (exportAllowed || v.id !== 'fiche') && (v.id !== 'analyse' || !!analysisId)).map(v => {
                                     const selected = v.id === 'it' ? view === 'bpmn' && viewMode === 'outillage'
                                         : v.id === 'bpmn' ? view === 'bpmn' && viewMode === 'metier' : view === v.id;
                                     return (
                                         <button key={v.id} type="button" role="tab" aria-selected={selected} onClick={() => selectView(v.id)}
                                             title={v.id === 'it' ? 'Le logigramme vu par les applicatifs utilisés à chaque étape'
-                                                : v.id === 'ensemble' ? 'Le logigramme et le détail de chaque étape côte à côte (plein écran conseillé)' : undefined}
+                                                : v.id === 'ensemble' ? 'Le logigramme et le détail de chaque étape côte à côte (plein écran conseillé)'
+                                                : v.id === 'analyse' ? 'Les défaillances par axe de transformation et les pistes, reliées aux étapes du logigramme' : undefined}
                                             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${selected ? 'border-neutral-900 text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
                                             <v.icon className="w-3.5 h-3.5" />{v.label}
                                         </button>
@@ -1682,7 +1687,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                     {error && <div className="fixed top-16 right-6 z-50 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><AlertCircle className="w-4 h-4 flex-shrink-0" /><span>{error}</span></div>}
                     {success && <div className="fixed top-16 right-6 z-50 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><CheckCircle className="w-4 h-4 flex-shrink-0" /><span>{success}</span></div>}
 
-                    <div className={`flex-1 min-h-0 p-3 ${view === 'bpmn' || view === 'ensemble' ? 'flex flex-col gap-3 overflow-hidden' : 'overflow-auto space-y-3'}`}>
+                    <div className={`flex-1 min-h-0 p-3 ${view === 'bpmn' || view === 'ensemble' || view === 'analyse' ? 'flex flex-col gap-3 overflow-hidden' : 'overflow-auto space-y-3'}`}>
                         {loadingWorkflow && (
                             <div className="p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg flex items-center gap-2 text-sm">
                                 <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />Chargement…
@@ -1732,6 +1737,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             activeData.length > 0 && activeBpmnXml
                                 ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} />
                                 : <p className="text-sm text-neutral-500">{activeData.length === 0 ? 'Aucune étape pour l’instant.' : 'Préparation du logigramme…'}</p>
+                        ) : view === 'analyse' && analysisId ? (
+                            activeData.length > 0 && activeBpmnXml
+                                ? <ProcedureAnalysis procedureId={analysisId} xml={activeBpmnXml} rows={activeData} />
+                                : <p className="text-sm text-neutral-500">Préparation du logigramme…</p>
                         ) : view === 'table' ? (
                             <>
                                 {exportAllowed && activeData.length > 0 && (
