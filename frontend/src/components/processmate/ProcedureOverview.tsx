@@ -81,7 +81,7 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
                                                 {[r.acteur, r.département && r.département !== r.acteur ? r.département : '', r.outil].filter(Boolean).join(', ')}
                                             </span>
                                             {e?.descriptif && (
-                                                <span className={`mt-1 block text-xs leading-relaxed text-neutral-800 ${active ? '' : 'line-clamp-2'}`}>{e.descriptif}</span>
+                                                <span className={`mt-1 block whitespace-pre-line text-xs leading-relaxed text-neutral-800 ${active ? '' : 'line-clamp-2'}`}>{e.descriptif}</span>
                                             )}
                                             {active && (
                                                 <span className="mt-1.5 block space-y-1">
