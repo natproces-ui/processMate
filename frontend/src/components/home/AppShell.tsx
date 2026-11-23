@@ -20,7 +20,7 @@ import { ConversationHeader, ConversationRow, SearchDialog } from '@/components/
 import {
     Zap, SquarePen, FolderKanban, FileText, CheckSquare, Megaphone, BarChart3, PenTool, Search,
     BookOpen, Newspaper, Compass, Menu, X, LogOut, Users, Clock, Building2, ChevronDown, FolderOpen,
-    PanelLeftClose, PanelLeftOpen, Home, PenLine, Settings, MoreHorizontal, LayoutDashboard,
+    PanelLeftClose, PanelLeftOpen, Home, PenLine, Settings, MoreHorizontal, LayoutDashboard, Pin,
 } from 'lucide-react';
 import NotificationBell from '@/components/processmate/NotificationBell';
 
@@ -43,18 +43,26 @@ export interface AppShellProps {
     activeNav?: string;
 }
 
-/** Navigation de l'organisation (membres) : la même partout, chat compris */
-const ORG_NAV = [
-    { tab: 'procedures', label: 'Référentiel', icon: FileText },
-    { tab: 'campagnes', label: 'Campagnes', icon: Megaphone },
-    { tab: 'analyser', label: 'Analyse', icon: BarChart3 },
-    { tab: 'workspace', label: 'Espace de travail', icon: PenLine },
+/** Pages de l'organisation (membres). La barre n'affiche que celles qu'on a épinglées ; « Plus » les liste toutes,
+ *  chacune épinglable (comme ChatGPT). Les épingles restent dans le navigateur de chacun. */
+interface OrgPage { key: string; href: string; label: string; icon: typeof FileText; admin?: boolean }
+const ORG_PAGES: OrgPage[] = [
+    { key: 'tab:procedures', href: '/orchestration?tab=procedures', label: 'Référentiel', icon: FileText },
+    { key: 'tab:campagnes', href: '/orchestration?tab=campagnes', label: 'Campagnes', icon: Megaphone },
+    { key: 'tab:analyser', href: '/orchestration?tab=analyser', label: 'Analyse', icon: BarChart3 },
+    { key: 'tab:workspace', href: '/orchestration?tab=workspace', label: 'Espace de travail', icon: PenLine },
+    { key: 'equipe', href: '/admin', label: 'Équipe', icon: Users, admin: true },
+    { key: 'tab:specifications', href: '/orchestration?tab=specifications', label: 'Spécifications', icon: BookOpen },
+    { key: 'tab:tableau-de-bord', href: '/orchestration?tab=tableau-de-bord', label: 'Tableau de bord', icon: LayoutDashboard },
+    { key: 'stt', href: '/orchestration?module=stt', label: 'Studio complet', icon: PenTool },
+    { key: 'tab:settings', href: '/orchestration?tab=settings', label: 'Paramètres', icon: Settings, admin: true },
 ];
-const MORE_NAV = [
-    { href: '/orchestration?tab=specifications', key: 'tab:specifications', label: 'Spécifications', icon: BookOpen },
-    { href: '/orchestration?tab=tableau-de-bord', key: 'tab:tableau-de-bord', label: 'Tableau de bord', icon: LayoutDashboard },
-    { href: '/orchestration?module=stt', key: 'stt', label: 'Studio complet', icon: PenTool },
-];
+const DEFAULT_PINS = ['tab:procedures', 'tab:campagnes', 'tab:analyser', 'tab:workspace'];
+const PINS_KEY = 'pm-sidebar-pins';
+function readPins(): string[] {
+    try { const v = JSON.parse(localStorage.getItem(PINS_KEY) || 'null'); return Array.isArray(v) ? v : DEFAULT_PINS; }
+    catch { return DEFAULT_PINS; }
+}
 
 export default function AppShell({
     children, headerLeft, activeConversationId = null, onOpenConversation, onNewConversation,
@@ -67,7 +75,17 @@ export default function AppShell({
     const [recents, setRecents] = useState<ConversationSummary[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [recentsOpen, setRecentsOpen] = useState(true);
-    const [moreOpen, setMoreOpen] = useState(() => MORE_NAV.some(m => m.key === activeNav) || activeNav === 'tab:settings');
+    const [moreOpen, setMoreOpen] = useState(false);
+    const [pins, setPins] = useState<string[]>(DEFAULT_PINS);
+    useEffect(() => { setPins(readPins()); }, []);
+    const togglePin = (key: string) => setPins(prev => {
+        const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key];
+        try { localStorage.setItem(PINS_KEY, JSON.stringify(next)); } catch { /* navigation privée */ }
+        return next;
+    });
+    const orgPages = ORG_PAGES.filter(pg => !pg.admin || access?.is_admin);
+    // épinglées, dans l'ordre du catalogue, plus la page en cours si elle ne l'est pas (on sait où l'on est)
+    const shownPages = orgPages.filter(pg => pins.includes(pg.key) || pg.key === activeNav);
     const [searchOpen, setSearchOpen] = useState(false);
     const [todo, setTodo] = useState<{ ouvertes: number; en_retard: number } | null>(null);
     // Barre latérale : l'utilisateur la replie (colonne d'icônes) ou l'élargit ; rien n'est automatique
@@ -200,21 +218,36 @@ export default function AppShell({
                         <p className={`${sectionLabel} truncate`} title={access?.organisation?.nom ?? undefined}>
                             {access?.organisation?.nom || 'Organisation'}
                         </p>
-                        {ORG_NAV.map(n => (
-                            <NavLink key={n.tab} href={`/orchestration?tab=${n.tab}`} icon={<n.icon />} label={n.label}
-                                active={activeNav === `tab:${n.tab}`} />
-                        ))}
-                        {access?.is_admin && <NavLink href="/admin" icon={<Users />} label="Équipe" active={activeNav === 'equipe'} />}
-                        <button type="button" onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen} className={itemCls}>
-                            <MoreHorizontal /><span className="truncate">Plus</span>
-                            <ChevronDown className={`ml-auto transition-transform ${moreOpen ? '' : '-rotate-90'}`} />
-                        </button>
-                        {moreOpen && (
-                            <div className="pl-3 space-y-0.5">
-                                {MORE_NAV.map(m => <NavLink key={m.key} href={m.href} icon={<m.icon />} label={m.label} active={activeNav === m.key} />)}
-                                {access?.is_admin && <NavLink href="/orchestration?tab=settings" icon={<Settings />} label="Paramètres" active={activeNav === 'tab:settings'} />}
-                            </div>
-                        )}
+                        {shownPages.map(pg => <NavLink key={pg.key} href={pg.href} icon={<pg.icon />} label={pg.label} active={activeNav === pg.key} />)}
+                        <div className="relative">
+                            <button type="button" onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen} aria-haspopup="menu" className={itemCls}>
+                                <MoreHorizontal /><span className="truncate">Plus</span>
+                            </button>
+                            {moreOpen && (
+                                <>
+                                    <button type="button" aria-label="Fermer le menu" tabIndex={-1} className="fixed inset-0 z-40 cursor-default" onClick={() => setMoreOpen(false)} />
+                                    <div role="menu" aria-label="Toutes les pages" onKeyDown={e => { if (e.key === 'Escape') setMoreOpen(false); }}
+                                        className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg">
+                                        {orgPages.map(pg => {
+                                            const pinned = pins.includes(pg.key);
+                                            return (
+                                                <div key={pg.key} className="flex items-center rounded-lg hover:bg-neutral-100">
+                                                    <Link href={pg.href} role="menuitem" onClick={() => setMoreOpen(false)}
+                                                        className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-sm text-neutral-900 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-petrole">
+                                                        <pg.icon /><span className="truncate">{pg.label}</span>
+                                                    </Link>
+                                                    <button type="button" onClick={() => togglePin(pg.key)} aria-pressed={pinned}
+                                                        title={pinned ? 'Retirer de la barre' : 'Épingler dans la barre'} aria-label={`${pinned ? 'Retirer' : 'Épingler'} ${pg.label}`}
+                                                        className={`mr-1 rounded-md p-1.5 hover:bg-neutral-200 ${pinned ? 'text-petrole' : 'text-neutral-400'}`}>
+                                                        <Pin className={`h-3.5 w-3.5 ${pinned ? 'fill-current' : ''}`} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </section>
                 )}
                 {persistent && (pinnedConvs.length > 0 || pinnedProjects.length > 0) && (
@@ -284,7 +317,7 @@ export default function AppShell({
                 <div className="my-2 h-px w-8 bg-neutral-200" />
                 <RailLink label="Accueil" href="/espace"><Home /></RailLink>
                 <RailLink label="À faire" href="/orchestration?tab=taches"><CheckSquare /></RailLink>
-                {ORG_NAV.map(n => <RailLink key={n.tab} label={n.label} href={`/orchestration?tab=${n.tab}`}><n.icon /></RailLink>)}
+                {shownPages.map(pg => <RailLink key={pg.key} label={pg.label} href={pg.href}><pg.icon /></RailLink>)}
             </>}
         </nav>
     );

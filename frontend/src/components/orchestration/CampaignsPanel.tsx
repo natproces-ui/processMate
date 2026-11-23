@@ -5,8 +5,9 @@ import {
   BarChart2, Calendar, CheckCircle2, ChevronRight, Clock, Flag,
   FolderOpen, Loader2, Plus, RefreshCw, Search, Trash2, X,
   FileText, PlayCircle, CheckSquare, AlertCircle, RotateCcw,
-  ChevronDown, Tag, Layers, Download,
+  ChevronDown, Tag, Layers, Download, ChevronLeft, Megaphone,
 } from 'lucide-react';
+import { timeAgo } from '@/components/home/ui';
 import {
   campaignsApi,
   type Campaign, type CampaignProcedure, type CampaignProcedureStatus, type CampaignStatus,
@@ -840,135 +841,121 @@ export default function CampaignsPanel({ onOpenProcedure }: CampaignsPanelProps)
     totalProcs: campaigns.reduce((a, c) => a + c.stats.total, 0),
   }), [campaigns]);
 
+  // une campagne ouverte prend toute la largeur ; sinon, la liste
+  if (activeCampaign) return (
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-gray-100 bg-white px-4 py-1.5">
+        <button type="button" onClick={() => setActiveCampaign(null)}
+          className="inline-flex items-center gap-1 text-xs font-medium text-petrole hover:underline">
+          <ChevronLeft className="w-3.5 h-3.5" />Toutes les campagnes
+        </button>
+      </div>
+      <div className="flex-1 min-h-0">
+        <CampaignDetail key={activeCampaign.id} campaign={activeCampaign}
+          onRefresh={refreshActive}
+          onDelete={() => { setActiveCampaign(null); loadCampaigns(); }}
+          onOpenProcedure={onOpenProcedure}
+        />
+      </div>
+    </div>
+  );
+
+  const openCampaign = async (c: Campaign) => {
+    setActiveCampaign({ ...c, procedures: [] });
+    const res = await campaignsApi.get(c.id).catch(() => null);
+    if (res) setActiveCampaign(res.campaign);
+  };
+
   return (
-    <div className="flex h-full overflow-hidden">
-
-      {/* ── Liste ── */}
-      <div className="w-72 shrink-0 flex flex-col border-r border-gray-100 bg-white">
-        <div className="shrink-0 p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-neutral-900 rounded-lg flex items-center justify-center">
-                <BarChart2 className="w-4 h-4 text-white" />
-              </div>
-              <h1 className="text-base font-bold text-gray-900">Campagnes</h1>
-            </div>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={loadCampaigns} title="Actualiser"
-                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><RefreshCw className="w-3.5 h-3.5" /></button>
-              {isAdmin && (
-                <button type="button" onClick={() => { window.location.href = "/espace/campagne"; }} title="Créer une campagne"
-                  className="p-1.5 rounded-lg bg-neutral-900 text-white hover:bg-neutral-700"><Plus className="w-3.5 h-3.5" /></button>
-              )}
-            </div>
-          </div>
-
-          {!loading && campaigns.length > 0 && (
-            <div className="grid grid-cols-3 gap-1.5 mb-3">
-              {[
-                { label: 'Total', value: globalStats.total, color: 'text-gray-700' },
-                { label: 'Actives', value: globalStats.active, color: 'text-blue-600' },
-                { label: 'Terminées', value: globalStats.completed, color: 'text-green-600' },
-              ].map(s => (
-                <div key={s.label} className="text-center bg-gray-50 rounded-lg py-1.5">
-                  <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
-                  <p className="text-[10px] text-gray-400">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="relative mb-2">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-            <input title="Rechercher" value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher…"
-              className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-neutral-300" />
-          </div>
-          <select title="Filtrer par statut" value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)}
-            className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 focus:outline-none focus:ring-2 focus:ring-neutral-300">
-            <option value="all">Tous les statuts</option>
-            {(['draft', 'active', 'completed', 'archived'] as CampaignStatus[]).map(s => (
-              <option key={s} value={s}>{CAMPAIGN_STATUS_LABELS[s]}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-          {loading ? (
-            <div className="flex items-center justify-center h-24"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>
-          ) : error ? (
-            <div className="p-4 text-center">
-              <p className="text-xs text-red-500">{error}</p>
-              <button type="button" onClick={loadCampaigns} className="mt-2 text-xs text-blue-600 hover:underline">Réessayer</button>
-            </div>
-          ) : filteredCampaigns.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-gray-400">
-              <FolderOpen className="w-7 h-7 mb-2 opacity-30" />
-              <p className="text-xs">{campaigns.length === 0 ? 'Aucune campagne' : 'Aucun résultat'}</p>
-              {isAdmin && campaigns.length === 0 && (
-                <button type="button" onClick={() => { window.location.href = "/espace/campagne"; }} className="mt-2 text-xs text-neutral-900 underline font-medium">
-                  Créer la première campagne
-                </button>
-              )}
-            </div>
-          ) : filteredCampaigns.map(c => {
-            const isActive = activeCampaign?.id === c.id;
-            const overdue = c.end_date && c.status === 'active' && new Date(c.end_date) < new Date();
-            return (
-              <button key={c.id} type="button"
-                onClick={async () => {
-                  if (isActive) return;
-                  setActiveCampaign({ ...c, procedures: [] });
-                  const res = await campaignsApi.get(c.id).catch(() => null);
-                  if (res) setActiveCampaign(res.campaign);
-                }}
-                className={`w-full text-left p-3 rounded-xl border transition-all ${
-                  isActive ? 'bg-neutral-100 border-neutral-300 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className={`text-xs font-semibold leading-snug ${isActive ? 'text-neutral-900' : 'text-gray-800'} line-clamp-2`}>{c.title}</p>
-                  <StatusBadge status={c.status} />
-                </div>
-                <ProgressBar pct={c.stats.progress_pct} size="sm" color={c.stats.progress_pct >= 100 ? 'bg-green-500' : 'bg-neutral-900'} />
-                <div className="flex items-center justify-between mt-1.5 text-xs text-gray-400">
-                  <span>{c.stats.done}/{c.stats.total} proc.</span>
-                  <span className="font-semibold text-gray-600">{c.stats.progress_pct}%</span>
-                </div>
-                {c.end_date && (
-                  <div className={`flex items-center gap-1 mt-1 text-xs ${overdue ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
-                    <Clock className="w-3 h-3" />
-                    {overdue ? 'En retard, ' : ''}{new Date(c.end_date).toLocaleDateString('fr-FR')}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Détail ── */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {isAdmin && <PropositionsPanel campaigns={campaigns} onTreated={loadCampaigns} />}
-        {isAdmin && access?.organisations_mode && <BianCoveragePanel campaigns={campaigns} onCreated={refreshActive} />}
-        <div className="flex-1 min-h-0">
-        {activeCampaign ? (
-          <CampaignDetail key={activeCampaign.id} campaign={activeCampaign}
-            onRefresh={refreshActive}
-            onDelete={() => { setActiveCampaign(null); loadCampaigns(); }}
-            onOpenProcedure={onOpenProcedure}
-          />
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
-            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mb-4">
-              <BarChart2 className="w-8 h-8 text-neutral-300" />
-            </div>
-            <p className="text-sm font-medium text-gray-500">Sélectionnez une campagne</p>
-            <p className="text-xs text-gray-400 mt-1">ou créez-en une nouvelle</p>
-          </div>
+    <div className="h-full overflow-y-auto bg-white">
+      {/* une ligne : décompte, recherche, statut, créer */}
+      <div className="sticky top-0 z-[1] flex flex-wrap items-center gap-3 border-b border-gray-100 bg-white px-4 py-2">
+        <span className="text-xs text-neutral-600 whitespace-nowrap">
+          {globalStats.total} campagne{globalStats.total > 1 ? 's' : ''}, dont {globalStats.active} active{globalStats.active > 1 ? 's' : ''}
+        </span>
+        <label className="ml-auto flex min-w-[220px] max-w-md flex-1 items-center gap-2 rounded-full border border-neutral-300 px-3 py-1.5 focus-within:border-neutral-900">
+          <Search className="w-4 h-4 shrink-0 text-neutral-500" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher des campagnes" aria-label="Rechercher des campagnes"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-neutral-500" />
+        </label>
+        <select title="Filtrer par statut" value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)}
+          className="rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-300">
+          <option value="all">Tous les statuts</option>
+          {(['draft', 'active', 'completed', 'archived'] as CampaignStatus[]).map(st => (
+            <option key={st} value={st}>{CAMPAIGN_STATUS_LABELS[st]}</option>
+          ))}
+        </select>
+        <button type="button" onClick={loadCampaigns} title="Actualiser" aria-label="Actualiser"
+          className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100"><RefreshCw className="w-4 h-4" /></button>
+        {isAdmin && (
+          <button type="button" onClick={() => { window.location.href = "/espace/campagne"; }}
+            className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-neutral-700">
+            <Plus className="w-4 h-4" />Créer
+          </button>
         )}
-        </div>
       </div>
 
+      {isAdmin && <PropositionsPanel campaigns={campaigns} onTreated={loadCampaigns} />}
+      {isAdmin && access?.organisations_mode && <BianCoveragePanel campaigns={campaigns} onCreated={refreshActive} />}
+
+      <div className="px-4 pb-6">
+        {loading ? (
+          <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>
+        ) : error ? (
+          <div className="py-8 text-center">
+            <p className="text-sm text-red-600">{error}</p>
+            <button type="button" onClick={loadCampaigns} className="mt-2 text-xs font-medium text-petrole hover:underline">Réessayer</button>
+          </div>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="py-14 text-center">
+            <FolderOpen className="mx-auto w-8 h-8 text-petrole" />
+            <p className="mt-3 text-sm text-neutral-700">{campaigns.length === 0 ? 'Aucune campagne pour l’instant.' : 'Aucune campagne ne correspond.'}</p>
+            {isAdmin && campaigns.length === 0 && (
+              <button type="button" onClick={() => { window.location.href = "/espace/campagne"; }} className="mt-3 rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700">
+                Créer la première campagne
+              </button>
+            )}
+          </div>
+        ) : (
+          <table className="mt-1 w-full text-sm">
+            <thead>
+              <tr className="border-b border-neutral-200 text-left text-xs font-medium text-neutral-600">
+                <th scope="col" className="px-2 py-2 font-medium">Campagne</th>
+                <th scope="col" className="w-56 px-2 py-2 font-medium">Avancement</th>
+                <th scope="col" className="w-32 px-2 py-2 font-medium">Échéance</th>
+                <th scope="col" className="w-32 px-2 py-2 font-medium">Modifiée</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredCampaigns.map(c => {
+                const overdue = c.end_date && c.status === 'active' && new Date(c.end_date) < new Date();
+                return (
+                  <tr key={c.id} tabIndex={0} onClick={() => void openCampaign(c)} onKeyDown={e => { if (e.key === 'Enter') void openCampaign(c); }}
+                    className="cursor-pointer border-b border-neutral-100 hover:bg-neutral-50">
+                    <td className="px-2 py-3">
+                      <span className="flex items-center gap-2">
+                        <Megaphone className="w-4 h-4 shrink-0 text-petrole" />
+                        <span className="truncate font-medium text-neutral-900">{c.title}</span>
+                        <StatusBadge status={c.status} />
+                      </span>
+                    </td>
+                    <td className="px-2 py-3">
+                      <span className="flex items-center gap-2">
+                        <span className="flex-1"><ProgressBar pct={c.stats.progress_pct} size="sm" color={c.stats.progress_pct >= 100 ? 'bg-green-600' : 'bg-petrole'} /></span>
+                        <span className="w-24 shrink-0 text-xs text-neutral-600">{c.stats.done}/{c.stats.total} formalisée{c.stats.done > 1 ? 's' : ''}</span>
+                      </span>
+                    </td>
+                    <td className={`px-2 py-3 text-sm ${overdue ? 'font-semibold text-red-600' : 'text-neutral-600'}`}>
+                      {c.end_date ? `${overdue ? 'En retard, ' : ''}${new Date(c.end_date).toLocaleDateString('fr-FR')}` : ''}
+                    </td>
+                    <td className="px-2 py-3 text-sm text-neutral-600">{timeAgo((c as any).updated_at || (c as any).created_at)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
