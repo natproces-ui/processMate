@@ -76,6 +76,14 @@ export default function AppShell({
     const [projects, setProjects] = useState<Project[]>([]);
     const [recentsOpen, setRecentsOpen] = useState(true);
     const [moreOpen, setMoreOpen] = useState(false);
+    // position du menu « Plus » dans la fenêtre : la barre latérale défile et couperait un menu placé dedans
+    const [morePos, setMorePos] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+    const openMore = (btn: HTMLElement) => {
+        const r = btn.getBoundingClientRect();
+        const below = window.innerHeight - r.bottom;
+        setMorePos(below >= 380 ? { left: r.left + 8, top: r.bottom + 4 } : { left: r.left + 8, bottom: window.innerHeight - r.top + 4 });
+        setMoreOpen(true);
+    };
     const [pins, setPins] = useState<string[]>(DEFAULT_PINS);
     useEffect(() => { setPins(readPins()); }, []);
     const togglePin = (key: string) => setPins(prev => {
@@ -220,14 +228,15 @@ export default function AppShell({
                         </p>
                         {shownPages.map(pg => <NavLink key={pg.key} href={pg.href} icon={<pg.icon />} label={pg.label} active={activeNav === pg.key} />)}
                         <div className="relative">
-                            <button type="button" onClick={() => setMoreOpen(o => !o)} aria-expanded={moreOpen} aria-haspopup="menu" className={itemCls}>
+                            <button type="button" onClick={e => { if (moreOpen) setMoreOpen(false); else openMore(e.currentTarget); }} aria-expanded={moreOpen} aria-haspopup="menu" className={itemCls}>
                                 <MoreHorizontal /><span className="truncate">Plus</span>
                             </button>
                             {moreOpen && (
                                 <>
                                     <button type="button" aria-label="Fermer le menu" tabIndex={-1} className="fixed inset-0 z-40 cursor-default" onClick={() => setMoreOpen(false)} />
                                     <div role="menu" aria-label="Toutes les pages" onKeyDown={e => { if (e.key === 'Escape') setMoreOpen(false); }}
-                                        className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg">
+                                        style={morePos ? { left: morePos.left, top: morePos.top, bottom: morePos.bottom } : undefined}
+                                        className="fixed z-50 max-h-[calc(100vh-16px)] w-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1.5 shadow-lg">
                                         {orgPages.map(pg => {
                                             const pinned = pins.includes(pg.key);
                                             return (
