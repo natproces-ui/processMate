@@ -30,6 +30,8 @@ export default function ChatHome() {
     const [project, setProject] = useState<Project | null>(null);
     /** Procédure du référentiel ouverte depuis une campagne (?procedure=) */
     const [procedureId, setProcedureId] = useState<string | undefined>();
+    /** Vue d'ouverture de cette procédure (?vue=irritants) et axe à montrer (?axe=) */
+    const [procedureView, setProcedureView] = useState<{ view?: 'analyse'; axis?: string }>({});
     /** Premier message tapé depuis la page d'un projet (?message=), envoyé tout seul */
     const [initialMessage, setInitialMessage] = useState<string | undefined>();
     /** Texte prérempli, non envoyé (?brouillon=) : « Partir de mes sources » depuis l'accueil de l'organisation */
@@ -50,6 +52,7 @@ export default function ChatHome() {
         if (p) setProjectId(p);
         const proc = params.get('procedure');
         if (proc) setProcedureId(proc);
+        if (proc && params.get('vue') === 'irritants') setProcedureView({ view: 'analyse', axis: params.get('axe') || undefined });
         const bare = [...params.keys()].length === 0;  // avant de retirer les marqueurs ci-dessous
         if (params.has('depart')) {  // premier message saisi sur l'accueil
             const turn = takePendingTurn();
@@ -171,6 +174,7 @@ export default function ChatHome() {
             <div className="flex-1 min-h-0">
                 <SttPanel key={panelKey} chatFirst guestMode={!user} projectId={projectId}
                     workflowId={member ? procedureId : undefined}
+                    initialView={procedureView.view} initialAxis={procedureView.axis}
                     librarySave={member && !access?.read_only}
                     initialMessage={initialMessage} initialDraft={initialDraft} initialFiles={initialFiles} />
             </div>

@@ -241,6 +241,17 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
 
     useEffect(() => { loadTree(); fetchProcedures(); }, [loadTree, fetchProcedures]);
 
+    // Un petit référentiel s'ouvre en entier : pas de page blanche sous un seul thème replié
+    const autoExpanded = useRef(false);
+    useEffect(() => {
+        if (autoExpanded.current || tree.length === 0 || procedures.length === 0 || procedures.length > 30) return;
+        autoExpanded.current = true;
+        const ids: string[] = [];
+        const walk = (nodes: TaxonomyNode[]) => nodes.forEach(n => { ids.push(n.id); if (n.children) walk(n.children); });
+        walk(tree);
+        setExpanded(prev => new Set([...Array.from(prev), ...ids]));
+    }, [tree, procedures.length]);
+
     useEffect(() => {
         if (!expandToNodeId || tree.length === 0) return;
         const path: string[] = [];
@@ -510,46 +521,39 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
     return (
         <div className="h-full flex flex-col bg-gray-50 min-w-0">
 
-            {/* Header */}
-            <div className="shrink-0 bg-white border-b border-gray-200 px-5 py-3">
-                <div className="flex items-center justify-between mb-3">
-                    <div>
-                        <h1 className="text-lg font-semibold text-neutral-900">{title || 'Référentiel'}</h1>
-                        <p className="text-xs text-neutral-500">
-                            {procedures.length} procédure{procedures.length !== 1 ? 's' : ''}, {tree.length} thème{tree.length !== 1 ? 's' : ''}
-                            {emptyCount > 0 && (
-                                <label className="ml-3 inline-flex cursor-pointer items-center gap-1.5 text-neutral-700">
-                                    <input type="checkbox" className="accent-neutral-900" checked={showEmpty} onChange={e => toggleEmpty(e.target.checked)} />
-                                    Afficher les branches vides ({emptyCount})
-                                </label>
-                            )}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => { loadTree(); fetchProcedures(true); }} title="Actualiser"
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
-                            <RefreshCw className="w-4 h-4" />
-                        </button>
-                        {isAdmin && (
-                            <button type="button" onClick={() => setCreating({ parentId: null, level: 'theme' })}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700">
-                                <Plus className="w-3.5 h-3.5" /> Nouveau thème
-                            </button>
-                        )}
-                    </div>
-                </div>
-                <div className="relative">
+            {/* En-tête sur une ligne : décompte, recherche, actions (le titre est déjà dans le bandeau de l'application) */}
+            <div className="shrink-0 bg-white border-b border-gray-200 px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="text-xs text-neutral-600 whitespace-nowrap" title={title || undefined}>
+                    {procedures.length} procédure{procedures.length !== 1 ? 's' : ''}, {tree.length} thème{tree.length !== 1 ? 's' : ''}
+                </span>
+                <div className="relative min-w-[220px] flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                        placeholder="Rechercher une procédure, référence ou domaine…"
-                        className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:border-neutral-900" />
+                        placeholder="Rechercher une procédure, une référence ou un domaine…"
+                        className="w-full pl-9 pr-8 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-300 focus:border-neutral-900" />
                     {search && (
-                        <button type="button" onClick={() => setSearch('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <button type="button" onClick={() => setSearch('')} aria-label="Effacer la recherche"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                             <X className="w-4 h-4" />
                         </button>
                     )}
                 </div>
+                {emptyCount > 0 && (
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-neutral-700 whitespace-nowrap">
+                        <input type="checkbox" className="accent-neutral-900" checked={showEmpty} onChange={e => toggleEmpty(e.target.checked)} />
+                        Branches vides ({emptyCount})
+                    </label>
+                )}
+                <button type="button" onClick={() => { loadTree(); fetchProcedures(true); }} title="Actualiser" aria-label="Actualiser"
+                    className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg">
+                    <RefreshCw className="w-4 h-4" />
+                </button>
+                {isAdmin && (
+                    <button type="button" onClick={() => setCreating({ parentId: null, level: 'theme' })}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-neutral-900 text-white rounded-lg hover:bg-neutral-700">
+                        <Plus className="w-3.5 h-3.5" /> Nouveau thème
+                    </button>
+                )}
             </div>
 
             {/* Content */}

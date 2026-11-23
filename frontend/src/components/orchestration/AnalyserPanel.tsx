@@ -17,6 +17,7 @@ function PanelSkeleton() {
 
 // ── Dynamic imports (only load when first visited) ─────────────
 const IrritantsPanel         = dynamic(() => import('@/components/orchestration/IrritantsPanel'),                 { loading: PanelSkeleton });
+const IrritantsOverview      = dynamic(() => import('@/components/orchestration/IrritantsOverview'),              { loading: PanelSkeleton });
 const ComplexityPanel        = dynamic(() => import('@/components/orchestration/ComplexityPanel'),                { loading: PanelSkeleton });
 const ApplicatifsPanel       = dynamic(() => import('@/components/orchestration/ApplicatifsPanel'),              { loading: PanelSkeleton });
 const AnalysisWorkspace      = dynamic(() => import('@/components/analysis/AnalysisWorkspace'),                   { loading: PanelSkeleton });
@@ -71,6 +72,8 @@ export default function AnalyserPanel({
     initialSubTab,
 }: AnalyserPanelProps) {
     const [activeTab, setActiveTab] = useState<AnalyserTab>(initialSubTab ?? 'irritants');
+    // Irritants : le tableau croisé d'abord ; l'ancienne liste (création manuelle, détection) reste à un clic
+    const [irritantsList, setIrritantsList] = useState(false);
 
     return (
         <div className="h-full flex flex-col bg-gray-50 min-w-0">
@@ -87,11 +90,11 @@ export default function AnalyserPanel({
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
                                 active
-                                    ? 'border-neutral-900 text-neutral-900'
+                                    ? 'border-petrole text-neutral-900'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                             }`}
                         >
-                            <Icon className="w-3.5 h-3.5 shrink-0" />
+                            <Icon className="w-3.5 h-3.5 shrink-0 text-petrole" />
                             {tab.label}
                         </button>
                     );
@@ -101,7 +104,14 @@ export default function AnalyserPanel({
             {/* Sub-panels */}
             <div className="flex-1 relative overflow-hidden">
                 <SubPanel active={activeTab === 'irritants'}>
-                    <IrritantsPanel onInstruire={onOpenStudio} />
+                    {irritantsList ? (
+                        <div className="h-full flex flex-col">
+                            <div className="shrink-0 border-b border-neutral-200 bg-white px-4 py-1.5">
+                                <button type="button" onClick={() => setIrritantsList(false)} className="text-xs font-medium text-petrole hover:underline">Revenir au tableau par axe</button>
+                            </div>
+                            <div className="flex-1 min-h-0"><IrritantsPanel onInstruire={onOpenStudio} /></div>
+                        </div>
+                    ) : <IrritantsOverview onShowList={() => setIrritantsList(true)} />}
                 </SubPanel>
 
                 <SubPanel active={activeTab === 'complexity'}>

@@ -39,8 +39,10 @@ function splitDescription(d = '') {
     return { constat: constat.trim(), effet: effet?.trim(), note: rest.join(' ').trim() };
 }
 
-export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }: {
+export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef, focusAxis }: {
     procedureId: string; xml: string; rows: Table1Row[];
+    /** axe à montrer seul à l'ouverture (depuis le tableau des irritants) */
+    focusAxis?: string;
     /** zoom et légende tenus par la barre de commandes : rien n'est posé sur le dessin */
     diagramRef?: RefObject<StepLinkedDiagramHandle | null>;
 }) {
@@ -48,6 +50,8 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
     const [error, setError] = useState<string | null>(null);
     const [activeIrr, setActiveIrr] = useState<string | null>(null);
     const [stepFilter, setStepFilter] = useState<string | null>(null);
+    const [axisFilter, setAxisFilter] = useState<string | null>(focusAxis ?? null);
+    useEffect(() => { if (focusAxis) setAxisFilter(focusAxis); }, [focusAxis]);
     const ownDiagram = useRef<StepLinkedDiagramHandle>(null);
     const diagram = diagramRef ?? ownDiagram;
     const cardRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -65,7 +69,7 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
     const marked = useMemo(() => Array.from(new Set(Array.from(stepsById.values()).flat())), [stepsById]);
     const byRow = useMemo(() => new Map(rows.map(r => [r.id, r])), [rows]);
 
-    const visible = (items || []).filter(i => !stepFilter || stepsById.get(i.id)?.includes(stepFilter));
+    const visible = (items || []).filter(i => (!stepFilter || stepsById.get(i.id)?.includes(stepFilter)) && (!axisFilter || axisOf(i) === axisFilter));
     const groups = useMemo(() => {
         const m = new Map<string, Irritant[]>();
         for (const i of visible) m.set(axisOf(i), [...(m.get(axisOf(i)) || []), i]);
@@ -106,6 +110,12 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
                         <h3 className="text-sm font-semibold text-petrole">Analyse vers la cible</h3>
                         {items && <span className="text-[11px] text-neutral-600">{all.length} défaillance{all.length > 1 ? 's' : ''}, dont {majeurs} majeure{majeurs > 1 ? 's' : ''}. {retenues} piste{retenues > 1 ? 's' : ''} retenue{retenues > 1 ? 's' : ''} sur {pistes.length}.</span>}
                     </div>
+                    {axisFilter && (
+                        <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-petrole-tint px-2.5 py-1.5 text-xs text-neutral-900">
+                            <span className="min-w-0 truncate" title={axisFilter}>{axisFilter} ({visible.length} défaillance{visible.length > 1 ? 's' : ''})</span>
+                            <button type="button" onClick={() => setAxisFilter(null)} className="shrink-0 font-medium underline">Tous les axes</button>
+                        </div>
+                    )}
                     {filterRow && (
                         <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-petrole-tint px-2.5 py-1.5 text-xs text-neutral-900">
                             <span className="min-w-0 truncate">Étape {filterRow.id}, « {filterRow.étape} » : {visible.length} défaillance{visible.length > 1 ? 's' : ''}</span>

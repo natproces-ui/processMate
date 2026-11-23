@@ -101,6 +101,9 @@ interface Props {
     initialDraft?: string;
     /** Fichiers envoyés avec le premier message (déposés sur l'accueil de l'organisation) */
     initialFiles?: File[];
+    /** Vue d'ouverture (ex. « analyse » depuis le tableau des irritants) et axe à montrer dans cette vue */
+    initialView?: 'analyse';
+    initialAxis?: string;
 }
 
 const defaultData: Table1Row[] = [
@@ -121,7 +124,7 @@ const PROTECTED_META = new Set(['nom', 'ref', 'title', 'category', 'status', 'li
 /** Largeur minimale du panneau de la procédure à côté du chat (en dessous, l'en-tête s'empile) */
 const PROC_MIN_PX = 480;
 
-export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage, initialDraft, initialFiles }: Props) {
+export default function SttPanel({ workflowId, onBack, currentActorId, fromClinic, initialTool, chatFirst = false, guestMode = false, projectId, librarySave = true, initialMessage, initialDraft, initialFiles, initialView, initialAxis }: Props) {
     const autoSend = useMemo(() => (initialMessage?.trim() || initialFiles?.length
         ? { id: 1, text: initialMessage || '', files: initialFiles } : undefined), [initialMessage, initialFiles]);
     const { invalidate } = useProceduresStore();
@@ -148,7 +151,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [editorFullscreen, setEditorFullscreen] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
-    const [view, setView] = useState<'ensemble' | 'analyse' | 'table' | 'bpmn' | 'fiche'>('ensemble');
+    const [view, setView] = useState<'ensemble' | 'analyse' | 'table' | 'bpmn' | 'fiche'>(initialView ?? 'ensemble');
+    // la vue demandée par l'adresse (?vue=irritants) arrive après le premier affichage
+    useEffect(() => { if (initialView) setView(initialView); }, [initialView]);
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
     const [chatOpen, setChatOpen] = useState(true);
     const [chatActivity, setChatActivity] = useState({ messages: 0, busy: false });
@@ -1239,10 +1244,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         <span key="legende" className="inline-flex items-center gap-1.5 px-2 text-[11px] text-neutral-600">
             <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-700 text-[9px] font-bold text-white">!</span>étape touchée par une défaillance</span>);
     const commandBar = viewCommands.length > 0 || historyNav ? (
-        <div role="toolbar" aria-label="Commandes de la vue" className="-mx-1 mt-1 flex min-h-[34px] flex-wrap items-center border-t border-neutral-200 pt-1">
+        <div role="toolbar" aria-label="Commandes de la vue" className="ml-auto flex min-h-[34px] flex-wrap items-center pb-1">
             {viewCommands.map((c, i) => <span key={i} className="inline-flex items-center">{i > 0 && sep}{c}</span>)}
             {historyNav && (
-                <span className="ml-auto inline-flex items-center">
+                <span className="ml-1 inline-flex items-center border-l border-neutral-200 pl-1">
                     <button type="button" onClick={() => void stepVersion(-1)} disabled={!historyNav.canUndo || navBusy}
                         title="Revenir à l’état précédent" aria-label="Revenir à l’état précédent" className={cmd}><Undo2 className="w-4 h-4" /></button>
                     <button type="button" onClick={() => void stepVersion(1)} disabled={!historyNav.canRedo || navBusy}
@@ -1720,9 +1725,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                     );
                                 })}
                             </div>
-
+                            {commandBar}
                         </div>
-                        {commandBar}
                     </div>
 
                     {/* messages empilés : l'un ne cache jamais l'autre (l'erreur, en premier, reste lisible en entier) */}
@@ -1785,7 +1789,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 : <p className="text-sm text-neutral-500">{activeData.length === 0 ? 'Aucune étape pour l’instant.' : 'Préparation du logigramme…'}</p>
                         ) : view === 'analyse' && analysisId ? (
                             activeData.length > 0 && activeBpmnXml
-                                ? <ProcedureAnalysis procedureId={analysisId} xml={activeBpmnXml} rows={activeData} diagramRef={linkedDiagram} />
+                                ? <ProcedureAnalysis procedureId={analysisId} xml={activeBpmnXml} rows={activeData} diagramRef={linkedDiagram} focusAxis={initialAxis} />
                                 : <p className="text-sm text-neutral-500">Préparation du logigramme…</p>
                         ) : view === 'table' ? (
                             <>
