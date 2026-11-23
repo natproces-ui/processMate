@@ -808,7 +808,9 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
                 // Vue de départ lisible : le diagramme à la largeur du cadre, depuis le haut (un
                 // diagramme haut, mis en entier dans le cadre, devenait illisible) ; on descend à
                 // la molette, et le zoom reste disponible
-                canvas.zoom('fit-viewport');
+                // cadre encore sans taille (panneau en train de s'ouvrir) : bpmn-js lève « Failed to execute 'inverse'
+                // on 'SVGMatrix' » ; le cadrage est cosmétique, le ResizeObserver recadre quand le cadre apparaît
+                try { canvas.zoom('fit-viewport'); } catch { /* cadre sans taille */ }
                 setTimeout(() => fitWidth(false), 50);
                 setLoading(false);
                 onReady?.();
@@ -892,7 +894,7 @@ const BpmnEditor = forwardRef<BpmnEditorHandle, BpmnEditorProps>(({
         importXml: async (xml: string) => {
             if (!modelerRef.current) return;
             await modelerRef.current.importXML(xml);
-            modelerRef.current.get('canvas').zoom('fit-viewport');
+            try { modelerRef.current.get('canvas').zoom('fit-viewport'); } catch { /* cadre sans taille */ }
             fitWidth(false);
         },
         zoomIn: () => {

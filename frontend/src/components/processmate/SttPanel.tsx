@@ -279,7 +279,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     // (le XML outillage ne doit jamais remplacer durablement le XML métier).
     const businessXmlSnapshotRef = useRef<string | null>(null);
 
-    const showError = (msg: string) => { setError(msg); setTimeout(() => setError(null), 5000); };
+    const showError = (msg: string) => { console.error('[procédure]', msg); setError(msg); setTimeout(() => setError(null), 8000); };
     const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(null), 4000); };
 
     // Viz.js init pour FlowchartResults
@@ -1725,8 +1725,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         {commandBar}
                     </div>
 
-                    {error && <div className="fixed top-16 right-6 z-50 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><AlertCircle className="w-4 h-4 flex-shrink-0" /><span>{error}</span></div>}
-                    {success && <div className="fixed top-16 right-6 z-50 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><CheckCircle className="w-4 h-4 flex-shrink-0" /><span>{success}</span></div>}
+                    {/* messages empilés : l'un ne cache jamais l'autre (l'erreur, en premier, reste lisible en entier) */}
+                    {(error || success) && (
+                        <div className="fixed top-16 right-6 z-50 flex max-w-[min(32rem,calc(100vw-3rem))] flex-col items-end gap-2">
+                            {error && <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-start gap-2 text-sm shadow-lg"><AlertCircle className="mt-0.5 w-4 h-4 flex-shrink-0" /><span className="break-words">{error}</span></div>}
+                            {success && <div role="status" className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2 text-sm shadow-lg"><CheckCircle className="w-4 h-4 flex-shrink-0" /><span>{success}</span></div>}
+                        </div>
+                    )}
 
                     <div className={`flex-1 min-h-0 p-3 ${view === 'bpmn' || view === 'ensemble' || view === 'analyse' ? 'flex flex-col gap-3 overflow-hidden' : 'overflow-auto space-y-3'}`}>
                         {loadingWorkflow && (
