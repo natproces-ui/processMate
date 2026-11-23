@@ -43,7 +43,7 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
     return (
         <div className="flex h-full min-h-[480px] flex-col gap-3 lg:flex-row">
             {/* Logigramme */}
-            <div className="relative min-h-[360px] flex-[3] overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            <div className="relative min-h-[360px] min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected ? [selected] : []} onSelect={setSelected} />
                 {!diagramRef && <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
                     <button type="button" aria-label="Dézoomer" onClick={() => diagram.current?.zoomOut()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomOut className="h-4 w-4" /></button>
@@ -53,7 +53,7 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
             </div>
 
             {/* Détail des étapes */}
-            <section aria-label="Détail des étapes" className="flex min-h-[320px] flex-[2] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:min-w-[380px] lg:max-w-[560px]">
+            <section aria-label="Détail des étapes" className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:w-[400px] lg:shrink-0">
                 <div className="flex items-baseline justify-between border-b border-neutral-200 px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-petrole">Détail des étapes</h3>
                     <span className="text-[11px] text-neutral-500">{rows.length} étape{rows.length > 1 ? 's' : ''}, {actors} acteur{actors > 1 ? 's' : ''}</span>

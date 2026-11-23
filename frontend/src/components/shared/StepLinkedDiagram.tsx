@@ -5,6 +5,7 @@
 // et, plus tard, l'analyse du processus cible (irritants à gauche, logigramme à droite).
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { loadPmRenderModules, PM_DIAGRAM_CSS } from '@/components/shared/bpmnLook';
 
 // seules les formes du parcours sont des étapes (pas les outils associés, couloirs, flèches)
 const isStepShape = (el: any) => /Task|Event|Gateway|SubProcess/.test(el?.type || '') && String(el.id).includes('_') && !/^Tool/.test(String(el.id));
@@ -31,8 +32,9 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
     onSelectRef.current = onSelect;
     const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
 
-    /** À la largeur du cadre, depuis le haut : un logigramme haut, mis en entier dans le cadre, devient
-     *  illisible ; on descend à la molette (Ctrl + molette pour zoomer). */
+    /** À la largeur du cadre, depuis le haut, sans descendre sous un zoom lisible (0,7) : un logigramme large
+     *  (beaucoup de couloirs) se parcourt alors en le faisant glisser, comme dans le Studio, plutôt que d'être
+     *  réduit jusqu'à l'illisible. Molette pour descendre, Ctrl + molette pour zoomer. */
     const fitWidth = () => {
         const canvas = viewerRef.current?.get('canvas');
         const el = host.current;
@@ -42,7 +44,7 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
             if (box.width < 40 || box.height < 40) return;
             const inner = canvas.viewbox().inner;
             if (!inner?.width) return;
-            const zoom = Math.min(1, (box.width - 40) / inner.width);
+            const zoom = Math.max(0.7, Math.min(1, (box.width - 40) / inner.width));
             canvas.viewbox({ x: inner.x - 20 / zoom, y: inner.y - 20 / zoom, width: box.width / zoom, height: box.height / zoom });
         } catch { /* cadre sans taille */ }
     };
@@ -60,9 +62,13 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
             if (!host.current || !xml) return;
             setState('loading');
             try {
-                const Viewer = (await import('bpmn-js/lib/NavigatedViewer')).default;
+                // même rendu que le Studio : en-têtes de couloirs colorés, applicatifs, tâches externes
+                const [{ default: Viewer }, { laneHeaderModule, linkRendererModule }] = await Promise.all([
+                    import('bpmn-js/lib/NavigatedViewer'), loadPmRenderModules(),
+                ]);
+                if (cancelled || !host.current) return;
                 viewerRef.current?.destroy();
-                const viewer: any = new Viewer({ container: host.current });
+                const viewer: any = new Viewer({ container: host.current, additionalModules: [laneHeaderModule, linkRendererModule] });
                 viewerRef.current = viewer;
                 await viewer.importXML(xml);
                 if (cancelled) return;
@@ -120,7 +126,7 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
             {state === 'error' && (
                 <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-red-600"><AlertCircle className="h-4 w-4" />Logigramme illisible</div>
             )}
-            <style>{`
+            <style>{`${PM_DIAGRAM_CSS}
                 .djs-element.pm-step-selected .djs-visual > rect,
                 .djs-element.pm-step-selected .djs-visual > circle,
                 .djs-element.pm-step-selected .djs-visual > polygon { stroke: #0B6E80 !important; stroke-width: 4px !important; fill: #E4F2F4 !important; }

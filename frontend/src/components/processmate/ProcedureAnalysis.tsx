@@ -100,7 +100,7 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
     return (
         <div className="flex h-full min-h-[480px] flex-col gap-3 lg:flex-row">
             {/* Défaillances par axe */}
-            <section aria-label="Défaillances et pistes" className="flex min-h-[320px] flex-[2] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:min-w-[400px] lg:max-w-[600px]">
+            <section aria-label="Défaillances et pistes" className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:w-[440px] lg:shrink-0">
                 <div className="border-b border-neutral-200 px-4 py-2.5">
                     <div className="flex flex-col gap-0.5">
                         <h3 className="text-sm font-semibold text-petrole">Analyse vers la cible</h3>
@@ -187,7 +187,7 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef }
             </section>
 
             {/* Logigramme : étapes concernées signalées */}
-            <div className="relative min-h-[360px] flex-[3] overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            <div className="relative min-h-[360px] min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected} markedIds={marked} onSelect={onDiagramSelect} />
                 {!diagramRef && <div className="absolute left-3 top-3 rounded-lg border border-neutral-200 bg-white/95 px-2 py-1 text-[11px] text-neutral-700 shadow-sm">
                     <span className="mr-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-700 align-middle text-[9px] font-bold text-white">!</span>étape touchée par une défaillance
