@@ -1217,15 +1217,20 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         // relue : elle a pu être enregistrée ailleurs depuis
         orchestrationApi.getTobe(pair.asis.id).then(r => setPair({ asis: r.asis, tobe: r.tobe })).catch(() => { /* aperçu tel quel */ });
     };
-    /** Lancer le TO BE : copie de l'AS IS, ajoutée au chat (l'AS IS y reste) ; avec l'IA, une demande prête à envoyer */
+    /** Lancer le TO BE : à la main, copie de l'AS IS ajoutée au chat (l'AS IS y reste) ; avec l'IA, c'est le chat qui le
+     *  crée et le met à niveau avec les pistes retenues (demande prête à envoyer, l'utilisateur peut la compléter) */
     const startTobe = async (withAI: boolean) => {
         if (!pair) return;
+        if (withAI) {
+            setDictation({ id: Date.now(), text: `Fais le TO BE de « ${pair.asis.nom} » à partir des pistes retenues : corrige les étapes concernées et dis, pour chaque changement, la piste qui le justifie.` });
+            showSuccess('Demande prête dans le chat : complétez-la si besoin, puis envoyez.');
+            return;
+        }
         try {
             const r = await orchestrationApi.createTobe(pair.asis.id);
             setPair({ asis: pair.asis, tobe: r.procedure });
             await attachProcedure(r.procedure.id);
             showSuccess('TO BE créé à partir de l’AS IS et ajouté au chat. L’AS IS y reste, inchangé.');
-            if (withAI) setDictation({ id: Date.now(), text: 'Mets le TO BE à niveau à partir des pistes retenues pour l’AS IS (irritants, améliorations, réglementaire) : corrige les étapes concernées et dis, pour chaque changement, la piste qui le justifie.' });
         } catch (e: any) { showError(e?.message || 'TO BE impossible à créer'); }
     };
     // onglet TO BE sans TO BE : on montre l'AS IS avec un bandeau, sans rien pouvoir enregistrer dedans

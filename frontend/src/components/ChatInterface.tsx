@@ -192,7 +192,7 @@ interface ChatInterfaceProps {
     /** Conversation rouverte avec ses procédures enregistrées : le panneau les reprend telles quelles */
     onRestoreProcedures?: (procedures: StoredProcedure[], active: string | null, serverMode?: boolean) => void;
     /** Fin d'un tour : les procédures de la conversation telles que le serveur les garde (il fait foi) */
-    onServerProcedures?: (procedures: StoredProcedure[]) => void;
+    onServerProcedures?: (procedures: StoredProcedure[], activate?: string) => void;
     /** Sources de la conversation (panneau « Cette conversation ») */
     onSourcesChange?: (sources: ConversationSource[], references: string[], searches: WebSearch[]) => void;
     /** Juste avant d'envoyer un message : les corrections à la main en attente partent d'abord */
@@ -673,6 +673,8 @@ export default function ChatInterface({
     const previewRef = useRef<{ msgId: string; rows: Table1Row[]; checkpoint?: unknown; final?: boolean; isNew?: boolean } | null>(null);
     /** Procédure de la conversation visée par le message en cours (événement target_procedure) */
     const targetRef = useRef<{ msgId: string; key: string; workflow: Table1Row[] } | null>(null);
+    /** procédure ajoutée au chat par ce tour (TO BE créé) : affichée quand la liste du serveur arrive */
+    const focusRef = useRef<string | null>(null);
 
     // ── Événements du flux ──
     const handleEvent = (msgId: string, ev: any) => {
@@ -758,9 +760,13 @@ export default function ChatInterface({
             case 'web_search':
                 updateMsg(msgId, m => ({ ...m, searches: [...(m.searches || []), { queries: ev.queries || [], sources: ev.sources || [] }] }));
                 break;
+            case 'procedure_focus':
+                focusRef.current = ev.key || null;
+                break;
             case 'conversation_procedures':
                 // le serveur a écrit les procédures et leurs versions : l'écran reprend sa liste
-                onServerProcedures?.(ev.procedures || []);
+                onServerProcedures?.(ev.procedures || [], focusRef.current ?? undefined);
+                focusRef.current = null;
                 if (Array.isArray(ev.references)) setReferences(ev.references);
                 break;
             case 'referential_proposal':

@@ -875,7 +875,7 @@ async def studio_turn(
                 elif read_label and plan.action != "edit":
                     yield _sse({"type": "status", "id": "think", "label": read_label, "state": "done"})
                 # edit : le chat remplace la ligne par ce qu'il va faire
-                if plan.reply and plan.action not in ("analyze", "explain", "search", "interfaces", "analyse"):
+                if plan.reply and plan.action not in ("analyze", "explain", "search", "interfaces", "analyse", "tobe"):
                     yield _sse({"type": "message", "text": plan.reply})
 
                 if plan.procedures:
@@ -933,6 +933,12 @@ async def studio_turn(
                         else:
                             yield _sse({"type": "message", "text": found["text"] or
                                         "Je n'ai rien trouvé de fiable sur internet pour cette question."})
+                elif plan.action == "tobe":
+                    target = conv_procs[plan.target - 1] if plan.target else \
+                        next((p for p in conv_procs if p.get("key") == active_procedure), None)
+                    async for ev in _tobe_turn(target, conv if server_mode else None, user, request, plan.then_edit,
+                                               message, history_list, chat_procs, sess):
+                        yield ev
                 elif plan.action in ("edit", "transcribe", "explain", "analyze"):
                     # le chat exécute ce que l'aiguillage a décidé ; une question sans source à lire = explication
                     intent = plan.chat_intent or ("transcribe" if plan.action == "transcribe" else "explain")
@@ -997,6 +1003,59 @@ def _reading_label(files: List[Dict[str, Any]]) -> str:
         described.append(f"{f.get('filename', 'fichier')}{f' ({vol})' if vol else ''}")
     more = f" et {len(files) - 3} autre{'s' if len(files) > 4 else ''}" if len(files) > 3 else ""
     return f"Lecture de {', '.join(described)}{more}"
+
+
+async def _tobe_turn(target, conv, user, request, then_edit: bool, message: str, history_list, chat_procs, sess):
+    """« Fais le TO BE » : copie de l'AS IS au référentiel, ajoutée au chat (l'AS IS y reste) ; puis, si demandé,
+    mise à niveau par le chat à partir des changements demandés et des pistes retenues pour l'AS IS."""
+    say = lambda text: _sse({"type": "message", "text": text})  # noqa: E731
+    if conv is None or target is None:
+        yield say("Pour créer le TO BE, ouvrez la procédure dans une conversation enregistrée : il se range au référentiel à côté de l'AS IS.")
+        return
+    title = target.get("title") or "la procédure"
+    meta = target.get("procedureMetadata") or {}
+    if meta.get("asis_id") and not then_edit:
+        yield say(f"« {title} » est déjà le TO BE. Dites-moi ce qu'il faut y changer, ou demandez de le mettre à niveau avec les pistes retenues.")
+        return
+    # visé par le TO BE lui-même (« mets le TO BE à niveau ») : on repart de son AS IS, le TO BE existant est repris
+    asis_id = meta.get("asis_id") or target.get("workflow_db_id")
+    if not asis_id:
+        yield say(f"Enregistrez d'abord « {title} » au référentiel : le TO BE se crée à partir de l'AS IS enregistré, et s'y range à côté de lui.")
+        return
+    from routers.orchestration_router import make_tobe
+    from manager.save_targets import enforce_write
+    yield _sse({"type": "status", "id": "tobe", "label": "Création du TO BE à partir de l'AS IS", "state": "running"})
+    try:
+        enforce_write(request, asis_id)
+        tobe, created = await asyncio.to_thread(make_tobe, asis_id, user.id if user else None)
+        key = await asyncio.to_thread(cp.attach, conv["id"], tobe, user.id if user else None)
+    except HTTPException as e:
+        yield _sse({"type": "status", "id": "tobe", "label": "TO BE non créé", "state": "done"})
+        yield say(str(e.detail))
+        return
+    except ValueError as e:
+        yield _sse({"type": "status", "id": "tobe", "label": "TO BE non créé", "state": "done"})
+        yield say(str(e))
+        return
+    yield _sse({"type": "status", "id": "tobe", "state": "done",
+                "label": "TO BE créé et ajouté au chat" if created else "TO BE existant ajouté au chat"})
+    yield _sse({"type": "procedure_focus", "key": key})
+    unsaved = target.get("saved_version") is not None and target.get("version") != target.get("saved_version")
+    text = (f"J'ai créé le TO BE de « {title} » à partir de l'AS IS enregistré et je l'ai ajouté au chat. L'AS IS y reste, inchangé."
+            if created else f"Le TO BE de « {title} » existait déjà : je l'ai ajouté au chat, à côté de l'AS IS.")
+    if unsaved:
+        text += " Attention : l'AS IS a des modifications non enregistrées, qui ne sont pas dans le TO BE."
+    yield say(text)
+    if not then_edit:
+        return
+    # mise à niveau : le chat modifie le TO BE, avec les pistes retenues pour l'AS IS
+    from manager.tobe_material import retained_pistes, as_material
+    pistes = await asyncio.to_thread(retained_pistes, asis_id)
+    procs = await asyncio.to_thread(cp.list_procedures, conv["id"], False)
+    sess.setdefault("_turn", {})["target_key"] = key
+    async for ev in _delegate_to_chat(message + as_material(pistes), [], history_list, None, None, None, procs,
+                                      key, request, intent="patch", target_key=key):
+        yield ev
 
 
 async def _delegate_to_chat(message, files, history, workflow, enrichments_raw, metadata_raw,

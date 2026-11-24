@@ -504,12 +504,21 @@ async def create_tobe(workflow_id: str, request: Request, user: Optional[AuthUse
     """Crée le TO BE comme copie de l'AS IS (étapes, descriptions, logigramme, fiche). Rien n'est fait s'il existe déjà."""
     from manager.save_targets import enforce_write
     enforce_write(request, workflow_id)
+    try:
+        tobe, created = make_tobe(workflow_id, user.id if user else None)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"success": True, "created": created, "procedure": _build_procedure(tobe)}
+
+
+def make_tobe(workflow_id: str, user_id: Optional[str] = None):
+    """Le TO BE de l'AS IS `workflow_id` : créé comme sa copie, ou celui qui existe déjà. Renvoie (ligne, créé)."""
     asis = _get_workflow(workflow_id)
     if (asis.get("procedure_metadata_json") or {}).get("asis_id"):
-        raise HTTPException(status_code=400, detail="Cette version est déjà un TO BE")
+        raise ValueError("Cette version est déjà un TO BE")
     existing = _find_tobe(asis["id"])
     if existing:
-        return {"success": True, "created": False, "procedure": _build_procedure(existing)}
+        return existing, False
     db = get_supabase()
     meta = {k: v for k, v in (asis.get("procedure_metadata_json") or {}).items() if k not in _TOBE_RESET}
     stages = [dict(st) for st in DEFAULT_LIFECYCLE_STAGES]
@@ -529,10 +538,10 @@ async def create_tobe(workflow_id: str, request: Request, user: Optional[AuthUse
         db.table("sessions").delete().eq("id", session["id"]).execute()
         raise
     # première version : le point de départ, identique à l'AS IS
-    version_store.record_save(tobe["id"], {}, tobe, "initial", user.id if user else None)
+    version_store.record_save(tobe["id"], {}, tobe, "initial", user_id)
     _proc_event(procedure_id=asis["id"], event_type="tobe_created", message=f"TO BE créé : {title}",
-                actor_id=user.id if user else None, payload={"tobe_id": tobe["id"]})
-    return {"success": True, "created": True, "procedure": _build_procedure(tobe)}
+                actor_id=user_id, payload={"tobe_id": tobe["id"]})
+    return tobe, True
 
 
 @router.get("/procedures/{workflow_id}")

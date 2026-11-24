@@ -111,13 +111,21 @@ des documents et à répondre à des questions.
    utilisés, à quelles tâches, les connexions et échanges entre outils (« quelles sont les interfaces ? », « quels
    systèmes interviennent dans Vérifier ? », « fais-moi la cartographie des flux applicatifs »). "cible" = la procédure.
    Laisse "reply" vide : la détection est faite à part. Une question sur l'outil d'UNE étape reste "explain".
+"tobe" → l'utilisateur veut créer le TO BE (la version améliorée, ou version cible) d'une procédure de la conversation :
+   « fais le TO BE », « crée la version cible », « on passe au TO BE », « prépare le TO BE à partir des pistes retenues ».
+   "cible" = le numéro de son AS IS. Le TO BE naît comme copie de l'AS IS, qui reste dans la conversation, inchangé.
+   "puis_modifier": true si le message demande aussi d'y apporter des changements (des changements précis, ou « à partir
+   des pistes retenues », « mets-le à niveau ») ; false s'il demande seulement de le créer. Laisse "reply" vide.
+   Une mise à niveau du TO BE « à partir des pistes retenues » (ou « avec les pistes », « mets-le à niveau ») est toujours
+   "tobe" avec "puis_modifier": true, même quand le TO BE existe déjà : les pistes retenues ne sont fournies que là.
+   Un changement précis demandé sur un TO BE déjà dans la conversation ("version" = "TO BE") est "edit" sur lui.
 "answer" → un échange court qui n'a besoin ni des fichiers ni d'une génération (« merci », « bonjour », « d'accord »),
    ou l'annonce d'un document à venir (« je vais t'envoyer notre support ») : accuse réception. "reply" contient la
    réponse. Une vraie question appelle "explain".
 Créer une procédure à partir du seul texte du message ("generate" sans fichier) demande de quoi la rédiger : une
 description du processus, ou au moins un sujet précis (« fais la procédure de virement SWIFT »). Sinon "ask".
 
-PROCÉDURE VISÉE ("cible", pour "edit", "explain", "interfaces" et "analyse") : le numéro de la procédure de la conversation dont parle le message —
+PROCÉDURE VISÉE ("cible", pour "edit", "explain", "interfaces", "analyse" et "tobe") : le numéro de la procédure de la conversation dont parle le message —
 celle qu'il nomme ou désigne (titre, sujet, acteur ou étape qui n'existe que dans elle), ou celle sur laquelle portait la
 discussion récente si le message en est la suite ; sinon celle marquée "affichee". Si une modification peut concerner
 plusieurs procédures sans qu'on puisse trancher → "ask", en citant leurs titres.
@@ -158,12 +166,13 @@ nombre de procédures distinctes (pense aux variantes décrites séparément, ex
 
 Réponds UNIQUEMENT avec ce JSON :
 {
-  "action": "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "explain" | "search" | "interfaces" | "analyse" | "answer",
+  "action": "tobe" | "generate" | "propose" | "merge" | "edit" | "analyze" | "structure" | "remove" | "transcribe" | "ask" | "explain" | "search" | "interfaces" | "analyse" | "answer",
   "analyse": null,        // analyse : "irritants" | "ameliorations" | "reglementaire"
   "cible": null,          // edit, explain, interfaces : numéro de la procédure de la conversation visée
   "mode": "modifier",     // edit : "modifier" ou "refaire" (à partir d'un fichier joint)
   "transcribe_mode": "combined",
   "produire": false,      // search : en tirer une procédure
+  "puis_modifier": false, // tobe : le mettre à niveau juste après l'avoir créé
   "reply": "texte",
   "procedures": [
     {"id": "p1", "title": "titre selon la règle TITRE des règles communes", "description": "1 phrase", "sources": [{"file": "nom exact", "pages": "1-4"}], "estimated_steps": 12, "base": []}

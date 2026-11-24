@@ -22,7 +22,7 @@ from prompts.studio_planner_prompt import build_planner_prompt
 
 logger = logging.getLogger(__name__)
 
-ACTIONS = {"generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer", "transcribe", "ask",
+ACTIONS = {"tobe", "generate", "propose", "merge", "edit", "analyze", "structure", "remove", "answer", "transcribe", "ask",
            "explain", "search", "interfaces", "analyse"}
 ANALYSES = {"irritants", "ameliorations", "reglementaire"}
 # Ce que le chat exécute quand l'aiguillage lui confie le tour (le chat ne reclasse plus la demande)
@@ -52,6 +52,8 @@ class StudioPlan:
     # analyse d'une procédure : irritants, ameliorations, reglementaire
     analysis: Optional[str] = None
     transcribe_mode: str = "combined"
+    # TO BE : le mettre ensuite à niveau (changements demandés, pistes retenues) au lieu d'en rester à la copie
+    then_edit: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -288,6 +290,10 @@ def apply_guardrails(
         chat_intent = "explain"
     elif action == "search" and data.get("produire"):
         chat_intent = "web_search"  # rédiger une procédure à partir de ce que la recherche a trouvé
+    if action == "tobe" and not conversation_count and not has_workflow:
+        action = "answer"
+        reply = reply or "Il n'y a pas encore de procédure dont faire le TO BE : formalisons d'abord l'existant (AS IS)."
+        adjustments.append("TO BE sans procédure")
     target = None
     try:
         n = int(data.get("cible")) if data.get("cible") is not None else None
@@ -309,6 +315,7 @@ def apply_guardrails(
         search_produce=bool(action == "search" and data.get("produire")),
         analysis=analysis if action == "analyse" else None,
         transcribe_mode=mode,
+        then_edit=bool(action == "tobe" and data.get("puis_modifier")),
     )
 
 
