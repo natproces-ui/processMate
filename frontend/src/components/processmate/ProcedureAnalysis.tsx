@@ -5,8 +5,9 @@
 // cliquer une étape du logigramme ne garde que les défaillances qui la touchent. Les pistes se retiennent ou s'écartent
 // sur place (atelier de conception de la cible).
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { AlertCircle, Check, Loader2, Scan, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { AlertCircle, Check, Loader2, Scan, ZoomIn, ZoomOut } from 'lucide-react';
 import type { Table1Row } from '@/logic/types';
+import { PaneHandle, usePaneWidth } from '@/components/shared/PaneSplit';
 import StepLinkedDiagram, { type StepLinkedDiagramHandle } from '@/components/shared/StepLinkedDiagram';
 import { orchestrationApi } from '@/lib/orchestrationApi';
 
@@ -100,11 +101,13 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef, 
     const pistes = all.flatMap(i => (i.findings || []).flatMap(f => f.pistes || []));
     const retenues = pistes.filter(p => p.statut === 'retenue').length;
     const filterRow = stepFilter ? byRow.get(stepFilter) : null;
+    const [listW, setListW] = usePaneWidth('pm-analysis-list', 420, 300, 680);
 
     return (
-        <div className="flex h-full min-h-[480px] flex-col gap-3 lg:flex-row">
-            {/* Défaillances par axe */}
-            <section aria-label="Défaillances et pistes" className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:w-[440px] lg:shrink-0">
+        <div className="flex h-full min-h-[480px] flex-col gap-3 lg:flex-row lg:gap-0">
+            {/* Défaillances par axe : un seul défilement, l'en-tête part avec la liste, seul l'axe reste collé */}
+            <section aria-label="Défaillances et pistes" style={{ ['--pane-w' as string]: `${listW}px` }}
+                className="min-h-[320px] overflow-y-auto rounded-xl border border-neutral-200 bg-white lg:w-[var(--pane-w)] lg:shrink-0">
                 <div className="border-b border-neutral-200 px-4 py-2.5">
                     <div className="flex flex-col gap-0.5">
                         <h3 className="text-sm font-semibold text-petrole">Analyse vers la cible</h3>
@@ -123,7 +126,7 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef, 
                         </div>
                     )}
                 </div>
-                <div className="flex-1 overflow-y-auto px-2.5 pb-2.5">
+                <div className="px-2.5 pb-2.5">
                     {error && <p className="flex items-center gap-2 p-2 text-sm text-red-600"><AlertCircle className="h-4 w-4" />{error}</p>}
                     {!items && !error && <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin text-neutral-400" /></div>}
                     {items && all.length === 0 && (
@@ -134,10 +137,10 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef, 
                     )}
                     {groups.map(([axis, list]) => (
                         <div key={axis} className="mb-3">
-                            <div className="sticky top-0 z-[2] -mx-2.5 mb-1.5 border-b border-neutral-100 bg-white px-3.5 pb-2 pt-2.5">
-                                <h4 className="text-xs font-bold uppercase tracking-wide text-petrole">{axis} <span className="font-medium text-neutral-500">({list.length})</span></h4>
-                                {list[0].findings?.[0]?.constat && <p className="mt-0.5 text-[11px] leading-snug text-neutral-600">{list[0].findings[0].constat}</p>}
+                            <div className="sticky top-0 z-[2] -mx-2.5 border-b border-neutral-100 bg-white px-3.5 py-2">
+                                <h4 className="truncate text-xs font-bold uppercase tracking-wide text-petrole" title={axis}>{axis} <span className="font-medium text-neutral-500">({list.length})</span></h4>
                             </div>
+                            {list[0].findings?.[0]?.constat && <p className="mb-1.5 mt-1 px-1 text-[11px] leading-snug text-neutral-600">{list[0].findings[0].constat}</p>}
                             <ul className="space-y-1.5">
                                 {list.map(irr => {
                                     const active = activeIrr === irr.id;
@@ -177,11 +180,11 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef, 
                                                             </span>
                                                             <span className="flex shrink-0 gap-0.5">
                                                                 <button type="button" onClick={() => void setPiste(p, 'retenue')} aria-pressed={p.statut === 'retenue'}
-                                                                    title={p.statut === 'retenue' ? 'Remettre en proposition' : 'Retenir pour la cible'}
-                                                                    className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${p.statut === 'retenue' ? 'bg-petrole text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}>Retenir</button>
+                                                                    title={p.statut === 'retenue' ? 'Remettre en proposition' : 'Retenir pour le TO BE'}
+                                                                    className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${p.statut === 'retenue' ? 'border-petrole bg-petrole text-white' : 'border-neutral-300 text-neutral-800 hover:border-petrole hover:text-petrole'}`}>{p.statut === 'retenue' ? 'Retenue' : 'Retenir'}</button>
                                                                 <button type="button" onClick={() => void setPiste(p, 'rejetée')} aria-pressed={p.statut === 'rejetée'}
-                                                                    title={p.statut === 'rejetée' ? 'Remettre en proposition' : 'Écarter'} aria-label="Écarter"
-                                                                    className={`rounded p-0.5 ${p.statut === 'rejetée' ? 'bg-neutral-200 text-neutral-900' : 'text-neutral-500 hover:bg-neutral-100'}`}><X className="h-3 w-3" /></button>
+                                                                    title={p.statut === 'rejetée' ? 'Remettre en proposition' : 'Écarter cette piste'}
+                                                                    className={`rounded-md border px-2 py-0.5 text-[11px] font-medium ${p.statut === 'rejetée' ? 'border-neutral-400 bg-neutral-200 text-neutral-900' : 'border-neutral-300 text-neutral-600 hover:bg-neutral-100'}`}>{p.statut === 'rejetée' ? 'Écartée' : 'Écarter'}</button>
                                                             </span>
                                                         </li>
                                                     ))}
@@ -196,10 +199,11 @@ export default function ProcedureAnalysis({ procedureId, xml, rows, diagramRef, 
                 </div>
             </section>
 
+            <PaneHandle width={listW} setWidth={setListW} grows={1} initial={420} label="Largeur de la liste des défaillances" />
             {/* Logigramme : étapes concernées signalées */}
             <div className="relative min-h-[360px] min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected} markedIds={marked} onSelect={onDiagramSelect} />
-                {!diagramRef && <div className="absolute left-3 top-3 rounded-lg border border-neutral-200 bg-white/95 px-2 py-1 text-[11px] text-neutral-700 shadow-sm">
+                {!diagramRef && <div className="absolute bottom-3 left-3 rounded-lg border border-neutral-200 bg-white/95 px-2 py-1 text-[11px] text-neutral-700 shadow-sm">
                     <span className="mr-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-700 align-middle text-[9px] font-bold text-white">!</span>étape touchée par une défaillance
                 </div>}
                 {!diagramRef && <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">

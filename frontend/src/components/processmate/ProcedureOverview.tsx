@@ -7,6 +7,7 @@ import { Diamond, Play, Scan, Square, ZoomIn, ZoomOut, Circle } from 'lucide-rea
 import type { Table1Row } from '@/logic/types';
 import type { TaskEnrichment } from '@/logic/bpmnTypes';
 import StepLinkedDiagram, { type StepLinkedDiagramHandle } from '@/components/shared/StepLinkedDiagram';
+import { PaneHandle, usePaneWidth } from '@/components/shared/PaneSplit';
 import SourceCitation from '@/components/shared/SourceCitation';
 
 const isGateway = (t: string) => /Gateway/.test(t);
@@ -41,9 +42,12 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef, 
     }, [selected]);
 
     const actors = new Set(rows.map(r => r.acteur).filter(Boolean)).size;
+    // le logigramme a la place principale ; le détail se règle à la souris et se masque
+    const [detailW, setDetailW] = usePaneWidth('pm-overview-detail', 340, 260, 620);
+    const [detailOpen, setDetailOpen] = useState(true);
 
     return (
-        <div className="flex h-full min-h-[480px] flex-col gap-3 lg:flex-row">
+        <div className="flex h-full min-h-[480px] flex-col gap-3 lg:flex-row lg:gap-0">
             {/* Logigramme */}
             <div className="relative min-h-[360px] min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                 <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected ? [selected] : []} onSelect={setSelected} diff={diff} />
@@ -52,13 +56,24 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef, 
                     <button type="button" aria-label="Zoomer" onClick={() => diagram.current?.zoomIn()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomIn className="h-4 w-4" /></button>
                     <button type="button" aria-label="Ajuster" onClick={() => diagram.current?.fit()} className="p-1.5 hover:bg-neutral-100"><Scan className="h-4 w-4" /></button>
                 </div>}
+                {!detailOpen && (
+                    <button type="button" onClick={() => setDetailOpen(true)}
+                        className="absolute bottom-3 right-3 rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-900 shadow-sm hover:bg-neutral-50">
+                        Afficher le détail des étapes</button>
+                )}
             </div>
+            {detailOpen && <PaneHandle width={detailW} setWidth={setDetailW} grows={-1} initial={340} label="Largeur du détail des étapes" />}
 
             {/* Détail des étapes */}
-            <section aria-label="Détail des étapes" className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:w-[400px] lg:shrink-0">
-                <div className="flex items-baseline justify-between border-b border-neutral-200 px-4 py-2.5">
+            <section aria-label="Détail des étapes" hidden={!detailOpen} style={{ ['--pane-w' as string]: `${detailW}px` }}
+                className="flex min-h-[320px] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white lg:w-[var(--pane-w)] lg:shrink-0">
+                <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2.5">
                     <h3 className="text-sm font-semibold text-petrole">Détail des étapes</h3>
-                    <span className="text-[11px] text-neutral-500">{rows.length} étape{rows.length > 1 ? 's' : ''}, {actors} acteur{actors > 1 ? 's' : ''}</span>
+                    <span className="flex items-center gap-2">
+                        <span className="text-[11px] text-neutral-500">{rows.length} étape{rows.length > 1 ? 's' : ''}, {actors} acteur{actors > 1 ? 's' : ''}</span>
+                        <button type="button" onClick={() => setDetailOpen(false)} title="Masquer le détail : le logigramme prend toute la largeur"
+                            className="hidden rounded-md px-1.5 py-0.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 lg:inline">Masquer</button>
+                    </span>
                 </div>
                 {diff && Object.keys(diff).length > 0 && (() => {
                     const n = Object.values(diff).filter(v => v === 'nouvelle').length;
