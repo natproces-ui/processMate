@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { API_CONFIG } from '@/lib/api-config';
@@ -83,6 +83,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [access, setAccess] = useState<Access | null>(null);
+  /** les droits n'ont pas pu être lus (serveur injoignable) : on les relit au retour sur l'onglet */
+  const meFailedRef = useRef(false);
+  useEffect(() => {
+    const retry = () => {
+      if (!meFailedRef.current || document.visibilityState !== 'visible') return;
+      fetchMe().then(ok => { if (ok) meFailedRef.current = false; });
+    };
+    window.addEventListener('focus', retry);
+    document.addEventListener('visibilitychange', retry);
+    return () => { window.removeEventListener('focus', retry); document.removeEventListener('visibilitychange', retry); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [loading, setLoading] = useState(true);
 
   /** Profil + droits via le backend ; true si la réponse a été exploitée. */
@@ -109,7 +120,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchProfile = async (userId: string, email?: string): Promise<void> => {
-    if (await fetchMe()) return;
+    // Un serveur qui redémarre (mise en ligne) ou lent ne doit pas faire croire à un compte sans droits :
+    // on réessaie avant de conclure, puis on relira les droits au retour sur l'onglet
+    for (const wait of [0, 2_000, 5_000]) {
+      if (wait) await new Promise(r => setTimeout(r, wait));
+      if (await fetchMe()) return;
+    }
+    meFailedRef.current = true;
     // Backend injoignable : lecture directe de sa propre ligne (droits inconnus → aucun)
     setAccess(NO_ACCESS);
     const withTimeout = (p: Promise<{ data: any }>): Promise<{ data: any }> =>
