@@ -112,6 +112,9 @@ Si un acteur externe intervient dans le processus — que ce soit par une swimla
 
 **`regles_gestion`** — Les règles métier, contraintes ou conditions qui gouvernent le processus.
 - Constitue-les depuis : les conditions des gateways, les annotations, les règles explicites, les contraintes mentionnées.
+- Une action qu'un système fait seul (contrôle, relance, calcul, alerte, reprise de données d'un outil à l'autre) est une
+  règle de gestion, pas une étape. L'étape ne garde que ce que fait une personne ou une équipe (suivre, traiter les
+  exceptions, valider). La règle nomme l'applicatif (jamais « le système ») et dit ce qu'il fait, quand, et pour qui ou sous quelle forme, comme dans les procédures de référence : « Formules de règlement générées via l'applicatif <APPLICATIF> (fichier texte) », « Relances des pièces manquantes envoyées automatiquement par <APPLICATIF> à chaque jalon, à l'organisme concerné », où <APPLICATIF> est le nom exact de l'applicatif tel qu'il figure dans le champ « outil » des étapes ou dans la source.
 - Une règle par ligne (séparées par \\n).
 - Exemples : "Le montant de l'avance ne doit pas dépasser 80% du montant facturé", "Le délai minimum est de 30 jours"
 - Si aucune règle identifiable : ""

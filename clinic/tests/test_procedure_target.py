@@ -49,7 +49,7 @@ class ChatTargetTest(unittest.TestCase):
         proc = ChatProcessor.__new__(ChatProcessor)
         seen = {}
 
-        async def fake_patch(message, workflow, enrichments):
+        async def fake_patch(message, workflow, enrichments, metadata=None):
             seen["workflow"] = workflow
             return {"success": True, "intent": "patch", "operations": [], "operations_count": 0}
 

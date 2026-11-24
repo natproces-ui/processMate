@@ -56,8 +56,11 @@ def persist(conversation_id: str, recorder, message_id: Optional[str], turn: Dic
             rows, enr = apply_with_descriptions(cur.get("workflow") or [], cur.get("enrichments") or {}, data["operations"])
             resume = (data.get("explanation") or "").strip()[:300] or summarize_changes(cur.get("workflow"), rows)
             # le diagramme est recalculé par l'écran (ses positions correspondaient à la version d'avant)
-            cp.add_version(proc, {**cur, "workflow": rows, "enrichments": enr, "bpmnXml": None}, "modification",
-                           message_id, resume, author)
+            meta = cur.get("procedureMetadata") or {}
+            if (data.get("procedureMetadata") or {}).get("regles_gestion"):
+                meta = {**meta, "regles_gestion": data["procedureMetadata"]["regles_gestion"]}
+            cp.add_version(proc, {**cur, "workflow": rows, "enrichments": enr, "procedureMetadata": meta, "bpmnXml": None},
+                           "modification", message_id, resume, author)
         else:
             logger.warning(f"⚠️ Modification sur une procédure inconnue côté serveur : {target}")
     return cp.list_procedures(conversation_id)

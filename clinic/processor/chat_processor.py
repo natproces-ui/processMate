@@ -218,7 +218,7 @@ class ChatProcessor:
                 result["enrichments"] = _merge_enrichments(current_enrichments, result.get("enrichments"))
                 result["procedureMetadata"] = _merge_metadata(current_procedure_metadata, result.get("procedureMetadata"))
                 return result
-            return await self._handle_patch(message, current_workflow, current_enrichments)
+            return await self._handle_patch(message, current_workflow, current_enrichments, current_procedure_metadata)
 
         if intent_result.intent == "web_search":
             return await self._handle_web_search(message, files, current_workflow)
@@ -297,6 +297,7 @@ class ChatProcessor:
         message: str,
         current_workflow: List[Dict],
         current_enrichments: Optional[Dict[str, Any]] = None,
+        current_procedure_metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
 
         # Le modèle voit la description de chaque étape pour pouvoir la réécrire
@@ -306,7 +307,8 @@ class ChatProcessor:
             {**row, "description": (enrichments.get(str(row.get("id"))) or {}).get("descriptif", "")}
             for row in current_workflow
         ]
-        prompt = get_revision_prompt(workflow_for_prompt, message)
+        regles = str((current_procedure_metadata or {}).get("regles_gestion") or "")
+        prompt = get_revision_prompt(workflow_for_prompt, message, regles)
 
         text = None
         if turn_progress.active():
@@ -338,6 +340,11 @@ class ChatProcessor:
         if json_match:
             text = json_match.group(0)
         data = json.loads(text)
+        # actions automatisées : des règles de gestion ajoutées à la fiche (sans doublon)
+        added = [str(r).strip() for r in (data.get("regles_gestion_ajout") or []) if str(r).strip()]
+        known = {ln.strip().lower() for ln in regles.split("\n") if ln.strip()}
+        added = [r for r in dict.fromkeys(added) if r.lower() not in known]
+        metadata = {"regles_gestion": "\n".join([ln for ln in regles.split("\n") if ln.strip()] + added)} if added else {}
 
         return {
             "success": True,
@@ -348,7 +355,8 @@ class ChatProcessor:
             "workflow": current_workflow,
             "title": None,
             "enrichments": {},
-            "procedureMetadata": {}
+            "procedureMetadata": metadata,
+            "regles_ajoutees": added,
         }
 
     # ─────────────────────────────────────────────────────────

@@ -660,7 +660,7 @@ export default function ChatInterface({
             });
             const changes = diffWorkflows(baseWorkflow, revised);
             updateMsg(msgId, m => ({ ...m, intent: 'patch', content: data.explanation || 'Modifications appliquées', operationsCount: data.operations_count || 0, changes }));
-            onWorkflowGenerated(revised, '', described, null, { procedureKey: target?.key });
+            onWorkflowGenerated(revised, '', described, data.procedureMetadata?.regles_gestion ? data.procedureMetadata : null, { procedureKey: target?.key });
             return;
         }
         // generate / regen / web_search / transcribe

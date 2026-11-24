@@ -212,5 +212,23 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(remap, {"local-1": "ref:wf-tobe"})  # l'AS IS n'est pas repris deux fois
         self.assertEqual(sorted(p["key"] for p in cp.list_procedures("c1")), ["ref:wf-asis", "ref:wf-tobe"])
 
+class ReglesGestionTest(unittest.TestCase):
+    """Une action automatisée devient une règle de gestion de la fiche (pas une étape)."""
+
+    def test_patch_ajoute_les_regles_sans_doublon(self):
+        import asyncio
+        from processor.chat_processor import ChatProcessor
+        reply = ('{"operations": [{"type": "delete", "id": "3", "reconnect": true}], "explanation": "ok", '
+                 '"regles_gestion_ajout": ["Geflog relance automatiquement les pièces manquantes à chaque jalon.", '
+                 '"Le délai est de 30 jours."]}')
+        proc = ChatProcessor.__new__(ChatProcessor)
+        with mock.patch("processor.chat_processor.turn_progress.active", return_value=True), \
+                mock.patch("manager.model_manager.generate_content_stream", lambda *a, **k: iter([reply])):
+            res = asyncio.run(proc._handle_patch("Automatise la relance", WF, {}, {"regles_gestion": "Le délai est de 30 jours."}))
+        self.assertEqual(res["procedureMetadata"]["regles_gestion"],
+                         "Le délai est de 30 jours.\nGeflog relance automatiquement les pièces manquantes à chaque jalon.")
+        self.assertEqual(res["regles_ajoutees"], ["Geflog relance automatiquement les pièces manquantes à chaque jalon."])
+
+
 if __name__ == "__main__":
     unittest.main()

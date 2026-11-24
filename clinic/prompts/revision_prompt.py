@@ -101,7 +101,14 @@ Tu dois retourner UNIQUEMENT un patch JSON décrivant les opérations à appliqu
    Pour la rédiger ou la réécrire, mets "description" dans "fields" (update) ou dans "row" (add).
    Si l'instruction porte sur la description, modifie "description", pas "étape" (le titre).
 
-8. **Vérification finale** : avant de répondre, vérifie le workflow obtenu après tes
+8. **Action automatisée** : une action qu'un système fait seul (contrôle, relance, calcul, alerte, reprise de
+   données) n'est pas une étape : c'est une règle de gestion de la fiche. Mets-la dans "regles_gestion_ajout"
+   (une phrase par action). Elle nomme l'applicatif (jamais « le système ») et dit ce qu'il fait, quand, et pour qui ou sous quelle forme, comme dans les procédures de référence : « Formules de règlement générées via l'applicatif <APPLICATIF> (fichier texte) », « Relances des pièces manquantes envoyées automatiquement par <APPLICATIF> à chaque jalon, à l'organisme concerné », où <APPLICATIF> est le nom exact de l'applicatif tel qu'il figure dans le champ « outil » des étapes ou dans la source.
+   L'étape garde ce que fait l'équipe
+   (suivre, traiter les exceptions, valider) ; si l'équipe n'y fait plus rien, supprime l'étape (delete, reconnect).
+   Un système n'est jamais un acteur. N'ajoute pas une règle déjà présente dans les règles de gestion actuelles.
+
+9. **Vérification finale** : avant de répondre, vérifie le workflow obtenu après tes
    opérations : aucune sortie ne pointe vers une étape supprimée ou inexistante, toute
    étape sauf le StartEvent a au moins une entrée, toute étape sauf un EndEvent a au
    moins une sortie.
@@ -115,19 +122,22 @@ Tu dois retourner UNIQUEMENT un patch JSON décrivant les opérations à appliqu
     { "type": "...", ... },
     { "type": "...", ... }
   ],
-  "explanation": "Ce qui a été modifié, en 1-2 phrases directes : sans salutation ni étiquette (« Remarque : »…)"
+  "explanation": "Ce qui a été modifié, en 1-2 phrases directes : sans salutation ni étiquette (« Remarque : »…)",
+  "regles_gestion_ajout": []   // règles de gestion à ajouter à la fiche (une phrase chacune), souvent vide
 }
 
 JSON PUR sans markdown, sans ```json.
 """
 
 
-def get_revision_prompt(workflow: list, instruction: str) -> str:
+def get_revision_prompt(workflow: list, instruction: str, regles_gestion: str = "") -> str:
     """
     Construit le prompt complet pour la révision.
     """
     import json
     workflow_json = json.dumps(workflow, ensure_ascii=False, indent=2)
+    if regles_gestion.strip():
+        workflow_json += "\n\nRÈGLES DE GESTION ACTUELLES (fiche) :\n" + regles_gestion.strip()
 
     return f"""{REVISION_SYSTEM_PROMPT}
 
