@@ -172,7 +172,7 @@ function StatusBadge({ status }: { status: string }) {
         : status === 'Rejetée' ? 'bg-red-100 text-red-700'
         : status === 'En pause' ? 'bg-purple-100 text-purple-700'
         : 'bg-gray-100 text-gray-600';
-    return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${c}`}>{status}</span>;
+    return <span className={`shrink-0 whitespace-nowrap text-[10px] font-semibold px-2 py-0.5 rounded-full ${c}`}>{status}</span>;
 }
 
 // ── Raci Modal (editable, single-procedure) ──────────────────
