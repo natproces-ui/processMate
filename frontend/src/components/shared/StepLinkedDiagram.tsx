@@ -80,6 +80,7 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
                     onSelectRef.current?.(isStepShape(el) ? stepIdOf(el.id) : null);
                 });
                 setState('ready');
+                applyMarks();
             } catch {
                 if (!cancelled) setState('error');
             }
@@ -89,10 +90,15 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
 
     useEffect(() => () => { viewerRef.current?.destroy(); viewerRef.current = null; }, []);
 
-    // sélection et marques : mises en évidence, et l'étape sélectionnée amenée à l'écran
-    useEffect(() => {
+    // sélection et marques : mises en évidence, et l'étape sélectionnée amenée à l'écran.
+    // Les dernières valeurs sont lues par référence : les marques sont posées à la fin du chargement
+    // (sinon un logigramme qui arrive après ses marques resterait sans couleur jusqu'au prochain clic)
+    const marksRef = useRef({ selectedIds, markedIds, diff });
+    marksRef.current = { selectedIds, markedIds, diff };
+    const applyMarks = () => {
+        const { selectedIds, markedIds, diff } = marksRef.current;
         const viewer = viewerRef.current;
-        if (state !== 'ready' || !viewer) return;
+        if (!viewer) return;
         const canvas = viewer.get('canvas');
         const registry = viewer.get('elementRegistry');
         const steps = registry.filter(isStepShape);
@@ -121,6 +127,9 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
             const inside = first.x >= vb.x && first.y >= vb.y && first.x + first.width <= vb.x + vb.width && first.y + first.height <= vb.y + vb.height;
             if (!inside) canvas.scrollToElement(first, { top: 120, bottom: 120, left: 160, right: 160 });
         }
+    };
+    useEffect(() => {
+        if (state === 'ready') applyMarks();
     }, [state, selectedIds.join(','), markedIds.join(','), JSON.stringify(diff || {})]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (

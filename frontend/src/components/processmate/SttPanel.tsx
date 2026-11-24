@@ -37,7 +37,7 @@ import { exportAll, exportOne, type ExportableProcedure, type ExportKind } from 
 import ConversationVersionsModal from '@/components/processmate/ConversationVersionsModal';
 import ProcedureOverview from '@/components/processmate/ProcedureOverview';
 import ProcedureAnalysis from '@/components/processmate/ProcedureAnalysis';
-import ProcedureCompare, { type CompareSide } from '@/components/processmate/ProcedureCompare';
+import ProcedureCompare, { type CompareSide, diffVersions } from '@/components/processmate/ProcedureCompare';
 import ReferentialPicker from '@/components/processmate/ReferentialPicker';
 import { versionLabel } from '@/lib/procedureVersion';
 import type { Procedure as DbProcedure } from '@/lib/orchestrationApi';
@@ -1261,6 +1261,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         };
         return activeSide === 'tobe' ? { asis: other(pair.asis), tobe: current } : { asis: current, tobe: other(pair.tobe) };
     }, [pair, activeSide, instances, activeData, activeBpmnXml, activeEnrichments]); // eslint-disable-line react-hooks/exhaustive-deps
+    /** TO BE affiché : ses étapes nouvelles ou modifiées par rapport à l'AS IS (celui du chat s'il y est) */
+    const tobeDiff = useMemo(() => {
+        if (!pair?.tobe || activeSide !== 'tobe' || showingOther) return undefined;
+        const inChat = instances.find(i => i.workflow_db_id === pair.asis.id && !i.archived);
+        const asisRows = inChat ? inChat.data : ((pair.asis.workflow_json || []) as Table1Row[]);
+        return diffVersions(asisRows, activeData, (pair.tobe.metadata?.origines as Record<string, string> | undefined) || {}).tobeDiff;
+    }, [pair, activeSide, showingOther, instances, activeData]);
     const navVersion = instances.length > 0 ? activeInst?.version : undefined;
     useEffect(() => {
         if (!navKey || !navVersion) return;
@@ -1959,7 +1966,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 origines={(pair.tobe.metadata?.origines as Record<string, string> | undefined) || undefined} />
                         ) : view === 'ensemble' ? (
                             activeData.length > 0 && activeBpmnXml
-                                ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} diagramRef={linkedDiagram} />
+                                ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} diagramRef={linkedDiagram} diff={tobeDiff} />
                                 : <p className="text-sm text-neutral-500">{activeData.length === 0 ? 'Aucune étape pour l’instant.' : 'Préparation du logigramme…'}</p>
                         ) : view === 'analyse' && analysisId ? (
                             activeData.length > 0 && activeBpmnXml

@@ -20,8 +20,10 @@ function TypeIcon({ type }: { type: string }) {
     return <Square className={cls} aria-label="Tâche" />;
 }
 
-export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }: {
+export default function ProcedureOverview({ xml, rows, enrichments, diagramRef, diff }: {
     xml: string;
+    /** TO BE : ce qui change par rapport à l'AS IS (étape nouvelle ou modifiée), coloré sur le dessin et dans le détail */
+    diff?: Record<string, 'nouvelle' | 'modifiee' | 'supprimee'>;
     /** zoom piloté de l'extérieur (barre de commandes) : les boutons sur le dessin disparaissent */
     diagramRef?: RefObject<StepLinkedDiagramHandle | null>;
     rows: Table1Row[];
@@ -44,7 +46,7 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
         <div className="flex h-full min-h-[480px] flex-col gap-3 lg:flex-row">
             {/* Logigramme */}
             <div className="relative min-h-[360px] min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 bg-white">
-                <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected ? [selected] : []} onSelect={setSelected} />
+                <StepLinkedDiagram ref={diagram} xml={xml} selectedIds={selected ? [selected] : []} onSelect={setSelected} diff={diff} />
                 {!diagramRef && <div className="absolute right-3 top-3 flex overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-sm">
                     <button type="button" aria-label="Dézoomer" onClick={() => diagram.current?.zoomOut()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomOut className="h-4 w-4" /></button>
                     <button type="button" aria-label="Zoomer" onClick={() => diagram.current?.zoomIn()} className="border-r border-neutral-300 p-1.5 hover:bg-neutral-100"><ZoomIn className="h-4 w-4" /></button>
@@ -58,6 +60,17 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
                     <h3 className="text-sm font-semibold text-petrole">Détail des étapes</h3>
                     <span className="text-[11px] text-neutral-500">{rows.length} étape{rows.length > 1 ? 's' : ''}, {actors} acteur{actors > 1 ? 's' : ''}</span>
                 </div>
+                {diff && Object.keys(diff).length > 0 && (() => {
+                    const n = Object.values(diff).filter(v => v === 'nouvelle').length;
+                    const m = Object.values(diff).filter(v => v === 'modifiee').length;
+                    return (
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-neutral-200 px-4 py-1.5 text-[11px] text-neutral-700">
+                            <span>Par rapport à l’AS IS :</span>
+                            <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-4 rounded-sm border-[3px] border-petrole bg-petrole-tint" />{n} nouvelle{n > 1 ? 's' : ''}</span>
+                            <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-4 rounded-sm border-2 border-dashed border-petrole" />{m} modifiée{m > 1 ? 's' : ''}</span>
+                        </div>
+                    );
+                })()}
                 <ol className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
                     {rows.map(r => {
                         const e = enrichments.get(r.id);
@@ -76,6 +89,8 @@ export default function ProcedureOverview({ xml, rows, enrichments, diagramRef }
                                             <span className="flex items-center gap-1.5 text-sm font-medium text-neutral-900">
                                                 <TypeIcon type={r.typeBpmn} />
                                                 <span className="min-w-0">{isGateway(r.typeBpmn) ? (r.condition || r.étape) : r.étape}</span>
+                                                {diff?.[r.id] === 'nouvelle' && <span className="shrink-0 rounded-full bg-petrole px-1.5 py-px text-[10px] font-semibold text-white">Nouvelle</span>}
+                                                {diff?.[r.id] === 'modifiee' && <span className="shrink-0 rounded-full border border-dashed border-petrole px-1.5 py-px text-[10px] font-semibold text-petrole">Modifiée</span>}
                                             </span>
                                             <span className="mt-0.5 block text-xs text-neutral-600">
                                                 {[r.acteur, r.département && r.département !== r.acteur ? r.département : '', r.outil].filter(Boolean).join(', ')}
