@@ -175,6 +175,33 @@ function StatusBadge({ status }: { status: string }) {
     return <span className={`shrink-0 whitespace-nowrap text-[10px] font-semibold px-2 py-0.5 rounded-full ${c}`}>{status}</span>;
 }
 
+/** Largeur d'une colonne de version (en-tête et cases alignés) */
+const VERSION_COL = 'w-[7.25rem] shrink-0';
+
+/** AS IS et TO BE d'un même processus, en face l'un de l'autre ; chaque case ouvre sa version */
+function VersionCells({ proc, onOpen }: { proc: Procedure; onOpen?: (id: string) => void }) {
+    const open = (id: string) => (e: React.MouseEvent) => { e.stopPropagation(); onOpen?.(id); };
+    return (
+        <span className="flex shrink-0 items-center">
+            <button type="button" onClick={open(proc.id)} title="Ouvrir l’AS IS dans le chat"
+                className={`${VERSION_COL} flex justify-start rounded-md px-1.5 py-0.5 hover:bg-white`}>
+                <StatusBadge status={proc.status} />
+            </button>
+            {proc.tobe_id ? (
+                <button type="button" onClick={open(proc.tobe_id)} title="Ouvrir le TO BE dans le chat"
+                    className={`${VERSION_COL} flex justify-start rounded-md px-1.5 py-0.5 hover:bg-white`}>
+                    <StatusBadge status={proc.tobe_status || 'Brouillon'} />
+                </button>
+            ) : (
+                <button type="button" onClick={open(proc.id)} title="Pas de TO BE propre : le TO BE est identique à l’AS IS. Ouvrir dans le chat pour le mettre à niveau"
+                    className={`${VERSION_COL} flex justify-start rounded-md px-1.5 py-0.5 text-[11px] text-neutral-500 hover:bg-white whitespace-nowrap`}>
+                    Identique à l’AS IS
+                </button>
+            )}
+        </span>
+    );
+}
+
 // ── Raci Modal (editable, single-procedure) ──────────────────
 
 const RACIMatrix = dynamic(() => import('@/components/orchestration/RACIMatrix'), {
@@ -488,16 +515,16 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                 className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
                                 onClick={() => onOpenEditor?.(proc.id)}>
                                 <FileText className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                                <span className="text-sm text-gray-900 truncate min-w-0">{proc.nom}</span>
+                                <span className="text-sm text-gray-900 line-clamp-2 min-w-0" title={proc.nom}>{proc.nom}</span>
                                 <button type="button" title="Actions"
                                     onClick={e => { e.stopPropagation(); openMenu(e, { kind: 'procedure', id: proc.id, name: proc.nom }); }}
                                     className="p-1 rounded text-gray-700 hover:text-neutral-900 hover:bg-neutral-100 shrink-0">
                                     <MoreVertical className="w-4 h-4" />
                                 </button>
                                 {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
-                                {proc.tobe_id && <span title={`Ce processus a une version TO BE (${proc.tobe_status || 'Brouillon'})`} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-petrole-tint text-petrole shrink-0">TO BE</span>}
-                                <StatusBadge status={proc.status} />
                                 {proc.ref && <span className="text-[10px] text-gray-400 font-mono shrink-0">{proc.ref}</span>}
+                                <span className="flex-1" />
+                                <VersionCells proc={proc} onOpen={onOpenStudio ?? onOpenEditor} />
                             </div>
                         ))}
 
@@ -587,14 +614,19 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                     <MoreVertical className="w-4 h-4" />
                                 </button>
                                 {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
-                                {proc.tobe_id && <span title={`Ce processus a une version TO BE (${proc.tobe_status || 'Brouillon'})`} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-petrole-tint text-petrole shrink-0">TO BE</span>}
-                                <StatusBadge status={proc.status} />
+                                <VersionCells proc={proc} onOpen={onOpenStudio ?? onOpenEditor} />
                             </div>
                         ))}
                     </div>
                 ) : (
                     /* Tree view */
                     <div className="space-y-0.5">
+                        {procedures.length > 0 && (
+                            <div className="sticky top-0 z-10 -mt-3 flex justify-end bg-gray-50 pb-1 pr-2 pt-3" aria-hidden="true">
+                                <span className={`${VERSION_COL} px-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-500`}>AS IS</span>
+                                <span className={`${VERSION_COL} px-1.5 text-[11px] font-semibold uppercase tracking-wide text-petrole`}>TO BE</span>
+                            </div>
+                        )}
                         {tree.filter(visibleNode).map(node => renderNode(node, 0))}
 
                         {/* Aucune procédure rangée : on ne laisse pas un écran vide, on dit par où commencer */}
@@ -658,15 +690,15 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                         className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
                                         onClick={() => onOpenEditor?.(proc.id)}>
                                         <FileText className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                                        <span className="text-sm text-gray-900 truncate min-w-0">{proc.nom}</span>
+                                        <span className="text-sm text-gray-900 line-clamp-2 min-w-0" title={proc.nom}>{proc.nom}</span>
                                         <button type="button" title="Actions"
                                             onClick={e => { e.stopPropagation(); openMenu(e, { kind: 'procedure', id: proc.id, name: proc.nom }); }}
                                             className="p-1 rounded text-gray-700 hover:text-neutral-900 hover:bg-neutral-100 shrink-0">
                                             <MoreVertical className="w-4 h-4" />
                                         </button>
                                         {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
-                                {proc.tobe_id && <span title={`Ce processus a une version TO BE (${proc.tobe_status || 'Brouillon'})`} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-petrole-tint text-petrole shrink-0">TO BE</span>}
-                                        <StatusBadge status={proc.status} />
+                                        <span className="flex-1" />
+                                        <VersionCells proc={proc} onOpen={onOpenStudio ?? onOpenEditor} />
                                     </div>
                                 ))}
                             </div>
