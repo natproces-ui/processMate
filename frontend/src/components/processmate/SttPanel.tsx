@@ -44,7 +44,7 @@ import type { Procedure as DbProcedure } from '@/lib/orchestrationApi';
 import type { StepLinkedDiagramHandle } from '@/components/shared/StepLinkedDiagram';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
-import CircuitBar from '@/components/shared/CircuitBar';
+import { useCircuit, CircuitSummary, CircuitConfirm, CIRCUIT_LABELS } from '@/components/shared/CircuitBar';
 import { RowMenu } from '@/components/home/ui';
 import { useAuth } from '@/context/AuthContext';
 import VersionHistoryModal from '@/components/shared/VersionHistoryModal';
@@ -1246,6 +1246,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const showingOther = virtualTobe || !!previewProc;
     // l'analyse porte sur une procédure du référentiel (ses défaillances y sont rattachées)
     const analysisId = instances.length > 0 && side === 'asis' && !showingOther ? activeInst?.workflow_db_id : undefined;
+    // circuit de validation de la version affichée : responsables sous le nom, actions dans le bouton Enregistrer
+    const circuit = useCircuit(canSave && !showingOther ? activeInst?.workflow_db_id : null,
+        async () => { if (activeInst) await handleSave(activeInst.title, '', undefined); });
     const sideOf = (p: DbProcedure): CompareSide => {
         const rows = (p.workflow_json || []) as Table1Row[];
         const enr = new Map<string, TaskEnrichment>();
@@ -1310,11 +1313,6 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const sep = <span aria-hidden className="mx-1 h-4 w-px bg-neutral-200" />;
     const hasDiagram = !comparing && !showingOther && !!activeBpmnXml && activeData.length > 0 && (view === 'bpmn' || view === 'ensemble' || (view === 'analyse' && !!analysisId));
     const viewCommands: React.ReactNode[] = [];
-    if (pair?.tobe && !showingOther) viewCommands.push(
-        <button key="comparer" type="button" onClick={() => setComparing(c => !c)} aria-pressed={comparing}
-            title={side === 'tobe' ? 'Afficher l’AS IS à côté du TO BE' : 'Afficher le TO BE à côté de l’AS IS'}
-            className={`${cmd} ${comparing ? '!bg-neutral-900 !text-white [&_svg]:!text-white' : ''}`}>
-            <Columns2 className="w-3.5 h-3.5" />{comparing ? 'Fermer la comparaison' : 'Comparer'}</button>);
     if (view === 'table' && canExport && !comparing && !showingOther) viewCommands.push(
         <button key="xlsx" type="button" className={cmd} disabled={!!exporting} onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'xlsx', activeTab)}
             title="Le tableau des étapes au format Excel">
@@ -1328,15 +1326,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         <button key="palette" type="button" onClick={togglePalette} aria-pressed={paletteOpen}
             title={paletteOpen ? 'Masquer la palette d’outils' : 'Ajouter des tâches, décisions et flux sur le logigramme'}
             className={`${cmd} ${paletteOpen ? '!bg-neutral-900 !text-white' : ''}`}><Shapes className="w-3.5 h-3.5" />Palette d’outils</button>);
-    if (hasDiagram) viewCommands.push(
+    if (hasDiagram && onDiagram) viewCommands.push(
         <span key="zoom" className="inline-flex items-center">
             <button type="button" className={cmd} onClick={() => zoom('out')} title="Dézoomer" aria-label="Dézoomer"><ZoomOut className="w-4 h-4" /></button>
             <button type="button" className={cmd} onClick={() => zoom('in')} title="Zoomer" aria-label="Zoomer"><ZoomIn className="w-4 h-4" /></button>
             <button type="button" className={cmd} onClick={() => zoom('fit')} title="Ajuster à la largeur"><Scan className="w-3.5 h-3.5" />Ajuster</button>
         </span>);
-    if (view === 'analyse' && hasDiagram) viewCommands.push(
-        <span key="legende" className="inline-flex items-center gap-1.5 px-2 text-[11px] text-neutral-600">
-            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-700 text-[9px] font-bold text-white">!</span>étape touchée par une défaillance</span>);
     const commandBar = viewCommands.length > 0 || historyNav ? (
         <div role="toolbar" aria-label="Commandes de la vue" className="ml-auto flex min-h-[34px] flex-wrap items-center pb-1">
             {viewCommands.map((c, i) => <span key={i} className="inline-flex items-center">{i > 0 && sep}{c}</span>)}
@@ -1730,13 +1725,9 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             l&apos;organisation demande un accès membre, donné par un administrateur.
                         </div>
                     )}
-                    {canSave && activeInst?.workflow_db_id && !showingOther && (
-                        <CircuitBar procedureId={activeInst.workflow_db_id}
-                            onSave={async () => { await handleSave(activeInst.title, '', undefined); }} />
-                    )}
                     <div className="shrink-0 bg-white border-b border-neutral-200 px-4 pt-2.5">
                         {/* Procédure : nom (une seule fois), étapes et catégorie dessous, enregistrement */}
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
+                        <div className="flex flex-wrap items-start gap-x-3 gap-y-2 min-w-0 lg:flex-nowrap">
                             {chatOpen && !procFullscreen && (
                                 <button type="button" onClick={() => toggleChat(false)} title="Masquer la conversation" aria-label="Masquer la conversation"
                                     className="hidden lg:inline-flex shrink-0 p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
@@ -1761,13 +1752,13 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 </button>
                             )}
                             {/* le titre garde sa place : ce sont les actions qui passent à la ligne */}
-                            <div className="min-w-[12rem] flex-1">
+                            <div className="min-w-[10rem] flex-1">
                                 {activeCount > 1 ? (
                                     /* plusieurs procédures dans la conversation : on en change depuis le titre */
                                     <RowMenu label="Changer de procédure" align="left" className="min-w-0 max-w-full"
                                         triggerClassName="-mx-1.5 flex max-w-full items-center gap-1 rounded-lg px-1.5 text-petrole hover:bg-petrole-tint"
                                         trigger={<>
-                                            <span className="text-base font-semibold truncate" title={activeTitle || 'Nouvelle procédure'}>{activeTitle || 'Nouvelle procédure'}</span>
+                                            <span className="text-base font-semibold leading-snug line-clamp-2 text-left" title={activeTitle || 'Nouvelle procédure'}>{activeTitle || 'Nouvelle procédure'}</span>
                                             <ChevronDown className="w-4 h-4 shrink-0" />
                                         </>}
                                         items={instances.map((inst, i) => ({ inst, i })).filter(({ inst }) => !inst.archived).map(({ inst, i }) => ({
@@ -1776,77 +1767,83 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             onSelect: () => setActiveTab(i),
                                         }))} />
                                 ) : (
-                                    <h1 className="text-base font-semibold text-petrole truncate" title={activeTitle || 'Nouvelle procédure'}>
+                                    <h1 className="text-base font-semibold leading-snug text-petrole line-clamp-2" title={activeTitle || 'Nouvelle procédure'}>
                                         {activeTitle || 'Nouvelle procédure'}
                                     </h1>
                                 )}
-                                <p className="text-xs text-neutral-500 truncate">
-                                    {activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? `, ${activeInst.category}` : ''}{activeCount > 1 ? `, ${activeCount} procédures dans la conversation` : ''}
+                                <p className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-neutral-500">
+                                    {pair && <span className="font-medium text-neutral-700">{side === 'tobe' ? (pair.tobe ? pair.tobe.status : 'Identique à l’AS IS') : pair.asis.status}</span>}
+                                    <span>{activeData.length} étape{activeData.length > 1 ? 's' : ''}{activeInst?.category ? `, ${activeInst.category}` : ''}</span>
+                                    <CircuitSummary circuit={circuit} />
                                 </p>
                             </div>
-                            <div className="ml-auto flex flex-wrap items-center gap-2">
-                                {canSave && !showingOther && <button type="button" onClick={() => {
-                                    const inst = instances.length > 0 ? activeInst : null;
-                                    if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
-                                    else setSaveModalOpen(true);
-                                }} disabled={saving || viewMode === 'outillage' || activeData.length === 0}
-                                    title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : undefined}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white rounded-lg text-xs font-medium hover:bg-neutral-700 disabled:opacity-50 transition-colors">
-                                    <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
-                                </button>}
+                            <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 lg:flex-nowrap">
+                                {/* Version du processus, en face du nom : AS IS ou TO BE */}
+                                {pair && (
+                                    <div role="tablist" aria-label="Version du processus" className="inline-flex shrink-0 rounded-lg border border-neutral-300 p-0.5">
+                                        {([['asis', 'AS IS'], ['tobe', 'TO BE']] as const).map(([id, label]) => {
+                                            const st = id === 'asis' ? pair.asis.status : pair.tobe ? pair.tobe.status : 'identique à l’AS IS';
+                                            const inChat = chatIndexOf(id === 'asis' ? pair.asis.id : pair.tobe?.id) >= 0;
+                                            return (
+                                                <button key={id} type="button" role="tab" aria-selected={side === id} onClick={() => selectSide(id)}
+                                                    title={`${label} : ${st}${inChat ? ', dans le chat' : ''}`}
+                                                    className={`rounded-md px-2.5 py-1 text-xs font-semibold ${side === id ? 'bg-petrole text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}>
+                                                    {label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {pair?.tobe && !showingOther && (
+                                    <button type="button" onClick={() => setComparing(c => !c)} aria-pressed={comparing}
+                                        title={side === 'tobe' ? 'Afficher l’AS IS à côté du TO BE' : 'Afficher le TO BE à côté de l’AS IS'}
+                                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium ${comparing ? 'border-petrole bg-petrole-tint text-petrole' : 'border-neutral-300 text-neutral-900 hover:bg-neutral-50'}`}>
+                                        <Columns2 className="w-3.5 h-3.5" />{comparing ? 'Fermer la comparaison' : 'Comparer'}
+                                    </button>
+                                )}
+                                {canSave && !showingOther && (
+                                    <div className="inline-flex shrink-0 overflow-hidden rounded-lg bg-petrole text-white">
+                                        <button type="button" onClick={() => {
+                                            const inst = instances.length > 0 ? activeInst : null;
+                                            if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
+                                            else setSaveModalOpen(true);
+                                        }} disabled={saving || viewMode === 'outillage' || activeData.length === 0}
+                                            title={viewMode === 'outillage' ? 'Repassez en vue métier pour enregistrer' : 'Enregistrer dans le référentiel'}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium hover:bg-black/10 disabled:opacity-50">
+                                            <Save className="w-3.5 h-3.5" />{saving ? 'Enregistrement…' : 'Enregistrer'}
+                                        </button>
+                                        {circuit.actions.length > 0 && (
+                                            <RowMenu label="Circuit de validation" align="right"
+                                                triggerClassName="flex h-full items-center border-l border-white/30 px-1.5 hover:bg-black/10"
+                                                trigger={<ChevronDown className="w-3.5 h-3.5" />}
+                                                items={circuit.actions.map(a => ({ label: CIRCUIT_LABELS[a], onSelect: () => circuit.setAsking(a) }))} />
+                                        )}
+                                    </div>
+                                )}
                                 {(() => {
                                     const more = [
-                                        // la fiche Word a son onglet « Fiche & export » : pas de doublon ici
-                                        // chaque vue a son propre bouton de téléchargement ; les versions se parcourent avec ↶ ↷
+                                        ...(instances.length > 0 && !workflowId
+                                            ? [{ label: 'Cette conversation : procédures et sources', icon: <Layers />, onSelect: () => setConvPanelOpen(o => !o) }] : []),
+                                        ...(!procFullscreen
+                                            ? [{ label: 'Masquer la procédure (le chat prend toute la largeur)', icon: <PanelRightClose />, onSelect: () => toggleProc(false) }] : []),
                                         ...(VERSIONS_ENABLED && canSave && activeInst?.workflow_db_id
                                             ? [{ label: 'Historique au référentiel', icon: <History />, onSelect: () => setVersionsOpen(true) }] : []),
-                                        ...(activeData.length > 0 ? [{ label: 'Vider la procédure…', icon: <Trash2 />, danger: true, onSelect: () => {
+                                        ...(activeData.length > 0 && !showingOther ? [{ label: 'Vider la procédure…', icon: <Trash2 />, danger: true, onSelect: () => {
                                             if (!window.confirm('Vider la procédure ? Toutes ses étapes sont retirées (une version reste dans l’historique de la conversation).')) return;
                                             if (instances.length > 0) updateActiveData([]); else setData([]);
                                         } }] : []),
                                     ];
-                                    // une famille par section : un seul titre « Versions », un séparateur avant chaque famille
-                                    let seenHeading = '';
-                                    more.forEach((it, k) => {
-                                        const m = it as { heading?: string; separatorBefore?: boolean; label: string };
-                                        if (m.heading && m.heading === seenHeading) m.heading = undefined;
-                                        if (m.heading) seenHeading = m.heading;
-                                        if (k > 0 && (m.heading || m.label.startsWith('Vider'))) m.separatorBefore = true;
-                                    });
+                                    more.forEach((it, k) => { if (k > 0 && it.label.startsWith('Vider')) (it as { separatorBefore?: boolean }).separatorBefore = true; });
                                     return more.length > 0 && <RowMenu label="Autres actions" align="right" triggerClassName="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100" items={more} />;
                                 })()}
-                                {instances.length > 0 && !workflowId && (
-                                    <button type="button" onClick={() => setConvPanelOpen(o => !o)} aria-pressed={convPanelOpen}
-                                        title="Cette conversation : procédures produites, leur état, sources utilisées" aria-label="Cette conversation"
-                                        className={`flex items-center gap-1 rounded-lg px-1.5 py-1.5 text-xs font-semibold text-neutral-900 hover:bg-neutral-100 ${convPanelOpen ? 'bg-neutral-100' : ''}`}>
-                                        <Layers className="w-4 h-4" />{activeCount}
-                                    </button>
-                                )}
                                 <button type="button" onClick={toggleProcFullscreen}
                                     title={procFullscreen ? 'Quitter le plein écran (Échap)' : 'Plein écran (tableau, logigramme, fiche)'}
                                     aria-label={procFullscreen ? 'Quitter le plein écran' : 'Afficher la procédure en plein écran'}
                                     className="p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
                                     {procFullscreen ? <Shrink className="w-4 h-4" /> : <Expand className="w-4 h-4" />}
                                 </button>
-                                {!procFullscreen && (
-                                    <button type="button" onClick={() => toggleProc(false)} title="Masquer la procédure (le chat prend toute la largeur)"
-                                        aria-label="Masquer la procédure" className="hidden lg:inline-flex p-1.5 rounded-lg text-neutral-900 hover:bg-neutral-100">
-                                        <PanelRightClose className="w-4 h-4" />
-                                    </button>
-                                )}
                             </div>
                         </div>
-                        {/* Version du processus : AS IS ou TO BE */}
-                        {pair && (
-                            <div role="tablist" aria-label="Version du processus" className="mt-2 inline-flex rounded-lg border border-neutral-300 p-0.5">
-                                {([['asis', 'AS IS', pair.asis.status], ['tobe', 'TO BE', pair.tobe ? pair.tobe.status : 'à lancer']] as const).map(([id, label, st]) => (
-                                    <button key={id} type="button" role="tab" aria-selected={side === id} onClick={() => selectSide(id)}
-                                        className={`flex items-center gap-2 rounded-md px-3 py-1 text-xs font-semibold ${side === id ? 'bg-petrole text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}>
-                                        {label}<span className={`text-[10px] font-normal ${side === id ? 'text-white/85' : 'text-neutral-500'}`}>{st}{chatIndexOf(id === 'asis' ? pair.asis.id : pair.tobe?.id) >= 0 ? ', dans le chat' : ''}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                         {/* Vues et actions */}
                         <div className="mt-1.5 flex flex-wrap items-end justify-between gap-2">
                             <div role="tablist" aria-label="Vue de la procédure" className="flex gap-1">
@@ -1865,8 +1862,8 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                             title={v.id === 'it' ? 'Le logigramme vu par les applicatifs utilisés à chaque étape'
                                                 : v.id === 'ensemble' ? 'Le logigramme et le détail de chaque étape côte à côte (plein écran conseillé)'
                                                 : v.id === 'analyse' ? 'Les défaillances par axe de transformation et les pistes, reliées aux étapes du logigramme' : undefined}
-                                            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${selected ? 'border-petrole text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
-                                            <v.icon className="w-3.5 h-3.5 text-petrole" />{v.label}
+                                            className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-semibold border-b-2 -mb-px whitespace-nowrap transition-colors ${selected ? 'border-petrole text-neutral-900' : 'border-transparent text-neutral-600 hover:text-neutral-900'}`}>
+                                            {v.label}
                                         </button>
                                     );
                                 })}
@@ -1874,6 +1871,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             {commandBar}
                         </div>
                     </div>
+                    <CircuitConfirm circuit={circuit} />
 
                     {/* messages empilés : l'un ne cache jamais l'autre (l'erreur, en premier, reste lisible en entier) */}
                     {(error || success) && (
@@ -1966,11 +1964,11 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 origines={(pair.tobe.metadata?.origines as Record<string, string> | undefined) || undefined} />
                         ) : view === 'ensemble' ? (
                             activeData.length > 0 && activeBpmnXml
-                                ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} diagramRef={linkedDiagram} diff={tobeDiff} />
+                                ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} diff={tobeDiff} />
                                 : <p className="text-sm text-neutral-500">{activeData.length === 0 ? 'Aucune étape pour l’instant.' : 'Préparation du logigramme…'}</p>
                         ) : view === 'analyse' && analysisId ? (
                             activeData.length > 0 && activeBpmnXml
-                                ? <ProcedureAnalysis procedureId={analysisId} xml={activeBpmnXml} rows={activeData} diagramRef={linkedDiagram} focusAxis={initialAxis} />
+                                ? <ProcedureAnalysis procedureId={analysisId} xml={activeBpmnXml} rows={activeData} focusAxis={initialAxis} />
                                 : <p className="text-sm text-neutral-500">Préparation du logigramme…</p>
                         ) : view === 'table' ? (
                             <>
