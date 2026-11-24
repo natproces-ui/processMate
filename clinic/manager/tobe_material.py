@@ -30,10 +30,17 @@ def as_material(pistes: List[Dict[str, Any]]) -> str:
     if not pistes:
         return ("\n\n(Aucune piste n'est retenue pour l'AS IS : n'applique que les changements demandés dans ce message ; "
                 "s'il n'en demande aucun, dis qu'il faut d'abord retenir des pistes dans « Irritants et pistes ».)")
-    lines = ["\n\nPISTES RETENUES POUR L'AS IS (à appliquer au TO BE ; pour chaque changement, cite la piste qui le justifie) :"]
+    lines = ["\n\nMISE À NIVEAU DU TO BE. Le TO BE décrit le fonctionnement cible, pas l'existant :",
+             "- change vraiment les étapes quand une piste le demande (acteur, outil, étape ajoutée, supprimée, fusionnée ou "
+             "automatisée, contrôle déplacé), pas seulement leurs descriptions ;",
+             "- une description du TO BE ne garde rien de ce que la piste supprime (suivi manuel, ressaisie, envoi par mail…) ;",
+             "- \"explanation\" : pour cette mise à niveau, une phrase par piste appliquée, qui cite son titre entre guillemets "
+             "et dit les étapes changées (jamais un numéro de piste : l'utilisateur ne voit pas cette liste).",
+             "",
+             "PISTES RETENUES POUR L'AS IS :"]
     for i, p in enumerate(pistes, 1):
         steps = f" (étapes {', '.join(str(e) for e in p['etapes'])})" if p["etapes"] else ""
-        lines.append(f"{i}. {p['titre']}{steps}. {p['description']}".strip())
+        lines.append(f"- « {p['titre']} »{steps}. {p['description']}".strip())
         if p["constat"]:
             lines.append(f"   Constat{f', axe {p['axe']}' if p['axe'] else ''} : {p['constat']}")
     return "\n".join(lines)

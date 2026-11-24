@@ -1077,8 +1077,12 @@ async def _tobe_turn(target, conv, user, request, then_edit: bool, message: str,
     from manager.tobe_material import retained_pistes, as_material
     pistes = await asyncio.to_thread(retained_pistes, asis_id)
     procs = await asyncio.to_thread(cp.list_procedures, conv["id"], False)
+    tobe_now = next((p for p in procs if p.get("key") == key), None) or {}
     sess.setdefault("_turn", {})["target_key"] = key
-    async for ev in _delegate_to_chat(message + as_material(pistes), [], history_list, None, None, None, procs,
+    # le TO BE est la procédure sur laquelle le chat travaille : ses étapes lui sont données telles quelles
+    async for ev in _delegate_to_chat(message + as_material(pistes), [], history_list, tobe_now.get("workflow") or [],
+                                      json.dumps(tobe_now.get("enrichments") or {}, ensure_ascii=False),
+                                      json.dumps(tobe_now.get("procedureMetadata") or {}, ensure_ascii=False), procs,
                                       key, request, intent="patch", target_key=key):
         yield ev
 

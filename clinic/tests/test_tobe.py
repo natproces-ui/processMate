@@ -96,6 +96,7 @@ class TobeParLeChatTest(unittest.TestCase):
 
         async def fake_delegate(message, *a, **k):
             self.delegated.append((message, k.get("target_key"), k.get("intent")))
+            self.delegated_workflow = a[2]  # les étapes données au chat : celles du TO BE
             yield sr._sse({"type": "message", "text": "TO BE mis à niveau."})
 
         self.patches = [mock.patch.object(orch, "get_supabase", return_value=self.db),
@@ -104,7 +105,9 @@ class TobeParLeChatTest(unittest.TestCase):
                         mock.patch("manager.version_store._db", return_value=self.db),
                         mock.patch.dict("os.environ", {"VERSIONS_ENABLED": "true"}),
                         mock.patch.object(sr.cp, "attach", lambda conv, wf, author=None: self.attached.append(wf["id"]) or f"ref:{wf['id']}"),
-                        mock.patch.object(sr.cp, "list_procedures", lambda *a, **k: []),
+                        mock.patch.object(sr.cp, "list_procedures", lambda *a, **k: [
+                            {"key": f"ref:{w}", "workflow": STEPS, "enrichments": {}, "procedureMetadata": {"asis_id": "asis"}}
+                            for w in self.attached]),
                         mock.patch.object(sr, "_delegate_to_chat", fake_delegate)]
         for x in self.patches:
             x.start()
@@ -136,6 +139,7 @@ class TobeParLeChatTest(unittest.TestCase):
         self.assertEqual(intent, "patch")
         self.assertTrue(key.startswith("ref:"))
         self.assertEqual(sess["_turn"]["target_key"], key)           # la modification est écrite dans le TO BE
+        self.assertEqual(self.delegated_workflow, STEPS)             # le chat reçoit les étapes du TO BE à modifier
         self.assertIn("Rattacher dès réception", message)
         self.assertNotIn("Tout ressaisir", message)                  # une piste rejetée n'est pas appliquée
 
