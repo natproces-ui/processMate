@@ -25,7 +25,9 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
     /** étapes en défaillance : badge « ! » ambre, visible même quand l'étape est sélectionnée */
     markedIds?: string[];
     onSelect?: (stepId: string | null) => void;
-}>(({ xml, selectedIds = [], markedIds = [], onSelect }, ref) => {
+    /** différences AS IS / TO BE : étape nouvelle, modifiée ou supprimée */
+    diff?: Record<string, 'nouvelle' | 'modifiee' | 'supprimee'>;
+}>(({ xml, selectedIds = [], markedIds = [], onSelect, diff }, ref) => {
     const host = useRef<HTMLDivElement>(null);
     const viewerRef = useRef<any>(null);
     const onSelectRef = useRef(onSelect);
@@ -101,6 +103,8 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
             const id = stepIdOf(el.id);
             canvas.removeMarker(el.id, 'pm-step-selected');
             canvas.removeMarker(el.id, 'pm-step-marked');
+            ['nouvelle', 'modifiee', 'supprimee'].forEach(k => canvas.removeMarker(el.id, `pm-diff-${k}`));
+            if (diff?.[id]) canvas.addMarker(el.id, `pm-diff-${diff[id]}`);
             const selected = selectedIds.includes(id);
             if (selected) { canvas.addMarker(el.id, 'pm-step-selected'); first = first || el; }
             if (markedIds.includes(id)) {
@@ -117,7 +121,7 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
             const inside = first.x >= vb.x && first.y >= vb.y && first.x + first.width <= vb.x + vb.width && first.y + first.height <= vb.y + vb.height;
             if (!inside) canvas.scrollToElement(first, { top: 120, bottom: 120, left: 160, right: 160 });
         }
-    }, [state, selectedIds.join(','), markedIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [state, selectedIds.join(','), markedIds.join(','), JSON.stringify(diff || {})]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="relative h-full w-full">
@@ -127,6 +131,16 @@ const StepLinkedDiagram = forwardRef<StepLinkedDiagramHandle, {
                 <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-red-600"><AlertCircle className="h-4 w-4" />Logigramme illisible</div>
             )}
             <style>{`${PM_DIAGRAM_CSS}
+                .djs-element.pm-diff-nouvelle .djs-visual > rect,
+                .djs-element.pm-diff-nouvelle .djs-visual > circle,
+                .djs-element.pm-diff-nouvelle .djs-visual > polygon { stroke: #0B6E80 !important; stroke-width: 3px !important; fill: #E4F2F4 !important; }
+                .djs-element.pm-diff-modifiee .djs-visual > rect,
+                .djs-element.pm-diff-modifiee .djs-visual > circle,
+                .djs-element.pm-diff-modifiee .djs-visual > polygon { stroke: #0B6E80 !important; stroke-width: 2.5px !important; stroke-dasharray: 6 3 !important; }
+                .djs-element.pm-diff-supprimee .djs-visual { opacity: 0.5; }
+                .djs-element.pm-diff-supprimee .djs-visual > rect,
+                .djs-element.pm-diff-supprimee .djs-visual > circle,
+                .djs-element.pm-diff-supprimee .djs-visual > polygon { stroke: #6B7280 !important; stroke-dasharray: 4 3 !important; }
                 .djs-element.pm-step-selected .djs-visual > rect,
                 .djs-element.pm-step-selected .djs-visual > circle,
                 .djs-element.pm-step-selected .djs-visual > polygon { stroke: #0B6E80 !important; stroke-width: 4px !important; fill: #E4F2F4 !important; }

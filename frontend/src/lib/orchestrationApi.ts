@@ -60,6 +60,10 @@ export interface Procedure {
   versions?: ProcedureVersion[];
   workflow_json?: any[];
   enrichments_json?: Record<string, any>;
+  /** AS IS / TO BE : pour un TO BE, son AS IS ; pour un AS IS, sa version TO BE si elle existe */
+  asis_id?: string | null;
+  tobe_id?: string | null;
+  tobe_status?: string | null;
 }
 
 export interface OrchestrationStats {
@@ -261,6 +265,14 @@ export const orchestrationApi = {
   // ── Détail ──
   getProcedure: (id: string) =>
     fetchJSON<{ success: boolean; procedure: Procedure }>(`/api/orchestration/procedures/${id}`),
+
+  /** Les deux versions d'un processus : son AS IS et son TO BE (null tant qu'il n'existe pas) */
+  getTobe: (id: string) =>
+    fetchJSON<{ success: boolean; asis: Procedure; tobe: Procedure | null }>(`/api/orchestration/procedures/${id}/tobe`),
+
+  /** Crée le TO BE comme copie de l'AS IS (rien n'est fait s'il existe déjà) */
+  createTobe: (asisId: string) =>
+    fetchJSON<{ success: boolean; created: boolean; procedure: Procedure }>(`/api/orchestration/procedures/${asisId}/tobe`, { method: 'POST' }),
 
   // ── CRUD ──
   createProcedure: (body: { nom: string; ref?: string; category?: string; description?: string; taxonomy_id?: string }) =>

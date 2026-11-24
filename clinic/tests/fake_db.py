@@ -56,6 +56,10 @@ class FakeQuery:
         return self
 
     def eq(self, k, v):
+        if "->>" in k:  # champ d'une colonne JSON, comparé comme texte (PostgREST « col->>clé »)
+            col, key = k.split("->>", 1)
+            self.filters.append(lambda r: str((r.get(col) or {}).get(key)) == str(v))
+            return self
         self.filters.append(lambda r: r.get(k) == v)
         return self
 

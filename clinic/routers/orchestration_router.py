@@ -120,10 +120,18 @@ def _get_latest_workflows() -> List[Dict]:
         .execute()
     )
     seen: Dict[str, Dict] = {}
+    tobes: Dict[str, Dict] = {}
     for wf in result.data:
+        asis_id = (wf.get("procedure_metadata_json") or {}).get("asis_id")
+        if asis_id:  # version TO BE d'un processus : pas une procédure à part
+            tobes.setdefault(asis_id, wf)
+            continue
         sid = wf["session_id"]
         if sid not in seen:
             seen[sid] = wf
+    for wf in seen.values():
+        if wf["id"] in tobes:
+            wf["_tobe"] = tobes[wf["id"]]
     return sorted(seen.values(), key=lambda x: x["created_at"], reverse=True)
 
 
@@ -167,6 +175,10 @@ def _build_procedure(wf: Dict) -> Dict:
         "metadata": meta,
         "workflow_json":    wf.get("workflow_json") or [],
         "enrichments_json": wf.get("enrichments_json") or {},
+        # AS IS / TO BE : la version TO BE de ce processus, s'il en a une ; ou, pour un TO BE, son AS IS
+        "asis_id": meta.get("asis_id"),
+        "tobe_id": (wf.get("_tobe") or {}).get("id"),
+        "tobe_status": ((wf.get("_tobe") or {}).get("procedure_metadata_json") or {}).get("status"),
     }
 
 
@@ -462,6 +474,66 @@ async def upsert_validation_review(workflow_id: str, body: ValidationReviewReque
 # ─────────────────────────────────────────────────────────────
 # ENDPOINTS — Détail
 # ─────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# AS IS / TO BE : un même processus en deux versions
+# ─────────────────────────────────────────────────────────────
+
+# Tenus par l'AS IS (circuit, validation, remarques) : le TO BE commence sans eux
+_TOBE_RESET = ("validation", "circuit", "remarks", "open_points", "finalized_at", "status_comment", "recent_ai_changes", "asis_id")
+
+
+def _find_tobe(asis_id: str) -> Optional[Dict]:
+    rows = (get_supabase().table("workflows").select("*")
+            .eq("procedure_metadata_json->>asis_id", asis_id).order("created_at").limit(1).execute().data)
+    return rows[0] if rows else None
+
+
+@router.get("/procedures/{workflow_id}/tobe")
+async def get_tobe(workflow_id: str):
+    """Les deux versions du processus : son AS IS et son TO BE (null tant qu'il n'existe pas)."""
+    wf = _get_workflow(workflow_id)
+    asis_id = (wf.get("procedure_metadata_json") or {}).get("asis_id") or wf["id"]
+    asis = wf if asis_id == wf["id"] else _get_workflow(asis_id)
+    tobe = _find_tobe(asis_id)
+    return {"success": True, "asis": _build_procedure(asis), "tobe": _build_procedure(tobe) if tobe else None}
+
+
+@router.post("/procedures/{workflow_id}/tobe")
+async def create_tobe(workflow_id: str, request: Request, user: Optional[AuthUser] = Depends(get_optional_user)):
+    """Crée le TO BE comme copie de l'AS IS (étapes, descriptions, logigramme, fiche). Rien n'est fait s'il existe déjà."""
+    from manager.save_targets import enforce_write
+    enforce_write(request, workflow_id)
+    asis = _get_workflow(workflow_id)
+    if (asis.get("procedure_metadata_json") or {}).get("asis_id"):
+        raise HTTPException(status_code=400, detail="Cette version est déjà un TO BE")
+    existing = _find_tobe(asis["id"])
+    if existing:
+        return {"success": True, "created": False, "procedure": _build_procedure(existing)}
+    db = get_supabase()
+    meta = {k: v for k, v in (asis.get("procedure_metadata_json") or {}).items() if k not in _TOBE_RESET}
+    stages = [dict(st) for st in DEFAULT_LIFECYCLE_STAGES]
+    stages[0]["status"] = "in_progress"
+    meta.update({"asis_id": asis["id"], "status": "Brouillon", "lifecycle_stages": stages, "remarks": [],
+                 "has_unsaved_changes": False, "last_modified_at": datetime.utcnow().isoformat()})
+    title = asis.get("title") or meta.get("nom") or "Sans titre"
+    session = db.table("sessions").insert({"title": title}).execute().data[0]
+    row = {"session_id": session["id"], "title": title, "workflow_json": asis.get("workflow_json") or [],
+           "enrichments_json": asis.get("enrichments_json") or {}, "procedure_metadata_json": normalize_procedure_metadata(meta),
+           "version": 1}
+    if asis.get("taxonomy_id"):
+        row["taxonomy_id"] = asis["taxonomy_id"]
+    try:
+        tobe = db.table("workflows").insert(row).execute().data[0]
+    except Exception:
+        db.table("sessions").delete().eq("id", session["id"]).execute()
+        raise
+    # première version : le point de départ, identique à l'AS IS
+    version_store.record_save(tobe["id"], {}, tobe, "initial", user.id if user else None)
+    _proc_event(procedure_id=asis["id"], event_type="tobe_created", message=f"TO BE créé : {title}",
+                actor_id=user.id if user else None, payload={"tobe_id": tobe["id"]})
+    return {"success": True, "created": True, "procedure": _build_procedure(tobe)}
+
 
 @router.get("/procedures/{workflow_id}")
 async def get_procedure(workflow_id: str):

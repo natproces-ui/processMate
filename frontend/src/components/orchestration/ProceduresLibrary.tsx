@@ -495,6 +495,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                     <MoreVertical className="w-4 h-4" />
                                 </button>
                                 {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
+                                {proc.tobe_id && <span title={`Ce processus a une version TO BE (${proc.tobe_status || 'Brouillon'})`} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-petrole-tint text-petrole shrink-0">TO BE</span>}
                                 <StatusBadge status={proc.status} />
                                 {proc.ref && <span className="text-[10px] text-gray-400 font-mono shrink-0">{proc.ref}</span>}
                             </div>
@@ -586,6 +587,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                     <MoreVertical className="w-4 h-4" />
                                 </button>
                                 {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
+                                {proc.tobe_id && <span title={`Ce processus a une version TO BE (${proc.tobe_status || 'Brouillon'})`} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-petrole-tint text-petrole shrink-0">TO BE</span>}
                                 <StatusBadge status={proc.status} />
                             </div>
                         ))}
@@ -663,6 +665,7 @@ export default function ProceduresLibrary({ onOpenEditor, onOpenTasks, onAssignT
                                             <MoreVertical className="w-4 h-4" />
                                         </button>
                                         {proc.has_unsaved_changes && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 shrink-0">Modifié</span>}
+                                {proc.tobe_id && <span title={`Ce processus a une version TO BE (${proc.tobe_status || 'Brouillon'})`} className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-petrole-tint text-petrole shrink-0">TO BE</span>}
                                         <StatusBadge status={proc.status} />
                                     </div>
                                 ))}

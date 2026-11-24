@@ -37,6 +37,8 @@ import { exportAll, exportOne, type ExportableProcedure, type ExportKind } from 
 import ConversationVersionsModal from '@/components/processmate/ConversationVersionsModal';
 import ProcedureOverview from '@/components/processmate/ProcedureOverview';
 import ProcedureAnalysis from '@/components/processmate/ProcedureAnalysis';
+import ProcedureCompare, { type CompareSide } from '@/components/processmate/ProcedureCompare';
+import type { Procedure as DbProcedure } from '@/lib/orchestrationApi';
 import type { StepLinkedDiagramHandle } from '@/components/shared/StepLinkedDiagram';
 import { BPMN_PRESERVE_LAYOUT, GUEST_EXPORT_ENABLED, OPEN_POINTS_UI_ENABLED } from '@/lib/features';
 import { VERSIONS_ENABLED, type VersionDetail } from '@/lib/versionsApi';
@@ -152,6 +154,10 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [paletteOpen, setPaletteOpen] = useState(false);
     // Mise en page : vue de la procédure, assistant repliable et redimensionnable (mémorisés)
     const [view, setView] = useState<'ensemble' | 'analyse' | 'table' | 'bpmn' | 'fiche'>(initialView ?? 'ensemble');
+    // AS IS / TO BE : un même processus en deux versions (procédure ouverte depuis le référentiel)
+    const [pair, setPair] = useState<{ asis: DbProcedure; tobe: DbProcedure | null } | null>(null);
+    const [side, setSide] = useState<'asis' | 'tobe'>('asis');
+    const [comparing, setComparing] = useState(false);
     // la vue demandée par l'adresse (?vue=irritants) arrive après le premier affichage
     useEffect(() => { if (initialView) setView(initialView); }, [initialView]);
     const [hoveredStep, setHoveredStep] = useState<{ id: string; rect: DOMRect } | null>(null);
@@ -353,42 +359,75 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         setCodeFlowchartUrl(''); setCodeDotSource(''); setCodeSourceOpen(false);
     };
 
-    // Chargement via workflowId prop
+    /** Affiche une procédure du référentiel (une version, AS IS ou TO BE) dans le panneau */
+    const showProcedure = (proc: DbProcedure, quiet = false) => {
+        const workflow: Table1Row[] = proc.workflow_json || [];
+        const title = proc.nom || proc.metadata?.nom || 'Processus';
+        if (workflow.length === 0) {
+            setInstances([{
+                process_id: proc.id, title, data: [], enrichments: new Map(),
+                bpmnXml: null, metadata: { ...DEFAULT_PROCESS_METADATA },
+                initialMeta: proc.metadata || { nom: title }, status: 'ready',
+                workflow_db_id: proc.id,
+            }]);
+            setActiveTab(0); setPhase('upload'); setUploadOpen(true);
+            showSuccess(`Procédure « ${title} » ouverte : aucune étape pour l’instant`);
+            setLoadingWorkflow(false);
+            return;
+        }
+        const enrichMap = new Map<string, TaskEnrichment>();
+        const savedBpmnXml = proc.enrichments_json?.__bpmn_xml__ as string | undefined;
+        if (proc.enrichments_json) {
+            Object.entries(proc.enrichments_json).forEach(([id, enr]: [string, any]) => {
+                if (id !== '__bpmn_xml__') enrichMap.set(id, enr);
+            });
+        }
+        const xml = savedBpmnXml || generateBPMNSimple(workflow, title);
+        setInstances([{ process_id: proc.id, title, category: proc.taxonomy_id && proc.category === 'Non classé' ? undefined : proc.category, data: workflow, enrichments: enrichMap, bpmnXml: xml, metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: proc.metadata || { nom: title }, status: 'ready', workflow_db_id: proc.id }]);
+        setActiveTab(0); setPhase('editing'); setUploadOpen(false);
+        if (!quiet) showSuccess(`Procédure « ${title} » chargée`);
+    };
+
+    // Chargement via workflowId prop, avec la paire AS IS / TO BE du processus
     useEffect(() => {
         if (!workflowId) return;
         setLoadingWorkflow(true);
         orchestrationApi.getProcedure(workflowId)
             .then(res => {
-                const proc = res.procedure;
-                const workflow: Table1Row[] = proc.workflow_json || [];
-                const title = proc.nom || proc.metadata?.nom || 'Processus';
-                if (workflow.length === 0) {
-                    setInstances([{
-                        process_id: proc.id, title, data: [], enrichments: new Map(),
-                        bpmnXml: null, metadata: { ...DEFAULT_PROCESS_METADATA },
-                        initialMeta: proc.metadata || { nom: title }, status: 'ready',
-                        workflow_db_id: proc.id,
-                    }]);
-                    setActiveTab(0); setPhase('upload'); setUploadOpen(true);
-                    showSuccess(`Procédure « ${title} » ouverte : aucune étape pour l’instant`);
-                    setLoadingWorkflow(false);
-                    return;
-                }
-                const enrichMap = new Map<string, TaskEnrichment>();
-                const savedBpmnXml = proc.enrichments_json?.__bpmn_xml__ as string | undefined;
-                if (proc.enrichments_json) {
-                    Object.entries(proc.enrichments_json).forEach(([id, enr]: [string, any]) => {
-                        if (id !== '__bpmn_xml__') enrichMap.set(id, enr);
-                    });
-                }
-                const xml = savedBpmnXml || generateBPMNSimple(workflow, title);
-                setInstances([{ process_id: proc.id, title, category: proc.taxonomy_id && proc.category === 'Non classé' ? undefined : proc.category, data: workflow, enrichments: enrichMap, bpmnXml: xml, metadata: { ...DEFAULT_PROCESS_METADATA }, initialMeta: proc.metadata || { nom: title }, status: 'ready', workflow_db_id: proc.id }]);
-                setActiveTab(0); setPhase('editing'); setUploadOpen(false);
-                showSuccess(`Procédure "${title}" chargée`);
+                showProcedure(res.procedure);
+                orchestrationApi.getTobe(workflowId)
+                    .then(r => { setPair({ asis: r.asis, tobe: r.tobe }); setSide(res.procedure.asis_id ? 'tobe' : 'asis'); })
+                    .catch(() => setPair(null));
             })
             .catch(e => showError(`Erreur chargement : ${e.message}`))
             .finally(() => setLoadingWorkflow(false));
-    }, [workflowId]);
+    }, [workflowId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** Passer d'une version à l'autre (relue au serveur : la version quittée a pu être enregistrée) */
+    const switchSide = async (target: 'asis' | 'tobe') => {
+        if (!pair || target === side) return;
+        setComparing(false);
+        try {
+            const r = await orchestrationApi.getTobe(pair.asis.id);
+            setPair({ asis: r.asis, tobe: r.tobe });
+            setSide(target);
+            const proc = target === 'asis' ? r.asis : r.tobe;
+            showProcedure(proc || r.asis, true);  // pas encore de TO BE : on montre l'AS IS, avec le bandeau
+        } catch (e: any) { showError(e?.message || 'Version indisponible'); }
+    };
+
+    /** Lancer le TO BE : copie de l'AS IS ; avec l'IA, le chat reçoit une demande de mise à niveau prête à envoyer */
+    const startTobe = async (withAI: boolean) => {
+        if (!pair) return;
+        try {
+            const r = await orchestrationApi.createTobe(pair.asis.id);
+            setPair({ asis: pair.asis, tobe: r.procedure });
+            setSide('tobe');
+            showProcedure(r.procedure, true);
+            showSuccess('TO BE créé à partir de l’AS IS : vos modifications ne touchent plus l’AS IS.');
+            if (withAI) setDictation({ id: Date.now(), text: 'Mets ce TO BE à niveau à partir des pistes retenues pour l’AS IS (irritants, améliorations, réglementaire) : corrige les étapes concernées et dis, pour chaque changement, la piste qui le justifie.' });
+        } catch (e: any) { showError(e?.message || 'TO BE impossible à créer'); }
+    };
 
     // Chargement depuis Clinic (flowchart → discovery → BPMN)
     useEffect(() => {
@@ -707,6 +746,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
         diagramStaleRef.current.delete(diagramKey);
     }, [activeData, activeBpmnXml, diagramKey, instances.length, activeInst, processTitle, activeTab]);
     const selectView = useCallback(async (id: 'ensemble' | 'analyse' | 'table' | 'bpmn' | 'it' | 'fiche') => {
+        setComparing(false);
         if (id === 'bpmn' || id === 'it' || id === 'ensemble' || id === 'analyse') freshDiagram();
         if (id === 'it') {
             if (view === 'bpmn' && viewMode === 'metier') { await toggleViewMode(); return; }
@@ -1178,7 +1218,20 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const [navBusy, setNavBusy] = useState(false);
     const navKey = instances.length > 0 ? activeInst?.process_id : undefined;
     // l'analyse porte sur une procédure du référentiel (ses défaillances y sont rattachées)
-    const analysisId = instances.length > 0 ? activeInst?.workflow_db_id : undefined;
+    const analysisId = instances.length > 0 && side === 'asis' ? activeInst?.workflow_db_id : undefined;
+    // onglet TO BE sans TO BE : on montre l'AS IS avec un bandeau, sans rien pouvoir enregistrer dedans
+    const virtualTobe = !!pair && side === 'tobe' && !pair.tobe;
+    const sideOf = (p: DbProcedure): CompareSide => {
+        const rows = (p.workflow_json || []) as Table1Row[];
+        const enr = new Map<string, TaskEnrichment>();
+        Object.entries(p.enrichments_json || {}).forEach(([k, v]) => { if (k !== '__bpmn_xml__') enr.set(k, v as TaskEnrichment); });
+        return { rows, enrichments: enr, xml: (p.enrichments_json?.__bpmn_xml__ as string) || (rows.length ? generateBPMNSimple(rows, p.nom) : '') };
+    };
+    const compareData = useMemo(() => {
+        if (!pair?.tobe || !activeBpmnXml) return null;
+        const current: CompareSide = { rows: activeData, xml: activeBpmnXml, enrichments: activeEnrichments };
+        return side === 'tobe' ? { asis: sideOf(pair.asis), tobe: current } : { asis: current, tobe: sideOf(pair.tobe) };
+    }, [pair, side, activeData, activeBpmnXml, activeEnrichments]); // eslint-disable-line react-hooks/exhaustive-deps
     const navVersion = instances.length > 0 ? activeInst?.version : undefined;
     useEffect(() => {
         if (!navKey || !navVersion) return;
@@ -1219,9 +1272,14 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const canExport = exportAllowed && activeData.length > 0 && activeInst?.status !== 'generating';
     const cmd = 'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40 [&_svg]:text-neutral-600';
     const sep = <span aria-hidden className="mx-1 h-4 w-px bg-neutral-200" />;
-    const hasDiagram = !!activeBpmnXml && activeData.length > 0 && (view === 'bpmn' || view === 'ensemble' || (view === 'analyse' && !!analysisId));
+    const hasDiagram = !comparing && !virtualTobe && !!activeBpmnXml && activeData.length > 0 && (view === 'bpmn' || view === 'ensemble' || (view === 'analyse' && !!analysisId));
     const viewCommands: React.ReactNode[] = [];
-    if (view === 'table' && canExport) viewCommands.push(
+    if (pair?.tobe && !virtualTobe) viewCommands.push(
+        <button key="comparer" type="button" onClick={() => setComparing(c => !c)} aria-pressed={comparing}
+            title={side === 'tobe' ? 'Afficher l’AS IS à côté du TO BE' : 'Afficher le TO BE à côté de l’AS IS'}
+            className={`${cmd} ${comparing ? '!bg-neutral-900 !text-white [&_svg]:!text-white' : ''}`}>
+            <Columns2 className="w-3.5 h-3.5" />{comparing ? 'Fermer la comparaison' : 'Comparer'}</button>);
+    if (view === 'table' && canExport && !comparing) viewCommands.push(
         <button key="xlsx" type="button" className={cmd} disabled={!!exporting} onClick={() => void runExport(instances.length > 0 ? activeInst : null, 'xlsx', activeTab)}
             title="Le tableau des étapes au format Excel">
             {exporting === 'xlsx' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}Excel</button>);
@@ -1595,7 +1653,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                             l&apos;organisation demande un accès membre, donné par un administrateur.
                         </div>
                     )}
-                    {canSave && activeInst?.workflow_db_id && (
+                    {canSave && activeInst?.workflow_db_id && !virtualTobe && (
                         <CircuitBar procedureId={activeInst.workflow_db_id}
                             onSave={async () => { await handleSave(activeInst.title, '', undefined); }} />
                     )}
@@ -1650,7 +1708,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 </p>
                             </div>
                             <div className="ml-auto flex flex-wrap items-center gap-2">
-                                {canSave && <button type="button" onClick={() => {
+                                {canSave && !virtualTobe && <button type="button" onClick={() => {
                                     const inst = instances.length > 0 ? activeInst : null;
                                     if (inst?.workflow_db_id) handleSave(inst.title, '', undefined);
                                     else setSaveModalOpen(true);
@@ -1701,6 +1759,17 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 )}
                             </div>
                         </div>
+                        {/* Version du processus : AS IS ou TO BE */}
+                        {pair && (
+                            <div role="tablist" aria-label="Version du processus" className="mt-2 inline-flex rounded-lg border border-neutral-300 p-0.5">
+                                {([['asis', 'AS IS', pair.asis.status], ['tobe', 'TO BE', pair.tobe ? pair.tobe.status : 'à lancer']] as const).map(([id, label, st]) => (
+                                    <button key={id} type="button" role="tab" aria-selected={side === id} onClick={() => void switchSide(id)}
+                                        className={`flex items-center gap-2 rounded-md px-3 py-1 text-xs font-semibold ${side === id ? 'bg-petrole text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}>
+                                        {label}<span className={`text-[10px] font-normal ${side === id ? 'text-white/85' : 'text-neutral-500'}`}>{st}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         {/* Vues et actions */}
                         <div className="mt-1.5 flex flex-wrap items-end justify-between gap-2">
                             <div role="tablist" aria-label="Vue de la procédure" className="flex gap-1">
@@ -1737,7 +1806,7 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                         </div>
                     )}
 
-                    <div className={`flex-1 min-h-0 p-3 ${view === 'bpmn' || view === 'ensemble' || view === 'analyse' ? 'flex flex-col gap-3 overflow-hidden' : 'overflow-auto space-y-3'}`}>
+                    <div className={`flex-1 min-h-0 p-3 ${view === 'bpmn' || view === 'ensemble' || view === 'analyse' || comparing || virtualTobe ? 'flex flex-col gap-3 overflow-hidden' : 'overflow-auto space-y-3'}`}>
                         {loadingWorkflow && (
                             <div className="p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg flex items-center gap-2 text-sm">
                                 <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />Chargement…
@@ -1783,6 +1852,26 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
                                 <div className="w-5 h-5 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
                                 <span className="text-sm">Génération de "{activeInst.title}"…</span>
                             </div>
+                        ) : virtualTobe && pair ? (
+                            <div className="flex h-full min-h-[480px] flex-col gap-3">
+                                <div className="rounded-xl border border-petrole/30 bg-petrole-tint px-4 py-3">
+                                    <p className="text-sm font-semibold text-neutral-900">Le TO BE est identique à l’AS IS pour l’instant.</p>
+                                    <p className="mt-0.5 text-xs leading-relaxed text-neutral-700">
+                                        Le processus affiché est l’AS IS. Mettez-le à niveau, à la main ou avec l’IA : le TO BE est alors créé à partir de lui, et l’AS IS reste intact.
+                                        {pair.asis.status !== 'Validée' ? ` L’AS IS n’est pas encore validé (statut : ${pair.asis.status}).` : ''}
+                                    </p>
+                                    <div className="mt-2.5 flex flex-wrap gap-2">
+                                        <button type="button" onClick={() => void startTobe(false)} className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700">Modifier à la main</button>
+                                        <button type="button" onClick={() => void startTobe(true)} className="rounded-lg border border-petrole bg-white px-3 py-1.5 text-xs font-medium text-petrole hover:bg-petrole-tint">Mettre à niveau avec l’IA</button>
+                                    </div>
+                                </div>
+                                {activeData.length > 0 && activeBpmnXml && (
+                                    <div className="min-h-0 flex-1"><ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} /></div>
+                                )}
+                            </div>
+                        ) : comparing && compareData && pair?.tobe ? (
+                            <ProcedureCompare asis={compareData.asis} tobe={compareData.tobe}
+                                origines={(pair.tobe.metadata?.origines as Record<string, string> | undefined) || undefined} />
                         ) : view === 'ensemble' ? (
                             activeData.length > 0 && activeBpmnXml
                                 ? <ProcedureOverview xml={activeBpmnXml} rows={activeData} enrichments={activeEnrichments} diagramRef={linkedDiagram} />
