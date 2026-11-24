@@ -131,7 +131,9 @@ PROCÉDURES DÉJÀ PRODUITES DANS LA CONVERSATION (« procedures_de_la_conversat
 telles qu'elles sont MAINTENANT, corrections de l'utilisateur comprises). Tu raisonnes sur tout cet ensemble, comme un
 assistant qui a déjà rendu plusieurs documents, et tu décris l'ensemble APRÈS la demande, quelle qu'elle soit
 (découper, réunir, déplacer des étapes d'une procédure à une autre, sortir une partie en procédure à part, en ajouter,
-changer un périmètre…) :
+changer un périmètre…). Deux procédures du même titre avec "version" = "AS IS" et "TO BE" sont deux versions d'un même
+processus : l'AS IS décrit l'existant, le TO BE la version améliorée. Une demande sur « le TO BE » ne change que le TO BE,
+une demande sur « l'existant » ou « l'AS IS » que l'AS IS ; l'autre version sert de référence. Ensuite :
 - "procedures" : seulement les procédures NOUVELLES ou CHANGÉES (pas celles qui restent telles quelles). Pour
   chacune, "base" = numéros des procédures de la conversation dont elle part (sa matière principale ; [] si elle est
   entièrement nouvelle), "description" = ce qu'elle couvre précisément (ex. « le circuit Alternance : étapes 1 à 15

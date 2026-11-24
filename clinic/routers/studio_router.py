@@ -161,6 +161,37 @@ def _steps_summary(proc: Dict[str, Any], limit: int = 80) -> List[str]:
     return out
 
 
+def _read_workflow(workflow_id: str) -> Optional[Dict[str, Any]]:
+    """Une procédure du référentiel, dans l'organisation de l'utilisateur."""
+    from database.supabase_client import get_supabase
+    rows = get_supabase().table("workflows").select("*").eq("id", workflow_id).execute().data
+    return rows[0] if rows else None
+
+
+def _version_of(proc: Dict[str, Any], procs: List[Dict[str, Any]]) -> Optional[str]:
+    """AS IS ou TO BE : le TO BE garde l'identifiant de son AS IS (asis_id) ; sans lien, rien."""
+    meta = proc.get("procedureMetadata") or {}
+    if isinstance(meta, dict) and meta.get("asis_id"):
+        return "TO BE"
+    wid = proc.get("workflow_db_id")
+    if wid and any(isinstance(o.get("procedureMetadata"), dict) and o["procedureMetadata"].get("asis_id") == wid for o in procs):
+        return "AS IS"
+    return None
+
+
+def _conv_summary(procs: List[Dict[str, Any]], active: Optional[str]) -> List[Dict[str, Any]]:
+    """Procédures de la conversation pour l'aiguillage ; l'AS IS et le TO BE d'un même processus sont nommés comme tels."""
+    out = []
+    for i, p in enumerate(procs):
+        row = {"n": i + 1, "titre": p.get("title") or "Procédure", "nb_etapes": len(p.get("workflow") or []),
+               "affichee": p.get("key") == active, "etapes": _steps_summary(p)}
+        version = _version_of(p, procs)
+        if version:
+            row["version"] = version
+        out.append(row)
+    return out
+
+
 def _existing_as_source(proc: Dict[str, Any]) -> Dict[str, Any]:
     """Une procédure de la conversation présentée au moteur de rédaction comme un document source (texte) :
     ses étapes, acteurs, outils, conditions, enchaînements et descriptions, tels qu'ils sont maintenant."""
@@ -755,9 +786,7 @@ async def studio_turn(
     workflow = _loads(current_workflow, None)
     # Procédures déjà produites dans la conversation : l'aiguillage raisonne sur tout l'ensemble
     conv_procs = [p for p in (_loads(conversation_procedures, None) or []) if isinstance(p, dict) and p.get("key")]
-    conv_summary = [{"n": i + 1, "titre": p.get("title") or "Procédure", "nb_etapes": len(p.get("workflow") or []),
-                     "affichee": p.get("key") == active_procedure, "etapes": _steps_summary(p)}
-                    for i, p in enumerate(conv_procs)]
+    conv_summary = _conv_summary(conv_procs, active_procedure)
     has_workflow = bool(workflow)
     conv = await _owned_conversation(session_id, user)
     # Le serveur fait foi (docs/conversation-serveur.md) : l'écran récent le demande, les tables existent
@@ -765,11 +794,12 @@ async def studio_turn(
     chat_procs = _loads(conversation_procedures, None)
     if server_mode:
         await asyncio.to_thread(cp.ensure_seeded, conv)
+        # versions du référentiel ajoutées au chat avant le premier message : le serveur les reprend
+        remap = await asyncio.to_thread(cp.attach_missing, conv["id"], conv_procs, _read_workflow, user.id if user else None)
+        active_procedure = remap.get(active_procedure, active_procedure)
         conv_procs = await asyncio.to_thread(cp.list_procedures, conv["id"], False)
         chat_procs = conv_procs
-        conv_summary = [{"n": i + 1, "titre": p.get("title") or "Procédure", "nb_etapes": len(p.get("workflow") or []),
-                         "affichee": p.get("key") == active_procedure, "etapes": _steps_summary(p)}
-                        for i, p in enumerate(conv_procs)]
+        conv_summary = _conv_summary(conv_procs, active_procedure)
     plan_files = new_files
     if conv is None:
         sess = _sessions.setdefault(session_id, {"files": [], "proposal": None})

@@ -184,5 +184,33 @@ class StoreTest(unittest.TestCase):
         self.assertTrue(cp.current("c1", "k")["archived"])
 
 
+    def test_ajouter_au_chat_une_version_du_referentiel(self):
+        tobe = {"id": "wf-tobe", "title": "Credoc", "workflow_json": WF, "enrichments_json": {"2": {"descriptif": "x"}, "__bpmn_xml__": "<xml/>"},
+                "procedure_metadata_json": {"nom": "Credoc", "asis_id": "wf-asis"}}
+        key = cp.attach("c1", tobe, "u1")
+        proc = cp.current("c1", key)
+        self.assertEqual(proc["workflow_db_id"], "wf-tobe")           # Enregistrer écrira dans le TO BE
+        self.assertEqual(proc["saved_version"], proc["version"])       # identique au référentiel
+        self.assertEqual(proc["procedureMetadata"]["asis_id"], "wf-asis")  # on sait que c'est un TO BE
+        self.assertEqual(proc["bpmnXml"], "<xml/>")
+        self.assertNotIn("__bpmn_xml__", proc["enrichments"])
+        # retirée du chat puis ajoutée de nouveau : la même, de retour dans le chat
+        cp.set_archived("c1", [key], True)
+        self.assertEqual(cp.attach("c1", tobe, "u1"), key)
+        self.assertFalse(cp.current("c1", key)["archived"])
+        self.assertEqual(len(cp.list_procedures("c1")), 1)
+
+    def test_versions_ajoutees_avant_le_premier_message(self):
+        asis = {"id": "wf-asis", "title": "Credoc", "workflow_json": WF, "enrichments_json": {}, "procedure_metadata_json": {"nom": "Credoc"}}
+        tobe = {"id": "wf-tobe", "title": "Credoc", "workflow_json": WF, "enrichments_json": {},
+                "procedure_metadata_json": {"nom": "Credoc", "asis_id": "wf-asis"}}
+        rows = {"wf-asis": asis, "wf-tobe": tobe}
+        cp.attach("c1", asis, "u1")  # l'AS IS est déjà dans la conversation, sous sa clé
+        client = [{"key": "ref:wf-asis", "workflow_db_id": "wf-asis"}, {"key": "local-1", "workflow_db_id": "wf-tobe"},
+                  {"key": "brouillon", "workflow_db_id": None}]
+        remap = cp.attach_missing("c1", client, rows.get, "u1")
+        self.assertEqual(remap, {"local-1": "ref:wf-tobe"})  # l'AS IS n'est pas repris deux fois
+        self.assertEqual(sorted(p["key"] for p in cp.list_procedures("c1")), ["ref:wf-asis", "ref:wf-tobe"])
+
 if __name__ == "__main__":
     unittest.main()

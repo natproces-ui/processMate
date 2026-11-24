@@ -212,6 +212,43 @@ def set_archived(conversation_id: str, keys: List[str], archived: bool) -> int:
     return n
 
 
+def attach(conversation_id: str, wf: Dict[str, Any], author_id: Optional[str] = None) -> str:
+    """Ajoute au chat une version du référentiel (AS IS ou TO BE), avec son état actuel, liée à sa ligne :
+    « Enregistrer » écrira dans cette version. Déjà dans la conversation : elle revient dans le chat, telle quelle."""
+    hit = next((r for r in _rows(conversation_id) if r.get("workflow_db_id") == wf["id"]), None)
+    if hit:
+        if hit.get("status") == "archivee":
+            set_archived(conversation_id, [hit["key"]], False)
+        return hit["key"]
+    enr = dict(wf.get("enrichments_json") or {})
+    xml = enr.pop("__bpmn_xml__", None)
+    key = f"ref:{wf['id']}"
+    create(conversation_id, key, {"title": wf.get("title") or "Procédure", "workflow": wf.get("workflow_json") or [],
+                                  "enrichments": enr, "procedureMetadata": wf.get("procedure_metadata_json") or {},
+                                  "bpmnXml": xml, "workflow_db_id": wf["id"]}, origine="reprise", author_id=author_id)
+    link_saved(conversation_id, key, wf["id"], 1)  # identique au référentiel : rien à enregistrer
+    return key
+
+
+def attach_missing(conversation_id: str, client_procs: List[Dict[str, Any]], read_workflow,
+                   author_id: Optional[str] = None) -> Dict[str, str]:
+    """Procédures du référentiel ajoutées au chat avant que la conversation n'existe (ou pas encore connues du
+    serveur) : elles y entrent comme par « Ajouter au chat ». Renvoie la clé de l'écran vers la clé du serveur."""
+    known = {r["key"] for r in _rows(conversation_id)}
+    remap: Dict[str, str] = {}
+    for p in client_procs or []:
+        key, wid = p.get("key"), p.get("workflow_db_id")
+        if not key or not wid or key in known:
+            continue
+        wf = read_workflow(wid)
+        if wf:
+            try:
+                remap[key] = attach(conversation_id, wf, author_id)
+            except ValueError:  # trop de procédures : le reste demeure à l'écran seulement
+                break
+    return remap
+
+
 def restore_version(conversation_id: str, key: str, version: int, author_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Revenir à une version : une nouvelle version « restauration » (l'historique reste entier)."""
     proc = get(conversation_id, key)

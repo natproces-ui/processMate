@@ -123,6 +123,10 @@ export const conversationsApi = {
     procedureSaved: (id: string, key: string, workflowDbId: string, version?: number) =>
         call<{ procedure: StoredProcedure }>(`/${id}/procedures/${encodeURIComponent(key)}/saved`,
             { method: 'POST', body: JSON.stringify({ workflow_db_id: workflowDbId, version: version ?? null }) }).then(r => r.procedure),
+    /** Ajouter au chat une procédure du référentiel (une version : AS IS ou TO BE). Déjà dans le chat : elle y revient. */
+    attachProcedure: (id: string, workflowDbId: string) =>
+        call<{ key: string; procedures: StoredProcedure[] }>(`/${id}/procedures/attach`,
+            { method: 'POST', body: JSON.stringify({ workflow_db_id: workflowDbId }) }),
     procedureVersions: (id: string, key: string) =>
         call<{ versions: ConversationVersion[] }>(`/${id}/procedures/${encodeURIComponent(key)}/versions`).then(r => r.versions),
     procedureVersion: (id: string, key: string, version: number) =>

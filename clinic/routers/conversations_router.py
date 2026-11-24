@@ -271,6 +271,25 @@ async def archive_procedure(conversation_id: str, key: str, body: ArchiveBody, u
     return {"procedures": await asyncio.to_thread(cp.list_procedures, conversation_id)}
 
 
+class AttachBody(BaseModel):
+    workflow_db_id: str
+
+
+@router.post("/{conversation_id}/procedures/attach", dependencies=[Depends(_enabled)])
+async def attach_procedure(conversation_id: str, body: AttachBody, user: AuthUser = Depends(require_user)):
+    """Ajouter au chat une procédure du référentiel (une version : AS IS ou TO BE), comme on joint un fichier."""
+    from database.supabase_client import get_supabase
+    await _owned_with_procedures(conversation_id, user)
+    rows = await asyncio.to_thread(lambda: get_supabase().table("workflows").select("*").eq("id", body.workflow_db_id).execute().data)
+    if not rows:
+        raise HTTPException(404, "Procédure introuvable")
+    try:
+        key = await asyncio.to_thread(cp.attach, conversation_id, rows[0], user.id)
+    except ValueError as e:  # trop de procédures dans la conversation
+        raise HTTPException(400, str(e))
+    return {"key": key, "procedures": await asyncio.to_thread(cp.list_procedures, conversation_id)}
+
+
 @router.post("/{conversation_id}/procedures/{key}/saved", dependencies=[Depends(_enabled)])
 async def procedure_saved(conversation_id: str, key: str, body: SavedBody, user: AuthUser = Depends(require_user)):
     """Enregistrée dans le référentiel : lien et version enregistrée (« modifiée depuis l'enregistrement »)."""

@@ -18,6 +18,7 @@ import MiniMarkdown from '@/components/shared/MiniMarkdown';
 import WorkTrace from '@/components/shared/WorkTrace';
 import ChangeSummary, { diffWorkflows, type StepChange } from '@/components/shared/ChangeSummary';
 import DemoFilesPicker from '@/components/processmate/DemoFilesPicker';
+import { versionLabel } from '@/lib/procedureVersion';
 import { useAuth } from '@/context/AuthContext';
 import {
     ArrowUp, ArrowDown, Paperclip, X, FileText, Image as ImageIcon,
@@ -198,6 +199,8 @@ interface ChatInterfaceProps {
     onBeforeSend?: () => Promise<void>;
     /** procédures de la conversation remplacées ou retirées par le chat (true), ou rétablies (false) */
     onArchiveProcedures?: (keys: string[], archived: boolean) => void;
+    /** « + » > Joindre une procédure du référentiel (le choix s'ouvre chez l'appelant) */
+    onPickProcedure?: () => void;
     /** Rouvrir les onglets des procédures générées en rechargeant une conversation */
     restoreGenerated?: boolean;
     /** Refléter la conversation dans l'URL (?c=) — un seul chat par page doit le faire */
@@ -276,6 +279,7 @@ export default function ChatInterface({
     onCheckpoint,
     conversationProcedures,
     onArchiveProcedures,
+    onPickProcedure,
     activeProcedureKey,
     onTargetProcedure,
     showNewConversation = true,
@@ -1369,6 +1373,32 @@ export default function ChatInterface({
                 <div aria-label="Composeur" className={(isSidebar ? 'shrink-0 m-3 mt-1 ' : '') + "rounded-2xl border border-neutral-900/70 bg-white shadow-sm focus-within:border-neutral-900"}>
                     {inputContext && <div hidden={!inputContextVisible} className="border-b border-neutral-200 p-3 bg-neutral-50/50 rounded-t-2xl">{inputContext}</div>}
                     <div className="px-3 py-2">
+                    {/* ── Procédures dans le chat ─────────────── */}
+                    {conversationProcedures && conversationProcedures.length > 0 && (
+                        <div aria-label="Procédures dans le chat" className="pb-1 pt-1 flex gap-1.5 flex-wrap">
+                            {conversationProcedures.map(p => {
+                                const v = versionLabel({ workflow_db_id: p.workflow_db_id, meta: p.procedureMetadata },
+                                    conversationProcedures.map(o => ({ workflow_db_id: o.workflow_db_id, meta: o.procedureMetadata })));
+                                const active = p.key === activeProcedureKey;
+                                return (
+                                    <span key={p.key} className={`inline-flex max-w-full items-center rounded-lg border text-xs ${active ? 'border-petrole bg-petrole-tint text-petrole' : 'border-neutral-300 text-neutral-800'}`}>
+                                        <button type="button" onClick={() => onSelectProcedure?.(p.key)} title={active ? `${p.title} : affichée` : `Afficher ${p.title}`}
+                                            className="inline-flex min-w-0 items-center gap-1.5 py-1 pl-2 pr-1">
+                                            <Workflow className="w-3.5 h-3.5 shrink-0" />
+                                            <span className="truncate max-w-[14rem]">{p.title}</span>
+                                            {v && <span className="shrink-0 rounded border border-current px-1 text-[10px] font-semibold leading-4">{v}</span>}
+                                        </button>
+                                        {onArchiveProcedures && (
+                                            <button type="button" onClick={() => onArchiveProcedures([p.key], true)} aria-label={`Retirer ${p.title}${v ? ` (${v})` : ''} du chat`}
+                                                title="Retirer du chat (rétablissable)" className="mr-1 rounded p-0.5 hover:bg-neutral-900/10">
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        )}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
                     {/* ── Fichiers attachés ─────────────────── */}
                     {attachedFiles.length > 0 && (
                         <div className="pb-2 pt-1 flex gap-2 flex-wrap">
@@ -1409,7 +1439,7 @@ export default function ChatInterface({
 
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                             <div className="flex items-center gap-1">
-                            {onOpenDocuments || onOpenCode || isAdmin ? (
+                            {onOpenDocuments || onOpenCode || isAdmin || onPickProcedure ? (
                                 <div ref={addMenuRef} className="relative shrink-0">
                                     <button type="button" aria-label="Ajouter un contenu" title="Ajouter un contenu"
                                         aria-haspopup="menu" aria-expanded={addMenuOpen}
@@ -1419,7 +1449,8 @@ export default function ChatInterface({
                                     </button>
                                     {addMenuOpen && (
                                         <div role="menu" className="absolute bottom-full left-0 mb-2 z-40 w-60 p-1.5 bg-white border border-neutral-300 rounded-xl shadow-lg">
-                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Joindre des fichiers (PDF, Word, PowerPoint, images)" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
+                                            <ComposerMenuAction icon={<Paperclip className="w-4 h-4" />} label="Importer depuis l’ordinateur (PDF, Word, PowerPoint, images)" onClick={() => { setAddMenuOpen(false); fileInputRef.current?.click(); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />
+                                            {onPickProcedure && <ComposerMenuAction icon={<Workflow className="w-4 h-4" />} label="Joindre une procédure du référentiel" onClick={() => { setAddMenuOpen(false); onPickProcedure(); }} />}
                                             {isAdmin && <ComposerMenuAction icon={<FolderOpen className="w-4 h-4" />} label="Fichiers de démo" onClick={() => { setAddMenuOpen(false); setDemoFilesOpen(true); }} disabled={attachedFiles.length >= MAX_ATTACHMENTS} />}
                                             {onOpenCode && <ComposerMenuAction icon={<Code className="w-4 h-4" />} label="Code source" onClick={() => { setAddMenuOpen(false); onOpenCode(); }} />}
                                         </div>
