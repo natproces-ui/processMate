@@ -102,6 +102,8 @@ interface ChatMessage {
     referentiel?: ReferentialProposal;
     /** procédures de la conversation remplacées (by : par lesquelles) ou retirées par ce tour */
     archived?: { keys: string[]; titles: string[]; by: string[]; restored?: boolean }[];
+    /** le référentiel a changé depuis la copie du chat : le chat a demandé laquelle garder (message à reprendre ensuite) */
+    referentialChanged?: { procedures: { key: string; title: string; version_label?: string | null }[]; message: string; choice?: 'reprendre' | 'garder' };
 }
 
 interface AgentProposal {
@@ -437,7 +439,7 @@ export default function ChatInterface({
         return {
             intent: m.intent, steps: m.steps, totalSteps: m.totalSteps, title: m.title, operationsCount: m.operationsCount,
             changes: m.changes, targetTitle: m.targetTitle, proposal: m.proposal, remarks: m.remarks, suggestions: m.suggestions,
-            referentiel: m.referentiel, archived: m.archived,
+            referentiel: m.referentiel, archived: m.archived, referentialChanged: m.referentialChanged,
             generations: m.generations?.map(g => ({ id: g.key.slice(g.key.indexOf(':') + 1), title: g.title, status: g.status, steps: g.steps, error: g.error })),
             generated: m.generated,
             agentProposals: m.agentProposals,
@@ -460,6 +462,7 @@ export default function ChatInterface({
             remarks: p.remarks, suggestions: p.suggestions, searches: p.searches,
             referentiel: p.referentiel?.arbre ? p.referentiel : undefined,
             archived: Array.isArray(p.archived) ? p.archived : undefined,
+            referentialChanged: p.referentialChanged?.procedures?.length ? p.referentialChanged : undefined,
             agentProposals: (p.agentProposals || []).map((a: AgentProposal) => ({ ...a, decision: a.decision || 'historique' })),
         };
     };
@@ -760,6 +763,9 @@ export default function ChatInterface({
             case 'web_search':
                 updateMsg(msgId, m => ({ ...m, searches: [...(m.searches || []), { queries: ev.queries || [], sources: ev.sources || [] }] }));
                 break;
+            case 'referential_changed':
+                updateMsg(msgId, m => ({ ...m, referentialChanged: { procedures: ev.procedures || [], message: ev.message || '' } }));
+                break;
             case 'procedure_focus':
                 focusRef.current = ev.key || null;
                 break;
@@ -892,6 +898,22 @@ export default function ChatInterface({
         const id = crypto.randomUUID();
         setMessages(prev => [...prev, { id, role: 'assistant', content: '', createdAt: new Date(), steps: [] }]);
         return id;
+    };
+
+    /** Réponse à « le référentiel a changé » : le choix s'applique aux procédures citées, puis la demande repart */
+    const resolveReferential = async (msgId: string, choix: 'reprendre' | 'garder') => {
+        const rc = messages.find(m => m.id === msgId)?.referentialChanged;
+        const id = conversationIdRef.current;
+        if (!rc || !id) return;
+        try {
+            let procs: StoredProcedure[] | null = null;
+            for (const p of rc.procedures) procs = await conversationsApi.referentielChoice(id, p.key, choix);
+            if (procs) onServerProcedures?.(procs, rc.procedures[0]?.key);
+            updateMsg(msgId, m => ({ ...m, referentialChanged: m.referentialChanged && { ...m.referentialChanged, choice: choix } }));
+            if (rc.message.trim()) await sendMessage(rc.message);
+        } catch (err: unknown) {
+            onError(err instanceof Error ? err.message : 'Choix non enregistré');
+        }
     };
 
     const sendMessage = async (overrideInput?: string, override?: { files: File[]; attachments: SentAttachment[] }) => {
@@ -1214,6 +1236,23 @@ export default function ChatInterface({
                                         )}
 
                                         {msg.referentiel && <ReferentialCard proposal={msg.referentiel} />}
+
+                                        {/* Le référentiel a changé : reprendre sa version à jour ou garder celle du chat, puis la demande repart */}
+                                        {msg.referentialChanged && (msg.referentialChanged.choice || msg.id !== messages[messages.length - 1]?.id ? (
+                                            msg.referentialChanged.choice && <p className="text-sm text-neutral-600">
+                                                {msg.referentialChanged.choice === 'reprendre' ? 'Version à jour du référentiel reprise.' : 'Version du chat gardée.'}</p>
+                                        ) : (
+                                            <div className="flex flex-wrap gap-2">
+                                                {(['reprendre', 'garder'] as const).map(choix => (
+                                                    <button key={choix} type="button" disabled={loading} onClick={() => void resolveReferential(msg.id, choix)}
+                                                        className={choix === 'reprendre'
+                                                            ? 'rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 disabled:opacity-50'
+                                                            : 'rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-50'}>
+                                                        {choix === 'reprendre' ? 'Reprendre la version à jour' : 'Garder ma version'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ))}
 
                                         {/* Procédures remplacées ou retirées : rien n'est détruit, on peut les rétablir */}
                                         {msg.archived?.map((a, ai) => (

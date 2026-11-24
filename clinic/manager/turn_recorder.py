@@ -90,6 +90,9 @@ class TurnRecorder:
             # analyse d'une procédure (irritants, améliorations, réglementaire) : éléments structurés gardés avec le message
             self.payload.setdefault("analyses", []).append(
                 {k: ev.get(k) for k in ("kind", "titre", "procedure_key", "title", "elements")})
+        elif t == "referential_changed":
+            # le référentiel a changé : la question et ses choix restent avec le message
+            self.payload["referentialChanged"] = {"procedures": ev.get("procedures") or [], "message": ev.get("message") or ""}
         elif t == "web_search":
             # recherche sur internet : requêtes et sources, affichées avec la réponse et dans le panneau
             self.payload.setdefault("searches", []).append({"queries": ev.get("queries") or [], "sources": ev.get("sources") or []})

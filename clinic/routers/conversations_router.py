@@ -275,6 +275,46 @@ class AttachBody(BaseModel):
     workflow_db_id: str
 
 
+class ReferentielChoice(BaseModel):
+    choix: str = Field(pattern="^(reprendre|garder)$")
+
+
+def _read_workflow(workflow_id: str):
+    from database.supabase_client import get_supabase
+    rows = get_supabase().table("workflows").select("*").eq("id", workflow_id).execute().data
+    return rows[0] if rows else None
+
+
+@router.get("/{conversation_id}/procedures/{key}/referentiel", dependencies=[Depends(_enabled)])
+async def referentiel_state(conversation_id: str, key: str, user: AuthUser = Depends(require_user)):
+    """La copie du chat est-elle à jour avec le référentiel ? (vérifié avant « Enregistrer »)"""
+    from manager import referential_sync as rs
+    conv = await _owned_with_procedures(conversation_id, user)
+    ack = (conv.get("state") or {}).get("ref_ack") or {}
+    stale = await asyncio.to_thread(rs.check, conversation_id, [key], _read_workflow, ack)
+    return {"stale": bool(stale), "info": stale[0] if stale else None, "message": rs.question(stale) if stale else None}
+
+
+@router.post("/{conversation_id}/procedures/{key}/referentiel", dependencies=[Depends(_enabled)])
+async def referentiel_choice(conversation_id: str, key: str, body: ReferentielChoice, user: AuthUser = Depends(require_user)):
+    """Le référentiel a changé : reprendre sa version à jour dans le chat, ou garder la copie du chat (retenu)."""
+    from manager import referential_sync as rs
+    conv = await _owned_with_procedures(conversation_id, user)
+    proc = await asyncio.to_thread(cp.get, conversation_id, key)
+    if not proc or not proc.get("workflow_db_id"):
+        raise HTTPException(404, "Procédure introuvable")
+    wf = await asyncio.to_thread(_read_workflow, proc["workflow_db_id"])
+    if not wf:
+        raise HTTPException(404, "La procédure n'est plus au référentiel")
+    if body.choix == "reprendre":
+        await asyncio.to_thread(rs.reprendre, conversation_id, key, wf, user.id)
+    else:
+        ack = dict((conv.get("state") or {}).get("ref_ack") or {})
+        ack[key] = rs._ref_fingerprint(wf)
+        await asyncio.to_thread(lambda: store.merge_state(conversation_id, user.id, ref_ack=ack))
+    return {"procedures": await asyncio.to_thread(cp.list_procedures, conversation_id)}
+
+
 @router.post("/{conversation_id}/procedures/attach", dependencies=[Depends(_enabled)])
 async def attach_procedure(conversation_id: str, body: AttachBody, user: AuthUser = Depends(require_user)):
     """Ajouter au chat une procédure du référentiel (une version : AS IS ou TO BE), comme on joint un fichier."""
@@ -293,9 +333,15 @@ async def attach_procedure(conversation_id: str, body: AttachBody, user: AuthUse
 @router.post("/{conversation_id}/procedures/{key}/saved", dependencies=[Depends(_enabled)])
 async def procedure_saved(conversation_id: str, key: str, body: SavedBody, user: AuthUser = Depends(require_user)):
     """Enregistrée dans le référentiel : lien et version enregistrée (« modifiée depuis l'enregistrement »)."""
-    await _owned_with_procedures(conversation_id, user)
+    conv = await _owned_with_procedures(conversation_id, user)
     if not await asyncio.to_thread(cp.link_saved, conversation_id, key, body.workflow_db_id, body.version):
         raise HTTPException(404, "Procédure introuvable")
+    # ce qui vient d'être écrit au référentiel (le logigramme relu peut différer un peu de la copie) est l'état connu
+    from manager import referential_sync as rs
+    wf = await asyncio.to_thread(_read_workflow, body.workflow_db_id)
+    if wf:
+        ack = {**((conv.get("state") or {}).get("ref_ack") or {}), key: rs._ref_fingerprint(wf)}
+        await asyncio.to_thread(lambda: store.merge_state(conversation_id, user.id, ref_ack=ack))
     return {"procedure": await asyncio.to_thread(cp.current, conversation_id, key)}
 
 

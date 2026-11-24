@@ -127,6 +127,13 @@ export const conversationsApi = {
     attachProcedure: (id: string, workflowDbId: string) =>
         call<{ key: string; procedures: StoredProcedure[] }>(`/${id}/procedures/attach`,
             { method: 'POST', body: JSON.stringify({ workflow_db_id: workflowDbId }) }),
+    /** La copie du chat est-elle à jour avec le référentiel ? (message : ce que le chat en dit) */
+    referentielState: (id: string, key: string) =>
+        call<{ stale: boolean; message: string | null }>(`/${id}/procedures/${encodeURIComponent(key)}/referentiel`),
+    /** Le référentiel a changé : reprendre sa version à jour dans le chat, ou garder la copie du chat */
+    referentielChoice: (id: string, key: string, choix: 'reprendre' | 'garder') =>
+        call<{ procedures: StoredProcedure[] }>(`/${id}/procedures/${encodeURIComponent(key)}/referentiel`,
+            { method: 'POST', body: JSON.stringify({ choix }) }).then(r => r.procedures),
     procedureVersions: (id: string, key: string) =>
         call<{ versions: ConversationVersion[] }>(`/${id}/procedures/${encodeURIComponent(key)}/versions`).then(r => r.versions),
     procedureVersion: (id: string, key: string, version: number) =>

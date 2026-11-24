@@ -161,6 +161,23 @@ def _steps_summary(proc: Dict[str, Any], limit: int = 80) -> List[str]:
     return out
 
 
+def _stale_for_plan(plan, conv, conv_procs, replaced, active_procedure) -> List[Dict[str, Any]]:
+    """Procédures sur lesquelles le tour va agir et dont le référentiel a changé depuis la copie du chat."""
+    from manager import referential_sync as rs
+    if plan.action in ("edit", "explain", "interfaces", "analyse", "transcribe"):
+        target = conv_procs[plan.target - 1] if plan.target else None
+        keys = [(target or {}).get("key") or active_procedure]
+    elif plan.action in ("generate", "merge", "remove"):
+        keys = [p.get("key") for p in replaced]
+    else:  # créer le TO BE part du référentiel lui-même ; les autres actions ne touchent pas aux procédures
+        return []
+    try:
+        return rs.check(conv["id"], keys, _read_workflow, (conv.get("state") or {}).get("ref_ack") or {})
+    except Exception as e:  # la vérification ne doit jamais empêcher de travailler
+        logger.warning(f"⚠️ Vérification du référentiel impossible : {str(e)[:160]}")
+        return []
+
+
 def _read_workflow(workflow_id: str) -> Optional[Dict[str, Any]]:
     """Une procédure du référentiel, dans l'organisation de l'utilisateur."""
     from database.supabase_client import get_supabase
@@ -867,6 +884,14 @@ async def studio_turn(
                     plan = await asyncio.to_thread(plan_turn, message, to_plan, has_workflow, history_list, sess.get("proposal"),
                                                    bool(sess.get("referentiel")), conv_summary)
                 replaced = [conv_procs[n - 1] for n in plan.replaces]
+                if server_mode:
+                    stale = await asyncio.to_thread(_stale_for_plan, plan, conv, conv_procs, replaced, active_procedure)
+                    if stale:
+                        from manager.referential_sync import question
+                        yield _sse({"type": "referential_changed", "message": message,
+                                    "procedures": [{k: s.get(k) for k in ("key", "title", "version_label")} for s in stale]})
+                        yield _sse({"type": "message", "text": question(stale)})
+                        return
                 found = len(plan.procedures)
                 if plan.action in ("generate", "propose", "merge"):
                     found_label = f"{found} procédure{'s' if found > 1 else ''} trouvée{'s' if found > 1 else ''}"

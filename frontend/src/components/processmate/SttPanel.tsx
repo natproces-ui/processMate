@@ -739,6 +739,12 @@ export default function SttPanel({ workflowId, onBack, currentActorId, fromClini
     const handleSave = useCallback(async (nom: string, category: string, taxonomyId?: string,
         target?: { procedureId: string; titre: string }) => {
         const inst = instances.length > 0 ? activeInst : null;
+        // la copie du chat va remplacer le référentiel : s'il a changé depuis, on le dit avant d'écraser
+        const convId = conversationIdRef.current;
+        if (inst?.workflow_db_id && !target && convId && serverModeRef.current) {
+            const st = await conversationsApi.referentielState(convId, inst.process_id).catch(() => null);
+            if (st?.stale && !window.confirm(`${st.message ?? 'Le référentiel a été modifié depuis votre copie.'}\n\nEnregistrer quand même votre version ?`)) return;
+        }
         setSaving(true);
         try {
             // Récupérer le XML BPMN actuel (avec positions modifiées)
