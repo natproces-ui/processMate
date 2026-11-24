@@ -34,6 +34,9 @@ def as_material(pistes: List[Dict[str, Any]]) -> str:
              "- change vraiment les étapes quand une piste le demande (acteur, outil, étape ajoutée, supprimée, fusionnée ou "
              "automatisée, contrôle déplacé), pas seulement leurs descriptions ;",
              "- une description du TO BE ne garde rien de ce que la piste supprime (suivi manuel, ressaisie, envoi par mail…) ;",
+             "- une étape automatisée garde pour acteur l'équipe qui en répond (un système n'est jamais un acteur) ; le système "
+             "va dans \"outil\" ; sa description dit ce que l'outil fait seul et ce que l'équipe garde (suivi, exceptions, "
+             "validation), en commençant par l'équipe : « La gestion formation … ; Geflog … » ;",
              "- \"explanation\" : pour cette mise à niveau, une phrase par piste appliquée, qui cite son titre entre guillemets "
              "et dit les étapes changées (jamais un numéro de piste : l'utilisateur ne voit pas cette liste).",
              "",
