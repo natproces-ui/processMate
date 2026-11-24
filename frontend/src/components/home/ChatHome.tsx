@@ -14,7 +14,8 @@ import { projectsApi, type Project } from '@/lib/projectsApi';
 import { guestStore, GUEST_CONVERSATION_KEY, type GuestConversation } from '@/lib/guestStore';
 import { takePendingTurn } from '@/lib/pendingTurn';
 import AppShell from '@/components/home/AppShell';
-import { FolderOpen, Loader2 } from 'lucide-react';
+import { ChevronRight, FolderOpen, Loader2 } from 'lucide-react';
+import { orchestrationApi } from '@/lib/orchestrationApi';
 
 const SttPanel = dynamic(() => import('@/components/processmate/SttPanel'), {
     ssr: false,
@@ -30,6 +31,8 @@ export default function ChatHome() {
     const [project, setProject] = useState<Project | null>(null);
     /** Procédure du référentiel ouverte depuis une campagne (?procedure=) */
     const [procedureId, setProcedureId] = useState<string | undefined>();
+    /** nom de la procédure ouverte depuis le référentiel : le bandeau du haut dit où l'on est */
+    const [procedureName, setProcedureName] = useState<string | null>(null);
     /** Vue d'ouverture de cette procédure (?vue=irritants) et axe à montrer (?axe=) */
     const [procedureView, setProcedureView] = useState<{ view?: 'analyse'; axis?: string }>({});
     /** Premier message tapé depuis la page d'un projet (?message=), envoyé tout seul */
@@ -143,6 +146,16 @@ export default function ChatHome() {
         if (toHome && access?.member) window.location.replace('/espace');
     }, [toHome, access?.member]);
 
+    useEffect(() => {
+        setProcedureName(null);
+        if (!procedureId || !member) return;
+        let stale = false;
+        orchestrationApi.getProcedure(procedureId)
+            .then(r => { if (!stale) setProcedureName(r.procedure.nom || null); })
+            .catch(() => { /* bandeau sans le nom */ });
+        return () => { stale = true; };
+    }, [procedureId, member]);
+
     if (loading || goHome) {
         return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="w-6 h-6 animate-spin text-neutral-900" /></div>;
     }
@@ -155,11 +168,17 @@ export default function ChatHome() {
             onNewConversation={() => open(null, null)}
             onConversationDeleted={id => { if (id === activeId) open(null, null); }}
             /* undefined (pas false) quand une conversation est ouverte : l'en-tête affiche alors « Projet / Titre » */
-            headerLeft={activeId || !project ? undefined : (
+            headerLeft={activeId ? undefined : project ? (
                 <Link href={`/projet/?id=${project.id}`} className="flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-neutral-900 hover:bg-neutral-100">
                     <FolderOpen className="w-4 h-4 shrink-0" /><span className="truncate">{project.name}</span>
                 </Link>
-            )}>
+            ) : procedureName ? (
+                <nav aria-label="Emplacement" className="flex min-w-0 items-center gap-1 text-sm">
+                    <Link href="/orchestration?tab=procedures" className="shrink-0 rounded-lg px-2 py-1 font-medium text-neutral-700 hover:bg-neutral-100">Référentiel</Link>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
+                    <span className="truncate px-1 font-semibold text-neutral-900" title={procedureName}>{procedureName}</span>
+                </nav>
+            ) : undefined}>
             {guestWork && (
                 <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-4 py-2.5 flex flex-wrap items-center gap-2 text-sm text-neutral-900">
                     <span>Vous avez commencé une conversation sans compte dans ce navigateur. La reprendre dans votre compte ?</span>

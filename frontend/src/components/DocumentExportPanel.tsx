@@ -70,9 +70,9 @@ interface DocumentResponse {
     file_size: number; download_url: string; preview: any;
 }
 
-const inputCls = "w-full bg-gray-800 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-blue-400";
-const textareaCls = "w-full bg-gray-800 border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-blue-400 resize-y min-h-[60px]";
-const labelCls = "block text-xs text-gray-400 mb-1";
+const inputCls = "w-full bg-white border border-neutral-300 text-neutral-900 text-sm rounded-md px-2 py-1.5 placeholder:text-neutral-400 focus:outline-none focus:border-petrole focus:ring-2 focus:ring-petrole/15";
+const textareaCls = "w-full bg-white border border-neutral-300 text-neutral-900 text-sm rounded-md px-2 py-1.5 placeholder:text-neutral-400 focus:outline-none focus:border-petrole focus:ring-2 focus:ring-petrole/15 resize-y min-h-[60px]";
+const labelCls = "block text-xs font-medium text-neutral-600 mb-1";
 
 export default function DocumentExportPanel({
     data, enrichments, processMetadata, bpmnXml, diagramCaptureFn, onSuccess, onError, initialMeta, sourceFiles, onMetaEdited,
@@ -156,10 +156,10 @@ export default function DocumentExportPanel({
         if (!cihMeta.nom.trim()) { onError('Le nom de la procédure est obligatoire.'); return; }
         if (data.length === 0) { onError('Le tableau est vide.'); return; }
         setIsGenerating(true);
-        setCurrentStep('Capture du logigramme...');
+        setCurrentStep('Capture du logigramme');
         try {
             const diagramBase64 = await captureDiagramAsBase64();
-            setCurrentStep('Génération du document Word...');
+            setCurrentStep('Génération du document Word');
             const payload = {
                 metadata: { ...cihMeta, responsabilites_internes: cihMeta.responsabilites_internes.filter(Boolean), responsabilites_externes: cihMeta.responsabilites_externes.filter(Boolean), definitions: cihMeta.definitions.filter(d => d.terme), abbreviations: cihMeta.abbreviations.filter(a => a.abrv), annexe: cihMeta.annexe.filter(a => a.titre || a.contenu || a.image) },
                 workflow: data, enrichments: Object.fromEntries(enrichments), diagram_image: diagramBase64, options,
@@ -168,7 +168,7 @@ export default function DocumentExportPanel({
             if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Erreur génération'); }
             const result: DocumentResponse = await res.json();
             setDocumentData(result); setShowPreview(true);
-            onSuccess('✅ Document généré avec succès !');
+            onSuccess('Fiche Word générée.');
         } catch (e: any) { onError(e.message || 'Erreur'); }
         finally { setIsGenerating(false); setCurrentStep(''); }
     };
@@ -178,7 +178,7 @@ export default function DocumentExportPanel({
         const a = document.createElement('a');
         a.href = API_CONFIG.getFullUrl(documentData.download_url); a.download = documentData.filename;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        onSuccess('📥 Téléchargement lancé !'); setShowPreview(false);
+        onSuccess('Téléchargement lancé.'); setShowPreview(false);
     };
 
     // Helpers listes
@@ -198,28 +198,28 @@ export default function DocumentExportPanel({
 
     return (
         <>
-            <div className="mb-6 bg-gray-800 rounded-lg overflow-hidden border border-gray-700 shadow-lg">
+            <div className="mb-6 overflow-hidden rounded-xl border border-neutral-200 bg-white">
 
                 {/* Header */}
-                <div className="bg-gradient-to-r from-gray-900 to-gray-800 border-b border-gray-700 p-4 flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-4 py-3">
                     <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-blue-400" />
+                        <FileText className="w-5 h-5 text-petrole" />
                         <div>
-                            <h3 className="text-lg font-bold text-white">Fiche de la procédure</h3>
+                            <h3 className="text-base font-semibold text-petrole">Fiche de la procédure</h3>
                             <p className="text-xs mt-0.5">
                                 {autoFilled
-                                    ? <span className="flex items-center gap-1 text-green-400"><Sparkles className="w-3 h-3" />Fiche remplie à partir des sources : vérifiez et corrigez si besoin</span>
-                                    : <span className="text-gray-400">Uploadez un document pour extraction auto, ou renseignez manuellement</span>}
+                                    ? <span className="flex items-center gap-1 text-petrole"><Sparkles className="w-3 h-3" />Fiche remplie à partir des sources : vérifiez et corrigez si besoin</span>
+                                    : <span className="text-neutral-500">Joignez un document au chat pour la remplir, ou renseignez-la ici</span>}
                             </p>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => setShowMetaForm(o => !o)}
-                            className={`px-3 py-1.5 text-white text-xs rounded-lg font-medium transition-colors flex items-center gap-1.5 ${autoFilled ? 'bg-green-700 hover:bg-green-600' : 'bg-blue-700 hover:bg-blue-600'}`}>
-                            {autoFilled && <Sparkles className="w-3 h-3" />}
-                            {showMetaForm ? 'Masquer' : 'Voir / Modifier'} les métadonnées
+                            className="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-neutral-50">
+                            {showMetaForm ? 'Masquer la fiche' : 'Voir et modifier la fiche'}
                         </button>
-                        <button onClick={() => setShowOptions(o => !o)} className="p-2 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white">
+                        <button onClick={() => setShowOptions(o => !o)} title={showOptions ? 'Masquer les options du document Word' : 'Options du document Word'}
+                            className="rounded-lg p-1.5 text-neutral-700 hover:bg-neutral-100">
                             {showOptions ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                         </button>
                     </div>
@@ -227,15 +227,15 @@ export default function DocumentExportPanel({
 
                 {/* Formulaire métadonnées */}
                 {showMetaForm && (
-                    <div className="p-4 bg-gray-950 border-b border-gray-700 space-y-4">
+                    <div className="space-y-4 border-b border-neutral-200 p-4">
                         {autoFilled && (
-                            <div className="flex items-start gap-2 bg-green-900/30 border border-green-700/50 rounded-lg p-3">
-                                <Sparkles className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                                <p className="text-xs text-green-300">Champs pré-remplis depuis votre document. Vérifiez et complétez si nécessaire.</p>
+                            <div className="flex items-start gap-2 rounded-lg border border-petrole/30 bg-petrole-tint px-3 py-2">
+                                <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-petrole" />
+                                <p className="text-xs text-neutral-800">Champs remplis à partir de vos sources. Vérifiez-les et complétez si nécessaire.</p>
                             </div>
                         )}
 
-                        <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide">Identification</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-petrole">Identification</p>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="col-span-2">
                                 <label className={labelCls}>Titre de la procédure *</label>
@@ -249,7 +249,7 @@ export default function DocumentExportPanel({
                             <div><label className={labelCls}>Direction</label><input className={inputCls} value={cihMeta.direction} onChange={e => setCihMeta(m => ({ ...m, direction: e.target.value }))} /></div>
                         </div>
 
-                        <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide pt-2">Généralités</p>
+                        <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-petrole">Généralités</p>
                         <div><label className={labelCls}>Objet</label><textarea className={textareaCls} value={cihMeta.objet} onChange={e => setCihMeta(m => ({ ...m, objet: e.target.value }))} placeholder="Cette procédure a pour objet de décrire..." /></div>
                         <div><label className={labelCls}>Périmètre d'application</label><textarea className={textareaCls} value={cihMeta.perimeter} onChange={e => setCihMeta(m => ({ ...m, perimeter: e.target.value }))} /></div>
 
@@ -259,20 +259,20 @@ export default function DocumentExportPanel({
                                 {cihMeta.responsabilites_internes.map((a, i) => (
                                     <div key={i} className="flex gap-1 mb-1">
                                         <input className={inputCls} value={a} onChange={e => updActeur('internes', i, e.target.value)} placeholder="Ex: Chargé de caisse - Agence" />
-                                        <button onClick={() => rmActeur('internes', i)} className="text-red-400 hover:text-red-300 px-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => rmActeur('internes', i)} className="px-1 text-neutral-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                                     </div>
                                 ))}
-                                <button onClick={() => addActeur('internes')} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"><Plus className="w-3 h-3" />Ajouter</button>
+                                <button onClick={() => addActeur('internes')} className="mt-1 flex items-center gap-1 text-xs font-medium text-petrole hover:underline"><Plus className="w-3 h-3" />Ajouter</button>
                             </div>
                             <div>
                                 <label className={labelCls}>Acteurs externes</label>
                                 {cihMeta.responsabilites_externes.map((a, i) => (
                                     <div key={i} className="flex gap-1 mb-1">
                                         <input className={inputCls} value={a} onChange={e => updActeur('externes', i, e.target.value)} placeholder="Ex: Client" />
-                                        <button onClick={() => rmActeur('externes', i)} className="text-red-400 hover:text-red-300 px-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                                        <button onClick={() => rmActeur('externes', i)} className="px-1 text-neutral-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                                     </div>
                                 ))}
-                                <button onClick={() => addActeur('externes')} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"><Plus className="w-3 h-3" />Ajouter</button>
+                                <button onClick={() => addActeur('externes')} className="mt-1 flex items-center gap-1 text-xs font-medium text-petrole hover:underline"><Plus className="w-3 h-3" />Ajouter</button>
                             </div>
                         </div>
 
@@ -284,10 +284,10 @@ export default function DocumentExportPanel({
                                 <div key={i} className="flex gap-2 mb-1.5">
                                     <input className={`${inputCls} w-24`} value={a.abrv} onChange={e => updAbrv(i, 'abrv', e.target.value)} placeholder="BOI" />
                                     <input className={inputCls} value={a.signification} onChange={e => updAbrv(i, 'signification', e.target.value)} placeholder="Back Office International" />
-                                    <button onClick={() => rmAbrv(i)} className="text-red-400 hover:text-red-300 px-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => rmAbrv(i)} className="px-1 text-neutral-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                             ))}
-                            <button onClick={addAbrv} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"><Plus className="w-3 h-3" />Ajouter abréviation</button>
+                            <button onClick={addAbrv} className="mt-1 flex items-center gap-1 text-xs font-medium text-petrole hover:underline"><Plus className="w-3 h-3" />Ajouter abréviation</button>
                         </div>
 
                         <div>
@@ -296,10 +296,10 @@ export default function DocumentExportPanel({
                                 <div key={i} className="flex gap-2 mb-1.5">
                                     <input className={`${inputCls} w-36`} value={d.terme} onChange={e => updDef(i, 'terme', e.target.value)} placeholder="Terme" />
                                     <input className={inputCls} value={d.definition} onChange={e => updDef(i, 'definition', e.target.value)} placeholder="Définition" />
-                                    <button onClick={() => rmDef(i)} className="text-red-400 hover:text-red-300 px-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => rmDef(i)} className="px-1 text-neutral-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                             ))}
-                            <button onClick={addDef} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"><Plus className="w-3 h-3" />Ajouter définition</button>
+                            <button onClick={addDef} className="mt-1 flex items-center gap-1 text-xs font-medium text-petrole hover:underline"><Plus className="w-3 h-3" />Ajouter définition</button>
                         </div>
 
                         <div><label className={labelCls}>1.1 Règles de gestion</label><textarea className={textareaCls} value={cihMeta.regles_gestion} onChange={e => setCihMeta(m => ({ ...m, regles_gestion: e.target.value }))} placeholder="Une règle par ligne..." style={{ minHeight: 80 }} /></div>
@@ -313,9 +313,9 @@ export default function DocumentExportPanel({
                                         <textarea className={textareaCls} value={a.contenu} onChange={e => updAnnexe(i, 'contenu', e.target.value)} placeholder="Contenu de l'annexe" />
                                         <div className="flex items-center gap-2">
                                             {a.image ? (
-                                                <div className="flex items-center gap-2 bg-gray-800 border border-gray-600 rounded px-2 py-1">
+                                                <div className="flex items-center gap-2 rounded border border-neutral-300 bg-white px-2 py-1">
                                                     <img src={a.image} alt="Capture annexe" className="h-10 rounded object-contain" />
-                                                    <button onClick={() => updAnnexe(i, 'image', '')} className="text-red-400 hover:text-red-300" title="Retirer l'image">
+                                                    <button onClick={() => updAnnexe(i, 'image', '')} className="text-neutral-400 hover:text-red-600" title="Retirer l'image">
                                                         <ImageOff className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
@@ -323,7 +323,7 @@ export default function DocumentExportPanel({
                                                 <button
                                                     onClick={() => setCaptureTargetIdx(i)}
                                                     disabled={captureCandidates.length === 0}
-                                                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 disabled:text-gray-600 disabled:cursor-not-allowed"
+                                                    className="flex items-center gap-1 text-xs font-medium text-petrole hover:underline disabled:cursor-not-allowed disabled:text-neutral-400"
                                                     title={captureCandidates.length === 0 ? "Uploadez d'abord un document source" : "Capturer une zone du document source"}
                                                 >
                                                     <Crop className="w-3 h-3" />Capturer une image depuis le document
@@ -331,29 +331,29 @@ export default function DocumentExportPanel({
                                             )}
                                         </div>
                                     </div>
-                                    <button onClick={() => rmAnnexe(i)} className="text-red-400 hover:text-red-300 px-1 mt-1.5"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => rmAnnexe(i)} className="mt-1.5 px-1 text-neutral-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                             ))}
-                            <button onClick={addAnnexe} className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"><Plus className="w-3 h-3" />Ajouter une annexe</button>
+                            <button onClick={addAnnexe} className="mt-1 flex items-center gap-1 text-xs font-medium text-petrole hover:underline"><Plus className="w-3 h-3" />Ajouter une annexe</button>
                         </div>
                     </div>
                 )}
 
                 {/* Options */}
                 {showOptions && (
-                    <div className="p-4 bg-gray-900 border-b border-gray-700">
+                    <div className="border-b border-neutral-200 bg-neutral-50 p-4">
                         <div className="flex gap-4 mb-3">
                             {[{ key: 'include_diagram', label: 'Inclure le logigramme' }, { key: 'include_enrichments', label: 'Inclure les enrichissements' }, { key: 'include_annexes', label: 'Inclure les annexes' }].map(({ key, label }) => (
-                                <label key={key} className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
-                                    <input type="checkbox" checked={options[key as keyof ExportOptions] as boolean} onChange={e => setOptions(o => ({ ...o, [key]: e.target.checked }))} className="w-4 h-4 text-blue-600 rounded" />
+                                <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-neutral-800">
+                                    <input type="checkbox" checked={options[key as keyof ExportOptions] as boolean} onChange={e => setOptions(o => ({ ...o, [key]: e.target.checked }))} className="h-4 w-4 rounded accent-petrole" />
                                     <span>{label}</span>
                                 </label>
                             ))}
                         </div>
                         <div className="flex gap-4">
                             {(['synthesis', 'standard', 'complete'] as const).map(l => (
-                                <label key={l} className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
-                                    <input type="radio" value={l} checked={options.detail_level === l} onChange={() => setOptions(o => ({ ...o, detail_level: l }))} className="w-4 h-4 text-blue-600" />
+                                <label key={l} className="flex cursor-pointer items-center gap-2 text-sm text-neutral-800">
+                                    <input type="radio" value={l} checked={options.detail_level === l} onChange={() => setOptions(o => ({ ...o, detail_level: l }))} className="h-4 w-4 accent-petrole" />
                                     <span>{l === 'synthesis' ? 'Synthèse' : l === 'standard' ? 'Standard' : 'Complet'}</span>
                                 </label>
                             ))}
@@ -365,29 +365,29 @@ export default function DocumentExportPanel({
                 <div className="p-4">
                     {isGenerating ? (
                         <div className="flex flex-col items-center py-6 gap-3">
-                            <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-                            <p className="text-base font-semibold text-white">{currentStep}</p>
+                            <Loader2 className="h-8 w-8 animate-spin text-petrole" />
+                            <p className="text-sm font-semibold text-neutral-900">{currentStep}</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs text-gray-400">
-                                <p className="font-semibold mb-1 text-gray-200">Contenu :</p>
-                                <ul className="space-y-0.5">
-                                    <li>• En-tête (référence, version, dates, pôle, direction)</li>
-                                    <li>• Généralités (objet, périmètre, responsabilités, abréviations)</li>
-                                    <li>• Sommaire et 1.1 Règles de gestion</li>
-                                    {options.include_diagram && <li>• 1.2 Logigramme BPMN</li>}
-                                    <li>• 1.3 Description des opérations ({data.length} étape{data.length > 1 ? 's' : ''})</li>
+                            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-700">
+                                <p className="mb-1 font-semibold text-neutral-900">Le document Word contient :</p>
+                                <ul className="list-disc space-y-0.5 pl-4">
+                                    <li>l&apos;en-tête (référence, version, dates, pôle, direction) ;</li>
+                                    <li>les généralités (objet, périmètre, responsabilités, abréviations) ;</li>
+                                    <li>le sommaire et 1.1 Règles de gestion ;</li>
+                                    {options.include_diagram && <li>1.2 Logigramme BPMN ;</li>}
+                                    <li>1.3 Description des opérations ({data.length} étape{data.length > 1 ? 's' : ''}){options.include_annexes && cihMeta.annexe.some(a => a.titre || a.contenu || a.image) ? ' ;' : '.'}</li>
                                     {options.include_annexes && cihMeta.annexe.filter(a => a.titre || a.contenu || a.image).length > 0 && (
-                                        <li>• Annexes ({cihMeta.annexe.filter(a => a.titre || a.contenu || a.image).length})</li>
+                                        <li>les annexes ({cihMeta.annexe.filter(a => a.titre || a.contenu || a.image).length}).</li>
                                     )}
                                 </ul>
                             </div>
                             <button onClick={generateWordDocument} disabled={data.length === 0}
-                                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-all">
-                                <Download className="w-4 h-4" />Générer la procédure Word
+                                className="flex w-full items-center justify-center gap-2 rounded-lg bg-petrole px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40">
+                                <Download className="w-4 h-4" />Générer la fiche Word
                             </button>
-                            {!cihMeta.nom && <p className="text-center text-xs text-yellow-500">⚠ Renseignez le titre de la procédure</p>}
+                            {!cihMeta.nom && <p className="text-center text-xs text-neutral-600">Renseignez le titre de la procédure.</p>}
                         </div>
                     )}
                 </div>
